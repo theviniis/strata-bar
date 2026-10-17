@@ -1,0 +1,16 @@
+[
+  {
+    "title": "Strata · \\\\.\\DISPLAY1",
+    "monitor": [0, 0, 3440, 1440],
+    "actualWindow": [0, 0, 3440, 36],
+    "workArea": [0, 36, 3440, 1440],
+    "passed": true
+  },
+  {
+    "title": "Strata · \\\\.\\DISPLAY2",
+    "monitor": [724, -1080, 2644, 0],
+    "actualWindow": [724, -1080, 2644, -1044],
+    "workArea": [724, -1044, 2644, 0],
+    "passed": true
+  }
+]

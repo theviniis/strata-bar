@@ -1,0 +1,256 @@
+{
+  "timestampUtc": "2026-10-17T19:09:11.3743007Z",
+  "executable": "D:\\REA\\src-tauri\\target\\release\\strata-bar.exe",
+  "rootProcessId": 5044,
+  "logicalProcessors": 12,
+  "durationSeconds": 32.2977088,
+  "notes": "Full Strata descendant tree, including WebView2. Working-set sum can double count shared pages. User desktop remained active; short exploratory sample, not a controlled YASB comparison.",
+  "summary": {
+    "meanWorkingSetMiB": 471.7356770833333,
+    "maxPrivateMiB": 202.0234375,
+    "meanCpuPercentMachine": 0.903446136755814,
+    "meanPrivateMiB": 200.51770833333333
+  },
+  "samples": [
+    {
+      "elapsedSeconds": 1.2687711,
+      "cpuSecondsDelta": 0.171875,
+      "cpuPercentMachine": 1.3646310745793053,
+      "privateMiB": 201.21875,
+      "workingSetMiB": 472.21875,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 2.3274448,
+      "cpuSecondsDelta": 0.265625,
+      "cpuPercentMachine": 2.0908629983598033,
+      "privateMiB": 202,
+      "workingSetMiB": 473.0234375,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 3.3702787,
+      "cpuSecondsDelta": 0.0625,
+      "cpuPercentMachine": 0.4994403551067272,
+      "privateMiB": 201.79296875,
+      "workingSetMiB": 472.7890625,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 4.4179668,
+      "cpuSecondsDelta": 0.171875,
+      "cpuPercentMachine": 1.3670973896397853,
+      "privateMiB": 201.9140625,
+      "workingSetMiB": 472.94140625,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 5.6198938,
+      "cpuSecondsDelta": 0.03125,
+      "cpuPercentMachine": 0.21666595946897504,
+      "privateMiB": 201.6796875,
+      "workingSetMiB": 472.796875,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 6.6584093,
+      "cpuSecondsDelta": 0.09375,
+      "cpuPercentMachine": 0.7522757243392131,
+      "privateMiB": 201.69921875,
+      "workingSetMiB": 472.80078125,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 7.695202,
+      "cpuSecondsDelta": 0.046875,
+      "cpuPercentMachine": 0.37676287651330864,
+      "privateMiB": 201.65234375,
+      "workingSetMiB": 472.73046875,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 8.7446312,
+      "cpuSecondsDelta": 0.125,
+      "cpuPercentMachine": 0.9926030900099465,
+      "privateMiB": 201.68359375,
+      "workingSetMiB": 472.74609375,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 9.7788683,
+      "cpuSecondsDelta": 0.046875,
+      "cpuPercentMachine": 0.3776938576270379,
+      "privateMiB": 201.82421875,
+      "workingSetMiB": 472.86328125,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 10.9590268,
+      "cpuSecondsDelta": 0.078125,
+      "cpuPercentMachine": 0.5516561264157874,
+      "privateMiB": 199.875,
+      "workingSetMiB": 471.20703125,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 11.9946954,
+      "cpuSecondsDelta": 0.109375,
+      "cpuPercentMachine": 0.8800675557155387,
+      "privateMiB": 199.77734375,
+      "workingSetMiB": 471.12109375,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 13.0284573,
+      "cpuSecondsDelta": 0.0625,
+      "cpuPercentMachine": 0.5038233014133461,
+      "privateMiB": 200.07421875,
+      "workingSetMiB": 471.390625,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 14.062543,
+      "cpuSecondsDelta": 0.0625,
+      "cpuPercentMachine": 0.5036655408089805,
+      "privateMiB": 200.0234375,
+      "workingSetMiB": 471.34765625,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 15.1048104,
+      "cpuSecondsDelta": 0.203125,
+      "cpuPercentMachine": 1.6240633961431905,
+      "privateMiB": 199.91796875,
+      "workingSetMiB": 471.29296875,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 16.2848596,
+      "cpuSecondsDelta": 0.0625,
+      "cpuPercentMachine": 0.44136577808224686,
+      "privateMiB": 199.5859375,
+      "workingSetMiB": 470.8671875,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 17.3240956,
+      "cpuSecondsDelta": 0.171875,
+      "cpuPercentMachine": 1.3782159843064214,
+      "privateMiB": 199.20703125,
+      "workingSetMiB": 470.734375,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 18.3603014,
+      "cpuSecondsDelta": 0.125,
+      "cpuPercentMachine": 1.0052700599308222,
+      "privateMiB": 199.0390625,
+      "workingSetMiB": 470.625,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 19.3926038,
+      "cpuSecondsDelta": 0.09375,
+      "cpuPercentMachine": 0.7568034327925623,
+      "privateMiB": 198,
+      "workingSetMiB": 469.70703125,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 20.4302137,
+      "cpuSecondsDelta": 0.140625,
+      "cpuPercentMachine": 1.1293984376980215,
+      "privateMiB": 199.37109375,
+      "workingSetMiB": 470.88671875,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 21.6100067,
+      "cpuSecondsDelta": 0.203125,
+      "cpuPercentMachine": 1.4347502768140963,
+      "privateMiB": 200.61328125,
+      "workingSetMiB": 471.76953125,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 22.6569843,
+      "cpuSecondsDelta": 0.140625,
+      "cpuPercentMachine": 1.1192932876500874,
+      "privateMiB": 200.74609375,
+      "workingSetMiB": 471.8828125,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 23.6973621,
+      "cpuSecondsDelta": 0.0625,
+      "cpuPercentMachine": 0.5006194224187928,
+      "privateMiB": 200.78515625,
+      "workingSetMiB": 471.828125,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 24.7414127,
+      "cpuSecondsDelta": 0.328125,
+      "cpuPercentMachine": 2.6190062052547978,
+      "privateMiB": 201.890625,
+      "workingSetMiB": 472.8125,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 25.7784862,
+      "cpuSecondsDelta": 0.140625,
+      "cpuPercentMachine": 1.1299825904335634,
+      "privateMiB": 202.0234375,
+      "workingSetMiB": 472.91796875,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 26.9481879,
+      "cpuSecondsDelta": 0.140625,
+      "cpuPercentMachine": 1.0018579950768636,
+      "privateMiB": 199.87109375,
+      "workingSetMiB": 471.29296875,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 27.9924123,
+      "cpuSecondsDelta": 0.03125,
+      "cpuPercentMachine": 0.24938764758481646,
+      "privateMiB": 199.69140625,
+      "workingSetMiB": 471.07421875,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 29.0318585,
+      "cpuSecondsDelta": 0.109375,
+      "cpuPercentMachine": 0.8768691764261932,
+      "privateMiB": 199.890625,
+      "workingSetMiB": 471.1953125,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 30.0851254,
+      "cpuSecondsDelta": 0.0625,
+      "cpuPercentMachine": 0.4944932128156055,
+      "privateMiB": 199.79296875,
+      "workingSetMiB": 471.078125,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 31.1222829,
+      "cpuSecondsDelta": 0.09375,
+      "cpuPercentMachine": 0.753260714983019,
+      "privateMiB": 200.046875,
+      "workingSetMiB": 471.1796875,
+      "processCount": 8
+    },
+    {
+      "elapsedSeconds": 32.290064,
+      "cpuSecondsDelta": 0.015625,
+      "cpuPercentMachine": 0.11150063426555973,
+      "privateMiB": 199.84375,
+      "workingSetMiB": 470.94921875,
+      "processCount": 8
+    }
+  ]
+}

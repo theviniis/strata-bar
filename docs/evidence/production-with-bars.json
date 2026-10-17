@@ -1,0 +1,29 @@
+{
+  "metrics": {
+    "Ok": {
+      "cpu": 24.12280701754386,
+      "memory": {
+        "percent": 49.1509621671468,
+        "totalBytes": 34254831616,
+        "usedBytes": 16836579328
+      },
+      "timestamp": 1792264314586,
+      "volume": {
+        "Ok": {
+          "level": 100.0,
+          "muted": false
+        }
+      }
+    }
+  },
+  "monitors": [
+    {
+      "monitor": [0, 0, 3440, 1440],
+      "workArea": [0, 36, 3440, 1440]
+    },
+    {
+      "monitor": [724, -1080, 2644, 0],
+      "workArea": [724, -1044, 2644, 0]
+    }
+  ]
+}

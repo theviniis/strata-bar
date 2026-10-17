@@ -1,0 +1,58 @@
+[
+  {
+    "Id": 5620,
+    "Name": "strata-bar",
+    "Role": "host/browser",
+    "CpuSecondsDelta": 0.21875,
+    "PrivateMiB": 7.13671875
+  },
+  {
+    "Id": 12972,
+    "Name": "msedgewebview2",
+    "Role": "host/browser",
+    "CpuSecondsDelta": 0.515625,
+    "PrivateMiB": 41.87890625
+  },
+  {
+    "Id": 26312,
+    "Name": "msedgewebview2",
+    "Role": "crashpad-handler",
+    "CpuSecondsDelta": 0.0,
+    "PrivateMiB": 4.3984375
+  },
+  {
+    "Id": 34408,
+    "Name": "msedgewebview2",
+    "Role": "gpu-process",
+    "CpuSecondsDelta": 0.078125,
+    "PrivateMiB": 68.9453125
+  },
+  {
+    "Id": 19516,
+    "Name": "msedgewebview2",
+    "Role": "utility",
+    "CpuSecondsDelta": 0.0,
+    "PrivateMiB": 12.33984375
+  },
+  {
+    "Id": 8100,
+    "Name": "msedgewebview2",
+    "Role": "utility",
+    "CpuSecondsDelta": 0.0,
+    "PrivateMiB": 7.16015625
+  },
+  {
+    "Id": 5488,
+    "Name": "msedgewebview2",
+    "Role": "renderer",
+    "CpuSecondsDelta": 0.015625,
+    "PrivateMiB": 27.33203125
+  },
+  {
+    "Id": 15972,
+    "Name": "msedgewebview2",
+    "Role": "renderer",
+    "CpuSecondsDelta": 0.015625,
+    "PrivateMiB": 28.91796875
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "bars": {
+    "identifier": "bars",
+    "description": "Core event subscriptions for local status bar windows",
+    "local": true,
+    "windows": ["bar-*"],
+    "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
+  }
+}
