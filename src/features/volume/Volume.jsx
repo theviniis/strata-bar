@@ -1,25 +1,25 @@
-import { useState } from 'react';
-import { Volume2, VolumeX } from 'lucide-react';
-import { useSystemChannel } from '../../hooks/useSystemChannel';
-import { bridge } from '../../services/system/bridge';
+import { useState } from 'react'
+import { Volume2, VolumeX } from 'lucide-react'
+import { useSystemChannel } from '../../hooks/useSystemChannel'
+import { bridge } from '../../services/system/bridge'
 export function Volume() {
   const value = useSystemChannel('volume'),
     [draft, setDraft] = useState(null),
-    [error, setError] = useState('');
+    [error, setError] = useState('')
   const ready = value.status === 'ready',
     level = draft ?? value.data?.level ?? 0,
-    muted = value.data?.muted ?? false;
+    muted = value.data?.muted ?? false
   async function commit(change) {
     try {
-      await bridge.setVolume(change);
-      setError('');
+      await bridge.setVolume(change)
+      setError('')
     } catch (e) {
-      setError(String(e));
+      setError(String(e))
     } finally {
-      setDraft(null);
+      setDraft(null)
     }
   }
-  const Icon = muted ? VolumeX : Volume2;
+  const Icon = muted ? VolumeX : Volume2
   return (
     <div
       className="bar-volume"
@@ -52,10 +52,10 @@ export function Volume() {
               'Home',
               'End',
               'PageUp',
-              'PageDown',
+              'PageDown'
             ].includes(e.key)
           )
-            commit({ level: Number(e.currentTarget.value) });
+            commit({ level: Number(e.currentTarget.value) })
         }}
       />
       <output aria-label="Volume atual">
@@ -67,5 +67,5 @@ export function Volume() {
         </span>
       )}
     </div>
-  );
+  )
 }

@@ -1,21 +1,21 @@
-import { useEffect, useState } from 'react';
-import * as Tooltip from '@radix-ui/react-tooltip';
-import { Layers3, ArrowUpRight, Check, Settings2 } from 'lucide-react';
-import { useConfig, loadConfig, watchConfig } from '../stores/config';
-import { Widget } from '../components/status-bar/Widget';
-import { bridge } from '../services/system/bridge';
+import { useEffect, useState } from 'react'
+import * as Tooltip from '@radix-ui/react-tooltip'
+import { Layers3, ArrowUpRight, Check, Settings2 } from 'lucide-react'
+import { useConfig, loadConfig, watchConfig } from '../stores/config'
+import { Widget } from '../components/status-bar/Widget'
+import { bridge } from '../services/system/bridge'
 export default function App() {
   const config = useConfig((s) => s.config),
     error = useConfig((s) => s.error),
-    apply = useConfig((s) => s.apply);
+    apply = useConfig((s) => s.apply)
   const [draft, setDraft] = useState(''),
-    [editing, setEditing] = useState(false);
+    [editing, setEditing] = useState(false)
   useEffect(() => {
-    loadConfig();
-    return watchConfig();
-  }, []);
+    loadConfig()
+    return watchConfig()
+  }, [])
   const change = (bar) =>
-    apply(JSON.stringify({ ...config, bar: { ...config.bar, ...bar } }));
+    apply(JSON.stringify({ ...config, bar: { ...config.bar, ...bar } }))
   return (
     <Tooltip.Provider delayDuration={300}>
       <main data-theme={config.bar.theme}>
@@ -151,11 +151,11 @@ export default function App() {
                           Object.entries(config.widgets).map(([group, ws]) => [
                             group,
                             ws.map((x) =>
-                              x.id === w.id ? { ...x, enabled: !x.enabled } : x,
-                            ),
-                          ]),
-                        ),
-                      }),
+                              x.id === w.id ? { ...x, enabled: !x.enabled } : x
+                            )
+                          ])
+                        )
+                      })
                     )
                   }
                 >
@@ -168,8 +168,8 @@ export default function App() {
           <button
             className="text-link"
             onClick={() => {
-              setDraft(JSON.stringify(config, null, 2));
-              setEditing(!editing);
+              setDraft(JSON.stringify(config, null, 2))
+              setEditing(!editing)
             }}
           >
             {' '}
@@ -198,5 +198,5 @@ export default function App() {
         </footer>
       </main>
     </Tooltip.Provider>
-  );
+  )
 }

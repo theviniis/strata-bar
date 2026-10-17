@@ -1,7 +1,7 @@
-import { Cpu as Icon } from 'lucide-react';
-import { useSystemChannel } from '../../hooks/useSystemChannel';
+import { Cpu as Icon } from 'lucide-react'
+import { useSystemChannel } from '../../hooks/useSystemChannel'
 export function Cpu() {
-  const value = useSystemChannel('cpu');
+  const value = useSystemChannel('cpu')
   return (
     <div
       className="bar-metric"
@@ -17,5 +17,5 @@ export function Cpu() {
             : 'Erro'}
       </output>
     </div>
-  );
+  )
 }

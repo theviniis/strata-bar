@@ -1,12 +1,12 @@
-import { MemoryStick } from 'lucide-react';
-import { useSystemChannel } from '../../hooks/useSystemChannel';
+import { MemoryStick } from 'lucide-react'
+import { useSystemChannel } from '../../hooks/useSystemChannel'
 export function Memory() {
-  const value = useSystemChannel('memory');
+  const value = useSystemChannel('memory')
   const title =
     value.error ||
     (value.status === 'ready'
       ? `${(value.data.usedBytes / 1073741824).toFixed(1)} / ${(value.data.totalBytes / 1073741824).toFixed(1)} GiB`
-      : 'Carregando RAM');
+      : 'Carregando RAM')
   return (
     <div className="bar-metric" title={title}>
       <MemoryStick size={14} />
@@ -19,5 +19,5 @@ export function Memory() {
             : 'Erro'}
       </output>
     </div>
-  );
+  )
 }

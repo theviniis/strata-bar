@@ -1,10 +1,10 @@
-import { Layers3, X } from 'lucide-react';
-import { Cpu } from '../../features/cpu/Cpu';
-import { Memory } from '../../features/memory/Memory';
-import { Clock } from '../../features/clock/Clock';
-import { Volume } from '../../features/volume/Volume';
-import { bridge } from '../../services/system/bridge';
-import './native-bar.css';
+import { Layers3, X } from 'lucide-react'
+import { Cpu } from '../../features/cpu/Cpu'
+import { Memory } from '../../features/memory/Memory'
+import { Clock } from '../../features/clock/Clock'
+import { Volume } from '../../features/volume/Volume'
+import { bridge } from '../../services/system/bridge'
+import './native-bar.css'
 export default function NativeBar() {
   return (
     <nav className="native-bar" aria-label="Barra de status Strata">
@@ -35,5 +35,5 @@ export default function NativeBar() {
         </button>
       </div>
     </nav>
-  );
+  )
 }

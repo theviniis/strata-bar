@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { create } from 'zustand';
+import { useEffect, useState } from 'react'
+import { create } from 'zustand'
 import {
   Cpu,
   MemoryStick,
@@ -7,12 +7,12 @@ import {
   ArrowDownUp,
   Volume2,
   AppWindow,
-  Clock3,
-} from 'lucide-react';
-import * as Tooltip from '@radix-ui/react-tooltip';
-import { bridge, connect } from '../../services/system/bridge';
-import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover';
-const useMetrics = create(() => ({}));
+  Clock3
+} from 'lucide-react'
+import * as Tooltip from '@radix-ui/react-tooltip'
+import { bridge, connect } from '../../services/system/bridge'
+import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover'
+const useMetrics = create(() => ({}))
 const registry = {
   cpu: { icon: Cpu, label: 'CPU', format: (v) => `${v}%` },
   memory: { icon: MemoryStick, label: 'RAM', format: (v) => `${v}%` },
@@ -20,19 +20,19 @@ const registry = {
   network: { icon: ArrowDownUp, label: 'NET', format: (v) => `${v} KB/s` },
   volume: { icon: Volume2, label: 'Audio', format: (v) => `${v}%` },
   activeWindow: { icon: AppWindow, label: 'Active window', format: (v) => v },
-  clock: { icon: Clock3, label: 'Local time' },
-};
+  clock: { icon: Clock3, label: 'Local time' }
+}
 function Clock({ format }) {
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState(new Date())
   useEffect(() => {
-    let timer;
+    let timer
     const tick = () => {
-      setNow(new Date());
-      timer = setTimeout(tick, 60000 - (Date.now() % 60000));
-    };
-    tick();
-    return () => clearTimeout(timer);
-  }, []);
+      setNow(new Date())
+      timer = setTimeout(tick, 60000 - (Date.now() % 60000))
+    }
+    tick()
+    return () => clearTimeout(timer)
+  }, [])
   return (
     <span>
       {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -42,12 +42,12 @@ function Clock({ format }) {
         </small>
       )}
     </span>
-  );
+  )
 }
 export function Widget({ widget }) {
-  const sample = useMetrics((s) => s[widget.id]);
+  const sample = useMetrics((s) => s[widget.id])
   useEffect(() => {
-    if (widget.type === 'clock') return;
+    if (widget.type === 'clock') return
     return connect(
       bridge,
       widget.type,
@@ -55,12 +55,12 @@ export function Widget({ widget }) {
       (value) => useMetrics.setState({ [widget.id]: value }),
       (error) =>
         useMetrics.setState({
-          [widget.id]: { status: 'error', error: String(error) },
-        }),
-    );
-  }, [widget.id, widget.type, widget.intervalMs]);
+          [widget.id]: { status: 'error', error: String(error) }
+        })
+    )
+  }, [widget.id, widget.type, widget.intervalMs])
   const def = registry[widget.type],
-    Icon = def.icon;
+    Icon = def.icon
   const text =
     widget.type === 'clock'
       ? null
@@ -70,7 +70,7 @@ export function Widget({ widget }) {
           ? def.format(sample.data)
           : sample.status === 'error'
             ? 'Error'
-            : 'Unavailable';
+            : 'Unavailable'
   return (
     <Tooltip.Root>
       <Popover>
@@ -112,5 +112,5 @@ export function Widget({ widget }) {
         </Tooltip.Portal>
       )}
     </Tooltip.Root>
-  );
+  )
 }
