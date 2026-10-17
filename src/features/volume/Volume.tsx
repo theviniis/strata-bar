@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { Volume2, VolumeX } from 'lucide-react'
 import { useSystemChannel } from '../../hooks/useSystemChannel'
-import { bridge } from '../../services/system/bridge'
+import { bridge, type VolumeChange } from '../../services/system/bridge'
+
 export function Volume() {
   const value = useSystemChannel('volume'),
-    [draft, setDraft] = useState(null),
+    [draft, setDraft] = useState<number | null>(null),
     [error, setError] = useState('')
   const ready = value.status === 'ready',
-    level = draft ?? value.data?.level ?? 0,
-    muted = value.data?.muted ?? false
-  async function commit(change) {
+    snapshot = value.status === 'ready' ? value.data : null,
+    level = draft ?? snapshot?.level ?? 0,
+    muted = snapshot?.muted ?? false
+  async function commit(change: VolumeChange) {
     try {
       await bridge.setVolume(change)
       setError('')
@@ -23,7 +25,11 @@ export function Volume() {
   return (
     <div
       className="bar-volume"
-      title={error || value.error || 'Volume do dispositivo padrão'}
+      title={
+        error ||
+        (value.status === 'error' ? value.error : '') ||
+        'Volume do dispositivo padrão'
+      }
     >
       <button
         aria-label={muted ? 'Ativar som' : 'Silenciar'}

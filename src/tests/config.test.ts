@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { defaultConfig, parseConfig } from '../services/configuration/config'
 import { useConfig } from '../stores/config'
+
 describe('configuration', () => {
   beforeEach(() => {
     localStorage.clear()

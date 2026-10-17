@@ -4,6 +4,8 @@ import { Layers3, ArrowUpRight, Check, Settings2 } from 'lucide-react'
 import { useConfig, loadConfig, watchConfig } from '../stores/config'
 import { Widget } from '../components/status-bar/Widget'
 import { bridge } from '../services/system/bridge'
+import type { BarConfig, WidgetConfig } from '../services/configuration/config'
+
 export default function App() {
   const config = useConfig((s) => s.config),
     error = useConfig((s) => s.error),
@@ -14,7 +16,7 @@ export default function App() {
     loadConfig()
     return watchConfig()
   }, [])
-  const change = (bar) =>
+  const change = (bar: Partial<BarConfig>) =>
     apply(JSON.stringify({ ...config, bar: { ...config.bar, ...bar } }))
   return (
     <Tooltip.Provider delayDuration={300}>
@@ -93,7 +95,7 @@ export default function App() {
             <label>
               Appearance
               <div className="segmented">
-                {['dark', 'light'].map((theme) => (
+                {(['dark', 'light'] as const).map((theme) => (
                   <button
                     key={theme}
                     aria-pressed={config.bar.theme === theme}
@@ -107,7 +109,7 @@ export default function App() {
             <label>
               Position
               <div className="segmented">
-                {['top', 'bottom'].map((position) => (
+                {(['top', 'bottom'] as const).map((position) => (
                   <button
                     key={position}
                     aria-pressed={config.bar.position === position}
@@ -148,12 +150,16 @@ export default function App() {
                       JSON.stringify({
                         ...config,
                         widgets: Object.fromEntries(
-                          Object.entries(config.widgets).map(([group, ws]) => [
-                            group,
-                            ws.map((x) =>
-                              x.id === w.id ? { ...x, enabled: !x.enabled } : x
-                            )
-                          ])
+                          Object.entries(config.widgets).map(
+                            ([group, ws]): [string, WidgetConfig[]] => [
+                              group,
+                              ws.map((x) =>
+                                x.id === w.id
+                                  ? { ...x, enabled: !x.enabled }
+                                  : x
+                              )
+                            ]
+                          )
                         )
                       })
                     )

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+
 export function Clock() {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
-    let timer
+    let timer: ReturnType<typeof setTimeout> | undefined
     const update = () => {
       setNow(new Date())
       timer = setTimeout(update, 60000 - (Date.now() % 60000))

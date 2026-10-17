@@ -1,23 +1,31 @@
-import { it, expect, vi } from 'vitest'
-const state = vi.hoisted(() => ({
-  listener: null,
-  stop: vi.fn(),
-  invoke: vi.fn()
-}))
+import { it, expect, vi, type Mock } from 'vitest'
+import type { ChannelData, SystemEvent } from '../services/system/bridge'
+
+type Listener = (event: { payload: SystemEvent<ChannelData['volume']> }) => void
+
+const state = vi.hoisted<{
+  listener: Listener | null
+  stop: Mock
+  invoke: Mock
+}>(() => ({ listener: null, stop: vi.fn(), invoke: vi.fn() }))
+
 vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn(async (_event, listener) => {
+  listen: vi.fn(async (_event: string, listener: Listener) => {
     state.listener = listener
     return state.stop
   })
 }))
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: (...args) => state.invoke(...args)
+  invoke: (...args: unknown[]) => state.invoke(...args)
 }))
 import { createNativeBridge } from '../services/system/bridge'
+
 it('does not overwrite a live event with an older initial snapshot', async () => {
-  state.invoke.mockImplementation(async (command) => {
+  state.invoke.mockImplementation(async (command: string) => {
     if (command === 'subscribe') {
-      state.listener({ payload: { status: 'ready', data: { level: 72 } } })
+      state.listener!({
+        payload: { status: 'ready', data: { level: 72, muted: false } }
+      })
       return { token: '1', initial: { status: 'loading' } }
     }
   })
@@ -32,6 +40,7 @@ it('does not overwrite a live event with an older initial snapshot', async () =>
   expect(state.stop).toHaveBeenCalledTimes(1)
   expect(state.invoke).toHaveBeenCalledWith('unsubscribe', { token: '1' })
 })
+
 it('removes the event listener when native subscription fails', async () => {
   state.stop.mockClear()
   state.invoke.mockRejectedValueOnce(Error('native unavailable'))

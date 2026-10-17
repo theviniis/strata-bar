@@ -5,6 +5,7 @@ import { Clock } from '../../features/clock/Clock'
 import { Volume } from '../../features/volume/Volume'
 import { bridge } from '../../services/system/bridge'
 import './native-bar.css'
+
 export default function NativeBar() {
   return (
     <nav className="native-bar" aria-label="Barra de status Strata">
@@ -27,7 +28,7 @@ export default function NativeBar() {
           title="Sair do Strata em todos os monitores"
           onClick={() =>
             bridge
-              .quit()
+              .quit?.()
               .catch((e) => console.error('Não foi possível sair', e))
           }
         >

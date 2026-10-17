@@ -1,21 +1,24 @@
 import { it, expect, vi } from 'vitest'
-import { connect, createMockBridge } from '../services/system/bridge'
+import {
+  connect,
+  createMockBridge,
+  type Channel,
+  type ChannelData,
+  type Subscribable
+} from '../services/system/bridge'
+
 it('disposes asynchronous subscriptions that resolve after unmount', async () => {
-  let resolve
+  let resolve: (dispose: () => void) => void = () => {}
   const dispose = vi.fn(),
     value = vi.fn()
-  const stop = connect(
-    {
-      subscribe: (_, cb) => {
-        cb(1)
-        return new Promise((r) => (resolve = r))
-      }
-    },
-    'cpu',
-    {},
-    value,
-    vi.fn()
-  )
+  // Only disposal ordering matters here, so the payload is a placeholder sample.
+  const cpu: Subscribable<Record<Channel, ChannelData['cpu']>> = {
+    subscribe: (_channel, listener) => {
+      listener({ status: 'ready', data: { percent: 1 }, timestamp: 0 })
+      return new Promise((r) => (resolve = r))
+    }
+  }
+  const stop = connect(cpu, 'cpu', {}, value, vi.fn())
   await Promise.resolve()
   stop()
   stop()
@@ -23,24 +26,21 @@ it('disposes asynchronous subscriptions that resolve after unmount', async () =>
   await new Promise((r) => setTimeout(r, 0))
   expect(dispose).toHaveBeenCalledTimes(1)
 })
+
 it('reports subscription failure', async () => {
   const error = vi.fn()
-  connect(
-    {
-      subscribe: async () => {
-        throw Error('offline')
-      }
-    },
-    'cpu',
-    {},
-    vi.fn(),
-    error
-  )
+  const offline: Subscribable<Record<Channel, never>> = {
+    subscribe: async () => {
+      throw Error('offline')
+    }
+  }
+  connect(offline, 'cpu', {}, vi.fn(), error)
   await new Promise((r) => setTimeout(r, 0))
   expect(error).toHaveBeenCalledWith(
     expect.objectContaining({ message: 'offline' })
   )
 })
+
 it('stops mock timers after disposal and marks GPU unsupported', async () => {
   vi.useFakeTimers()
   try {

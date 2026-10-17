@@ -1,4 +1,5 @@
 import { z } from 'zod'
+
 export const types = [
   'clock',
   'cpu',
@@ -7,7 +8,10 @@ export const types = [
   'network',
   'volume',
   'activeWindow'
-]
+] as const
+
+export type WidgetType = (typeof types)[number]
+
 const widget = z.object({
   id: z.string().min(1),
   type: z.enum(types),
@@ -16,6 +20,7 @@ const widget = z.object({
   format: z.enum(['compact', 'label']).default('label'),
   tooltip: z.boolean().default(true)
 })
+
 const bar = z.object({
   position: z.enum(['top', 'bottom']).default('top'),
   height: z.number().int().min(28).max(80).default(36),
@@ -23,6 +28,11 @@ const bar = z.object({
   theme: z.enum(['dark', 'light']).default('dark'),
   alwaysOnTop: z.boolean().default(true)
 })
+
+export type WidgetConfig = z.infer<typeof widget>
+export type BarConfig = z.infer<typeof bar>
+export type Config = z.infer<typeof configSchema>
+
 export const configSchema = z
   .object({
     version: z.literal(1),
@@ -41,6 +51,7 @@ export const configSchema = z
     if (new Set(ids).size !== ids.length)
       ctx.addIssue({ code: 'custom', message: 'Widget IDs must be unique' })
   })
+
 export const defaultConfig = configSchema.parse({
   version: 1,
   bar: {},
@@ -53,7 +64,9 @@ export const defaultConfig = configSchema.parse({
     }))
   }
 })
-export function parseConfig(text) {
+
+export function parseConfig(text: string): Config {
   return configSchema.parse(JSON.parse(text))
 }
+
 export const storageKey = 'strata.config.v1'

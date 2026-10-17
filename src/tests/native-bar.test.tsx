@@ -1,13 +1,25 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { it, expect, vi } from 'vitest'
+import type {
+  Channel,
+  SubscribeOptions,
+  SystemEvent
+} from '../services/system/bridge'
+
 const { setVolume, quit } = vi.hoisted(() => ({
   setVolume: vi.fn(async () => ({ level: 64, muted: false })),
   quit: vi.fn(async () => {})
 }))
+
 vi.mock('../services/system/bridge', () => ({
   bridge: { mode: 'native', setVolume, quit },
-  connect: (_bridge, channel, _options, onValue) => {
-    const data = {
+  connect: (
+    _bridge: unknown,
+    channel: Channel,
+    _options: SubscribeOptions,
+    onValue: (event: SystemEvent<unknown>) => void
+  ) => {
+    const data: Partial<Record<Channel, unknown>> = {
       cpu: { percent: 23.4 },
       memory: {
         percent: 48.2,
@@ -21,6 +33,7 @@ vi.mock('../services/system/bridge', () => ({
   }
 }))
 import NativeBar from '../components/status-bar/NativeBar'
+
 it('renders real adapter snapshots and commits volume controls', async () => {
   render(<NativeBar />)
   expect(screen.getByLabelText('Uso da CPU')).toHaveTextContent('23%')
@@ -33,6 +46,7 @@ it('renders real adapter snapshots and commits volume controls', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Silenciar' }))
   await waitFor(() => expect(setVolume).toHaveBeenCalledWith({ muted: true }))
 })
+
 it('offers a deliberate exit for all monitor bars', async () => {
   render(<NativeBar />)
   fireEvent.click(screen.getByRole('button', { name: 'Sair do Strata' }))
