@@ -5,19 +5,20 @@ and a reserved top bar on every connected monitor. The native application opens 
 route remains a separate demo studio.
 
 - **Native host** — Tauri 2 (Rust) app that owns per-monitor Win32 AppBar windows.
-- **Frontend** — React 19 + Vite 7 + Tailwind 4, shared between the native bars and the browser studio.
+- **Frontend** — React 19 + TypeScript (strict) + Vite 7 + Tailwind 4, shared between the native bars and the
+  browser studio.
 - **Demo studio** — browser-only preview with an explicitly labelled demo adapter (no system access).
 
 > New here, or an automated agent? Read [AGENTS.md](AGENTS.md) for architecture, conventions and guardrails.
 
 ## Requirements
 
-| Tool            | Version / notes                                                             |
-| --------------- | --------------------------------------------------------------------------- |
-| Node.js         | 22.12+                                                                      |
-| pnpm            | `>=11 <13` (enforced via `devEngines`)                                      |
-| Rust (desktop)  | stable toolchain                                                            |
-| MSVC (desktop)  | C++ build tools with the Windows SDK and WebView2                           |
+| Tool           | Version / notes                                   |
+| -------------- | ------------------------------------------------- |
+| Node.js        | 22.12+                                            |
+| pnpm           | `>=11 <13` (enforced via `devEngines`)            |
+| Rust (desktop) | stable toolchain                                  |
+| MSVC (desktop) | C++ build tools with the Windows SDK and WebView2 |
 
 Desktop prerequisites follow the official
 [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (Rust stable, MSVC C++ build tools with the
@@ -37,8 +38,8 @@ pnpm dev
 ```
 
 Browse <http://127.0.0.1:1420>. The JSON editor validates before saving to localStorage, and other tabs
-receive configuration updates. Native file persistence/watch is planned. `pnpm test` and `pnpm build`
-validate the browser foundation.
+receive configuration updates. Native file persistence/watch is planned. `pnpm check` validates formatting,
+lint, types and tests; `pnpm build` validates the browser bundle.
 
 ### Native desktop bars
 
@@ -53,16 +54,20 @@ exits all bars and releases desktop reservations.
 
 ## Scripts
 
-| Command               | Description                                                        |
-| --------------------- | ------------------------------------------------------------------ |
-| `pnpm install`        | Install dependencies.                                              |
-| `pnpm dev`            | Run the browser studio at `http://127.0.0.1:1420`.                 |
-| `pnpm build`          | Production frontend build (Vite).                                  |
-| `pnpm test`           | Run frontend tests once (Vitest).                                  |
-| `pnpm desktop`        | Run the native Tauri host with dev tooling.                        |
-| `pnpm package:windows`| Build the NSIS installer (`tauri build`).                          |
-| `pnpm format`         | Format with Prettier.                                              |
-| `pnpm format:check`   | Check formatting without writing.                                  |
+| Command                | Description                                        |
+| ---------------------- | -------------------------------------------------- |
+| `pnpm install`         | Install dependencies.                              |
+| `pnpm dev`             | Run the browser studio at `http://127.0.0.1:1420`. |
+| `pnpm build`           | Production frontend build (Vite).                  |
+| `pnpm test`            | Run frontend tests once (Vitest).                  |
+| `pnpm lint`            | Lint `src/` with ESLint.                           |
+| `pnpm lint:fix`        | Apply ESLint fixes.                                |
+| `pnpm typecheck`       | Type-check with `tsc -b` (no emit).                |
+| `pnpm check`           | Full gate: format, lint, types and tests.          |
+| `pnpm desktop`         | Run the native Tauri host with dev tooling.        |
+| `pnpm package:windows` | Build the NSIS installer (`tauri build`).          |
+| `pnpm format`          | Format with Prettier.                              |
+| `pnpm format:check`    | Check formatting without writing.                  |
 
 ## Building & packaging
 
@@ -108,13 +113,13 @@ event-driven audio.
 
 ## Project layout
 
-| Path          | Contents                                                              |
-| ------------- | --------------------------------------------------------------------- |
-| `src/`        | React frontend: app shell, widgets, hooks, services, stores, tests.   |
-| `src-tauri/`  | Rust/Tauri host: `main.rs`, `desktop.rs` (AppBar host), `metrics.rs`. |
-| `scripts/`    | PowerShell validation helpers.                                        |
-| `docs/`       | Design notes, plan and recorded evidence.                             |
-| `research/`   | Gitignored, read-only upstream YASB reference checkout.               |
+| Path         | Contents                                                              |
+| ------------ | --------------------------------------------------------------------- |
+| `src/`       | React frontend: app shell, widgets, hooks, services, stores, tests.   |
+| `src-tauri/` | Rust/Tauri host: `main.rs`, `desktop.rs` (AppBar host), `metrics.rs`. |
+| `scripts/`   | PowerShell validation helpers.                                        |
+| `docs/`      | Design notes, plan and recorded evidence.                             |
+| `research/`  | Gitignored, read-only upstream YASB reference checkout.               |
 
 ## Documentation
 

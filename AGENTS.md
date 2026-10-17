@@ -10,19 +10,20 @@ network, media, tray cloning and autostart are deferred until the core acceptanc
 ## Repository Structure
 
 - `src/` — React 19 frontend: app shell, feature widgets, hooks, services, Zustand stores and tests.
-  - `src/app/` — studio shell (`App.jsx`) and global styles (`styles.css`).
-  - `src/components/` — status-bar components (`NativeBar.jsx`, `Widget.jsx`) and shadcn-style `ui/`.
+  - `src/app/` — studio shell (`App.tsx`) and global styles (`styles.css`).
+  - `src/components/` — status-bar components (`NativeBar.tsx`, `Widget.tsx`) and shadcn-style `ui/`.
   - `src/features/` — individual widgets: `clock/`, `cpu/`, `memory/`, `volume/`.
-  - `src/hooks/` — React hooks such as `useSystemChannel.js`.
-  - `src/services/` — transport and config adapters: `system/bridge.js`, `configuration/config.js`.
-  - `src/stores/` — Zustand stores, e.g. `config.js`.
-  - `src/tests/` — Vitest + Testing Library suites and `setup.js`.
+  - `src/hooks/` — React hooks such as `useSystemChannel.ts`.
+  - `src/services/` — transport and config adapters: `system/bridge.ts`, `configuration/config.ts`.
+  - `src/stores/` — Zustand stores, e.g. `config.ts`.
+  - `src/tests/` — Vitest + Testing Library suites and `setup.ts`.
 - `src-tauri/` — Rust/Tauri host: `src/main.rs`, `src/desktop.rs` (AppBar host), `src/metrics.rs` (collectors).
 - `scripts/` — PowerShell validation helpers: `measure-idle.ps1`, `test-live-geometry.ps1`.
 - `docs/` — design notes, plan and recorded evidence (`docs/evidence/`, `docs/performance/`).
 - `research/` — **gitignored, read-only** upstream YASB checkout used as reference; never port code from it.
 - `.vscode/` — editor settings (Prettier default formatter, format/organise imports on save).
-- Root files — `index.html`, `vite.config.js`, `package.json`, `components.json` (shadcn), `.prettierrc`.
+- Root files — `index.html`, `vite.config.ts`, `tsconfig.json` (+ `tsconfig.app.json`, `tsconfig.node.json`),
+  `eslint.config.js`, `package.json`, `components.json` (shadcn), `.prettierrc`.
 
 ## Build & Development Commands
 
@@ -39,6 +40,13 @@ pnpm build
 
 # Frontend tests (Vitest, run once)
 pnpm test
+
+# Static analysis (ESLint + TypeScript, no emit)
+pnpm lint
+pnpm typecheck
+
+# Full gate: Prettier + ESLint + tsc + Vitest
+pnpm check
 
 # Native development host (opens real bars; requires Rust/MSVC/WebView2)
 pnpm desktop
@@ -64,21 +72,28 @@ powershell -File scripts/test-live-geometry.ps1
 ```
 
 - Node 22.12+ and pnpm `>=11 <13` are required (enforced via `devEngines`).
-- There is no lint script and no type-check script; JSX only, no TypeScript.
-  - `> TODO: add ESLint and/or `tsc --noEmit` if static analysis is expected.`
+- TypeScript is strict: `tsconfig.json` is a solution file referencing `tsconfig.app.json` (`src/`) and
+  `tsconfig.node.json` (`vite.config.ts`). ESLint 10 + `typescript-eslint` covers `src/`; Prettier remains the
+  only formatter and `eslint-config-prettier` disables every conflicting rule.
+- `pnpm check` is the aggregate gate: `prettier --check .`, `eslint .`, `tsc -b` and `vitest run`.
 - There is no deploy script beyond the packaging commands above.
 
 ## Code Style & Conventions
 
 - Formatting is enforced by Prettier (`.prettierrc`): 2 spaces, no tabs, `printWidth: 80`, single quotes,
-  no semicolons, no trailing commas, `arrowParens: "always"`, LF endings. `src-tauri` is ignored.
+  no semicolons, no trailing commas, `arrowParens: "always"`, LF endings. `src-tauri/` and the generated
+  `pnpm-lock.yaml` are listed in `.prettierignore`.
 - Run `pnpm format` before committing; `pnpm format:check` is the gate.
-- React components are PascalCase files/functions (`NativeBar.jsx`); hooks are `useXxx` (`useSystemChannel`);
-  services and stores use lower-case modules (`bridge.js`, `config.js`).
+- React components are PascalCase files/functions (`NativeBar.tsx`); hooks are `useXxx` (`useSystemChannel`);
+  services and stores use lower-case modules (`bridge.ts`, `config.ts`).
+- Types are derived, never duplicated by hand: the config model comes from `z.infer` on the Zod schema and
+  channel payloads come from the bridge contract (`ChannelData`). Type-only imports use `import type`.
 - Prefer named exports for components/hooks; the app shells use default exports.
 - Rust follows `rustfmt` defaults (edition 2021); keep native code inside `src-tauri/src/` modules.
-- Imports use the `@/` alias for `src/` where configured; local code uses relative paths.
-- Tests are `*.test.js(x)` under `src/tests/`; Rust tests live inline in `src-tauri/src/*.rs` (`#[test]`).
+- Imports use the `@/` alias for `src/` (resolved by the Vite alias and `tsconfig` `paths`); local code uses
+  relative paths without file extensions.
+- Tests are `*.test.ts(x)` under `src/tests/` and are type-checked by the app project; Rust tests live inline
+  in `src-tauri/src/*.rs` (`#[test]`).
 - Commit messages observed in history: `chore: …` / `choreL …` prefixes.
   - `> TODO: add a documented commit-message template (no CONTRIBUTING or `.commitlintrc` exists).`
 
@@ -87,7 +102,7 @@ powershell -File scripts/test-live-geometry.ps1
 ```mermaid
 flowchart TD
   UI[React widgets] --> Hooks[hooks / connect()]
-  Hooks --> Bridge[services/system/bridge.js]
+  Hooks --> Bridge[services/system/bridge.ts]
   Bridge -->|window.__TAURI_INTERNALS__| Native[Native bridge: invoke + listen]
   Bridge -->|browser| Mock[Demo adapter]
   Native --> Cmd[Tauri commands: subscribe / unsubscribe / set_volume / quit]
@@ -96,16 +111,18 @@ flowchart TD
   Metrics -->|events system:channel| Native
   Desktop --> Bars[Per-monitor AppBar windows]
   Store[Zustand stores] --> UI
-  Config[configuration/config.js + Zod] --> Store
+  Config[configuration/config.ts + Zod] --> Store
 ```
 
-- Data flow: React feature components render widgets; `connect()` in `bridge.js` wraps a subscription,
+- Data flow: React feature components render widgets; `connect()` in `bridge.ts` wraps a subscription,
   owning async setup/teardown and unmount-before-resolve. The bridge selects the native or demo adapter at
   load based on `window.__TAURI_INTERNALS__`; **native failures must never fall back to demo values.**
 - Transport contract: `subscribe(channel, listener, { intervalMs }) -> Promise<dispose>` (idempotent),
   `capabilities() -> Promise<Record<channel, boolean>>`, `setVolume({ level, muted })`, and native
   `configureBar` / future `mediaAction`, `launchApplication`, `powerAction`. Commands re-validate inputs
-  natively; only configured application IDs may be launched—never arbitrary shell strings.
+  natively; only configured application IDs may be launched—never arbitrary shell strings. The native payload
+  map (`ChannelData`) and the studio's demo scalars (`DemoChannelData`) are separate types: feature widgets
+  read the native map, and only the browser studio reads the demo one.
 - Native event envelope: `{ status: 'ready'|'loading'|'error', data, timestamp, error? }`; the event name
   identifies the channel. Subscribe returns `{ token, initial }` after the listener installs; a live event
   beats the initial snapshot. CPU/RAM polling (fixed 2000 ms in the MVP) pauses with no subscribers; Core
@@ -121,16 +138,16 @@ flowchart TD
 ## Testing Strategy
 
 - Unit / component (frontend): Vitest with `jsdom` and Testing Library (`@testing-library/react`,
-  `@testing-library/jest-dom`); setup in `src/tests/setup.js`. Run with `pnpm test` (`vitest run`).
-  Current suites: `app.test.jsx`, `bridge.test.js`, `config.test.js`, `native-bar.test.jsx`,
-  `native-bridge.test.js` (12 tests as last recorded).
+  `@testing-library/jest-dom`); setup in `src/tests/setup.ts`. Run with `pnpm test` (`vitest run`).
+  Current suites: `app.test.tsx`, `bridge.test.ts`, `config.test.ts`, `native-bar.test.tsx`,
+  `native-bridge.test.ts` (12 tests as last recorded).
 - Native unit tests: `cargo test --manifest-path src-tauri/Cargo.toml` (8 tests: CPU accounting, physical
   RAM, channel/interval validation, window ownership, per-monitor cleanup, negative/scaled monitor geometry).
 - Integration / e2e: there is no automated e2e harness. Verify natively on Windows using `--probe`,
   `scripts/measure-idle.ps1`, `scripts/test-live-geometry.ps1` and the recorded JSON under `docs/evidence/`
   and `docs/performance/`. Native tests cannot be replaced by mocks.
 - CI: no `.github/` workflows exist.
-  - `> TODO: add CI to run `pnpm format:check`, `pnpm test` and `cargo test` on Windows runners.`
+  - `> TODO: add CI to run `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` on Windows runners.`
 
 ## Security & Compliance
 
@@ -162,10 +179,11 @@ flowchart TD
 
 ## Extensibility Hooks
 
-- Widget registration: add a type to `types` and the Zod schema in `src/services/configuration/config.js`,
-  then register its icon/format in the `registry` in `src/components/status-bar/Widget.jsx`.
+- Widget registration: add a type to `types` and the Zod schema in `src/services/configuration/config.ts`,
+  then register its icon/label in `meta` and its formatter in `formatters` in
+  `src/components/status-bar/Widget.tsx`.
 - Channels: native capability map is returned by the `capabilities` command in `src-tauri/src/main.rs`;
-  frontend adapters live in `src/services/system/bridge.js`. Unsupported channels reject subscription.
+  frontend adapters live in `src/services/system/bridge.ts`. Unsupported channels reject subscription.
 - Tauri commands: `capabilities`, `subscribe`, `unsubscribe`, `set_volume`, `diagnostics`, `quit`
   (`src-tauri/src/main.rs`); the AppBar host is `desktop::reconcile` / `desktop::release_all`.
 - Configuration: JSON schema version 1 with unique widget IDs, `enabled`, `intervalMs`, `format`, `tooltip`,
