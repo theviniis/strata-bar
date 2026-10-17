@@ -69,7 +69,7 @@ function Clock({ format }: { format: WidgetConfig['format'] }) {
     <span>
       {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       {format === 'label' && (
-        <small className="ml-[10px] text-[9px] text-[#a19cab] group-data-[theme=light]:text-[#746b80]">
+        <small className="ml-2.5 text-[9px] text-[#a19cab] group-data-[theme=light]:text-[#746b80]">
           {now.toLocaleDateString([], { month: 'short', day: 'numeric' })}
         </small>
       )}
@@ -111,7 +111,7 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
       <Popover>
         <Tooltip.Trigger asChild>
           <PopoverTrigger
-            className="flex min-w-0 cursor-pointer touch-manipulation items-center gap-[6px] rounded-[4px] border-0 bg-transparent p-[4px] text-[10px] whitespace-nowrap text-inherit hover:bg-[#ffffff0d] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b7a1ff]"
+            className="flex min-w-0 cursor-pointer touch-manipulation items-center gap-1.5 rounded-sm border-0 bg-transparent p-1 text-[10px] whitespace-nowrap text-inherit hover:bg-[#ffffff0d] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b7a1ff]"
             aria-label={def.label}
           >
             <Icon
@@ -149,7 +149,7 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
       {widget.tooltip && (
         <Tooltip.Portal>
           <Tooltip.Content
-            className="z-50 rounded-[8px] border border-[#494052] bg-[#211e2b] px-[10px] py-[7px] text-[10px] text-[#e9e1f7] shadow-[0_8px_28px_#0005]"
+            className="z-50 rounded-lg border bg-popover px-2.5 py-1.75 text-[10px] text-popover-foreground shadow-[0_8px_28px_#0005]"
             sideOffset={6}
           >
             {def.label} · {bridge.mode}

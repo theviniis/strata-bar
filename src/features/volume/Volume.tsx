@@ -24,7 +24,7 @@ export function Volume() {
   const Icon = muted ? VolumeX : Volume2
   return (
     <div
-      className="flex min-w-0 items-center gap-[6px]"
+      className="flex min-w-0 items-center gap-1.5"
       title={
         error ||
         (value.status === 'error' ? value.error : '') ||
@@ -32,7 +32,7 @@ export function Volume() {
       }
     >
       <button
-        className="flex items-center justify-center rounded-[4px] border-0 bg-transparent p-[4px] text-inherit hover:bg-[#ffffff10] disabled:opacity-50 focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[#d0b6ff]"
+        className="flex items-center justify-center rounded-sm border-0 bg-transparent p-1 text-inherit hover:bg-[#ffffff10] disabled:opacity-50 focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[#d0b6ff]"
         aria-label={muted ? 'Ativar som' : 'Silenciar'}
         aria-pressed={muted}
         disabled={!ready}
@@ -41,7 +41,7 @@ export function Volume() {
         <Icon size={15} className="text-[#bba9e5]" />
       </button>
       <input
-        className="mx-[6px] h-[3px] w-[84px] accent-[#c5b1ed] focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[#d0b6ff] max-[650px]:w-[50px]"
+        className="mx-1.5 h-0.75 w-21 accent-[#c5b1ed] focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[#d0b6ff] max-[650px]:w-12.5"
         aria-label="Volume"
         type="range"
         min="0"
@@ -66,7 +66,7 @@ export function Volume() {
             commit({ level: Number(e.currentTarget.value) })
         }}
       />
-      <output className="min-w-[30px] text-[10px]" aria-label="Volume atual">
+      <output className="min-w-7.5 text-[10px]" aria-label="Volume atual">
         {ready ? `${level}%` : value.status === 'loading' ? '…' : 'Erro'}
       </output>
       {error && (

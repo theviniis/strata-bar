@@ -13,7 +13,7 @@ export function Clock() {
   }, [])
   return (
     <time
-      className="flex items-center gap-[12px]"
+      className="flex items-center gap-3"
       dateTime={now.toISOString()}
       title={now.toLocaleDateString(undefined, { dateStyle: 'full' })}
     >
