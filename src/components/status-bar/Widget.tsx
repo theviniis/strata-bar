@@ -69,7 +69,7 @@ function Clock({ format }: { format: WidgetConfig['format'] }) {
     <span>
       {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       {format === 'label' && (
-        <small>
+        <small className="ml-[10px] text-[9px] text-[#a19cab] group-data-[theme=light]:text-[#746b80]">
           {now.toLocaleDateString([], { month: 'short', day: 'numeric' })}
         </small>
       )}
@@ -111,37 +111,47 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
       <Popover>
         <Tooltip.Trigger asChild>
           <PopoverTrigger
-            className={`widget ${widget.type}`}
+            className="flex min-w-0 cursor-pointer touch-manipulation items-center gap-[6px] rounded-[4px] border-0 bg-transparent p-[4px] text-[10px] whitespace-nowrap text-inherit hover:bg-[#ffffff0d] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b7a1ff]"
             aria-label={def.label}
           >
-            <Icon size={14} />
+            <Icon
+              size={14}
+              className="shrink-0 text-[#b5a4d9] group-data-[theme=light]:text-[#78668d]"
+            />
             {widget.format === 'label' &&
               !['clock', 'activeWindow', 'volume'].includes(widget.type) && (
-                <small>{def.label}</small>
+                <small className="text-[9px] text-[#a19cab] group-data-[theme=light]:text-[#746b80]">
+                  {def.label}
+                </small>
               )}
             {widget.type === 'clock' ? (
               <Clock format={widget.format} />
             ) : (
-              <span>{text}</span>
+              <span className="overflow-hidden text-ellipsis">{text}</span>
             )}
           </PopoverTrigger>
         </Tooltip.Trigger>
         <PopoverContent>
           <strong>{def.label}</strong>
-          <p>
+          <p className="text-[13px] leading-[1.8] text-[#92929f]">
             {(sample?.status === 'error' ? sample.error : '') ||
               (bridge.mode === 'demo'
                 ? 'Preview data · no system access'
                 : `Status: ${sample?.status || 'loading'}`)}
           </p>
           {widget.type === 'volume' && (
-            <p>Volume control awaits Core Audio integration.</p>
+            <p className="text-[13px] leading-[1.8] text-[#92929f]">
+              Volume control awaits Core Audio integration.
+            </p>
           )}
         </PopoverContent>
       </Popover>
       {widget.tooltip && (
         <Tooltip.Portal>
-          <Tooltip.Content className="tooltip" sideOffset={6}>
+          <Tooltip.Content
+            className="z-50 rounded-[8px] border border-[#494052] bg-[#211e2b] px-[10px] py-[7px] text-[10px] text-[#e9e1f7] shadow-[0_8px_28px_#0005]"
+            sideOffset={6}
+          >
             {def.label} · {bridge.mode}
           </Tooltip.Content>
         </Tooltip.Portal>

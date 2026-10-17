@@ -4,26 +4,28 @@ import { Memory } from '../../features/memory/Memory'
 import { Clock } from '../../features/clock/Clock'
 import { Volume } from '../../features/volume/Volume'
 import { bridge } from '../../services/system/bridge'
-import './native-bar.css'
 
 export default function NativeBar() {
   return (
-    <nav className="native-bar" aria-label="Barra de status Strata">
-      <div className="bar-left">
-        <span className="bar-brand">
+    <nav
+      className="native-bar grid h-screen w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-[#ffffff12] px-[14px] font-['Segoe_UI',sans-serif] text-[11px] leading-[normal] text-[#e4e5ed] tabular-nums select-none"
+      aria-label="Barra de status Strata"
+    >
+      <div className="flex min-w-0 items-center gap-[18px] max-[650px]:gap-[10px]">
+        <span className="flex min-w-0 items-center gap-[8px] font-semibold tracking-[0.4px] text-[#c8b6fa]">
           <Layers3 size={17} />
-          <span>strata</span>
+          <span className="max-[650px]:hidden">strata</span>
         </span>
-        <span className="bar-divider" />
+        <span className="h-[13px] w-px shrink-0 bg-[#ffffff20]" />
         <Cpu />
         <Memory />
       </div>
       <Clock />
-      <div className="bar-right">
+      <div className="flex min-w-0 items-center justify-end gap-[14px]">
         <Volume />
-        <span className="bar-divider" />
+        <span className="h-[13px] w-px shrink-0 bg-[#ffffff20]" />
         <button
-          className="bar-exit"
+          className="flex items-center justify-center rounded-[4px] border-0 bg-transparent p-[4px] text-inherit hover:bg-[#ffffff10] disabled:opacity-50 focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[#d0b6ff]"
           aria-label="Sair do Strata"
           title="Sair do Strata em todos os monitores"
           onClick={() =>

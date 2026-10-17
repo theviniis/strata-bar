@@ -84,6 +84,12 @@ powershell -File scripts/test-live-geometry.ps1
   no semicolons, no trailing commas, `arrowParens: "always"`, LF endings. `src-tauri/` and the generated
   `pnpm-lock.yaml` are listed in `.prettierignore`.
 - Run `pnpm format` before committing; `pnpm format:check` is the gate.
+- Styling is Tailwind utilities (v4, via `@tailwindcss/vite` and `@import 'tailwindcss'`).
+  `src/app/styles.css` is the only stylesheet and holds Tailwind configuration only (`@theme` tokens) plus the
+  `:has(.native-bar)` reset that lets the native AppBar own its window. Component and widget styling lives in
+  `className` strings — do not add per-component `.css` files or shell selectors.
+- Theme: `<main data-theme={dark|light}>` is the `group` root; light-mode overrides use
+  `group-data-[theme=light]:` utilities.
 - React components are PascalCase files/functions (`NativeBar.tsx`); hooks are `useXxx` (`useSystemChannel`);
   services and stores use lower-case modules (`bridge.ts`, `config.ts`).
 - Types are derived, never duplicated by hand: the config model comes from `z.infer` on the Zod schema and
