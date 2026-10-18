@@ -16,8 +16,9 @@ export function WidgetItem({
 
   return (
     <Comp
+      data-widget-hover=""
       className={cn(
-        'flex items-center gap-1 px-2 py-1 rounded focus-visible:outline-accent transition-colors duration-200 hover:bg-muted',
+        'flex items-center gap-1 px-2 py-1 rounded focus-visible:outline-accent',
         className
       )}
       {...props}
@@ -51,7 +52,7 @@ export function WidgetItemLabel({
 }: WidgetItemLabelProps) {
   const Comp = asChild ? Slot : 'span'
   return (
-    <Comp className={cn('text-[11px] text-foreground', className)} {...props} />
+    <Comp className={cn('text-[11px] text-subtext', className)} {...props} />
   )
 }
 

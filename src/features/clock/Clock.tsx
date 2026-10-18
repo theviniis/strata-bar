@@ -37,7 +37,7 @@ export function Clock({ showDate = false }: ClockProps) {
           })}
         </WidgetItemLabel>
         {showDate && (
-          <span className="text-[10px] text-[#9696a9]">
+          <span className="text-[10px] color-subtext">
             {now.toLocaleDateString(undefined, {
               weekday: 'short',
               day: '2-digit',

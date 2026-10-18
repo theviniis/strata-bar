@@ -19,6 +19,7 @@ import { resolvePopup, type PopupParams } from './registry'
 import { claimPopup, releasePopup } from './coordinator'
 import { PopupHost } from './PopupHost'
 import { POPUP_EXIT_MS, popupMotionEnabled } from './motion'
+import { cn } from '../lib/utils'
 
 interface TriggerContextValue {
   native: boolean
@@ -234,16 +235,23 @@ function PreviewContent({
 
 function Anchor({
   asChild = false,
+  className,
   ...props
 }: ComponentPropsWithoutRef<'div'> & { asChild?: boolean }) {
-  const { native, anchorRef } = useTrigger()
+  const { native, anchorRef, open } = useTrigger()
+  const anchorProps = {
+    ...props,
+    'data-popup-open': open,
+    className: cn('rounded data-[popup-open=true]:bg-muted', className)
+  }
   if (!native)
-    return <Popover.Anchor asChild={asChild} {...props} ref={anchorRef} />
+    return <Popover.Anchor asChild={asChild} {...anchorProps} ref={anchorRef} />
   const Component = asChild ? Slot : 'div'
-  return <Component {...props} ref={anchorRef} />
+  return <Component {...anchorProps} ref={anchorRef} />
 }
 function Trigger({
   asChild = false,
+  className,
   onClick,
   ...props
 }: ComponentPropsWithoutRef<'button'> & { asChild?: boolean }) {
@@ -255,6 +263,8 @@ function Trigger({
         asChild={asChild}
         {...props}
         onClick={onClick}
+        data-popup-open={open}
+        className={cn('rounded data-[popup-open=true]:bg-muted', className)}
         ref={triggerRef}
       />
     )
@@ -266,6 +276,8 @@ function Trigger({
       ref={triggerRef}
       aria-haspopup="dialog"
       aria-expanded={open}
+      data-popup-open={open}
+      className={cn('rounded data-[popup-open=true]:bg-muted', className)}
       onClick={(event) => {
         onClick?.(event)
         if (!event.defaultPrevented) void toggle()

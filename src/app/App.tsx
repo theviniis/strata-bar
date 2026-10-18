@@ -1,3 +1,4 @@
+import { WidgetHoverGroup } from '../components/widget-hover'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ArrowUpRight, Check, Layers3, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -74,38 +75,48 @@ export default function App() {
           </div>
           <div className="relative isolate h-71.25 overflow-hidden bg-[radial-gradient(ellipse_at_72%_130%,#7c617c88,transparent_65%),linear-gradient(135deg,#222332,#333044_60%,#4a3c50)] p-3">
             <div className="absolute -z-10 top-22.5 right-[5%] h-162.5 w-162.5 rounded-full border border-[#d9c4f62a] bg-[linear-gradient(130deg,#c4b6dc15,transparent_50%)] shadow-[0_0_0_55px_#c4b3ed06,0_0_0_110px_#c4b3ed04]" />
-            <nav
-              aria-label="Status bar"
-              className={`grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center rounded-[9px] border border-[#ffffff12] bg-[#12121ce0] px-2.5 py-1 text-[#dddce8] shadow-[0_4px_16px_#0002] group-data-[theme=light]:bg-[#f8f5f2ed] group-data-[theme=light]:text-[#302a3e] max-[1000px]:grid-cols-[1fr_auto] ${
-                config.bar.position === 'bottom'
-                  ? 'absolute inset-x-3 bottom-10.5'
-                  : ''
-              }`}
-              style={{
-                minHeight: config.bar.height,
-                gap: config.bar.spacing
-              }}
-            >
-              {Object.entries(config.widgets).map(([group, widgets]) => (
-                <div
-                  className={`flex min-w-0 items-center ${
-                    group === 'right'
-                      ? 'justify-end max-[1000px]:col-span-full max-[1000px]:justify-center'
-                      : group === 'center'
-                        ? 'max-[1000px]:col-start-2 max-[1000px]:row-start-1'
-                        : ''
-                  }`}
-                  key={group}
-                  style={{ gap: config.bar.spacing }}
-                >
-                  {widgets
-                    .filter((w) => w.enabled)
-                    .map((widget) => (
-                      <Widget key={widget.id} widget={widget} />
-                    ))}
-                </div>
-              ))}
-            </nav>
+            <WidgetHoverGroup>
+              <nav
+                aria-label="Status bar"
+                className={`grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center rounded-[9px] border border-[#ffffff12] bg-[#12121ce0] px-2.5 py-1 text-[#dddce8] shadow-[0_4px_16px_#0002] group-data-[theme=light]:bg-[#f8f5f2ed] group-data-[theme=light]:text-[#302a3e] max-[1000px]:grid-cols-[1fr_auto] ${
+                  config.bar.position === 'bottom'
+                    ? 'absolute inset-x-3 bottom-10.5'
+                    : 'relative'
+                }`}
+                style={{
+                  minHeight: config.bar.height,
+                  gap: config.bar.spacing
+                }}
+              >
+                {Object.entries(config.widgets).map(([group, widgets]) => (
+                  <div
+                    className={`flex min-w-0 items-center ${
+                      group === 'right'
+                        ? 'justify-end max-[1000px]:col-span-full max-[1000px]:justify-center'
+                        : group === 'center'
+                          ? 'max-[1000px]:col-start-2 max-[1000px]:row-start-1'
+                          : ''
+                    }`}
+                    key={group}
+                    style={{ gap: config.bar.spacing }}
+                  >
+                    {widgets
+                      .filter((w) => w.enabled)
+                      .map((widget) => (
+                        <div
+                          key={widget.id}
+                          data-widget-hover={
+                            widget.type === 'komorebi' ? undefined : ''
+                          }
+                          className="min-w-0 rounded p-1"
+                        >
+                          <Widget widget={widget} />
+                        </div>
+                      ))}
+                  </div>
+                ))}
+              </nav>
+            </WidgetHoverGroup>
             <div className="absolute inset-x-0 top-[54%] flex items-center justify-center gap-2.25 text-[11px] text-[#cac1d5]">
               <span className="h-1.25 w-1.25 rounded-full bg-[#c7b5ea]" /> Your
               workspace, uninterrupted

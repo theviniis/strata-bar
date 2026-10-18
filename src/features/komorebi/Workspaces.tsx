@@ -131,7 +131,7 @@ export function Workspaces({
   return (
     <div
       ref={containerRef}
-      className="relative flex min-w-0 items-center gap-3"
+      className="relative flex min-w-0 items-center gap-1.5"
     >
       {workspaces.map((workspace) => (
         <WorkspaceItem
@@ -177,12 +177,12 @@ export function Workspaces({
 }
 
 const workspaceVariants = cva(
-  'relative h-3 w-3 shrink-0 rounded-full cursor-pointer',
+  'relative h-3 shrink-0 rounded-full cursor-pointer',
   {
     variants: {
       isActive: {
-        true: 'bg-transparent',
-        false: 'bg-muted hover:bg-muted-foreground/50'
+        true: 'w-6 bg-transparent',
+        false: 'w-3 bg-muted hover:bg-muted-foreground/50'
       }
     },
     defaultVariants: {

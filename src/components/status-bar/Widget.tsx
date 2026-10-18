@@ -165,7 +165,7 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
             <WidgetPopup.Trigger asChild>
               <button
                 aria-label="Saída de áudio"
-                className="flex items-center gap-1.5 rounded-sm p-1 hover:bg-muted"
+                className="flex items-center gap-1.5 rounded-sm p-1"
               >
                 <Icon size={14} />
                 <span>{text}</span>

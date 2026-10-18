@@ -92,6 +92,11 @@ it('composes child refs/handlers, uses the whole anchor and restores focus only 
   await waitFor(() => expect(host.listeners.size).toBe(1))
   fireEvent.click(button)
   await waitFor(() => expect(button).toHaveAttribute('aria-expanded', 'true'))
+  expect(button).toHaveAttribute('data-popup-open', 'true')
+  expect(screen.getByTestId('anchor')).toHaveAttribute(
+    'data-popup-open',
+    'true'
+  )
   expect(clicked).toHaveBeenCalledOnce()
   expect(ref.current).toBe(button)
   expect(document.querySelector('button button')).toBeNull()
@@ -115,6 +120,11 @@ it('composes child refs/handlers, uses the whole anchor and restores focus only 
   )
   expect(button).toHaveFocus()
   expect(button).toHaveAttribute('aria-expanded', 'false')
+  expect(button).toHaveAttribute('data-popup-open', 'false')
+  expect(screen.getByTestId('anchor')).toHaveAttribute(
+    'data-popup-open',
+    'false'
+  )
 })
 
 it('uses the trigger as implicit anchor and honors prevented child clicks', async () => {
@@ -265,6 +275,8 @@ it('provides an interactive, themed demo without native subscriptions or command
   const trigger = screen.getByRole('button', { name: 'Audio preview' })
   fireEvent.click(trigger)
   const dialog = await screen.findByRole('dialog', { name: 'Saída de áudio' })
+  expect(trigger).toHaveAttribute('data-popup-open', 'true')
+  expect(trigger).toHaveClass('data-[popup-open=true]:bg-muted')
   expect(screen.getAllByRole('dialog')).toHaveLength(1)
   expect(screen.getByText(/Demonstração interativa/)).toBeInTheDocument()
   expect(dialog.closest('[data-theme]')).toHaveAttribute('data-theme', 'light')
@@ -294,6 +306,7 @@ it('provides an interactive, themed demo without native subscriptions or command
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   )
   expect(trigger).toHaveFocus()
+  expect(trigger).toHaveAttribute('data-popup-open', 'false')
   expect(host.nativeVolume).not.toHaveBeenCalled()
   expect(host.nativeOutput).not.toHaveBeenCalled()
   expect(host.overlay.show).not.toHaveBeenCalled()
