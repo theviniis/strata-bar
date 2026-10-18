@@ -1,13 +1,17 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod desktop;
+mod popup_catalog;
+#[cfg(debug_assertions)]
+mod popup_check;
+mod audio_policy;
 mod komorebi;
 mod metrics;
 use serde_json::{json, Value};
 use tauri::Manager;
 #[tauri::command]
 fn capabilities(komorebi: tauri::State<komorebi::Komorebi>) -> Value {
-    json!({"cpu":true,"memory":true,"volume":true,"appBar":true,"gpu":false,"network":false,"komorebi":komorebi.available()})
+    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"appBar":true,"gpu":false,"network":false,"komorebi":komorebi.available()})
 }
 #[tauri::command]
 fn subscribe(
@@ -57,16 +61,32 @@ async fn set_volume(
         .map_err(|e| e.to_string())?
 }
 #[tauri::command]
+async fn set_audio_output(state: tauri::State<'_, metrics::Metrics>, device_id: String) -> Result<Value, String> {
+    let owner = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || owner.audio_output(device_id)).await.map_err(|e| e.to_string())?
+}
+#[tauri::command]
 fn overlay_show(
     window: tauri::WebviewWindow,
     app: tauri::AppHandle,
     request: desktop::OverlayRequest,
 ) -> Result<(), String> {
-    desktop::overlay_show(&app, &window, &request)
+    let result = desktop::overlay_show(&app, &window, &request);
+    if result.is_err() { desktop::overlay_hide_request(&app, request.session.as_deref()); }
+    result
 }
 #[tauri::command]
-fn overlay_hide(app: tauri::AppHandle) {
-    desktop::overlay_hide(&app);
+fn overlay_hide(app: tauri::AppHandle, window: tauri::WebviewWindow, session: Option<String>) {
+    if window.label() == desktop::OVERLAY { desktop::overlay_dismiss(&app, session.as_deref()); }
+    else { desktop::overlay_hide_request(&app, session.as_deref()); }
+}
+#[tauri::command]
+fn overlay_ready(window: tauri::WebviewWindow) -> Result<Value, String> {
+    desktop::overlay_ready(&window)
+}
+#[tauri::command]
+fn overlay_resize(app: tauri::AppHandle, window: tauri::WebviewWindow, session: String, height: f64) -> Result<Value, String> {
+    desktop::overlay_resize(&app, &window, &session, height)
 }
 #[tauri::command]
 fn diagnostics(
@@ -111,9 +131,12 @@ fn main() {
             subscribe,
             unsubscribe,
             set_volume,
+            set_audio_output,
             komorebi_action,
             overlay_show,
             overlay_hide,
+            overlay_resize,
+            overlay_ready,
             diagnostics,
             quit
         ])
@@ -123,6 +146,10 @@ fn main() {
             desktop::reconcile(app.handle())?;
             // One warm surface for every tooltip and, later, widget popup.
             desktop::ensure_overlay(app.handle())?;
+            #[cfg(debug_assertions)]
+            if std::env::args().any(|arg| arg == "--check-popups") {
+                popup_check::start(app.handle().clone());
+            }
             Ok(())
         })
         .on_window_event(|window, event| {

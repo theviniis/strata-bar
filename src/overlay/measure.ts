@@ -1,5 +1,6 @@
 import { tooltipPillClasses } from '@/components/ui/tooltip-classes'
 import type { OverlaySize } from '../services/system/overlay'
+import { overlayTextClasses } from './typography'
 
 /**
  * CSS px reserved on the anchored side of the surface for the tooltip arrow.
@@ -19,8 +20,9 @@ export function measureTooltip(text: string): OverlaySize {
   }
   const surface = document.createElement('div')
   surface.setAttribute('aria-hidden', 'true')
-  surface.className = 'inline-block'
+  surface.className = `inline-block ${overlayTextClasses}`
   surface.style.cssText = `position:fixed;left:-10000px;top:0;visibility:hidden;pointer-events:none;padding-top:${TOOLTIP_ARROW_ALLOWANCE}px`
+  surface.style.maxWidth = `${window.innerWidth}px`
   const pill = document.createElement('div')
   pill.className = tooltipPillClasses
   pill.textContent = text

@@ -6,9 +6,11 @@
  * studio has no overlay window, so its adapter is a labelled no-op.
  */
 
+import type { PopupId } from '../../popups/catalog'
+
 export type OverlayMode = 'demo' | 'native'
 
-/** `popover` is reserved for interactive per-widget popups. */
+/** Interactive widget popups share the tooltip window. */
 export type OverlayKind = 'tooltip' | 'popover'
 
 /** `bottom` puts the surface below the bar; `top` puts it above a bottom bar. */
@@ -33,6 +35,9 @@ export interface OverlayRequest {
   v: 1
   /** Optional; when present it must equal the invoking bar window's label. */
   source?: string
+  session?: string
+  component?: PopupId
+  params?: unknown
   kind: OverlayKind
   text: string
   anchor: OverlayAnchor
@@ -42,15 +47,27 @@ export interface OverlayRequest {
 
 /** Event payload the overlay surface renders. */
 export interface OverlayRender {
+  /** Anchor center relative to the placed window, in CSS px. */
+  arrowX?: number
+  popup_session?: string
+  session?: number
+  component?: PopupId
+  params?: unknown
   kind: OverlayKind
   text: string
   side: OverlaySide
 }
 
+export interface OverlaySnapshot {
+  session: number
+  render: OverlayRender | null
+}
+
 export interface OverlayAdapter {
   readonly mode: OverlayMode
   show(request: OverlayRequest): Promise<void>
-  hide(): Promise<void>
+  hide(session?: string): Promise<void>
+  resize(session: string, height: number): Promise<{ maxHeight: number }>
 }
 
 export function createNativeOverlay(): OverlayAdapter {
@@ -60,9 +77,13 @@ export function createNativeOverlay(): OverlayAdapter {
       const { invoke } = await import('@tauri-apps/api/core')
       await invoke('overlay_show', { request })
     },
-    async hide() {
+    async hide(session?: string) {
       const { invoke } = await import('@tauri-apps/api/core')
-      await invoke('overlay_hide')
+      await invoke('overlay_hide', { session })
+    },
+    async resize(session, height) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke('overlay_resize', { session, height })
     }
   }
 }
@@ -71,7 +92,10 @@ export function createDemoOverlay(): OverlayAdapter {
   return {
     mode: 'demo',
     async show() {},
-    async hide() {}
+    async hide() {},
+    async resize() {
+      return { maxHeight: 380 }
+    }
   }
 }
 

@@ -12,7 +12,7 @@ import {
 // native adapter in place; they must never read the demo scalars.
 const native = bridge as NativeBridge
 
-export function useSystemChannel<C extends Channel>(channel: C) {
+export function useSystemChannel<C extends Channel>(channel: C, revision = 0) {
   const [value, setValue] = useState<SystemEvent<ChannelData[C]>>({
     status: 'loading',
     data: null
@@ -27,7 +27,7 @@ export function useSystemChannel<C extends Channel>(channel: C) {
         (error) =>
           setValue({ status: 'error', data: null, error: String(error) })
       ),
-    [channel]
+    [channel, revision]
   )
   return value
 }

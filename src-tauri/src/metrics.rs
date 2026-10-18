@@ -106,6 +106,7 @@ enum Request {
         Option<bool>,
         mpsc::SyncSender<Result<Value, String>>,
     ),
+    Output(String, mpsc::SyncSender<Result<Value, String>>),
     Stop,
 }
 impl Metrics {
@@ -125,7 +126,7 @@ impl Metrics {
         window: String,
         interval: u64,
     ) -> Result<Value, String> {
-        if !["cpu", "memory", "volume"].contains(&channel.as_str()) {
+        if !["cpu", "memory", "volume", "audioOutputs"].contains(&channel.as_str()) {
             return Err(format!("Unsupported channel: {channel}"));
         }
         if interval != 2000 {
@@ -200,6 +201,12 @@ impl Metrics {
         rx.recv_timeout(Duration::from_secs(3))
             .map_err(|e| e.to_string())?
     }
+    pub fn audio_output(&self, id: String) -> Result<Value, String> {
+        if id.is_empty() || id.contains('\0') || id.len() > 4096 { return Err("Invalid endpoint ID".into()); }
+        let (tx, rx) = mpsc::sync_channel(1);
+        self.tx.send(Request::Output(id, tx)).map_err(|e| e.to_string())?;
+        rx.recv_timeout(Duration::from_secs(3)).map_err(|e| e.to_string())?
+    }
     pub fn diagnostics(&self) -> Value {
         let d = self.data.lock().unwrap();
         json!({"subscribers":d.subs.len(),"channels":d.latest,"collectorThreads":1,"intervalMs":2000,"incoming":d.incoming,"emitted":d.emitted})
@@ -210,7 +217,7 @@ impl Metrics {
     fn run(&self, app: AppHandle, rx: mpsc::Receiver<Request>) {
         unsafe {
             if let Err(e) = CoInitializeEx(None, COINIT_MULTITHREADED).ok() {
-                for c in ["cpu", "memory", "volume"] {
+                for c in ["cpu", "memory", "volume", "audioOutputs"] {
                     self.publish(&app, c, error(&e));
                 }
                 return;
@@ -232,9 +239,19 @@ impl Metrics {
             let mut previous = None;
             let mut next_tick = Instant::now();
             let mut ticks=0;
+            let mut outputs_active = false;
             loop {
+                let dirty = changed.swap(false, Ordering::AcqRel);
+                let active = self.active("audioOutputs");
+                if active && (dirty || !outputs_active) {
+                    match enumerator.as_ref().map_err(|e| e.clone()).and_then(|en| crate::audio_policy::outputs(en)) {
+                        Ok(v) => self.publish(&app, "audioOutputs", envelope("ready", v)),
+                        Err(e) => self.publish(&app, "audioOutputs", error(e)),
+                    }
+                }
+                outputs_active = active;
                 if self.active("volume")
-                    && (changed.swap(false, Ordering::AcqRel) || audio.is_none())
+                    && (dirty || audio.is_none())
                 {
                     if let Some((e, cb)) = audio.take() {
                         let _ = e.UnregisterControlChangeNotify(&cb);
@@ -300,6 +317,18 @@ impl Metrics {
                 }
                 match rx.recv_timeout(next_tick.saturating_duration_since(Instant::now())) {
                     Ok(Request::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                    Ok(Request::Output(id, reply)) => {
+                        let result = enumerator.as_ref().map_err(|e| e.to_string()).and_then(|en| crate::audio_policy::select(en, &id));
+                        // Always reread after a partial failure too.
+                        if let Ok(en) = &enumerator {
+                            match crate::audio_policy::outputs(en) {
+                                Ok(v) => self.publish(&app, "audioOutputs", envelope("ready", v)),
+                                Err(e) => self.publish(&app, "audioOutputs", error(e)),
+                            }
+                        }
+                        changed.store(true, Ordering::Release);
+                        let _ = reply.send(result);
+                    }
                     Ok(Request::Volume(level, muted, reply)) => {
                         let result = (|| -> windows::core::Result<Value> {
                             let e = endpoint(enumerator.as_ref().map_err(|e| e.clone())?)?;
@@ -313,6 +342,7 @@ impl Metrics {
                         })();
                         let _ = reply.send(result.map_err(|e| e.to_string()));
                     }
+                    Ok(Request::Wake) => { outputs_active = false; },
                     _ => {}
                 }
             }
@@ -360,6 +390,8 @@ impl IMMNotificationClient_Impl for DeviceNotify_Impl {
         Ok(())
     }
     fn OnDeviceAdded(&self, _: &PCWSTR) -> windows::core::Result<()> {
+        self.changed.store(true, Ordering::Release);
+        let _ = self.tx.send(Request::Wake);
         Ok(())
     }
     fn OnDeviceRemoved(&self, _: &PCWSTR) -> windows::core::Result<()> {
@@ -373,13 +405,15 @@ impl IMMNotificationClient_Impl for DeviceNotify_Impl {
         role: ERole,
         _: &PCWSTR,
     ) -> windows::core::Result<()> {
-        if flow == eRender && role == eMultimedia {
+        if flow == eRender && (role == eMultimedia || role == eConsole) {
             self.changed.store(true, Ordering::Release);
             let _ = self.tx.send(Request::Wake);
         }
         Ok(())
     }
     fn OnPropertyValueChanged(&self, _: &PCWSTR, _: &PROPERTYKEY) -> windows::core::Result<()> {
+        self.changed.store(true, Ordering::Release);
+        let _ = self.tx.send(Request::Wake);
         Ok(())
     }
 }
@@ -397,7 +431,7 @@ pub fn probe() -> Result<Value, String> {
                 .map_err(|e| e.to_string())?;
             let audio = endpoint(&en).and_then(|e| audio_read(&e));
             Ok(
-                json!({"cpu":cpu,"memory":mem,"volume":audio.map_err(|e|e.to_string()),"timestamp":timestamp()}),
+                json!({"cpu":cpu,"memory":mem,"volume":audio.map_err(|e|e.to_string()),"audioOutputs":crate::audio_policy::outputs(&en).map_err(|e|e.to_string()),"timestamp":timestamp()}),
             )
         })();
         CoUninitialize();

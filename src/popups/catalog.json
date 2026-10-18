@@ -1,0 +1,7 @@
+{
+  "audioOutputs": {
+    "label": "Saída de áudio",
+    "width": 320,
+    "maxHeight": 380
+  }
+}

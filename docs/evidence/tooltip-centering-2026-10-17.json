@@ -1,0 +1,157 @@
+{
+  "passed": true,
+  "results": [
+    {
+      "text": "Clock date: Saturday, October 17, 2026",
+      "center": 20,
+      "measured": 215,
+      "actual": 212.03125,
+      "pillCenter": 107.5,
+      "arrowCenter": 20,
+      "clamped": true,
+      "passed": true
+    },
+    {
+      "text": "Clock date: Saturday, October 17, 2026",
+      "center": 640,
+      "measured": 215,
+      "actual": 212.03125,
+      "pillCenter": 640,
+      "arrowCenter": 640,
+      "clamped": false,
+      "passed": true
+    },
+    {
+      "text": "Clock date: Saturday, October 17, 2026",
+      "center": 1260,
+      "measured": 215,
+      "actual": 212.03125,
+      "pillCenter": 1172.5,
+      "arrowCenter": 1260,
+      "clamped": true,
+      "passed": true
+    },
+    {
+      "text": "Volume do dispositivo padrao",
+      "center": 20,
+      "measured": 172,
+      "actual": 169.234375,
+      "pillCenter": 85.9921875,
+      "arrowCenter": 20,
+      "clamped": true,
+      "passed": true
+    },
+    {
+      "text": "Volume do dispositivo padrao",
+      "center": 640,
+      "measured": 172,
+      "actual": 169.234375,
+      "pillCenter": 639.9921875,
+      "arrowCenter": 640,
+      "clamped": false,
+      "passed": true
+    },
+    {
+      "text": "Volume do dispositivo padrao",
+      "center": 1260,
+      "measured": 172,
+      "actual": 169.234375,
+      "pillCenter": 1193.9921875,
+      "arrowCenter": 1260,
+      "clamped": true,
+      "passed": true
+    },
+    {
+      "text": "Uso total de CPU - amostra a cada 2 segundos",
+      "center": 20,
+      "measured": 252,
+      "actual": 249.65625,
+      "pillCenter": 126,
+      "arrowCenter": 20,
+      "clamped": true,
+      "passed": true
+    },
+    {
+      "text": "Uso total de CPU - amostra a cada 2 segundos",
+      "center": 640,
+      "measured": 252,
+      "actual": 249.65625,
+      "pillCenter": 640,
+      "arrowCenter": 640,
+      "clamped": false,
+      "passed": true
+    },
+    {
+      "text": "Uso total de CPU - amostra a cada 2 segundos",
+      "center": 1260,
+      "measured": 252,
+      "actual": 249.65625,
+      "pillCenter": 1154,
+      "arrowCenter": 1260,
+      "clamped": true,
+      "passed": true
+    },
+    {
+      "text": "14.7 / 31.9 GiB",
+      "center": 20,
+      "measured": 97,
+      "actual": 94.203125,
+      "pillCenter": 48.4921875,
+      "arrowCenter": 20,
+      "clamped": true,
+      "passed": true
+    },
+    {
+      "text": "14.7 / 31.9 GiB",
+      "center": 640,
+      "measured": 97,
+      "actual": 94.203125,
+      "pillCenter": 639.9921875,
+      "arrowCenter": 640,
+      "clamped": false,
+      "passed": true
+    },
+    {
+      "text": "14.7 / 31.9 GiB",
+      "center": 1260,
+      "measured": 97,
+      "actual": 94.203125,
+      "pillCenter": 1231.4921875,
+      "arrowCenter": 1260,
+      "clamped": true,
+      "passed": true
+    },
+    {
+      "text": "New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget ",
+      "center": 20,
+      "measured": 322,
+      "actual": 320,
+      "pillCenter": 161,
+      "arrowCenter": 20,
+      "clamped": true,
+      "passed": true
+    },
+    {
+      "text": "New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget ",
+      "center": 640,
+      "measured": 322,
+      "actual": 320,
+      "pillCenter": 640,
+      "arrowCenter": 640,
+      "clamped": false,
+      "passed": true
+    },
+    {
+      "text": "New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget New widget ",
+      "center": 1260,
+      "measured": 322,
+      "actual": 320,
+      "pillCenter": 1119,
+      "arrowCenter": 1260,
+      "clamped": true,
+      "passed": true
+    }
+  ],
+  "browser": "Microsoft Edge headless; real React components and Vite styles",
+  "scenarios": "Clock, volume, CPU, RAM, long new-widget text; center and both monitor edges"
+}

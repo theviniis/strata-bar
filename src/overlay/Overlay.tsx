@@ -1,26 +1,42 @@
 import { useEffect, useState } from 'react'
-import type { OverlayRender } from '../services/system/overlay'
+import type { OverlayRender, OverlaySnapshot } from '../services/system/overlay'
+import { PopupHost } from '../popups/PopupHost'
+import { overlay } from '../services/system/overlay'
 import { TooltipSurface } from './TooltipSurface'
+import { overlayTextClasses } from './typography'
 
 /**
  * The overlay window's whole document. It renders one surface at a time and
  * nothing while idle: no timers, no subscriptions, no layout work. Rust owns
- * the window, its size and its position; this component only paints the pill.
+ * the window, its size and its position; popup content owns its subscriptions.
  */
 export default function Overlay() {
   const [render, setRender] = useState<OverlayRender | null>(null)
   useEffect(() => {
     // The overlay is only meaningful inside the native host.
     if (!window.__TAURI_INTERNALS__) return
+    let latest = 0
     let cancelled = false
     let dispose: (() => void) | undefined
     void import('@tauri-apps/api/event')
       .then(async ({ listen }) => {
+        const accept = (payload: OverlayRender) => {
+          if (cancelled) return
+          const session = payload.session ?? 0
+          if (session < latest) return
+          latest = session
+          setRender(payload)
+        }
         const stopRender = await listen<OverlayRender>(
           'overlay:render',
-          (event) => setRender(event.payload)
+          (event) => accept(event.payload)
         )
-        const stopClear = await listen('overlay:clear', () => setRender(null))
+        const stopClear = await listen<number>('overlay:clear', (event) => {
+          const session = event.payload ?? latest
+          if (session < latest) return
+          latest = session
+          setRender(null)
+        })
         if (cancelled) {
           stopRender()
           stopClear()
@@ -28,6 +44,15 @@ export default function Overlay() {
           dispose = () => {
             stopRender()
             stopClear()
+          }
+          const { invoke } = await import('@tauri-apps/api/core')
+          const prepared = await invoke<OverlaySnapshot | null>('overlay_ready')
+          if (prepared && !cancelled && prepared.session >= latest) {
+            if (prepared.render) accept(prepared.render)
+            else {
+              latest = prepared.session
+              setRender(null)
+            }
           }
         }
       })
@@ -42,11 +67,28 @@ export default function Overlay() {
     // Same typography/colour context as the native bar, so future popovers and
     // tooltip content inherit the bar's text instead of the bare document.
     <div
-      aria-hidden="true"
-      className="font-['Segoe_UI',sans-serif] text-[11px] leading-[normal] text-[#e4e5ed] tabular-nums select-none"
+      aria-hidden={render.kind === 'tooltip' ? true : undefined}
+      className={overlayTextClasses}
     >
       {render.kind === 'tooltip' ? (
-        <TooltipSurface text={render.text} side={render.side} />
+        <TooltipSurface
+          text={render.text}
+          side={render.side}
+          arrowX={render.arrowX}
+        />
+      ) : render.kind === 'popover' ? (
+        <PopupHost
+          id={render.component}
+          params={render.params}
+          mode="native"
+          close={() => {
+            void overlay.hide(render.popup_session).catch(console.error)
+          }}
+          key={render.session}
+          session={render.popup_session}
+          side={render.side}
+          arrowX={render.arrowX}
+        />
       ) : null}
     </div>
   )

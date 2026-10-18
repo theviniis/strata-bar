@@ -1,0 +1,23 @@
+{
+  "passed": true,
+  "bars": [],
+  "overlay": {
+    "counters": {
+      "hides": 0,
+      "positions": 0,
+      "shows": 0
+    },
+    "present": false,
+    "window": null
+  },
+  "monitors": [
+    {
+      "monitor": [0, 0, 3440, 1440],
+      "workArea": [0, 0, 3440, 1440]
+    },
+    {
+      "monitor": [724, -1080, 2644, 0],
+      "workArea": [724, -1080, 2644, 0]
+    }
+  ]
+}

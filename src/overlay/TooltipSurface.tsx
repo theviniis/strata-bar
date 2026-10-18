@@ -9,6 +9,7 @@ import { TOOLTIP_ARROW_ALLOWANCE } from './measure'
 interface TooltipSurfaceProps {
   text: string
   side: OverlaySide
+  arrowX?: number
 }
 
 /**
@@ -16,24 +17,25 @@ interface TooltipSurfaceProps {
  * the surface sits relative to the bar, so a `bottom` surface points its arrow
  * up at the bar above it.
  */
-export function TooltipSurface({ text, side }: TooltipSurfaceProps) {
+export function TooltipSurface({ text, side, arrowX }: TooltipSurfaceProps) {
   const pointsUp = side === 'bottom'
   return (
     <div
-      className="inline-block"
+      className="inline-block w-full"
       style={
         pointsUp
           ? { paddingTop: TOOLTIP_ARROW_ALLOWANCE }
           : { paddingBottom: TOOLTIP_ARROW_ALLOWANCE }
       }
     >
-      <div className="relative">
+      <div className="relative flex justify-center">
         <div className={tooltipPillClasses}>{text}</div>
         <span
           aria-hidden="true"
+          style={{ left: arrowX ?? '50%' }}
           className={cn(
             tooltipArrowClasses,
-            'absolute left-1/2 -translate-x-1/2',
+            'absolute -translate-x-1/2',
             pointsUp ? '-top-1' : '-bottom-1'
           )}
         />

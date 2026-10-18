@@ -1,6 +1,8 @@
 'use client'
 
 import { Tooltip as TooltipPrimitive } from '@base-ui/react/tooltip'
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import { popupIsActive, subscribePopupState } from '../../popups/coordinator'
 
 import { cn } from '@/lib/utils'
 import { tooltipArrowClasses, tooltipPillClasses } from './tooltip-classes'
@@ -19,7 +21,31 @@ function TooltipProvider({
 }
 
 function Tooltip({ ...props }: TooltipPrimitive.Root.Props) {
-  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+  const blocked = useSyncExternalStore(
+    subscribePopupState,
+    popupIsActive,
+    () => false
+  )
+  const [localOpen, setLocalOpen] = useState(props.defaultOpen ?? false)
+  useEffect(
+    () =>
+      subscribePopupState(() => {
+        if (popupIsActive()) setLocalOpen(false)
+      }),
+    []
+  )
+  return (
+    <TooltipPrimitive.Root
+      data-slot="tooltip"
+      {...props}
+      open={blocked ? false : (props.open ?? localOpen)}
+      onOpenChange={(open, details) => {
+        if (blocked && open) return
+        if (props.open === undefined) setLocalOpen(open)
+        props.onOpenChange?.(open, details)
+      }}
+    />
+  )
 }
 
 function TooltipTrigger({ ...props }: TooltipPrimitive.Trigger.Props) {

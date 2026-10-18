@@ -1,0 +1,79 @@
+{
+  "before": {
+    "defaultDeviceId": "{0.0.0.00000000}.{6b6f37d0-17d0-413f-add4-ea5841bee7c2}",
+    "devices": [
+      {
+        "id": "{0.0.0.00000000}.{09fa6d63-e915-40a3-8c5f-636b7f8dfb44}",
+        "name": "Alto-falantes (3- USB Audio CODEC )"
+      },
+      {
+        "id": "{0.0.0.00000000}.{6b6f37d0-17d0-413f-add4-ea5841bee7c2}",
+        "name": "Windows (VB-Audio Voicemeeter VAIO)"
+      },
+      {
+        "id": "{0.0.0.00000000}.{8680b7e0-682d-4f7c-9429-baaadf90285d}",
+        "name": "Discord (VB-Audio Voicemeeter VAIO)"
+      },
+      {
+        "id": "{0.0.0.00000000}.{c8de6ea5-8c1c-469e-aed6-17051764c8cc}",
+        "name": "Alto-falantes (Steam Streaming Speakers)"
+      },
+      {
+        "id": "{0.0.0.00000000}.{cbfa0d6f-a10f-4019-a33e-35ffae8d878b}",
+        "name": "Spotify (VB-Audio Virtual Cable)"
+      }
+    ]
+  },
+  "changed": {
+    "defaultDeviceId": "{0.0.0.00000000}.{09fa6d63-e915-40a3-8c5f-636b7f8dfb44}",
+    "devices": [
+      {
+        "id": "{0.0.0.00000000}.{09fa6d63-e915-40a3-8c5f-636b7f8dfb44}",
+        "name": "Alto-falantes (3- USB Audio CODEC )"
+      },
+      {
+        "id": "{0.0.0.00000000}.{6b6f37d0-17d0-413f-add4-ea5841bee7c2}",
+        "name": "Windows (VB-Audio Voicemeeter VAIO)"
+      },
+      {
+        "id": "{0.0.0.00000000}.{8680b7e0-682d-4f7c-9429-baaadf90285d}",
+        "name": "Discord (VB-Audio Voicemeeter VAIO)"
+      },
+      {
+        "id": "{0.0.0.00000000}.{c8de6ea5-8c1c-469e-aed6-17051764c8cc}",
+        "name": "Alto-falantes (Steam Streaming Speakers)"
+      },
+      {
+        "id": "{0.0.0.00000000}.{cbfa0d6f-a10f-4019-a33e-35ffae8d878b}",
+        "name": "Spotify (VB-Audio Virtual Cable)"
+      }
+    ]
+  },
+  "communicationsPreserved": true,
+  "restored": true,
+  "returned": {
+    "defaultDeviceId": "{0.0.0.00000000}.{6b6f37d0-17d0-413f-add4-ea5841bee7c2}",
+    "devices": [
+      {
+        "id": "{0.0.0.00000000}.{09fa6d63-e915-40a3-8c5f-636b7f8dfb44}",
+        "name": "Alto-falantes (3- USB Audio CODEC )"
+      },
+      {
+        "id": "{0.0.0.00000000}.{6b6f37d0-17d0-413f-add4-ea5841bee7c2}",
+        "name": "Windows (VB-Audio Voicemeeter VAIO)"
+      },
+      {
+        "id": "{0.0.0.00000000}.{8680b7e0-682d-4f7c-9429-baaadf90285d}",
+        "name": "Discord (VB-Audio Voicemeeter VAIO)"
+      },
+      {
+        "id": "{0.0.0.00000000}.{c8de6ea5-8c1c-469e-aed6-17051764c8cc}",
+        "name": "Alto-falantes (Steam Streaming Speakers)"
+      },
+      {
+        "id": "{0.0.0.00000000}.{cbfa0d6f-a10f-4019-a33e-35ffae8d878b}",
+        "name": "Spotify (VB-Audio Virtual Cable)"
+      }
+    ]
+  }
+}

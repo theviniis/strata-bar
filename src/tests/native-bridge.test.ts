@@ -197,7 +197,9 @@ it('forwards the overlay contract to the native commands', async () => {
     request: overlayRequest
   })
   await overlay.hide()
-  expect(state.invoke).toHaveBeenCalledWith('overlay_hide')
+  expect(state.invoke).toHaveBeenCalledWith('overlay_hide', {
+    session: undefined
+  })
 })
 
 it('keeps the browser overlay adapter inert', async () => {

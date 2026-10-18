@@ -2,7 +2,7 @@ use std::{
     cell::Cell,
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
-    sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, Ordering},
+    sync::{Mutex, atomic::{AtomicBool, AtomicIsize, AtomicU64, Ordering}},
 };
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use windows::{
@@ -26,6 +26,14 @@ static COUNTS: [AtomicU64;4]=[const {AtomicU64::new(0)};4];
 /// Overlay shows, positions and hides, surface failures in `diagnostics`.
 static OVERLAY_COUNTS: [AtomicU64; 3] = [const { AtomicU64::new(0) }; 3];
 pub fn profile()->serde_json::Value{serde_json::json!({"windowMessages":COUNTS[0].load(Ordering::Relaxed),"appbarNotifications":COUNTS[1].load(Ordering::Relaxed),"positionWrites":COUNTS[2].load(Ordering::Relaxed),"windowPositionMessages":COUNTS[3].load(Ordering::Relaxed),"overlayShows":OVERLAY_COUNTS[0].load(Ordering::Relaxed),"overlayPositions":OVERLAY_COUNTS[1].load(Ordering::Relaxed),"overlayHides":OVERLAY_COUNTS[2].load(Ordering::Relaxed)})}
+#[derive(Clone)]
+struct PopupSession { id: String, source: String, side: OverlaySide, max_height: f64, revealed: bool }
+static POPUP: Mutex<Option<PopupSession>> = Mutex::new(None);
+static LAST_OVERLAY_RENDER: Mutex<Option<serde_json::Value>> = Mutex::new(None);
+static OVERLAY_OWNER: Mutex<Option<String>> = Mutex::new(None);
+static OVERLAY_PLACING: AtomicBool = AtomicBool::new(false);
+static OVERLAY_SESSION: AtomicU64 = AtomicU64::new(0);
+
 struct Reservation {
     app: AppHandle,
     rect: RECT,
@@ -241,7 +249,7 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         }
         let height = (36. * m.scale_factor()).round() as i32;
         let window =
-            WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html?view=bar".into()))
+            WebviewWindowBuilder::new(app, &label, WebviewUrl::App(if cfg!(debug_assertions) && std::env::args().any(|arg| arg == "--check-popups") { "index.html?view=bar&popup-check=1" } else { "index.html?view=bar" }.into()))
                 .title(format!(
                     "Strata · {}",
                     m.name().map(String::as_str).unwrap_or("Monitor")
@@ -386,12 +394,22 @@ pub struct OverlaySize {
 pub struct OverlayRequest {
     pub v: u32,
     #[serde(default)]
+    pub session: Option<String>,
+    #[serde(default)]
+    pub component: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_popup_params")]
+    pub params: Option<serde_json::Value>,
+    #[serde(default)]
     pub source: Option<String>,
     pub kind: String,
     pub text: String,
     pub anchor: OverlayAnchor,
     pub size: OverlaySize,
     pub side: String,
+}
+
+fn deserialize_popup_params<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Option<serde_json::Value>, D::Error> {
+    <serde_json::Value as serde::Deserialize>::deserialize(deserializer).map(Some)
 }
 
 impl OverlayRequest {
@@ -404,6 +422,15 @@ impl OverlayRequest {
         }
         if !matches!(self.kind.as_str(), "tooltip" | "popover") {
             return Err(format!("Unsupported overlay kind '{}'", self.kind));
+        }
+        if self.kind == "popover" {
+            if self.component.as_deref().and_then(crate::popup_catalog::get).is_none()
+                || self.session.as_ref().is_none_or(|s| s.is_empty() || s.len() > 128) {
+                return Err("Invalid popup component or session".into());
+            }
+            if self.params.as_ref().is_some_and(|params| params.to_string().len() > 16 * 1024) {
+                return Err("Popup parameters exceed 16 KiB".into());
+            }
         }
         if self.text.trim().is_empty() {
             return Err("Overlay text is empty".into());
@@ -435,9 +462,16 @@ impl OverlayRequest {
 
 #[derive(Clone, serde::Serialize)]
 struct RenderPayload<'a> {
+    #[serde(rename = "arrowX")]
+    arrow_x: f64,
     kind: &'a str,
     text: &'a str,
     side: &'a str,
+    session: u64,
+    component: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    params: Option<&'a serde_json::Value>,
+    popup_session: Option<&'a str>,
 }
 
 /// Physical placement for a surface anchored to a bar edge.
@@ -460,6 +494,20 @@ fn overlay_position(
     };
     let max_y = (monitor.bottom - height).max(monitor.top);
     (x, y.clamp(monitor.top, max_y))
+}
+
+/// Widget CSS coordinates cannot tell whether its AppBar is on the top or bottom.
+fn overlay_side_for_bar(bar: RECT, monitor: RECT) -> OverlaySide {
+    if i64::from(bar.top) + i64::from(bar.bottom) < i64::from(monitor.top) + i64::from(monitor.bottom) {
+        OverlaySide::Bottom
+    } else {
+        OverlaySide::Top
+    }
+}
+
+/// The panel may be clamped at a monitor edge; the arrow still points at its anchor.
+fn overlay_arrow_x(anchor_center: i32, window_left: i32, scale: f64) -> f64 {
+    (anchor_center - window_left) as f64 / scale
 }
 
 fn monitor_rect(hwnd: HWND) -> Option<RECT> {
@@ -520,15 +568,25 @@ pub fn ensure_overlay(app: &AppHandle) -> Result<WebviewWindow, Box<dyn std::err
     Ok(window)
 }
 
-fn hide_overlay_hwnd(app: &AppHandle, hwnd: HWND) {
+fn hide_overlay_hwnd_with_focus(app: &AppHandle, hwnd: HWND, restore_focus: bool) {
+    let closed = POPUP.lock().unwrap().take();
+    *LAST_OVERLAY_RENDER.lock().unwrap() = None;
+    *OVERLAY_OWNER.lock().unwrap() = None;
     if unsafe { IsWindowVisible(hwnd).as_bool() } {
         unsafe {
             let _ = ShowWindow(hwnd, SW_HIDE);
         }
         OVERLAY_COUNTS[2].fetch_add(1, Ordering::Relaxed);
     }
+    if let Some(window) = app.get_webview_window(OVERLAY) { let _ = window.set_ignore_cursor_events(true); let _ = window.hide(); }
     // Drop the stale pill so the next show cannot flash the previous tooltip.
-    let _ = app.emit_to(OVERLAY, "overlay:clear", ());
+    let cleared = OVERLAY_SESSION.fetch_add(1, Ordering::Relaxed) + 1;
+    let _ = app.emit_to(OVERLAY, "overlay:clear", cleared);
+    if let Some(closed) = closed { let _ = app.emit("overlay:closed", serde_json::json!({"session": closed.id, "restoreFocus": restore_focus})); }
+}
+
+fn hide_overlay_hwnd(app: &AppHandle, hwnd: HWND) {
+    hide_overlay_hwnd_with_focus(app, hwnd, false);
 }
 
 fn hide_overlay_window(app: &AppHandle, window: &WebviewWindow) {
@@ -545,12 +603,101 @@ pub fn overlay_hide(app: &AppHandle) {
     }
 }
 
+/// Tooltip cleanup can never dismiss an interactive popup.
+pub fn overlay_hide_request(app: &AppHandle, session: Option<&str>) {
+    let popup = POPUP.lock().unwrap().clone();
+    if let Some(popup) = popup { if session != Some(popup.id.as_str()) { return; } }
+    let owner = OVERLAY_OWNER.lock().unwrap().clone();
+    if owner.as_deref() != session { return; }
+    overlay_hide(app);
+}
+
+pub fn overlay_dismiss(app: &AppHandle, session: Option<&str>) {
+    let current = POPUP.lock().unwrap().clone();
+    if let Some(popup) = current {
+        if session != Some(popup.id.as_str()) { return; }
+        if let Some(window) = app.get_webview_window(OVERLAY) {
+            if let Ok(hwnd) = window.hwnd() { hide_overlay_hwnd_with_focus(app, HWND(hwnd.0), true); }
+        }
+        if let Some(source) = app.get_webview_window(&popup.source) { let _ = source.set_focus(); }
+    }
+}
+
+/// Replay after listeners install, so a cold/refreshing overlay cannot lose preparation.
+pub fn overlay_ready(caller: &WebviewWindow) -> Result<serde_json::Value, String> {
+    if caller.label() != OVERLAY { return Err("Only overlay may read prepared content".into()); }
+    Ok(serde_json::json!({"session": OVERLAY_SESSION.load(Ordering::Relaxed), "render": LAST_OVERLAY_RENDER.lock().unwrap().clone()}))
+}
+
+/// Resize only the current interactive session; placement remains native-owned.
+pub fn overlay_resize(
+    app: &AppHandle,
+    caller: &WebviewWindow,
+    session: &str,
+    height: f64,
+) -> Result<serde_json::Value, String> {
+    if caller.label() != OVERLAY || !height.is_finite() || height <= 0.0 || height > MAX_LOGICAL_SIZE {
+        return Err("Invalid popup resize request".into());
+    }
+    let popup = POPUP.lock().unwrap().clone().filter(|p| p.id == session)
+        .ok_or("Popup session is no longer active")?;
+    let source = app.get_webview_window(&popup.source).ok_or("Popup source is unavailable")?;
+    let source_hwnd = HWND(source.hwnd().map_err(|e| e.to_string())?.0);
+    let hwnd = HWND(caller.hwnd().map_err(|e| e.to_string())?.0);
+    let mut bar = RECT::default();
+    let mut current = RECT::default();
+    unsafe {
+        GetWindowRect(source_hwnd, &mut bar).map_err(|e| e.to_string())?;
+        GetWindowRect(hwnd, &mut current).map_err(|e| e.to_string())?;
+    }
+    let monitor = monitor_rect(source_hwnd).ok_or("Popup monitor is unavailable")?;
+    let available = match popup.side {
+        OverlaySide::Bottom => monitor.bottom - bar.bottom,
+        OverlaySide::Top => bar.top - monitor.top,
+    }.max(1);
+    let scale = source.scale_factor().map_err(|e| e.to_string())?;
+    let available = available.min(to_physical(popup.max_height, scale).max(1));
+    let height = to_physical(height, scale).clamp(1, available);
+    let y = match popup.side {
+        OverlaySide::Bottom => bar.bottom,
+        OverlaySide::Top => bar.top - height,
+    };
+    if !popup.revealed || current.bottom - current.top != height || current.top != y {
+        unsafe {
+            enforce_floating_frame(hwnd);
+            SetWindowPos(hwnd, Some(HWND_TOPMOST), current.left, y,
+                current.right - current.left, height, SWP_NOACTIVATE)
+                .map_err(|e| e.to_string())?;
+        }
+        OVERLAY_COUNTS[1].fetch_add(1, Ordering::Relaxed);
+    }
+    if !popup.revealed {
+        if let Some(active) = POPUP.lock().unwrap().as_mut().filter(|p| p.id == session) { active.revealed = true; }
+        // Keep tao visibility state in sync: set_focus ignores windows it thinks are hidden.
+        caller.show().map_err(|e| e.to_string())?;
+        caller.set_focus().map_err(|e| e.to_string())?;
+        OVERLAY_COUNTS[0].fetch_add(1, Ordering::Relaxed);
+    }
+    Ok(serde_json::json!({"maxHeight": available as f64 / scale}))
+}
+
+#[cfg(debug_assertions)]
+pub fn check_resize_active(app: &AppHandle) -> Result<(), String> {
+    let popup = POPUP.lock().unwrap().clone().ok_or("No active popup")?;
+    let window = app.get_webview_window(OVERLAY).ok_or("No overlay")?;
+    let mut rect = RECT::default();
+    unsafe { GetWindowRect(HWND(window.hwnd().map_err(|e| e.to_string())?.0), &mut rect).map_err(|e| e.to_string())?; }
+    let scale = window.scale_factor().map_err(|e| e.to_string())?;
+    overlay_resize(app, &window, &popup.id, (rect.bottom - rect.top) as f64 / scale)?;
+    Ok(())
+}
+
 pub fn overlay_show(
     app: &AppHandle,
     caller: &WebviewWindow,
     request: &OverlayRequest,
 ) -> Result<(), String> {
-    let side = request.validate()?;
+    request.validate()?;
     if let Some(source) = request.source.as_deref() {
         if source != caller.label() {
             return Err("Overlay request source does not match the calling window".into());
@@ -562,6 +709,15 @@ pub fn overlay_show(
             caller.label()
         ));
     }
+    let current = POPUP.lock().unwrap().clone();
+    if let Some(current) = current {
+        if request.kind == "tooltip" { return Ok(()); }
+        if request.session.as_deref() == Some(current.id.as_str()) && current.source == caller.label() {
+            overlay_hide(app);
+            return Ok(());
+        }
+    }
+    if request.kind == "popover" { overlay_hide(app); }
     let window = ensure_overlay(app).map_err(|e| e.to_string())?;
     let bar_hwnd = HWND(caller.hwnd().map_err(|e| e.to_string())?.0);
     let mut bar = RECT::default();
@@ -571,6 +727,7 @@ pub fn overlay_show(
         }
     }
     let monitor = monitor_rect(bar_hwnd).unwrap_or(bar);
+    let side = overlay_side_for_bar(bar, monitor);
     unsafe {
         let handle = MonitorFromWindow(bar_hwnd, MONITOR_DEFAULTTONEAREST);
         if OVERLAY_MONITOR.swap(handle.0 as isize, Ordering::Relaxed) != handle.0 as isize {
@@ -579,21 +736,36 @@ pub fn overlay_show(
         }
     }
     let scale = caller.scale_factor().unwrap_or(1.0);
-    let width = to_physical(request.size.width, scale).clamp(1, 4096);
-    let height = to_physical(request.size.height, scale).clamp(1, 4096);
+    let spec = request.component.as_deref().and_then(crate::popup_catalog::get);
+    let logical_width = if request.kind == "popover" { spec.as_ref().unwrap().width } else { request.size.width };
+    let width = to_physical(logical_width, scale).clamp(1, (monitor.right - monitor.left).clamp(1, 4096));
+    let height = to_physical(if request.kind == "popover" { 1.0 } else { request.size.height }, scale).clamp(1, (monitor.bottom - monitor.top).clamp(1, 4096));
     let center = bar.left + to_physical(request.anchor.x + request.anchor.width / 2.0, scale);
     let (x, y) = overlay_position(bar, monitor, (width, height), center, side);
-    app.emit_to(
-        OVERLAY,
-        "overlay:render",
-        RenderPayload {
+    let session = OVERLAY_SESSION.fetch_add(1, Ordering::Relaxed) + 1;
+    let interactive = request.kind == "popover";
+    if interactive {
+        *POPUP.lock().unwrap() = Some(PopupSession { id: request.session.clone().unwrap(), source: caller.label().into(), side, max_height: spec.as_ref().unwrap().max_height, revealed: false });
+    }
+    *OVERLAY_OWNER.lock().unwrap() = request.session.clone();
+    window.set_ignore_cursor_events(!interactive).map_err(|e| e.to_string())?;
+    let payload = serde_json::to_value(RenderPayload {
+            arrow_x: overlay_arrow_x(center, x, scale),
             kind: &request.kind,
             text: &request.text,
             side: side.as_str(),
-        },
-    )
-    .map_err(|e| e.to_string())?;
+            session,
+            component: request.component.as_deref(),
+            params: request.params.as_ref(),
+            popup_session: request.session.as_deref(),
+        }).map_err(|e| e.to_string())?;
+    *LAST_OVERLAY_RENDER.lock().unwrap() = Some(payload.clone());
+    app.emit_to(OVERLAY, "overlay:render", payload).map_err(|e| e.to_string())?;
     let hwnd = HWND(window.hwnd().map_err(|e| e.to_string())?.0);
+    struct Placement;
+    impl Drop for Placement { fn drop(&mut self) { OVERLAY_PLACING.store(false, Ordering::Relaxed); } }
+    OVERLAY_PLACING.store(true, Ordering::Relaxed);
+    let _placement = Placement;
     unsafe {
         // tao re-applies its own styles on visibility changes; re-assert.
         enforce_floating_frame(hwnd);
@@ -604,13 +776,13 @@ pub fn overlay_show(
             y,
             width,
             height,
-            SWP_NOACTIVATE | SWP_SHOWWINDOW,
+            if interactive { SWP_NOACTIVATE } else { SWP_NOACTIVATE | SWP_SHOWWINDOW },
         ) {
             return Err(format!("Cannot place the overlay: {e}"));
         }
-        let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+        if !interactive { let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE); }
     }
-    OVERLAY_COUNTS[0].fetch_add(1, Ordering::Relaxed);
+    if !interactive { OVERLAY_COUNTS[0].fetch_add(1, Ordering::Relaxed); }
     OVERLAY_COUNTS[1].fetch_add(1, Ordering::Relaxed);
     Ok(())
 }
@@ -625,10 +797,19 @@ unsafe extern "system" fn overlay_procedure(
 ) -> LRESULT {
     let state = &*(reference as *const OverlayState);
     match msg {
+        WM_ACTIVATE if wp.0 & 0xffff == WA_INACTIVE as usize => {
+            let current = POPUP.lock().unwrap().clone();
+            if let Some(popup) = current {
+                let foreground = HWND(lp.0 as *mut core::ffi::c_void);
+                let source = state.app.get_webview_window(&popup.source).and_then(|w| w.hwnd().ok()).map(|h| HWND(h.0));
+                if source != Some(foreground) { hide_overlay_hwnd(&state.app, hwnd); }
+            }
+        }
         WM_STYLECHANGED => {
             enforce_floating_frame(hwnd);
             return LRESULT(0);
         }
+        WM_DPICHANGED if OVERLAY_PLACING.load(Ordering::Relaxed) => {}
         WM_DPICHANGED | WM_DISPLAYCHANGE => {
             // The stored anchor belongs to the old geometry.
             hide_overlay_hwnd(&state.app, hwnd);
@@ -756,6 +937,9 @@ pub fn bar_snapshot()->serde_json::Value{
     fn request(kind:&str,side:&str)->OverlayRequest{
         OverlayRequest{
             v:1,
+            session: Some("test".into()),
+            component: Some("audioOutputs".into()),
+            params: Some(serde_json::json!({})),
             source:None,
             kind:kind.into(),
             text:"Uso total de CPU".into(),
@@ -781,6 +965,48 @@ pub fn bar_snapshot()->serde_json::Value{
         assert!(zero.validate().is_err());
         let mut oversized=request("tooltip","bottom");oversized.size.height=MAX_LOGICAL_SIZE+1.;
         assert!(oversized.validate().is_err());
+    }
+    #[test]
+    fn side_is_owned_by_actual_monitor_geometry_not_widget_center() {
+        let monitor = RECT { left: -1920, top: -1080, right: 0, bottom: 0 };
+        assert_eq!(overlay_side_for_bar(RECT { left: -1920, top: -1080, right: 0, bottom: -1044 }, monitor), OverlaySide::Bottom);
+        assert_eq!(overlay_side_for_bar(RECT { left: -1920, top: -36, right: 0, bottom: 0 }, monitor), OverlaySide::Top);
+    }
+    #[test]
+    fn popup_params_preserve_explicit_null_and_missing_input_separately() {
+        #[derive(serde::Deserialize)]
+        struct Input {
+            #[serde(default, deserialize_with = "deserialize_popup_params")]
+            params: Option<serde_json::Value>,
+        }
+        assert!(serde_json::from_str::<Input>("{}").unwrap().params.is_none());
+        assert_eq!(serde_json::from_str::<Input>(r#"{"params":null}"#).unwrap().params, Some(serde_json::Value::Null));
+    }
+    #[test]
+    fn popup_requests_bound_payload_bytes_and_catalog_ids() {
+        let mut request = request("popover", "bottom");
+        request.component = Some("not-registered".into());
+        assert!(request.validate().is_err());
+        request.component = Some("audioOutputs".into());
+        request.params = Some(serde_json::json!({"payload":"x".repeat(16 * 1024)}));
+        assert!(request.validate().is_err());
+        request.params = None;
+        assert!(request.validate().is_ok());
+    }
+    #[test]
+    fn arrows_remain_on_the_anchor_when_panels_are_clamped() {
+        for (monitor, center, scale) in [
+            (RECT { left: 0, top: 0, right: 1920, bottom: 1080 }, 1900, 1.0),
+            (RECT { left: 0, top: 0, right: 1920, bottom: 1080 }, 20, 1.0),
+            (RECT { left: -2560, top: -1440, right: -640, bottom: 0 }, -660, 1.25),
+        ] {
+            for side in [OverlaySide::Top, OverlaySide::Bottom] {
+                let (x, _) = overlay_position(monitor, monitor, (400, 200), center, side);
+                let arrow = overlay_arrow_x(center, x, scale);
+                assert_eq!(x as f64 + arrow * scale, center as f64);
+                assert!((0.0..=400.0 / scale).contains(&arrow));
+            }
+        }
     }
     #[test]fn overlay_below_a_top_bar_starts_at_the_bar_edge(){
         let bar=RECT{left:0,top:0,right:1920,bottom:36};

@@ -126,6 +126,7 @@ event-driven audio.
 - [AGENTS.md](AGENTS.md) — architecture, conventions and agent guardrails.
 - [research](docs/yasb-analysis.md) — read-only YASB source investigation.
 - [architecture](docs/architecture.md) — layered design and bridge contract.
+- [widget popups](docs/popups.md) — reusable API, registration, studio simulation and native checks.
 - [milestones](docs/implementation-plan.md) — phased plan and acceptance gates.
 - [current native validation](docs/native-mvp-validation.md) — evidence and remaining limits.
 

@@ -2,7 +2,14 @@ export type BridgeMode = 'demo' | 'native'
 
 /** Channels the UI can subscribe to. The clock renders locally, without a channel. */
 export type Channel =
-  'cpu' | 'memory' | 'gpu' | 'network' | 'volume' | 'activeWindow' | 'komorebi'
+  | 'cpu'
+  | 'memory'
+  | 'gpu'
+  | 'network'
+  | 'volume'
+  | 'activeWindow'
+  | 'komorebi'
+  | 'audioOutputs'
 
 export type WorkspaceStatus = 'active' | 'populated' | 'empty'
 
@@ -32,6 +39,10 @@ export interface ChannelData {
   memory: { percent: number; usedBytes: number; totalBytes: number }
   gpu: null
   network: number
+  audioOutputs: {
+    devices: { id: string; name: string }[]
+    defaultDeviceId: string | null
+  }
   volume: { level: number; muted: boolean }
   activeWindow: string
   komorebi: KomorebiData
@@ -47,6 +58,7 @@ export interface DemoChannelData {
   memory: number
   gpu: null
   network: number
+  audioOutputs: null
   volume: number
   activeWindow: string
   komorebi: KomorebiData
@@ -77,6 +89,9 @@ export interface Subscribable<D extends Record<Channel, unknown>> {
 
 export interface AdapterBase {
   setVolume(value: VolumeChange): Promise<unknown>
+  setAudioOutput?(value: {
+    deviceId: string
+  }): Promise<ChannelData['audioOutputs']>
   /** Only the native adapter owns the process, so the demo adapter cannot quit. */
   quit?(): Promise<void>
   /** Native-only: the studio demo cannot drive a real window manager. */
@@ -100,6 +115,7 @@ export function createMockBridge(): DemoBridge {
     gpu: null,
     network: 128,
     volume: 64,
+    audioOutputs: null,
     activeWindow: 'Visual Studio Code',
     komorebi: {
       monitor: 0,
@@ -133,7 +149,7 @@ export function createMockBridge(): DemoBridge {
     ) {
       const emit = () => {
         const data = values[channel]
-        if (channel === 'gpu') {
+        if (channel === 'gpu' || channel === 'audioOutputs') {
           listener({ status: 'unavailable', data: null, timestamp: Date.now() })
         } else {
           listener({ status: 'ready', data, timestamp: Date.now() })
@@ -203,6 +219,10 @@ export function createNativeBridge(): NativeBridge {
     async setVolume(value) {
       const { invoke } = await import('@tauri-apps/api/core')
       return invoke('set_volume', value)
+    },
+    async setAudioOutput(value) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke('set_audio_output', value)
     },
     async komorebiAction(value) {
       const { invoke } = await import('@tauri-apps/api/core')

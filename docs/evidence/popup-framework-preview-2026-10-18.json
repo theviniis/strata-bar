@@ -1,0 +1,102 @@
+{
+  "passed": true,
+  "results": [
+    {
+      "theme": "dark",
+      "edge": "center",
+      "atBottom": false,
+      "panel": {
+        "x": 468,
+        "y": 48,
+        "width": 320,
+        "height": 229
+      },
+      "anchorCenter": 628,
+      "arrowCenter": 628,
+      "gap": 12,
+      "selected": true,
+      "volume": true,
+      "muted": true,
+      "closed": true,
+      "focused": true,
+      "centered": true,
+      "pointed": true,
+      "inBounds": true,
+      "actualTheme": "dark",
+      "passed": true
+    },
+    {
+      "theme": "light",
+      "edge": "right",
+      "atBottom": false,
+      "panel": {
+        "x": 936,
+        "y": 48,
+        "width": 320,
+        "height": 229
+      },
+      "anchorCenter": 1206,
+      "arrowCenter": 1206,
+      "gap": 12,
+      "selected": true,
+      "volume": true,
+      "muted": true,
+      "closed": true,
+      "focused": true,
+      "centered": true,
+      "pointed": true,
+      "inBounds": true,
+      "actualTheme": "light",
+      "passed": true
+    },
+    {
+      "theme": "dark",
+      "edge": "left",
+      "atBottom": false,
+      "panel": {
+        "x": 0,
+        "y": 48,
+        "width": 320,
+        "height": 229
+      },
+      "anchorCenter": 50,
+      "arrowCenter": 50,
+      "gap": 12,
+      "selected": true,
+      "volume": true,
+      "muted": true,
+      "closed": true,
+      "focused": true,
+      "centered": true,
+      "pointed": true,
+      "inBounds": true,
+      "actualTheme": "dark",
+      "passed": true
+    },
+    {
+      "theme": "dark",
+      "edge": "center",
+      "atBottom": true,
+      "panel": {
+        "x": 468,
+        "y": 531,
+        "width": 320,
+        "height": 229
+      },
+      "anchorCenter": 628,
+      "arrowCenter": 628,
+      "gap": 12,
+      "selected": true,
+      "volume": true,
+      "muted": true,
+      "closed": true,
+      "focused": true,
+      "centered": true,
+      "pointed": true,
+      "inBounds": true,
+      "actualTheme": "dark",
+      "passed": true
+    }
+  ],
+  "browser": "Microsoft Edge headless; actual WidgetPopup, PopupHost and audio content"
+}

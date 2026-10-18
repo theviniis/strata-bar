@@ -1,0 +1,96 @@
+{
+  "bars": [
+    {
+      "client": [1920, 36],
+      "komorebiEligible": false,
+      "rect": [724, -1080, 2644, -1044],
+      "title": "Strata · \\\\.\\DISPLAY2",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "client": [3440, 36],
+      "komorebiEligible": false,
+      "rect": [0, 0, 3440, 36],
+      "title": "Strata · \\\\.\\DISPLAY1",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    }
+  ],
+  "komorebi": {
+    "komorebic": "C:\\Program Files\\komorebi\\bin\\komorebic.exe",
+    "monitors": null
+  },
+  "metrics": {
+    "Ok": {
+      "audioOutputs": {
+        "Ok": {
+          "defaultDeviceId": "{0.0.0.00000000}.{6b6f37d0-17d0-413f-add4-ea5841bee7c2}",
+          "devices": [
+            {
+              "id": "{0.0.0.00000000}.{09fa6d63-e915-40a3-8c5f-636b7f8dfb44}",
+              "name": "Alto-falantes (3- USB Audio CODEC )"
+            },
+            {
+              "id": "{0.0.0.00000000}.{6b6f37d0-17d0-413f-add4-ea5841bee7c2}",
+              "name": "Windows (VB-Audio Voicemeeter VAIO)"
+            },
+            {
+              "id": "{0.0.0.00000000}.{8680b7e0-682d-4f7c-9429-baaadf90285d}",
+              "name": "Discord (VB-Audio Voicemeeter VAIO)"
+            },
+            {
+              "id": "{0.0.0.00000000}.{c8de6ea5-8c1c-469e-aed6-17051764c8cc}",
+              "name": "Alto-falantes (Steam Streaming Speakers)"
+            },
+            {
+              "id": "{0.0.0.00000000}.{cbfa0d6f-a10f-4019-a33e-35ffae8d878b}",
+              "name": "Spotify (VB-Audio Virtual Cable)"
+            }
+          ]
+        }
+      },
+      "cpu": 15.789473684210526,
+      "memory": {
+        "percent": 45.45316056590246,
+        "totalBytes": 34254831616,
+        "usedBytes": 15569903616
+      },
+      "timestamp": 1792288467067,
+      "volume": {
+        "Ok": {
+          "level": 100.0,
+          "muted": false
+        }
+      }
+    }
+  },
+  "monitors": [
+    {
+      "monitor": [0, 0, 3440, 1440],
+      "workArea": [0, 36, 3440, 1440]
+    },
+    {
+      "monitor": [724, -1080, 2644, 0],
+      "workArea": [724, -1044, 2644, 0]
+    }
+  ],
+  "overlay": {
+    "counters": {
+      "hides": 0,
+      "positions": 0,
+      "shows": 0
+    },
+    "present": true,
+    "window": {
+      "clickThrough": true,
+      "komorebiEligible": false,
+      "rect": [208, 244, 344, 283],
+      "toolWindow": true,
+      "topmost": true,
+      "visible": false
+    }
+  }
+}

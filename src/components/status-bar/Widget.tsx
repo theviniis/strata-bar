@@ -30,6 +30,7 @@ import {
   type KomorebiData,
   type SystemEvent
 } from '../../services/system/bridge'
+import { WidgetPopup } from '../../popups/WidgetPopup'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 
 type PreviewValue = DemoChannelData[Channel]
@@ -60,7 +61,8 @@ const formatters: Record<Channel, (value: PreviewValue) => string> = {
   network: (v) => `${v} KB/s`,
   volume: (v) => `${v}%`,
   activeWindow: (v) => String(v),
-  komorebi: () => ''
+  komorebi: () => '',
+  audioOutputs: () => ''
 }
 
 function Clock({ format }: { format: WidgetConfig['format'] }) {
@@ -155,6 +157,25 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
           : sample.status === 'error'
             ? 'Error'
             : 'Unavailable'
+  if (widget.type === 'volume') {
+    return (
+      <WidgetPopup.Root popup="audioOutputs">
+        <WidgetPopup.Anchor asChild>
+          <span className="inline-flex">
+            <WidgetPopup.Trigger asChild>
+              <button
+                aria-label="Saída de áudio"
+                className="flex items-center gap-1.5 rounded-sm p-1 hover:bg-muted"
+              >
+                <Icon size={14} />
+                <span>{text}</span>
+              </button>
+            </WidgetPopup.Trigger>
+          </span>
+        </WidgetPopup.Anchor>
+      </WidgetPopup.Root>
+    )
+  }
   return (
     <Tooltip>
       <Popover>
@@ -183,11 +204,6 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
                 ? 'Preview data · no system access'
                 : `Status: ${sample?.status || 'loading'}`)}
           </p>
-          {widget.type === 'volume' && (
-            <p className="text-[13px] leading-[1.8] text-[#92929f]">
-              Volume control awaits Core Audio integration.
-            </p>
-          )}
         </PopoverContent>
       </Popover>
       {widget.tooltip && (

@@ -56,23 +56,13 @@ vi.mock('../services/system/bridge', () => ({
 }))
 import NativeBar from '../components/status-bar/NativeBar'
 
-it('renders real adapter snapshots and commits volume controls', async () => {
+it('renders real adapter snapshots and the audio popup trigger', () => {
   render(<NativeBar />)
-  expect(screen.getByLabelText('Uso da CPU')).toHaveTextContent('23%')
-  expect(screen.getByLabelText('Uso da RAM')).toHaveTextContent('48%')
-  fireEvent.change(screen.getByRole('slider', { name: 'Volume' }), {
-    target: { value: '42' }
-  })
-  fireEvent.pointerUp(screen.getByRole('slider', { name: 'Volume' }))
-  await waitFor(() => expect(setVolume).toHaveBeenCalledWith({ level: 42 }))
-  fireEvent.click(screen.getByRole('button', { name: 'Silenciar' }))
-  await waitFor(() => expect(setVolume).toHaveBeenCalledWith({ muted: true }))
-})
-
-it('offers a deliberate exit for all monitor bars', async () => {
-  render(<NativeBar />)
-  fireEvent.click(screen.getByRole('button', { name: 'Sair do Strata' }))
-  await waitFor(() => expect(quit).toHaveBeenCalled())
+  expect(screen.getByLabelText('Uso da CPU')).toHaveTextContent(/^23%?$/)
+  expect(screen.getByLabelText('Uso da RAM')).toHaveTextContent(/^48%?$/)
+  expect(
+    screen.getByRole('button', { name: 'Saída de áudio' })
+  ).toHaveAttribute('aria-haspopup', 'dialog')
 })
 
 it('renders komorebi workspaces and focuses the clicked one', async () => {

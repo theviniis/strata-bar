@@ -1,0 +1,126 @@
+# Widget popups
+
+`WidgetPopup` is the public trigger API. One shared host owns the native window,
+sessions, focus, measurement, scrolling, arrow and monitor placement. Feature
+components own their content, data and actions. Volume is the reference feature.
+
+## Add a popup
+
+1. Add an ID to `src/popups/catalog.json`. This is also the Rust allowlist. Each
+   entry needs `label`; `width` defaults to 320 CSS px and `maxHeight` to 380 CSS px.
+   Height includes the 12 px gap between the panel and the bar.
+2. Create a content component under its feature. Content can be any React layout;
+   it does not need predefined header/body/footer slots.
+3. Register its schema and component in `src/popups/registry.ts` with `definePopup`.
+   The registry must match the catalog exactly. IDs, parameter inputs and parsed
+   values are inferred; do not duplicate unions or interfaces manually.
+4. Wrap the widget in `WidgetPopup.Root`, an optional `Anchor` and a `Trigger`.
+
+For example, after adding a `workspaceDetails` catalog entry:
+
+```tsx
+// In registry.ts (alongside the existing registrations)
+workspaceDetails: definePopup({
+  schema: z.object({ workspace: z.number().int().nonnegative() }).strict(),
+  Content: WorkspaceDetails
+})
+```
+
+```tsx
+import { usePopupContext } from '@/popups/context'
+
+export function WorkspaceDetails() {
+  const { params, mode, close } = usePopupContext('workspaceDetails')
+  // params.workspace is inferred from the schema's output.
+  return (
+    <section>
+      <h2>Workspace {params.workspace + 1}</h2>
+      <p>{mode === 'demo' ? 'Example data' : 'Live data'}</p>
+      <button onClick={close}>Close</button>
+    </section>
+  )
+}
+```
+
+```tsx
+import { WidgetPopup } from '@/popups/WidgetPopup'
+
+;<WidgetPopup.Root popup="workspaceDetails" params={{ workspace: index }}>
+  <WidgetPopup.Anchor asChild>
+    <div className="flex items-center">
+      <WidgetPopup.Trigger asChild>
+        <button aria-label="Workspace details">Workspace {index + 1}</button>
+      </WidgetPopup.Trigger>
+    </div>
+  </WidgetPopup.Anchor>
+</WidgetPopup.Root>
+```
+
+Required schema inputs produce required `params`. Schemas accepting `undefined`
+can omit them. Params must be JSON, limited to 16 KiB; functions, refs and JSX
+cannot cross the window boundary. Input validation runs before opening and in
+the content host; schema transforms are applied independently to the original
+input in each environment. `usePopupContext` exposes parsed output types.
+
+`asChild` composes refs and handlers without inserting another button. Custom
+children must pass received props/ref to their DOM element. A prevented child
+click does not open the popup. Each Root has one trigger and, optionally, one
+anchor; without an explicit anchor the trigger's rectangle is used.
+
+## Content and adapters
+
+Content receives `mode`, validated `params` and `close()` through context. Import
+the hook directly from `popups/context`; transport and registration belong to
+the framework. It is fine to use local state and feature hooks in the content.
+No feature should import `overlay`, measure its own window or install Escape
+listeners.
+
+The audio feature renders a native data component or a demo data component. Both
+feed the same controls. The native component uses real subscriptions/commands;
+the demo keeps local output/volume state and never invokes Windows. Keep these
+adapters separate for new features too: native errors must never select demo data.
+Demo content is visibly labeled and resets when closed.
+
+## Shared behavior
+
+- Panel centered on the whole anchor, shifted only to remain within the monitor;
+  the arrow still points to the anchor. The gap is always 12 CSS px.
+- Rust derives top/bottom placement from the real bar/monitor rectangles, not
+  the widget's vertical position within the bar. It validates the catalog ID,
+  session, payload size and geometry. Changing catalog metadata rebuilds the host
+  during `tauri dev`; no Rust feature conditional is needed.
+- Native opening prepares a hidden window. The shared surface reports its first
+  measured height, then the host reveals and focuses it. Subsequent resizes do
+  not take focus. Tauri visibility state and Win32 visibility stay synchronized.
+- The host replays prepared content after overlay listeners install, including
+  after a development reload. Old event generations and stale sessions are ignored.
+- One active popup replaces another. Tooltip intents are canceled/suppressed while
+  a popup is open. Native arbitration also protects against other monitor windows.
+- Escape restores the trigger; outside clicks do not steal focus. Trigger toggle,
+  unmount, fullscreen, display/DPI changes and exit also dismiss. The window returns
+  to click-through mode after hiding. Keyboard Tab navigation stays in the popup.
+- Studio uses Radix positioning in a body portal, escaping preview clipping while
+  preserving theme/typography, collision handling, gap, arrow and dynamic height.
+- Invalid parameters or content render errors produce an accessible error surface
+  with a close action, never a demo fallback or a permanently blank window.
+
+## Validate
+
+Run `pnpm check`, `pnpm build` and
+`cargo test --manifest-path src-tauri/Cargo.toml`. Tests cover composition, strict
+params, native actions, simulation, sessions, measurement and monitor geometry.
+
+For an explicit Windows smoke check, close other native Strata instances, run
+`pnpm dev`, then in another terminal:
+
+```sh
+cargo run --manifest-path src-tauri/Cargo.toml -- --check-popups
+```
+
+This debug-only check opens real per-monitor AppBars containing the real volume
+widget and overlay, temporarily changes focus, checks opening/resizing/Escape/
+outside-pointer dismissal and subscription cleanup, then exits normally and
+releases AppBar reservations. It does not change audio routing or volume. It
+writes `%TEMP%/strata-popup-framework-check.json`; require `passed: true` and save
+new evidence files rather than overwriting historical ones. Avoid interacting
+with other windows while the focus checks run. Release builds ignore the flag.

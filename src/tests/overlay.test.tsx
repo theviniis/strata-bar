@@ -67,6 +67,26 @@ it('cancels a pending tooltip when the pointer leaves early', () => {
   expect(transport.show).not.toHaveBeenCalled()
 })
 
+it('anchors tooltips on the whole widget container, including its icon', () => {
+  render(<Target text="CPU" />)
+  const target = screen.getByTestId('target')
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  target.append(icon)
+  vi.spyOn(target, 'getBoundingClientRect').mockReturnValue(
+    new DOMRect(80, 0, 100, 30)
+  )
+  vi.spyOn(icon, 'getBoundingClientRect').mockReturnValue(
+    new DOMRect(100, 5, 14, 14)
+  )
+  fireEvent.pointerEnter(target)
+  act(() => vi.advanceTimersByTime(TOOLTIP_DELAY))
+  expect(transport.show).toHaveBeenCalledWith(
+    expect.objectContaining({
+      anchor: { x: 80, y: 0, width: 100, height: 30 }
+    })
+  )
+})
+
 it('drops a pending tooltip when the widget unmounts', () => {
   const { unmount } = render(<Target text="Volume do dispositivo padrão" />)
   fireEvent.pointerEnter(screen.getByTestId('target'))
@@ -94,8 +114,7 @@ it('shares the shadcn pill classes with the studio tooltip', () => {
     'bg-popover',
     'text-popover-foreground',
     'px-3',
-    'py-1.5',
-    'text-xs'
+    'py-1.5'
   ]) {
     expect(pill).toHaveClass(token)
   }

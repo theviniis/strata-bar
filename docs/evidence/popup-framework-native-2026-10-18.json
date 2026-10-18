@@ -1,0 +1,121 @@
+{
+  "bars": [
+    {
+      "client": [1920, 36],
+      "komorebiEligible": false,
+      "rect": [724, -1080, 2644, -1044],
+      "title": "Strata Â· \\\\.\\DISPLAY2",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "client": [3440, 36],
+      "komorebiEligible": false,
+      "rect": [0, 0, 3440, 36],
+      "title": "Strata Â· \\\\.\\DISPLAY1",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    }
+  ],
+  "checks": [
+    {
+      "escape": true,
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 1,
+          "positions": 3,
+          "shows": 1
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [3120, 36, 3440, 351],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 0,
+          "positions": 3,
+          "shows": 1
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [3120, 36, 3440, 351],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-22c6be2639ba7101",
+      "subscriptionsReleased": true
+    },
+    {
+      "escape": true,
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 3,
+          "positions": 9,
+          "shows": 3
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [2324, -1044, 2644, -729],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 2,
+          "positions": 9,
+          "shows": 3
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [2324, -1044, 2644, -729],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-24b83c25257477dd",
+      "subscriptionsReleased": true
+    }
+  ],
+  "monitors": [
+    {
+      "monitor": [0, 0, 3440, 1440],
+      "workArea": [0, 36, 3440, 1440]
+    },
+    {
+      "monitor": [724, -1080, 2644, 0],
+      "workArea": [724, -1044, 2644, 0]
+    }
+  ],
+  "passed": true
+}
