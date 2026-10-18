@@ -18,6 +18,7 @@ import { popupMetadata, type PopupId } from './catalog'
 import { resolvePopup, type PopupParams } from './registry'
 import { claimPopup, releasePopup } from './coordinator'
 import { PopupHost } from './PopupHost'
+import { POPUP_EXIT_MS, popupMotionEnabled } from './motion'
 
 interface TriggerContextValue {
   native: boolean
@@ -51,11 +52,24 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
     anchor
   )
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewClosing, setPreviewClosing] = useState(false)
+  const exitTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [previewError, setPreviewError] = useState('')
   const [theme, setTheme] = useState('dark')
   const owner = useId()
   const changePreview = useCallback(
     (next: boolean) => {
+      clearTimeout(exitTimer.current)
+      if (!next && popupMotionEnabled()) {
+        setPreviewClosing(true)
+        exitTimer.current = setTimeout(() => {
+          setPreviewOpen(false)
+          setPreviewClosing(false)
+          releasePopup(owner)
+        }, POPUP_EXIT_MS)
+        return
+      }
+      setPreviewClosing(false)
       if (next) {
         try {
           resolvePopup(popup, params)
@@ -75,7 +89,13 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
     },
     [popup, params, owner]
   )
-  useEffect(() => () => releasePopup(owner), [owner])
+  useEffect(
+    () => () => {
+      clearTimeout(exitTimer.current)
+      releasePopup(owner)
+    },
+    [owner]
+  )
   const setAnchor = useCallback((node: HTMLElement | null) => {
     anchor.current = node
   }, [])
@@ -125,6 +145,7 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
                 style={{ width: metadata.width, maxWidth: '100vw' }}
               >
                 <PreviewContent
+                  closing={previewClosing}
                   popup={popup}
                   params={params}
                   close={() => {
@@ -148,10 +169,12 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
 function PreviewContent({
   popup,
   params,
+  closing,
   close
 }: {
   popup: PopupId
   params: unknown
+  closing: boolean
   close(): void
 }) {
   const root = useRef<HTMLDivElement>(null)
@@ -200,6 +223,7 @@ function PreviewContent({
         id={popup}
         params={params}
         mode="demo"
+        closing={closing}
         {...placement}
         close={close}
       />

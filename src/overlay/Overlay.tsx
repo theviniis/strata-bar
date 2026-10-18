@@ -12,6 +12,7 @@ import { overlayTextClasses } from './typography'
  */
 export default function Overlay() {
   const [render, setRender] = useState<OverlayRender | null>(null)
+  const [closing, setClosing] = useState<string | null>(null)
   useEffect(() => {
     // The overlay is only meaningful inside the native host.
     if (!window.__TAURI_INTERNALS__) return
@@ -25,12 +26,16 @@ export default function Overlay() {
           const session = payload.session ?? 0
           if (session < latest) return
           latest = session
+          setClosing(null)
           setRender(payload)
         }
         const stopRender = await listen<OverlayRender>(
           'overlay:render',
           (event) => accept(event.payload)
         )
+        const stopClosing = await listen<string>('overlay:closing', (event) => {
+          if (!cancelled) setClosing(event.payload)
+        })
         const stopClear = await listen<number>('overlay:clear', (event) => {
           const session = event.payload ?? latest
           if (session < latest) return
@@ -39,10 +44,12 @@ export default function Overlay() {
         })
         if (cancelled) {
           stopRender()
+          stopClosing()
           stopClear()
         } else {
           dispose = () => {
             stopRender()
+            stopClosing()
             stopClear()
           }
           const { invoke } = await import('@tauri-apps/api/core')
@@ -81,6 +88,7 @@ export default function Overlay() {
           id={render.component}
           params={render.params}
           mode="native"
+          closing={closing !== null && closing === render.popup_session}
           close={() => {
             void overlay.hide(render.popup_session).catch(console.error)
           }}

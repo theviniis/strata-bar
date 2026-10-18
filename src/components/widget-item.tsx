@@ -62,11 +62,14 @@ export interface WidgetItemOutputProps extends ComponentProps<'output'> {
 export function WidgetItemOutput({
   className,
   asChild = false,
+  children,
   ...props
 }: WidgetItemOutputProps) {
   const Comp = asChild ? Slot : 'output'
   return (
-    <Comp className={cn('flex items-center gap-1', className)} {...props} />
+    <Comp className={cn('flex items-center gap-1', className)} {...props}>
+      {children}%
+    </Comp>
   )
 }
 

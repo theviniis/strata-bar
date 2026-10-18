@@ -27,7 +27,7 @@ static COUNTS: [AtomicU64;4]=[const {AtomicU64::new(0)};4];
 static OVERLAY_COUNTS: [AtomicU64; 3] = [const { AtomicU64::new(0) }; 3];
 pub fn profile()->serde_json::Value{serde_json::json!({"windowMessages":COUNTS[0].load(Ordering::Relaxed),"appbarNotifications":COUNTS[1].load(Ordering::Relaxed),"positionWrites":COUNTS[2].load(Ordering::Relaxed),"windowPositionMessages":COUNTS[3].load(Ordering::Relaxed),"overlayShows":OVERLAY_COUNTS[0].load(Ordering::Relaxed),"overlayPositions":OVERLAY_COUNTS[1].load(Ordering::Relaxed),"overlayHides":OVERLAY_COUNTS[2].load(Ordering::Relaxed)})}
 #[derive(Clone)]
-struct PopupSession { id: String, source: String, side: OverlaySide, max_height: f64, revealed: bool }
+struct PopupSession { id: String, source: String, side: OverlaySide, max_height: f64, revealed: bool, closing: bool }
 static POPUP: Mutex<Option<PopupSession>> = Mutex::new(None);
 static LAST_OVERLAY_RENDER: Mutex<Option<serde_json::Value>> = Mutex::new(None);
 static OVERLAY_OWNER: Mutex<Option<String>> = Mutex::new(None);
@@ -609,17 +609,46 @@ pub fn overlay_hide_request(app: &AppHandle, session: Option<&str>) {
     if let Some(popup) = popup { if session != Some(popup.id.as_str()) { return; } }
     let owner = OVERLAY_OWNER.lock().unwrap().clone();
     if owner.as_deref() != session { return; }
+    if animate_popup_close(app, false) { return; }
     overlay_hide(app);
+}
+
+/// Hold the visible surface for its exit animation. The delayed completion
+/// checks ownership so it cannot hide a newer popup or tooltip.
+fn animate_popup_close(app: &AppHandle, restore_focus: bool) -> bool {
+    let popup = {
+        let mut active = POPUP.lock().unwrap();
+        let Some(popup) = active.as_mut() else { return false; };
+        if popup.closing { return true; }
+        popup.closing = true;
+        popup.clone()
+    };
+    let _ = app.emit_to(OVERLAY, "overlay:closing", &popup.id);
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(250));
+        let handle = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            let current = POPUP.lock().unwrap().clone();
+            if !current.is_some_and(|p| p.id == popup.id && p.closing) { return; }
+            if let Some(window) = handle.get_webview_window(OVERLAY) {
+                if let Ok(hwnd) = window.hwnd() {
+                    hide_overlay_hwnd_with_focus(&handle, HWND(hwnd.0), restore_focus);
+                }
+            }
+            if restore_focus {
+                if let Some(source) = handle.get_webview_window(&popup.source) { let _ = source.set_focus(); }
+            }
+        });
+    });
+    true
 }
 
 pub fn overlay_dismiss(app: &AppHandle, session: Option<&str>) {
     let current = POPUP.lock().unwrap().clone();
     if let Some(popup) = current {
         if session != Some(popup.id.as_str()) { return; }
-        if let Some(window) = app.get_webview_window(OVERLAY) {
-            if let Ok(hwnd) = window.hwnd() { hide_overlay_hwnd_with_focus(app, HWND(hwnd.0), true); }
-        }
-        if let Some(source) = app.get_webview_window(&popup.source) { let _ = source.set_focus(); }
+        animate_popup_close(app, true);
     }
 }
 
@@ -745,7 +774,7 @@ pub fn overlay_show(
     let session = OVERLAY_SESSION.fetch_add(1, Ordering::Relaxed) + 1;
     let interactive = request.kind == "popover";
     if interactive {
-        *POPUP.lock().unwrap() = Some(PopupSession { id: request.session.clone().unwrap(), source: caller.label().into(), side, max_height: spec.as_ref().unwrap().max_height, revealed: false });
+        *POPUP.lock().unwrap() = Some(PopupSession { id: request.session.clone().unwrap(), source: caller.label().into(), side, max_height: spec.as_ref().unwrap().max_height, revealed: false, closing: false });
     }
     *OVERLAY_OWNER.lock().unwrap() = request.session.clone();
     window.set_ignore_cursor_events(!interactive).map_err(|e| e.to_string())?;
@@ -802,7 +831,7 @@ unsafe extern "system" fn overlay_procedure(
             if let Some(popup) = current {
                 let foreground = HWND(lp.0 as *mut core::ffi::c_void);
                 let source = state.app.get_webview_window(&popup.source).and_then(|w| w.hwnd().ok()).map(|h| HWND(h.0));
-                if source != Some(foreground) { hide_overlay_hwnd(&state.app, hwnd); }
+                if source != Some(foreground) { animate_popup_close(&state.app, false); }
             }
         }
         WM_STYLECHANGED => {

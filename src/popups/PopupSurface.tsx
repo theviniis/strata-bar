@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { tooltipArrowClasses } from '../components/ui/tooltip-classes'
 import { cn } from '../lib/utils'
 import { overlay, type OverlaySide } from '../services/system/overlay'
 import { POPUP_GAP } from './catalog'
+import { POPUP_EXIT_MS } from './motion'
 
 export interface PopupSurfaceProps {
   label: string
@@ -11,6 +12,7 @@ export interface PopupSurfaceProps {
   session?: string
   side?: OverlaySide
   arrowX?: number
+  closing?: boolean
   close(): void
   children: ReactNode
 }
@@ -23,35 +25,58 @@ export function PopupSurface({
   session,
   side = 'bottom',
   arrowX,
+  closing = false,
   close,
   children
 }: PopupSurfaceProps) {
   const root = useRef<HTMLDivElement>(null)
   const surface = useRef<HTMLDivElement>(null)
   const visual = useRef<HTMLDivElement>(null)
+  const openingFrame = useRef<number | undefined>(undefined)
+  const motion = useRef<Animation | undefined>(undefined)
   const [available, setAvailable] = useState(maxHeight)
-  useEffect(() => {
+  useLayoutEffect(() => {
     const node = surface.current
     let animation: Animation | undefined
-    let frame: number | undefined
+    // Prepare before the native window is revealed, so its first paint is
+    // already transparent. Layout measurements use the untransformed wrapper.
+    if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      animation = visual.current?.animate?.(
+        [
+          {
+            opacity: 0,
+            transform: `translateY(${side === 'bottom' ? -POPUP_GAP : POPUP_GAP}px) scale(0.12, 0.04)`,
+            borderRadius: '32px',
+            filter: 'blur(3px)'
+          },
+          {
+            opacity: 1,
+            transform: 'translateY(0) scale(1)',
+            borderRadius: '12px',
+            filter: 'blur(0px)'
+          }
+        ],
+        {
+          duration: 420,
+          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          fill: 'both'
+        }
+      )
+      motion.current = animation
+      animation?.pause()
+      if (animation) animation.currentTime = 0
+    }
     const animateOpen = () => {
-      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
-        return
-      frame = requestAnimationFrame(() => {
-        animation = visual.current?.animate?.(
-          [
-            {
-              opacity: 0,
-              transform: `translateY(${side === 'bottom' ? -4 : 4}px)`
-            },
-            { opacity: 1, transform: 'translateY(0)' }
-          ],
-          { duration: 160, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
-        )
+      if (!animation) return
+      // A resize reply can precede WebView presentation. Give the visible
+      // window a frame before advancing the prepared animation.
+      openingFrame.current = requestAnimationFrame(() => {
+        openingFrame.current = requestAnimationFrame(() => animation?.play())
       })
     }
     const stopAnimation = () => {
-      if (frame !== undefined) cancelAnimationFrame(frame)
+      if (openingFrame.current !== undefined)
+        cancelAnimationFrame(openingFrame.current)
       animation?.cancel()
     }
     if (mode === 'demo') {
@@ -96,15 +121,55 @@ export function PopupSurface({
       observer?.disconnect()
     }
   }, [mode, session, maxHeight, side])
+  useLayoutEffect(() => {
+    const node = visual.current
+    if (
+      !closing ||
+      !node ||
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    )
+      return
+    if (openingFrame.current !== undefined)
+      cancelAnimationFrame(openingFrame.current)
+    const current = getComputedStyle(node)
+    const start = {
+      opacity: current.opacity,
+      transform: current.transform,
+      filter: current.filter
+    }
+    motion.current?.cancel()
+    const exit = node.animate?.(
+      [
+        start,
+        {
+          opacity: 0,
+          transform: `translateY(${side === 'bottom' ? -POPUP_GAP : POPUP_GAP}px) scale(0.12, 0.04)`,
+          filter: 'blur(3px)'
+        }
+      ],
+      {
+        duration: POPUP_EXIT_MS,
+        easing: 'cubic-bezier(0.4, 0, 0.7, 0.2)',
+        fill: 'forwards'
+      }
+    )
+    return () => exit?.cancel()
+  }, [closing, side])
   return (
-    <div ref={surface}>
+    <div ref={surface} inert={closing || undefined}>
       <div
         ref={visual}
         className="relative"
         style={
           side === 'bottom'
-            ? { paddingTop: POPUP_GAP }
-            : { paddingBottom: POPUP_GAP }
+            ? {
+                paddingTop: POPUP_GAP,
+                transformOrigin: `${arrowX ?? '50%'}${typeof arrowX === 'number' ? 'px' : ''} 0%`
+              }
+            : {
+                paddingBottom: POPUP_GAP,
+                transformOrigin: `${arrowX ?? '50%'}${typeof arrowX === 'number' ? 'px' : ''} 100%`
+              }
         }
       >
         <div

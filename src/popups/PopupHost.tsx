@@ -32,6 +32,7 @@ export interface PopupHostProps {
   session?: string
   side?: OverlaySide
   arrowX?: number
+  closing?: boolean
   close(): void
 }
 
