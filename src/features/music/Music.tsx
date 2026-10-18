@@ -1,5 +1,3 @@
-import { useEffect, useRef, useState } from 'react'
-import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
 import {
   WidgetItem,
   WidgetItemIcon,
@@ -19,6 +17,72 @@ import type {
   MediaData,
   MediaRequest
 } from '@/services/system/media.generated'
+import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+
+// Keep the controls fixed while only overflowing metadata travels at 24 px/s.
+function MusicText({
+  text,
+  describedBy
+}: {
+  text: string
+  describedBy: string
+}) {
+  const viewport = useRef<HTMLSpanElement>(null)
+  const content = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    const box = viewport.current
+    const label = content.current
+    if (!box || !label) return
+    const motion = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    let animation: Animation | undefined
+    const measure = () => {
+      animation?.cancel()
+      animation = undefined
+      const distance = label.scrollWidth - box.clientWidth
+      if (distance <= 0 || box.clientWidth === 0 || motion?.matches) return
+      const travel = (distance / 24) * 1000
+      const duration = 2 * travel + 2400
+      const pause = 1200 / duration
+      animation = label.animate?.(
+        [
+          { transform: 'translateX(0)', offset: 0 },
+          { transform: 'translateX(0)', offset: pause },
+          { transform: `translateX(-${distance}px)`, offset: 0.5 },
+          { transform: `translateX(-${distance}px)`, offset: 0.5 + pause },
+          { transform: 'translateX(0)', offset: 1 }
+        ],
+        { duration, iterations: Infinity, easing: 'linear' }
+      )
+    }
+    const observer =
+      typeof ResizeObserver === 'undefined'
+        ? undefined
+        : new ResizeObserver(measure)
+    observer?.observe(box)
+    observer?.observe(label)
+    motion?.addEventListener?.('change', measure)
+    window.addEventListener('resize', measure)
+    measure()
+    return () => {
+      animation?.cancel()
+      observer?.disconnect()
+      motion?.removeEventListener?.('change', measure)
+      window.removeEventListener('resize', measure)
+    }
+  }, [text])
+  return (
+    <span
+      ref={viewport}
+      className="relative z-10 mx-1 min-w-0 flex-1 overflow-hidden text-[11px] motion-reduce:text-ellipsis"
+      aria-describedby={describedBy}
+    >
+      <span ref={content} className="inline-block whitespace-nowrap">
+        {text}
+      </span>
+    </span>
+  )
+}
 
 export function Music() {
   const event = useSystemChannel('media')
@@ -69,9 +133,6 @@ export function MusicContent({
   demo?: boolean
 }) {
   const current = event.status === 'ready' ? event.data : null
-  const available = Boolean(current)
-  const [retained, setRetained] = useState(current)
-  const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const [failure, setFailure] = useState<{
     identity: string
@@ -84,23 +145,13 @@ export function MusicContent({
   useEffect(() => {
     latestIdentity.current = identity
   }, [identity])
-  if (current && current !== retained) setRetained(current)
-  useEffect(() => {
-    const reduced = window.matchMedia?.(
-      '(prefers-reduced-motion: reduce)'
-    ).matches
-    const frame = requestAnimationFrame(() => setOpen(available))
-    const timer = available
-      ? undefined
-      : setTimeout(() => setRetained(null), reduced ? 0 : 180)
-    return () => {
-      cancelAnimationFrame(frame)
-      clearTimeout(timer)
-    }
-  }, [available])
-  const text = retained
-    ? `${retained.title || 'Sem título'}${retained.artist ? ` — ${retained.artist}` : ''}`
-    : ''
+  const text = current
+    ? `${current.title || 'Sem título'}${current.artist ? ` — ${current.artist}` : ''}`
+    : event.status === 'loading'
+      ? 'Carregando mídia…'
+      : event.status === 'error'
+        ? 'Mídia indisponível'
+        : 'Nenhuma música tocando'
   const tooltip = `${demo ? 'Demonstração · ' : ''}${text}${error ? ` · ${error}` : ''}`
   const tip = useOverlayTooltip(tooltip)
   async function act(action: MediaAction) {
@@ -126,64 +177,69 @@ export function MusicContent({
   return (
     <div
       aria-label={demo ? 'Música · demonstração' : 'Música'}
-      aria-hidden={!current}
-      inert={!current}
-      className="min-w-0 shrink overflow-hidden transition-[max-width,opacity,margin-right] duration-180 motion-reduce:transition-none"
-      style={{
-        width: 240,
-        maxWidth: open ? 240 : 0,
-        opacity: open ? 1 : 0,
-        marginRight: open && !demo ? 8 : 0
-      }}
+      className="min-w-0 max-w-45 shrink overflow-hidden"
     >
-      {retained && (
-        <div
-          className="relative isolate flex min-w-0 items-center overflow-hidden rounded bg-muted/40 text-inherit group-data-[theme=light]:bg-[#302a3e]/5"
-          {...tip.trigger}
+      <div
+        className="relative isolate flex min-w-0 items-center overflow-hidden rounded bg-muted/40 text-inherit [text-shadow:0_1px_2px_rgb(0_0_0/0.9)] group-data-[theme=light]:bg-[#302a3e]/5 group-data-[theme=light]:text-shadow-none"
+        {...tip.trigger}
+      >
+        {current?.artwork.status === 'ready' && current.artwork.value && (
+          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]">
+            <img
+              src={current.artwork.value}
+              alt=""
+              onError={(event) => {
+                event.currentTarget.style.display = 'none'
+              }}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </div>
+        )}
+        <MediaControls current={current} pending={pending} onClick={act} />
+        <MusicText text={text} describedBy={tip.describedBy} />
+        <WidgetItemTooltip id={tip.describedBy}>{tooltip}</WidgetItemTooltip>
+      </div>
+    </div>
+  )
+}
+
+const mediaControlMap = (current: MediaData | null) =>
+  [
+    ['previous', 'Faixa anterior', SkipBack],
+    [
+      'playPause',
+      current?.playback === 'playing' ? 'Pausar' : 'Reproduzir',
+      current?.playback === 'playing' ? Pause : Play
+    ],
+    ['next', 'Próxima faixa', SkipForward]
+  ] as const
+
+type NediaControlMapReturn = ReturnType<typeof mediaControlMap>[number][0]
+
+interface MediaControlsProps {
+  current: MediaData | null
+  pending: boolean
+  onClick: (data: { action: NediaControlMapReturn }) => void
+}
+
+function MediaControls({ current, pending, onClick }: MediaControlsProps) {
+  return (
+    <div className="flex items-center">
+      {mediaControlMap(current).map(([action, label, Icon]) => (
+        <WidgetItem
+          key={action}
+          aria-label={label}
+          disabled={!current || pending || !current.capabilities[action]}
+          className="relative z-10 shrink-0 px-1 disabled:opacity-40"
+          onClick={() => onClick({ action })}
         >
-          {retained.artwork.status === 'ready' && retained.artwork.value && (
-            <>
-              <img
-                src={retained.artwork.value}
-                alt=""
-                onError={(event) => {
-                  event.currentTarget.style.display = 'none'
-                }}
-                className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover"
-              />
-              <span className="pointer-events-none absolute inset-0 -z-10 bg-background/85 group-data-[theme=light]:bg-[#f8f5f2]/85" />
-            </>
-          )}
-          {(
-            [
-              ['previous', 'Faixa anterior', SkipBack],
-              [
-                'playPause',
-                retained.playback === 'playing' ? 'Pausar' : 'Reproduzir',
-                retained.playback === 'playing' ? Pause : Play
-              ],
-              ['next', 'Próxima faixa', SkipForward]
-            ] as const
-          ).map(([action, label, Icon]) => (
-            <WidgetItem
-              key={action}
-              aria-label={label}
-              disabled={!current || pending || !retained.capabilities[action]}
-              className="shrink-0 px-1 disabled:opacity-40"
-              onClick={() => void act({ action })}
-            >
-              <WidgetItemIcon icon={Icon} size={12} />
-            </WidgetItem>
-          ))}
-          <span
-            className="min-w-0 truncate px-1 text-[11px]"
-            aria-describedby={tip.describedBy}
-          >
-            {text}
-          </span>
-          <WidgetItemTooltip id={tip.describedBy}>{tooltip}</WidgetItemTooltip>
-        </div>
-      )}
+          <WidgetItemIcon
+            icon={Icon}
+            size={14}
+            className="text-primary cursor-pointer"
+          />
+        </WidgetItem>
+      ))}
     </div>
   )
 }
