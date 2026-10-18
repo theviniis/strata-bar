@@ -1,15 +1,19 @@
+import { ResourceGraph } from '@/components/ResourceGraph'
+import {
+  newestTimestamp,
+  projectResourceWindow
+} from '@/components/resource-graph'
 import {
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
-import { ResourceGraph } from '@/components/ResourceGraph'
+import { useResourceChannel } from '@/hooks/useResourceChannel'
 import { usePopupContext } from '@/popups/context'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { CpuData } from '@/services/system/cpu.generated'
 import { useState } from 'react'
-import { useResourceChannel } from '@/hooks/useResourceChannel'
 import { formatCpuMetric } from './presentation'
 
 export function CpuPopup() {
@@ -75,12 +79,25 @@ export function CpuPopupContent({
     metric: CpuData['percent'],
     unit: Parameters<typeof formatCpuMetric>[1]
   ) => formatCpuMetric(metric, unit, now, ready)
-  const temperatures = data.history
-    .filter((p) => p.timestamp >= now - 60000 && p.timestamp <= now)
-    .map((p) => p.temperatureCelsius ?? 0)
+  const temperaturePoints = data.history
+    .filter(
+      (p) => p.temperatureCelsius !== null || p.temperatureUpdatedAt === null
+    )
+    .map((p) => ({
+      sequence: p.sequence,
+      timestamp: p.temperatureUpdatedAt ?? p.timestamp,
+      value: p.temperatureCelsius
+    }))
+  // The scale and the line share one window, anchored to the newest
+  // observation: filtering by the clock made the axis jump on its own whenever
+  // the warmest reading aged past a tick.
+  const observed = projectResourceWindow(
+    temperaturePoints,
+    newestTimestamp(temperaturePoints, now)
+  ).samples
   const maximum = Math.max(
     100,
-    Math.ceil(Math.max(0, ...temperatures) / 10) * 10
+    Math.ceil(Math.max(0, ...observed.map((p) => p.value ?? 0)) / 10) * 10
   )
   const fields = [
     ['Uso', format(data.percent, 'percent'), data.percent.error],
@@ -132,22 +149,14 @@ export function CpuPopupContent({
           unit="%"
         />
         <ResourceGraph
-          points={data.history
-            .filter(
-              (p) =>
-                p.temperatureCelsius !== null || p.temperatureUpdatedAt === null
-            )
-            .map((p) => ({
-              sequence: p.sequence,
-              timestamp: p.temperatureUpdatedAt ?? p.timestamp,
-              value: p.temperatureCelsius
-            }))}
+          points={temperaturePoints}
           now={now}
           label="Temperatura"
           description="Temperatura do pacote da CPU"
           unit="°C"
           maxGapMs={6000}
           maximum={maximum}
+          color="var(--chart-5)"
         />
         <dl className="grid grid-cols-2 gap-3 text-xs">
           {fields.map(([label, value, error]) => (

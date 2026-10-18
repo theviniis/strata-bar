@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
 import { CpuPopupContent } from '@/features/cpu/CpuPopup'
 import type { CpuData } from '@/services/system/cpu.generated'
@@ -37,7 +37,7 @@ function observation(): CpuData {
     ]
   }
 }
-it('shows independent CPU indicators and both inspectable observed graphs', () => {
+it('shows independent CPU indicators and both observed graphs', () => {
   render(
     <CpuPopupContent
       event={{ status: 'ready', data: observation() }}
@@ -49,9 +49,11 @@ it('shows independent CPU indicators and both inspectable observed graphs', () =
   expect(screen.getByText('2.90 GHz')).toBeVisible()
   expect(screen.getByText('6 / 12')).toBeVisible()
   expect(screen.getByText('42.5 °C')).toBeVisible()
-  expect(screen.getAllByRole('img')).toHaveLength(2)
-  fireEvent.focus(screen.getByRole('button', { name: /42.5 °C/ }))
-  expect(screen.getByRole('status')).toHaveTextContent('42.5 °C')
+  expect(screen.getAllByRole('group')).toHaveLength(2)
+  expect(screen.getByRole('group', { name: /Utilização da CPU/ })).toBeVisible()
+  expect(
+    screen.getByRole('group', { name: /Temperatura do pacote da CPU/ })
+  ).toBeVisible()
 })
 it('keeps Windows readings usable when Afterburner is unavailable', () => {
   const data = observation()
@@ -68,7 +70,8 @@ it('keeps Windows readings usable when Afterburner is unavailable', () => {
   expect(screen.getByText('3.98 GHz')).toBeVisible()
   expect(screen.getByText('Indisponível')).toBeVisible()
   expect(screen.getByText(/requer MSI Afterburner/)).toBeVisible()
-  expect(screen.queryByRole('button', { name: /°C/ })).not.toBeInTheDocument()
+  // The unavailable sensor reads as a gap, never as an invented point.
+  expect(screen.getByText(/1 leitura indisponível/)).toBeVisible()
 })
 it('shows loading without zeros and preserves stale readings after transport failure', () => {
   const view = render(
@@ -105,10 +108,33 @@ it('keeps temperature above 100 visible and excludes expired graph observations'
     }
   ]
   render(<CpuPopupContent event={{ status: 'ready', data }} now={at} />)
-  expect(screen.getByRole('img', { name: /Temperatura.*130/ })).toBeVisible()
-  expect(
-    screen.queryByRole('button', { name: /180.0 °C/ })
-  ).not.toBeInTheDocument()
-  fireEvent.focus(screen.getByRole('button', { name: /121.0 °C/ }))
-  expect(screen.getByRole('status')).toHaveTextContent('121.0 °C')
+  // The scale is taken from the observed window only: the expired 180 °C
+  // sample can neither raise the maximum nor reach the line.
+  expect(screen.getByRole('group', { name: /Temperatura.*130/ })).toBeVisible()
+  expect(screen.getByText('130 °C')).toBeVisible()
+})
+it('scales the temperature graph from its own window, not from the clock', () => {
+  const data = observation()
+  data.history = [
+    {
+      sequence: 1,
+      timestamp: at,
+      percent: 20,
+      temperatureCelsius: 121,
+      temperatureUpdatedAt: at
+    },
+    {
+      sequence: 2,
+      timestamp: at + 900,
+      percent: 30,
+      temperatureCelsius: 180,
+      temperatureUpdatedAt: at + 900
+    }
+  ]
+  render(<CpuPopupContent event={{ status: 'ready', data }} now={at} />)
+  // The newest reading landed after the clock's last tick. It is still the
+  // newest observation, so it ends the drawn window and sets the scale; a
+  // clock-filtered window would drop it for the rest of the second.
+  expect(screen.getByRole('group', { name: /Temperatura.*180/ })).toBeVisible()
+  expect(screen.getByText('180 °C')).toBeVisible()
 })

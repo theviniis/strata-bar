@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
 import { MemoryPopupContent } from '../features/memory/MemoryPopup'
 
@@ -69,7 +69,7 @@ it('keeps physical readings when cache fails and distinguishes an absent paging 
   expect(screen.getByText('Não configurado')).toBeInTheDocument()
 })
 
-it('exposes observed samples and gaps without displaying expired history', () => {
+it('exposes the observed window and preserves its gaps', () => {
   render(
     <MemoryPopupContent
       event={{
@@ -89,13 +89,8 @@ it('exposes observed samples and gaps without displaying expired history', () =>
     />
   )
   expect(
-    screen.getByRole('img', { name: /últimos 60 segundos/ })
-  ).toBeInTheDocument()
-  expect(
-    screen.queryByRole('button', { name: /90.0%/ })
-  ).not.toBeInTheDocument()
-  fireEvent.focus(screen.getByRole('button', { name: /40.0%/ }))
-  expect(screen.getByRole('status')).toHaveTextContent('40.0%')
+    screen.getByRole('group', { name: /últimos 60 segundos/ })
+  ).toBeVisible()
   expect(screen.getByText(/1 leitura indisponível/)).toBeInTheDocument()
 })
 

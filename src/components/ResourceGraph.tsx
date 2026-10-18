@@ -1,6 +1,17 @@
-import { useState } from 'react'
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig
+} from '@/components/ui/chart'
+import { cn } from '@/lib/utils'
+import {
+  newestTimestamp,
+  projectResourceWindow,
+  type ResourceGraphPoint
+} from './resource-graph'
 
-type GraphPoint = { sequence: number; timestamp: number; value: number | null }
 export function ResourceGraph({
   points,
   now,
@@ -8,99 +19,108 @@ export function ResourceGraph({
   description,
   unit,
   maximum = 100,
-  maxGapMs = 3000
+  maxGapMs = 3000,
+  color = 'var(--chart-1)',
+  className
 }: {
-  points: GraphPoint[]
+  points: ResourceGraphPoint[]
   now: number
   label: string
   description: string
   unit: '%' | '°C'
   maximum?: number
+  /** Maximum silence between observations before the line is interrupted. */
   maxGapMs?: number
+  /** Colour of the line; any CSS colour, by default the chart-1 token. */
+  color?: string
+  /** Extra classes for the chart surface, e.g. to override the line stroke. */
+  className?: string
 }) {
-  const [selected, setSelected] = useState<number | null>(null)
-  const samples = points.filter(
-    (point) => point.timestamp >= now - 60000 && point.timestamp <= now
-  )
-  const inspected = samples.find((point) => point.sequence === selected)
+  // The readings alone own the window; the clock only reports age. A
+  // clock-anchored window dropped the reading that landed just after a tick as
+  // future-dated and moved one edge per tick while the next reading moved the
+  // other, so the chart stretched and snapped back on every poll.
+  const anchor = newestTimestamp(points, now)
+  const { samples, series } = projectResourceWindow(points, anchor, maxGapMs)
+  const missing = samples.filter((point) => point.value === null).length
+  // The window is drawn across the observed extent, so the area reaches the
+  // container edges instead of leaving a gap the width of the polling
+  // interval. A single reading has no extent to fill.
+  const window: [number | string, number | string] =
+    samples.length > 1 ? ['dataMin', 'dataMax'] : [0, 60]
   const format = (value: number) =>
     `${value.toFixed(1)}${unit === '%' ? '' : ' '}${unit}`
-  let path = ''
-  let previous: GraphPoint | undefined
-  for (const point of samples) {
-    if (point.value === null) {
-      previous = undefined
-      continue
-    }
-    const x = ((point.timestamp - now + 60000) / 60000) * 288
-    const y = 100 - (point.value / maximum) * 100
-    const connected =
-      previous && point.timestamp - previous.timestamp <= maxGapMs
-    path += `${connected ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)} `
-    previous = point
-  }
-  const missing = samples.filter((point) => point.value === null).length
+  const scale = `${maximum}${unit === '%' ? '' : ' '}${unit}`
+  const chartConfig = {
+    value: { label, color }
+  } satisfies ChartConfig
   return (
     <div className="mb-4">
       <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
         <span>{label} · 60 segundos</span>
-        <span>
-          {maximum}
-          {unit === '%' ? '' : ' '}
-          {unit}
-        </span>
+        <span>{scale}</span>
       </div>
-      <div className="relative h-28 rounded border border-border bg-muted/20">
-        <svg
-          role="img"
-          aria-label={`${description} nos últimos 60 segundos, escala de 0 a ${maximum}${unit}`}
-          viewBox="0 0 288 100"
-          preserveAspectRatio="none"
-          className="h-full w-full text-primary"
-        >
-          <path
-            d="M0 25H288 M0 50H288 M0 75H288"
-            stroke="currentColor"
-            strokeOpacity="0.12"
-            fill="none"
-          />
-          <path
-            d={path}
-            stroke="currentColor"
-            strokeWidth="1.5"
-            fill="none"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
-        {samples.map(
-          (point) =>
-            point.value !== null && (
-              <button
-                key={point.sequence}
-                type="button"
-                aria-label={`${format(point.value)} · ${new Date(point.timestamp).toLocaleTimeString()}`}
-                onPointerEnter={() => setSelected(point.sequence)}
-                onFocus={() => setSelected(point.sequence)}
-                onClick={() => setSelected(point.sequence)}
-                className="absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-transparent hover:border-primary focus-visible:border-primary focus-visible:outline-none"
-                style={{
-                  left: `${((point.timestamp - now + 60000) / 60000) * 100}%`,
-                  top: `${100 - (point.value / maximum) * 100}%`
-                }}
-              />
-            )
+      <ChartContainer
+        config={chartConfig}
+        className={cn(
+          'aspect-auto h-28 w-full rounded border border-border bg-muted/20',
+          className
         )}
-      </div>
+        role="group"
+        aria-label={`${description} nos últimos 60 segundos, escala de 0 a ${scale}`}
+      >
+        <AreaChart
+          accessibilityLayer
+          data={series}
+          margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+        >
+          <CartesianGrid vertical={false} />
+          <XAxis
+            dataKey="offset"
+            type="number"
+            domain={window}
+            padding={{ left: 0, right: 0 }}
+            hide
+          />
+          <YAxis domain={[0, maximum]} hide />
+          <ChartTooltip
+            cursor={false}
+            content={
+              <ChartTooltipContent
+                indicator="dot"
+                labelFormatter={(_value, payload) => {
+                  const offset = payload?.[0]?.payload?.offset
+                  if (typeof offset !== 'number') return 'Histórico observado'
+                  // Age is measured against the clock, not against the
+                  // window's own end, so a reading that landed a second ago
+                  // does not claim to be from this instant. Afterburner
+                  // reports whole seconds, so it can sit a moment ahead of a
+                  // clock that was last read before it landed.
+                  const age = 60 - offset + (now - anchor) / 1000
+                  return `${Math.max(0, Math.round(age))} s atrás`
+                }}
+                formatter={(value) =>
+                  typeof value === 'number' ? format(value) : String(value)
+                }
+              />
+            }
+          />
+          <Area
+            dataKey="value"
+            type="linear"
+            fill="var(--color-value)"
+            fillOpacity={0.4}
+            stroke="var(--color-value)"
+            // Readings arrive every 2 s; the enter animation would restart on
+            // every sample and make a sliding window look like it is stuttering.
+            isAnimationActive={false}
+          />
+        </AreaChart>
+      </ChartContainer>
       <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
         <span>60 s atrás</span>
         <span>Agora · 0{unit}</span>
       </div>
-      {inspected && inspected.value !== null && (
-        <p role="status" className="mt-1 text-xs tabular-nums">
-          {format(inspected.value)} ·{' '}
-          {new Date(inspected.timestamp).toLocaleTimeString()}
-        </p>
-      )}
       {missing > 0 && (
         <p className="mt-1 text-[10px] text-muted-foreground">
           {missing}{' '}
