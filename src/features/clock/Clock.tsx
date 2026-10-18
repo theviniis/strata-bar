@@ -33,7 +33,9 @@ export function Clock({ showDate = false }: ClockProps) {
               </time>
 
               {showDate && (
-                <span className="text-[10px] text-subtext">{date}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {date}
+                </span>
               )}
 
               <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>

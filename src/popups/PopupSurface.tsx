@@ -1,3 +1,4 @@
+import { Card } from '@/components/ui/card'
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { tooltipArrowClasses } from '../components/ui/tooltip-classes'
 import { cn } from '../lib/utils'
@@ -175,12 +176,12 @@ export function PopupSurface({
               }
         }
       >
-        <div
+        <Card
           ref={root}
           role="dialog"
           aria-label={label}
           tabIndex={-1}
-          className="rounded-xl border border-border bg-popover p-3 text-[12px] text-popover-foreground shadow-lg outline-none group-data-[theme=light]:border-[#ded7e5] group-data-[theme=light]:bg-[#faf8fc] group-data-[theme=light]:text-[#302a3e]"
+          className="bg-popover text-[12px] shadow-lg outline-none"
           onKeyDown={(event) => {
             if (event.key === 'Escape') {
               event.preventDefault()
@@ -215,7 +216,7 @@ export function PopupSurface({
           }}
         >
           {children}
-        </div>
+        </Card>
         <span
           aria-hidden="true"
           style={{ left: (mode === 'native' ? placedArrowX : arrowX) ?? '50%' }}

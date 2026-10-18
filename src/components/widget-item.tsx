@@ -52,7 +52,10 @@ export function WidgetItemLabel({
 }: WidgetItemLabelProps) {
   const Comp = asChild ? Slot : 'span'
   return (
-    <Comp className={cn('text-[11px] text-subtext', className)} {...props} />
+    <Comp
+      className={cn('text-[11px] text-muted-foreground', className)}
+      {...props}
+    />
   )
 }
 

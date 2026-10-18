@@ -1,13 +1,23 @@
-import { useEffect, useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import {
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card'
+import { Slider } from '@/components/ui/slider'
+import { WidgetItemOutput } from '@/components/widget-item'
 import { Check, Volume2, VolumeX } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useSystemChannel } from '../../hooks/useSystemChannel'
+import { usePopupContext } from '../../popups/context'
 import {
   bridge,
   type ChannelData,
   type SystemEvent,
   type VolumeChange
 } from '../../services/system/bridge'
-import { usePopupContext } from '../../popups/context'
 
 type Outputs = ChannelData['audioOutputs']
 type Volume = ChannelData['volume']
@@ -18,8 +28,6 @@ interface AudioProps {
   setVolume(value: VolumeChange): Promise<unknown>
   retry(): void
 }
-const button =
-  'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 group-data-[theme=light]:hover:bg-[#ece6f2]'
 
 export function AudioOutputs() {
   const { mode } = usePopupContext('audioOutputs')
@@ -138,109 +146,96 @@ function AudioOutputsContent({
   const level = draft ?? (volume.status === 'ready' ? volume.data.level : 0)
   const muted = volume.status === 'ready' && volume.data.muted
   const Icon = muted ? VolumeX : Volume2
+
   return (
     <div className="flex flex-col">
-      <h2 className="shrink-0 px-3 py-2 text-sm font-semibold">
-        Saída de áudio
-      </h2>
-      <div className="" aria-busy={pending !== null}>
-        {outputs.status === 'loading' && (
-          <p role="status" className="p-3">
-            Carregando saídas…
-          </p>
-        )}
-        {outputs.status === 'error' && (
-          <p role="alert" className="p-3 text-[#ff9b91]">
-            {outputs.error}
-          </p>
-        )}
-        {outputs.status === 'error' && (
-          <button className={button} onClick={retry}>
-            Tentar novamente
-          </button>
-        )}
-        {outputs.status === 'unavailable' && (
-          <p className="p-3">Saídas de áudio indisponíveis.</p>
-        )}
-        {data?.devices.length === 0 && (
-          <p className="p-3">Nenhuma saída de áudio disponível.</p>
-        )}
-        {data?.devices.map((device) => (
-          <button
-            key={device.id}
-            className={button}
-            aria-pressed={device.id === data.defaultDeviceId}
-            disabled={pending !== null}
-            onClick={() => void select(device.id)}
-          >
-            <Volume2 size={16} className="shrink-0 text-[#bba9e5]" />
-            <span className="min-w-0 flex-1 wrap-break-word">
-              {device.name}
-            </span>
-            {device.id === data.defaultDeviceId && (
-              <Check
-                size={16}
-                aria-label="Saída atual"
-                className="shrink-0 text-[#c5b1ed]"
-              />
-            )}
-          </button>
-        ))}
-      </div>
-      {pending && (
-        <p role="status" className="px-3 py-1">
-          Aplicando…
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="px-3 py-1 text-[#ff9b91]">
-          {error}
-        </p>
-      )}
-      <div className="mt-2 shrink-0 border-t border-white/10 pt-2 group-data-[theme=light]:border-[#ded7e5]">
-        <div className="flex items-center gap-3 px-3 py-2">
-          <input
-            aria-label="Volume"
-            type="range"
-            min="0"
-            max="100"
-            value={level}
-            disabled={volume.status !== 'ready' || pending !== null}
-            className="min-w-0 flex-1 accent-[#c5b1ed] focus-visible:outline-2 focus-visible:outline-[#c5b1ed]"
-            onChange={(event) => setDraft(Number(event.target.value))}
-            onPointerUp={(event) =>
-              void setLevel(Number(event.currentTarget.value))
-            }
-            onKeyUp={(event) => {
-              if (
-                [
-                  'ArrowLeft',
-                  'ArrowRight',
-                  'ArrowUp',
-                  'ArrowDown',
-                  'Home',
-                  'End',
-                  'PageUp',
-                  'PageDown'
-                ].includes(event.key)
-              )
-                void setLevel(Number(event.currentTarget.value))
-            }}
-          />
-          <output aria-label="Volume atual" className="min-w-8 text-right">
-            {volume.status === 'ready' ? `${level}%` : '—'}
-          </output>
+      <CardHeader>
+        <CardTitle>Saída de audio</CardTitle>
+        <CardDescription>Controle o volume e a saída de audio</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="" aria-busy={pending !== null}>
+          {outputs.status === 'loading' && (
+            <p role="status" className="p-3">
+              Carregando saídas…
+            </p>
+          )}
+          {outputs.status === 'error' && (
+            <p role="alert" className="p-3 text-destructive">
+              {outputs.error}
+            </p>
+          )}
+          {outputs.status === 'error' && (
+            <Button variant={'destructive'} onClick={retry}>
+              Tentar novamente
+            </Button>
+          )}
+          {outputs.status === 'unavailable' && (
+            <p className="p-3">Saídas de áudio indisponíveis.</p>
+          )}
+          {data?.devices.length === 0 && (
+            <p className="p-3">Nenhuma saída de áudio disponível.</p>
+          )}
+          <div className="flex flex-col gap-2">
+            {data?.devices.map((device) => (
+              <Button
+                key={device.id}
+                aria-pressed={device.id === data.defaultDeviceId}
+                disabled={pending !== null}
+                onClick={() => void select(device.id)}
+                variant={'ghost'}
+                className="font-normal"
+              >
+                <Volume2 size={16} className="shrink-0 text-secondary" />
+                <span className="min-w-0 flex-1 wrap-break-word">
+                  {device.name}
+                </span>
+                {device.id === data.defaultDeviceId && (
+                  <Check
+                    size={16}
+                    aria-label="Saída atual"
+                    className="shrink-0 text-secondary"
+                  />
+                )}
+              </Button>
+            ))}
+          </div>
         </div>
-        <button
-          className={button}
+        {pending && (
+          <p role="status" className="px-3 py-1">
+            Aplicando…
+          </p>
+        )}
+        {error && (
+          <p role="alert" className="px-3 py-1 text-destructive">
+            {error}
+          </p>
+        )}
+      </CardContent>
+      <CardFooter className="gap-4">
+        <Button
           disabled={volume.status !== 'ready' || pending !== null}
           aria-pressed={muted}
           onClick={() => void mute()}
+          variant="ghost"
+          size="icon"
         >
           <Icon size={16} />
-          {muted ? 'Ativar som' : 'Silenciar'}
-        </button>
-      </div>
+        </Button>
+        <Slider
+          value={[level]}
+          defaultValue={[100]}
+          max={100}
+          step={1}
+          onValueChange={(value) => setLevel(value[0])}
+        />
+        <WidgetItemOutput
+          aria-label="Volume atual"
+          className="min-w-8 text-right"
+        >
+          {volume.status === 'ready' ? `${level}` : '—'}
+        </WidgetItemOutput>
+      </CardFooter>
     </div>
   )
 }
