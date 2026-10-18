@@ -1,0 +1,71 @@
+{
+  "capturedAtUtc": "2026-10-18T16:54:57.7003952Z",
+  "elevated": false,
+  "strata": {
+    "availableBytes": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792342496493.0,
+      "value": 17308528640.0
+    },
+    "cachedBytes": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792342496493.0,
+      "value": 14682296320.0
+    },
+    "history": [
+      {
+        "percent": 48.31749291760991,
+        "sequence": 1,
+        "timestamp": 1792342496493.0
+      }
+    ],
+    "pagingFileBytes": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792342496493.0,
+      "value": 62599168.0
+    },
+    "percent": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792342496493.0,
+      "value": 48.31749291760991
+    },
+    "sampledAt": 1792342496493.0,
+    "sequence": 1,
+    "totalBytes": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792342496493.0,
+      "value": 34254831616.0
+    },
+    "usedBytes": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792342496493.0,
+      "value": 16551075840.0
+    }
+  },
+  "windowsCounters": {
+    "AvailableBytes": 17302052864,
+    "ModifiedPageListBytes": 395067392,
+    "StandbyCacheCoreBytes": 57057280,
+    "StandbyCacheNormalPriorityBytes": 8573562880,
+    "StandbyCacheReserveBytes": 5657395200
+  },
+  "operatingSystem": {
+    "TotalVisibleMemorySize": 33451984,
+    "FreePhysicalMemory": 16898444
+  },
+  "pageFiles": [
+    {
+      "AllocatedBaseSize": 48000,
+      "CurrentUsage": 59
+    }
+  ],
+  "comparisonWindowMs": 1546,
+  "totalMatches": true,
+  "notes": "Independent CIM readings collected sequentially; memory can change between observations. Pagefile CurrentUsage is in whole MB. This is a source comparison, not a simultaneous Task Manager screenshot."
+}

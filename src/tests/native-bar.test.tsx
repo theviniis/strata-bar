@@ -20,12 +20,24 @@ vi.mock('../services/system/bridge', () => ({
     _options: SubscribeOptions,
     onValue: (event: SystemEvent<unknown>) => void
   ) => {
+    const metric = (value: number) => ({
+      status: 'ready',
+      value,
+      updatedAt: Date.now(),
+      error: null
+    })
     const data: Partial<Record<Channel, unknown>> = {
       cpu: { percent: 23.4 },
       memory: {
-        percent: 48.2,
-        usedBytes: 8 * 1073741824,
-        totalBytes: 16 * 1073741824
+        sequence: 1,
+        sampledAt: Date.now(),
+        history: [],
+        percent: metric(56.25),
+        usedBytes: metric(9663676416),
+        totalBytes: metric(17179869184),
+        availableBytes: metric(6442450944),
+        cachedBytes: metric(4294967296),
+        pagingFileBytes: metric(1073741824)
       },
       volume: { level: 64, muted: false },
       komorebi: {
@@ -59,7 +71,7 @@ import NativeBar from '../components/status-bar/NativeBar'
 it('renders real adapter snapshots and the audio popup trigger', () => {
   render(<NativeBar />)
   expect(screen.getByLabelText('Uso da CPU')).toHaveTextContent(/^23%?$/)
-  expect(screen.getByLabelText('Uso da RAM')).toHaveTextContent(/^48%?$/)
+  expect(screen.getByLabelText('Uso da RAM')).toHaveTextContent(/^56.3%?$/)
   expect(
     screen.getByRole('button', { name: 'Saída de áudio' })
   ).toHaveAttribute('aria-haspopup', 'dialog')

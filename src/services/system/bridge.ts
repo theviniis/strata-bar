@@ -1,3 +1,6 @@
+import type { MemoryData } from './memory.generated'
+import { parseMemoryEvent } from './memory'
+
 export type BridgeMode = 'demo' | 'native'
 
 /** Channels the UI can subscribe to. The clock renders locally, without a channel. */
@@ -36,7 +39,7 @@ export type KomorebiAction =
 /** Payloads published by the native collectors. */
 export interface ChannelData {
   cpu: { percent: number }
-  memory: { percent: number; usedBytes: number; totalBytes: number }
+  memory: MemoryData
   gpu: null
   network: number
   audioOutputs: {
@@ -186,11 +189,22 @@ export function createNativeBridge(): NativeBridge {
         listenChannel = currentWindow.listen.bind(currentWindow)
       }
       let receivedEvent = false
+      let memorySequence = -1
+      const deliver = (event: SystemEvent<ChannelData[C]>) => {
+        if (channel === 'memory') {
+          const parsed = parseMemoryEvent(event)
+          if (parsed.status === 'ready') {
+            if (parsed.data.sequence <= memorySequence) return
+            memorySequence = parsed.data.sequence
+          }
+          listener(parsed as SystemEvent<ChannelData[C]>)
+        } else listener(event)
+      }
       const stop = await listenChannel<SystemEvent<ChannelData[C]>>(
         `system:${channel}`,
         (e) => {
           receivedEvent = true
-          listener(e.payload)
+          deliver(e.payload)
         }
       )
       let token: string | undefined
@@ -203,7 +217,7 @@ export function createNativeBridge(): NativeBridge {
           intervalMs: options?.intervalMs
         })
         token = subscription.token
-        if (!receivedEvent) listener(subscription.initial)
+        if (!receivedEvent) deliver(subscription.initial)
       } catch (e) {
         stop()
         throw e

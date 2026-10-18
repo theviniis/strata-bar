@@ -1,0 +1,466 @@
+{
+  "bars": [
+    {
+      "client": [1920, 36],
+      "komorebiEligible": false,
+      "rect": [724, -1044, 2644, -1008],
+      "title": "Strata · \\\\.\\DISPLAY2",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "client": [3440, 36],
+      "komorebiEligible": false,
+      "rect": [0, 36, 3440, 72],
+      "title": "Strata · \\\\.\\DISPLAY1",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    }
+  ],
+  "checks": [
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "audioOutputs",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 1,
+          "positions": 6,
+          "shows": 1
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [3066, 72, 3440, 481],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": null,
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 0,
+          "positions": 2,
+          "shows": 1
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [3159, 72, 3440, 309],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-22c6be2639ba7101",
+      "subscriptionsReleased": true
+    },
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "memory",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 3,
+          "positions": 15,
+          "shows": 3
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [3118, 72, 3440, 462],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": {
+        "availableBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792342451772.0,
+          "value": 17115099136.0
+        },
+        "cachedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792342451772.0,
+          "value": 14667210752.0
+        },
+        "history": [
+          {
+            "percent": 48.47681381170097,
+            "sequence": 1,
+            "timestamp": 1792342451772.0
+          }
+        ],
+        "pagingFileBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792342451772.0,
+          "value": 62599168.0
+        },
+        "percent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792342451772.0,
+          "value": 48.47681381170097
+        },
+        "sampledAt": 1792342451772.0,
+        "sequence": 1,
+        "totalBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792342451772.0,
+          "value": 34254831616.0
+        },
+        "usedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792342451772.0,
+          "value": 16605650944.0
+        }
+      },
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 2,
+          "positions": 12,
+          "shows": 3
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [3118, 72, 3440, 462],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-22c6be2639ba7101",
+      "subscriptionsReleased": true
+    },
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "audioOutputs",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 5,
+          "positions": 24,
+          "shows": 5
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [2270, -1008, 2644, -599],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": null,
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 4,
+          "positions": 21,
+          "shows": 5
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [2270, -1008, 2644, -599],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-24b83c25257477dd",
+      "subscriptionsReleased": true
+    },
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "memory",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 7,
+          "positions": 33,
+          "shows": 7
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [2322, -1008, 2644, -618],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": {
+        "availableBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792342518612.0,
+          "value": 17380311040.0
+        },
+        "cachedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792342518612.0,
+          "value": 14684557312.0
+        },
+        "history": [
+          {
+            "percent": 48.52661653790101,
+            "sequence": 5,
+            "timestamp": 1792342460368.0
+          },
+          {
+            "percent": 48.5689219509372,
+            "sequence": 6,
+            "timestamp": 1792342462382.0
+          },
+          {
+            "percent": 48.5964240566419,
+            "sequence": 7,
+            "timestamp": 1792342464385.0
+          },
+          {
+            "percent": 48.60072873405655,
+            "sequence": 8,
+            "timestamp": 1792342466391.0
+          },
+          {
+            "percent": 48.093948627979735,
+            "sequence": 9,
+            "timestamp": 1792342468396.0
+          },
+          {
+            "percent": 48.10680287303737,
+            "sequence": 10,
+            "timestamp": 1792342470397.0
+          },
+          {
+            "percent": 48.09856419876322,
+            "sequence": 11,
+            "timestamp": 1792342472413.0
+          },
+          {
+            "percent": 48.31426440954892,
+            "sequence": 12,
+            "timestamp": 1792342474416.0
+          },
+          {
+            "percent": 48.321247552910464,
+            "sequence": 13,
+            "timestamp": 1792342476426.0
+          },
+          {
+            "percent": 48.43154295422358,
+            "sequence": 14,
+            "timestamp": 1792342478427.0
+          },
+          {
+            "percent": 48.283772944528494,
+            "sequence": 15,
+            "timestamp": 1792342480436.0
+          },
+          {
+            "percent": 48.21926257049507,
+            "sequence": 16,
+            "timestamp": 1792342482447.0
+          },
+          {
+            "percent": 48.2217018876967,
+            "sequence": 17,
+            "timestamp": 1792342484451.0
+          },
+          {
+            "percent": 48.218808187879084,
+            "sequence": 18,
+            "timestamp": 1792342486454.0
+          },
+          {
+            "percent": 48.12579128341088,
+            "sequence": 19,
+            "timestamp": 1792342488470.0
+          },
+          {
+            "percent": 48.133874511000606,
+            "sequence": 20,
+            "timestamp": 1792342490481.0
+          },
+          {
+            "percent": 48.12036260689351,
+            "sequence": 21,
+            "timestamp": 1792342492488.0
+          },
+          {
+            "percent": 48.134998510103316,
+            "sequence": 22,
+            "timestamp": 1792342494498.0
+          },
+          {
+            "percent": 48.295527105357934,
+            "sequence": 23,
+            "timestamp": 1792342496512.0
+          },
+          {
+            "percent": 48.190349487193345,
+            "sequence": 24,
+            "timestamp": 1792342498519.0
+          },
+          {
+            "percent": 48.21348712829708,
+            "sequence": 25,
+            "timestamp": 1792342500531.0
+          },
+          {
+            "percent": 48.18005413370998,
+            "sequence": 26,
+            "timestamp": 1792342502543.0
+          },
+          {
+            "percent": 48.181608600554156,
+            "sequence": 27,
+            "timestamp": 1792342504549.0
+          },
+          {
+            "percent": 48.18911787115527,
+            "sequence": 28,
+            "timestamp": 1792342506556.0
+          },
+          {
+            "percent": 48.197822885482665,
+            "sequence": 29,
+            "timestamp": 1792342508560.0
+          },
+          {
+            "percent": 48.06620737352977,
+            "sequence": 30,
+            "timestamp": 1792342510568.0
+          },
+          {
+            "percent": 48.07353728257194,
+            "sequence": 31,
+            "timestamp": 1792342512571.0
+          },
+          {
+            "percent": 48.06039605902,
+            "sequence": 32,
+            "timestamp": 1792342514587.0
+          },
+          {
+            "percent": 48.04165875482901,
+            "sequence": 33,
+            "timestamp": 1792342516600.0
+          },
+          {
+            "percent": 48.10726921309062,
+            "sequence": 34,
+            "timestamp": 1792342518612.0
+          }
+        ],
+        "pagingFileBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792342518612.0,
+          "value": 62599168.0
+        },
+        "percent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792342518612.0,
+          "value": 48.10726921309062
+        },
+        "sampledAt": 1792342518612.0,
+        "sequence": 34,
+        "totalBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792342518612.0,
+          "value": 34254831616.0
+        },
+        "usedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792342518612.0,
+          "value": 16479064064.0
+        }
+      },
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 6,
+          "positions": 30,
+          "shows": 7
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [2322, -1008, 2644, -618],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-24b83c25257477dd",
+      "subscriptionsReleased": true
+    }
+  ],
+  "memoryPauseResume": {
+    "gapMs": 8030.0,
+    "passed": true
+  },
+  "memoryRetention": {
+    "oldSampleExpired": true,
+    "passed": true,
+    "samples": 30,
+    "spanMs": 58241.0
+  },
+  "monitors": [
+    {
+      "monitor": [0, 0, 3440, 1440],
+      "workArea": [0, 72, 3440, 1440]
+    },
+    {
+      "monitor": [724, -1080, 2644, 0],
+      "workArea": [724, -1008, 2644, 0]
+    }
+  ],
+  "passed": true
+}

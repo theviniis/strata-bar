@@ -7,6 +7,8 @@ mod popup_check;
 mod audio_policy;
 mod komorebi;
 mod metrics;
+mod memory_contract;
+mod memory;
 use serde_json::{json, Value};
 use tauri::Manager;
 #[tauri::command]

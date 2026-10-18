@@ -157,14 +157,20 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
           : sample.status === 'error'
             ? 'Error'
             : 'Unavailable'
-  if (widget.type === 'volume') {
+  if (widget.type === 'volume' || widget.type === 'memory') {
     return (
-      <WidgetPopup.Root popup="audioOutputs">
+      <WidgetPopup.Root
+        popup={widget.type === 'memory' ? 'memory' : 'audioOutputs'}
+      >
         <WidgetPopup.Anchor asChild>
           <span className="inline-flex">
             <WidgetPopup.Trigger asChild>
               <button
-                aria-label="Saída de áudio"
+                aria-label={
+                  widget.type === 'memory'
+                    ? 'Detalhes da memória'
+                    : 'Saída de áudio'
+                }
                 className="flex items-center gap-1.5 rounded-sm p-1"
               >
                 <Icon size={14} />

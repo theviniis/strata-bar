@@ -15,7 +15,6 @@ use windows::{
         Media::Audio::{Endpoints::*, *},
         System::{
             Com::*,
-            SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX},
             Threading::GetSystemTimes,
         },
     },
@@ -58,16 +57,7 @@ pub fn cpu_percent(old: [u64; 3], new: [u64; 3]) -> Option<f64> {
     Some((100.0 * (total.saturating_sub(new[0] - old[0])) as f64 / total as f64).clamp(0., 100.))
 }
 pub fn memory() -> windows::core::Result<Value> {
-    unsafe {
-        let mut m = MEMORYSTATUSEX {
-            dwLength: std::mem::size_of::<MEMORYSTATUSEX>() as u32,
-            ..Default::default()
-        };
-        GlobalMemoryStatusEx(&mut m)?;
-        Ok(
-            json!({"percent":100.0*(m.ullTotalPhys-m.ullAvailPhys) as f64/m.ullTotalPhys as f64,"usedBytes":m.ullTotalPhys-m.ullAvailPhys,"totalBytes":m.ullTotalPhys}),
-        )
-    }
+    Ok(serde_json::to_value(crate::memory::MemoryCollector::default().collect()).expect("Memory contract serializes"))
 }
 unsafe fn endpoint(
     enumerator: &IMMDeviceEnumerator,
@@ -237,6 +227,7 @@ impl Metrics {
             }
             let mut audio: Option<(IAudioEndpointVolume, IAudioEndpointVolumeCallback)> = None;
             let mut previous = None;
+            let mut memory_collector = crate::memory::MemoryCollector::default();
             let mut next_tick = Instant::now();
             let mut ticks=0;
             let mut outputs_active = false;
@@ -306,10 +297,8 @@ impl Metrics {
                         previous = None;
                     }
                     if self.active("memory") {
-                        match memory() {
-                            Ok(v) => self.publish(&app, "memory", envelope("ready", v)),
-                            Err(e) => self.publish(&app, "memory", error(e)),
-                        }
+                        let sample = memory_collector.collect();
+                        self.publish(&app, "memory", envelope("ready", serde_json::to_value(sample).expect("Memory contract serializes")));
                     }
                     next_tick = Instant::now() + Duration::from_secs(2);
                     ticks+=1;
@@ -453,8 +442,11 @@ mod tests {
     #[test]
     fn real_windows_memory_is_bounded() {
         let m = memory().unwrap();
-        assert!(m["totalBytes"].as_u64().unwrap() > 0);
-        assert!((0.0..=100.0).contains(&m["percent"].as_f64().unwrap()));
+        assert!(m["totalBytes"]["value"].as_f64().unwrap() > 0.);
+        assert!(m["sampledAt"].as_f64().unwrap() > 0.);
+        if let Some(percent) = m["percent"]["value"].as_f64() {
+            assert!((0.0..=100.0).contains(&percent));
+        }
     }
 }
 #[cfg(test)]
