@@ -75,3 +75,25 @@ it('continues to identify actual source failures while ignoring unchanged readin
   expect(screen.getByText(/1 leitura indisponível/)).toBeVisible()
   expect(screen.queryByText(/2 leituras indisponíveis/)).not.toBeInTheDocument()
 })
+it('connects real observations across a fresh repeat but breaks at a real failure', () => {
+  const data = observation()
+  const view = render(
+    <CpuPopupContent event={{ status: 'ready', data }} now={104000} />
+  )
+  const hasConnectedTemperatureSegment = () => {
+    const chart = screen.getByLabelText(
+      /Temperatura do pacote da CPU nos últimos/
+    )
+    // Inspect the rendered SVG geometry: grid lines use H, whereas a plotted
+    // linear segment between observations uses L in either supported renderer.
+    return Array.from(chart.querySelectorAll('path[fill="none"]')).some(
+      (path) => /[Ll]/.test(path.getAttribute('d') ?? '')
+    )
+  }
+  expect(hasConnectedTemperatureSegment()).toBe(true)
+  data.history[1].temperatureUpdatedAt = null
+  view.rerender(
+    <CpuPopupContent event={{ status: 'ready', data }} now={104000} />
+  )
+  expect(hasConnectedTemperatureSegment()).toBe(false)
+})

@@ -94,6 +94,9 @@ readings, their original timestamps, expiry after six seconds, recovery and
 the popup's unavailable-reading count. On 2026-10-18, 46 Rust tests passed
 (one existing audio-routing test ignored), TypeScript and focused ESLint passed,
 and the frontend suite had 87 passing tests and six existing audio-test failures.
+A further rendered SVG regression verifies a continuous segment across a fresh
+repeat and a broken segment across an explicit failure. Both review axes found
+no remaining findings in the sampling correction.
 
 ## Verification
 
