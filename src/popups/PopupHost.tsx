@@ -1,8 +1,8 @@
-import { PopupContext } from './context'
-import { popupMetadata, isPopupId, resolvePopup } from './resolve'
-import { PopupSurface } from './PopupSurface'
-import type { OverlaySide } from '../services/system/overlay'
 import { Component, type ReactNode } from 'react'
+import type { OverlaySide } from '../services/system/overlay'
+import { PopupContext } from './context'
+import { PopupSurface } from './PopupSurface'
+import { isPopupId, popupMetadata, resolvePopup } from './resolve'
 
 class ContentBoundary extends Component<
   { children: ReactNode; close(): void },
@@ -59,7 +59,7 @@ export function PopupHost({
       close={close}
     >
       {mode === 'demo' && (
-        <p className="mb-2 text-[10px] text-muted-foreground">
+        <p className="m-4 text-[10px] text-muted-foreground">
           Demonstração interativa · sem acesso ao Windows
         </p>
       )}
