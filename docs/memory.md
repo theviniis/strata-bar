@@ -58,7 +58,7 @@ requires no administrator elevation in an ordinary interactive session.
 ## History and freshness
 
 One native worker collects every two seconds while memory consumers exist. A
-bounded history retains up to 31 observations over the latest 60 seconds, using
+bounded history retains up to 61 observations over the latest 120 seconds, using
 elapsed time for retention. Initial state and history travel together; reopening
 a popup does not reset observations while a bar remains subscribed. Startup has
 only actually observed history. With no consumers collection pauses.

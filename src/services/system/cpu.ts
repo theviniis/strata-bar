@@ -1,6 +1,10 @@
 import { z } from 'zod'
 import type { SystemEvent } from './bridge'
 import type { CpuData, CpuMetric } from './cpu.generated'
+import {
+  RESOURCE_HISTORY_MS,
+  RESOURCE_HISTORY_MAX_POINTS
+} from './resource-history'
 
 const quantity = z.number().finite().nonnegative().max(Number.MAX_SAFE_INTEGER)
 const metric = z
@@ -55,7 +59,7 @@ const cpuSchema = z
           })
           .strict()
       )
-      .max(31)
+      .max(RESOURCE_HISTORY_MAX_POINTS)
   })
   .strict()
   .refine((data) =>
@@ -63,7 +67,7 @@ const cpuSchema = z
       (p, i, h) =>
         p.sequence <= data.sequence &&
         p.timestamp <= data.sampledAt &&
-        p.timestamp >= data.sampledAt - 60000 &&
+        p.timestamp >= data.sampledAt - RESOURCE_HISTORY_MS &&
         (!i ||
           (p.sequence > h[i - 1].sequence &&
             p.timestamp > h[i - 1].timestamp)) &&

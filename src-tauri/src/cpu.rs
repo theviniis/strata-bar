@@ -181,9 +181,9 @@ impl<S: CpuSource> CpuCollector<S> {
                 .instant
                 .saturating_duration_since(*instant)
                 .as_millis()
-                > 60000
-                || at - point.timestamp > 60000.
-        }) || self.history.len() > 31
+                > 120000
+                || at - point.timestamp > 120000.
+        }) || self.history.len() > 61
         {
             self.history.pop_front();
         }
@@ -410,7 +410,7 @@ mod tests {
     #[test]
     fn public_collector_bounds_history_and_preserves_only_observed_resume_points() {
         let instant = Instant::now();
-        let mut readings = (0..34)
+        let mut readings = (0..64)
             .map(|i| {
                 reading(
                     100000. + i as f64 * 2000.,
@@ -419,23 +419,23 @@ mod tests {
             })
             .collect::<Vec<_>>();
         readings.push(reading(
-            180000.,
-            instant + std::time::Duration::from_secs(80),
+            240000.,
+            instant + std::time::Duration::from_secs(140),
         ));
         readings.push(reading(
             50000.,
-            instant + std::time::Duration::from_secs(82),
+            instant + std::time::Duration::from_secs(142),
         ));
         let mut collector = CpuCollector::new(Source(readings));
         let mut data = collector.collect();
-        for _ in 1..34 {
+        for _ in 1..64 {
             data = collector.collect();
         }
-        assert_eq!(data.history.len(), 31);
+        assert_eq!(data.history.len(), 61);
         assert_eq!(data.history[0].timestamp, 106000.);
         let data = collector.collect();
-        assert_eq!(data.history.last().unwrap().timestamp, 180000.);
-        assert_eq!(data.history[data.history.len() - 2].timestamp, 166000.);
+        assert_eq!(data.history.last().unwrap().timestamp, 240000.);
+        assert_eq!(data.history[data.history.len() - 2].timestamp, 226000.);
         assert_eq!(collector.collect().history.len(), 1);
     }
     #[test]
@@ -443,7 +443,7 @@ mod tests {
         let instant = Instant::now();
         let mut collector = CpuCollector::new(Source(vec![
             reading(100000., instant),
-            reading(200000., instant + std::time::Duration::from_secs(2)),
+            reading(300000., instant + std::time::Duration::from_secs(2)),
         ]));
         collector.collect();
         assert_eq!(collector.collect().history.len(), 1);

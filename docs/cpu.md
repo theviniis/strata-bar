@@ -68,7 +68,7 @@ readings older than six seconds as stale. There is no nominal-for-current
 frequency substitution or native-to-demo fallback.
 
 One shared native worker collects every two seconds while CPU consumers exist.
-History contains at most 31 actual observations covering 60 seconds. The bar keeps
+History contains at most 61 actual observations covering 120 seconds. The bar keeps
 it warm for popup opening and reopening across monitors. No consumers means no
 collection. Missing samples, warm-up, suspension and provider stalls remain gaps.
 Temperature points retain their producer timestamps; repeated provider times do

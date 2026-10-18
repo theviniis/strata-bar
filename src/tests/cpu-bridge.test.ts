@@ -110,3 +110,27 @@ it('accepts unchanged fresh sensor markers but rejects stale markers', async () 
   expect(receive.mock.lastCall?.[0].status).toBe('error')
   await dispose()
 })
+it('accepts the full two-minute history and rejects observations outside that window', async () => {
+  const data = observation(61)
+  data.sampledAt = 220000
+  data.history = Array.from({ length: 61 }, (_, i) => ({
+    sequence: i + 1,
+    timestamp: 100000 + i * 2000,
+    percent: 25.5,
+    temperatureCelsius: null,
+    temperatureUpdatedAt: null
+  }))
+  host.initial = { status: 'ready', data }
+  const receive = vi.fn()
+  const dispose = await createNativeBridge().subscribe('cpu', receive)
+  expect(receive.mock.lastCall?.[0].status).toBe('ready')
+  expect(receive.mock.lastCall?.[0].data.history).toHaveLength(61)
+  host.send?.({
+    payload: {
+      status: 'ready',
+      data: { ...data, sequence: 62, sampledAt: 222000 }
+    }
+  })
+  expect(receive.mock.lastCall?.[0].status).toBe('error')
+  await dispose()
+})

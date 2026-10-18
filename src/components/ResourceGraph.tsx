@@ -1,4 +1,3 @@
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import {
   ChartContainer,
   ChartTooltip,
@@ -6,6 +5,8 @@ import {
   type ChartConfig
 } from '@/components/ui/chart'
 import { cn } from '@/lib/utils'
+import { RESOURCE_HISTORY_SECONDS } from '@/services/system/resource-history'
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import {
   newestTimestamp,
   projectResourceWindow,
@@ -21,6 +22,7 @@ export function ResourceGraph({
   maximum = 100,
   maxGapMs = 3000,
   color = 'var(--chart-1)',
+  fillOpacity = 0.1,
   className
 }: {
   points: ResourceGraphPoint[]
@@ -33,6 +35,8 @@ export function ResourceGraph({
   maxGapMs?: number
   /** Colour of the line; any CSS colour, by default the chart-1 token. */
   color?: string
+  /** Opacity of the colour under the line, from 0 (invisible) to 1. */
+  fillOpacity?: number
   /** Extra classes for the chart surface, e.g. to override the line stroke. */
   className?: string
 }) {
@@ -47,7 +51,7 @@ export function ResourceGraph({
   // container edges instead of leaving a gap the width of the polling
   // interval. A single reading has no extent to fill.
   const window: [number | string, number | string] =
-    samples.length > 1 ? ['dataMin', 'dataMax'] : [0, 60]
+    samples.length > 1 ? ['dataMin', 'dataMax'] : [0, RESOURCE_HISTORY_SECONDS]
   const format = (value: number) =>
     `${value.toFixed(1)}${unit === '%' ? '' : ' '}${unit}`
   const scale = `${maximum}${unit === '%' ? '' : ' '}${unit}`
@@ -57,7 +61,7 @@ export function ResourceGraph({
   return (
     <div className="mb-4">
       <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
-        <span>{label} · 60 segundos</span>
+        <span>{label} · 2 minutos</span>
         <span>{scale}</span>
       </div>
       <ChartContainer
@@ -67,7 +71,7 @@ export function ResourceGraph({
           className
         )}
         role="group"
-        aria-label={`${description} nos últimos 60 segundos, escala de 0 a ${scale}`}
+        aria-label={`${description} nos últimos 2 minutos, escala de 0 a ${scale}`}
       >
         <AreaChart
           accessibilityLayer
@@ -96,7 +100,8 @@ export function ResourceGraph({
                   // does not claim to be from this instant. Afterburner
                   // reports whole seconds, so it can sit a moment ahead of a
                   // clock that was last read before it landed.
-                  const age = 60 - offset + (now - anchor) / 1000
+                  const age =
+                    RESOURCE_HISTORY_SECONDS - offset + (now - anchor) / 1000
                   return `${Math.max(0, Math.round(age))} s atrás`
                 }}
                 formatter={(value) =>
@@ -109,7 +114,7 @@ export function ResourceGraph({
             dataKey="value"
             type="linear"
             fill="var(--color-value)"
-            fillOpacity={0.4}
+            fillOpacity={fillOpacity}
             stroke="var(--color-value)"
             // Readings arrive every 2 s; the enter animation would restart on
             // every sample and make a sliding window look like it is stuttering.
@@ -118,7 +123,7 @@ export function ResourceGraph({
         </AreaChart>
       </ChartContainer>
       <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-        <span>60 s atrás</span>
+        <span>2 min atrás</span>
         <span>Agora · 0{unit}</span>
       </div>
       {missing > 0 && (

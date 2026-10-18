@@ -28,7 +28,7 @@ function DemoMemoryPopup() {
     error: null
   })
   const data: MemoryData = {
-    sequence: 30,
+    sequence: 61,
     sampledAt: at,
     totalBytes: metric(17179869184),
     availableBytes: metric(7516192768),
@@ -36,9 +36,9 @@ function DemoMemoryPopup() {
     cachedBytes: metric(4294967296),
     pagingFileBytes: metric(1073741824),
     percent: metric(53.125),
-    history: Array.from({ length: 30 }, (_, index) => ({
+    history: Array.from({ length: 61 }, (_, index) => ({
       sequence: index + 1,
-      timestamp: at - (29 - index) * 2000,
+      timestamp: at - (60 - index) * 2000,
       percent: 53.125 + Math.sin(index / 4) * 3
     }))
   }

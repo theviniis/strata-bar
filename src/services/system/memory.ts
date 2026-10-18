@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { SystemEvent } from './bridge'
 import type { MemoryData, MemoryMetric } from './memory.generated'
+import { RESOURCE_HISTORY_MAX_POINTS } from './resource-history'
 
 const quantity = z.number().finite().nonnegative().max(Number.MAX_SAFE_INTEGER)
 const metric = z
@@ -40,7 +41,7 @@ export const memorySchema = z
     percent: metric.refine(
       (value) => value.value === null || value.value <= 100
     ),
-    history: z.array(point).max(64)
+    history: z.array(point).max(RESOURCE_HISTORY_MAX_POINTS)
   })
   .strict()
   .refine(

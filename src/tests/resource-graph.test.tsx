@@ -23,15 +23,15 @@ const areaPoints = (container: HTMLElement) => {
   }))
 }
 
-it('projects observed points onto the trailing 60-second window', () => {
+it('projects observed points onto the trailing two-minute window', () => {
   const { samples, series } = projectResourceWindow(
-    [point(1, at - 80000, 91), point(2, at - 2000, 40), point(3, at, 56.25)],
+    [point(1, at - 140000, 91), point(2, at - 2000, 40), point(3, at, 56.25)],
     at
   )
   expect(samples.map((sample) => sample.sequence)).toEqual([2, 3])
   expect(series).toEqual([
-    { offset: 58, value: 40 },
-    { offset: 60, value: 56.25 }
+    { offset: 118, value: 40 },
+    { offset: 120, value: 56.25 }
   ])
 })
 
@@ -48,9 +48,9 @@ it('breaks the line across missing readings and transport gaps', () => {
     at
   )
   expect(series).toEqual([
-    { offset: 58, value: 40 },
-    { offset: 59, value: null },
-    { offset: 60, value: 56.25 }
+    { offset: 118, value: 40 },
+    { offset: 119, value: null },
+    { offset: 120, value: 56.25 }
   ])
 
   // A silence longer than one polling interval starts a new segment.
@@ -59,9 +59,9 @@ it('breaks the line across missing readings and transport gaps', () => {
     at
   )
   expect(silent.series).toEqual([
-    { offset: 30, value: 40 },
-    { offset: 45, value: null },
-    { offset: 60, value: 56.25 }
+    { offset: 90, value: 40 },
+    { offset: 105, value: null },
+    { offset: 120, value: 56.25 }
   ])
 })
 
@@ -77,7 +77,7 @@ it('draws an interactive area, the scale and the window labels', () => {
   )
   expect(
     screen.getByRole('group', {
-      name: 'Utilização da memória nos últimos 60 segundos, escala de 0 a 100%'
+      name: 'Utilização da memória nos últimos 2 minutos, escala de 0 a 100%'
     })
   ).toBeVisible()
   expect(screen.getByRole('application')).toBeVisible()
@@ -88,9 +88,9 @@ it('draws an interactive area, the scale and the window labels', () => {
     'fill',
     'var(--color-value)'
   )
-  expect(screen.getByText('Utilização · 60 segundos')).toBeVisible()
+  expect(screen.getByText('Utilização · 2 minutos')).toBeVisible()
   expect(screen.getByText('100%')).toBeVisible()
-  expect(screen.getByText('60 s atrás')).toBeVisible()
+  expect(screen.getByText('2 min atrás')).toBeVisible()
   expect(screen.getByText('Agora · 0%')).toBeVisible()
 })
 
@@ -201,7 +201,13 @@ it('keeps the chart still while only the clock advances', () => {
 })
 
 it('lets callers restyle the line with a colour or a class', () => {
-  const chart = (props: { color?: string; className?: string } = {}) => (
+  const chart = (
+    props: {
+      color?: string
+      fillOpacity?: number
+      className?: string
+    } = {}
+  ) => (
     <ResourceGraph
       points={[point(1, at - 2000, 40), point(2, at, 56.25)]}
       now={at}
@@ -214,17 +220,21 @@ it('lets callers restyle the line with a colour or a class', () => {
   const { container, rerender } = render(chart())
   const style = () => container.querySelector('style')?.textContent ?? ''
   const surface = () => container.querySelector('[data-slot="chart"]')
+  const area = () => container.querySelector('.recharts-area-area')
   expect(style()).toContain('--color-value: var(--chart-1);')
   expect(surface()).not.toHaveClass('line-swatch')
+  expect(area()).toHaveAttribute('fill-opacity', '0.4')
 
   rerender(
     chart({
       color: 'var(--chart-5)',
+      fillOpacity: 0.2,
       className: 'line-swatch [&_path]:opacity-80'
     })
   )
   expect(style()).toContain('--color-value: var(--chart-5);')
   expect(surface()).toHaveClass('line-swatch')
+  expect(area()).toHaveAttribute('fill-opacity', '0.2')
 })
 
 it('announces unavailable readings and waits for the first observation', () => {

@@ -268,8 +268,8 @@ impl<S: MemorySource> MemoryCollector<S> {
         while self
             .history
             .front()
-            .is_some_and(|(time, _)| instant.duration_since(*time).as_millis() > 60_000)
-            || self.history.len() > 31
+            .is_some_and(|(time, _)| instant.duration_since(*time).as_millis() > 120_000)
+            || self.history.len() > 61
         {
             self.history.pop_front();
         }
@@ -436,14 +436,14 @@ mod tests {
         let base = Instant::now();
         let mut failed = reading(base, 2000);
         failed.lists[0] = Err("Unavailable".into());
-        let mut backwards = reading(base, 66000);
+        let mut backwards = reading(base, 126000);
         backwards.timestamp = 90000.;
         let mut collector = MemoryCollector::new(VecDeque::from([
             reading(base, 0),
             failed,
             reading(base, 10000),
-            reading(base, 62000),
-            reading(base, 64000),
+            reading(base, 122000),
+            reading(base, 124000),
             backwards,
         ]));
         collector.collect();

@@ -1,16 +1,16 @@
+import { RESOURCE_HISTORY_MS } from '@/services/system/resource-history'
+
 export type ResourceGraphPoint = {
   sequence: number
   timestamp: number
   value: number | null
 }
 
-/** Seconds of history the trailing window covers. */
-const WINDOW_MS = 60000
 /** A longer silence than one polling interval breaks the line. */
 const GAP_MS = 3000
 
 export interface ResourceSeriesPoint {
-  /** Seconds from the start of the window (0 = 60 s ago). */
+  /** Seconds from the start of the window (0 = 120 s ago). */
   offset: number
   value: number | null
 }
@@ -34,7 +34,7 @@ export function newestTimestamp(
 }
 
 /**
- * Projects observed points onto the trailing 60-second window ending at
+ * Projects observed points onto the trailing two-minute window ending at
  * `windowEnd` (the caller decides whether that is the wall clock or the newest
  * reading). Missing readings, and gaps longer than one polling interval,
  * become `null` samples so the chart breaks the line instead of drawing an
@@ -47,12 +47,13 @@ export function projectResourceWindow(
 ) {
   const samples = points.filter(
     (point) =>
-      point.timestamp >= windowEnd - WINDOW_MS && point.timestamp <= windowEnd
+      point.timestamp >= windowEnd - RESOURCE_HISTORY_MS &&
+      point.timestamp <= windowEnd
   )
   const series: ResourceSeriesPoint[] = []
   let previous: ResourceGraphPoint | undefined
   for (const point of samples) {
-    const offset = (point.timestamp - windowEnd + WINDOW_MS) / 1000
+    const offset = (point.timestamp - windowEnd + RESOURCE_HISTORY_MS) / 1000
     if (point.value === null) {
       series.push({ offset, value: null })
       previous = undefined

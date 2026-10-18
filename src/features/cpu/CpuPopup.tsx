@@ -32,7 +32,7 @@ function DemoCpuPopup() {
     error: null
   })
   const data: CpuData = {
-    sequence: 30,
+    sequence: 61,
     sampledAt: at,
     percent: metric(25.5),
     frequencyHz: metric(3.98e9),
@@ -46,12 +46,12 @@ function DemoCpuPopup() {
       instance: 4294967295,
       name: 'CPU temperature'
     },
-    history: Array.from({ length: 30 }, (_, i) => ({
+    history: Array.from({ length: 61 }, (_, i) => ({
       sequence: i + 1,
-      timestamp: at - (29 - i) * 2000,
+      timestamp: at - (60 - i) * 2000,
       percent: 25.5 + Math.sin(i / 4) * 8,
       temperatureCelsius: 42.5 + Math.sin(i / 6) * 4,
-      temperatureUpdatedAt: at - (29 - i) * 2000
+      temperatureUpdatedAt: at - (60 - i) * 2000
     }))
   }
   return <CpuPopupContent event={{ status: 'ready', data }} now={at} demo />

@@ -97,3 +97,25 @@ it('connects real observations across a fresh repeat but breaks at a real failur
   )
   expect(hasConnectedTemperatureSegment()).toBe(false)
 })
+it('includes temperatures from ninety seconds ago and expires readings older than two minutes', () => {
+  const data = observation()
+  data.history.unshift({
+    sequence: 0,
+    timestamp: 14000,
+    percent: 25,
+    temperatureCelsius: 125,
+    temperatureUpdatedAt: 14000
+  })
+  const view = render(
+    <CpuPopupContent event={{ status: 'ready', data }} now={104000} />
+  )
+  expect(screen.getByText('130 °C')).toBeVisible()
+  expect(screen.getByText('Temperatura · 2 minutos')).toBeVisible()
+  data.history[0].timestamp = -18000
+  data.history[0].temperatureUpdatedAt = -18000
+  view.rerender(
+    <CpuPopupContent event={{ status: 'ready', data }} now={104000} />
+  )
+  expect(screen.getByText('100 °C')).toBeVisible()
+  expect(screen.queryByText('130 °C')).not.toBeInTheDocument()
+})

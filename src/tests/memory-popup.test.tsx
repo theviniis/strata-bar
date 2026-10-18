@@ -78,7 +78,7 @@ it('exposes the observed window and preserves its gaps', () => {
           ...memory,
           sequence: 4,
           history: [
-            { sequence: 1, timestamp: 20000, percent: 90 },
+            { sequence: 1, timestamp: -40000, percent: 90 },
             { sequence: 2, timestamp: 96000, percent: 40 },
             { sequence: 3, timestamp: 98000, percent: null },
             { sequence: 4, timestamp: 100000, percent: 56.25 }
@@ -88,9 +88,7 @@ it('exposes the observed window and preserves its gaps', () => {
       now={100000}
     />
   )
-  expect(
-    screen.getByRole('group', { name: /últimos 60 segundos/ })
-  ).toBeVisible()
+  expect(screen.getByRole('group', { name: /últimos 2 minutos/ })).toBeVisible()
   expect(screen.getByText(/1 leitura indisponível/)).toBeInTheDocument()
 })
 

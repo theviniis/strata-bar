@@ -94,10 +94,10 @@ it('keeps temperature above 100 visible and excludes expired graph observations'
   data.history = [
     {
       sequence: 0,
-      timestamp: at - 62000,
+      timestamp: at - 122000,
       percent: 90,
       temperatureCelsius: 180,
-      temperatureUpdatedAt: at - 62000
+      temperatureUpdatedAt: at - 122000
     },
     {
       sequence: 1,

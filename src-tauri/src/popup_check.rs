@@ -295,7 +295,7 @@ pub fn start(app: AppHandle) {
                         );
                         if reopened["sampledAt"].as_f64().unwrap()
                             - memory["sampledAt"].as_f64().unwrap()
-                            < 60000.
+                            < 120000.
                         {
                             assert!(
                                 reopened["history"]
@@ -320,23 +320,23 @@ pub fn start(app: AppHandle) {
             }
             // Retention does not need an open popup. Keep lengthy sampling waits
             // outside focus/cleanup checks so ordinary desktop activity cannot
-            // invalidate an interaction baseline captured a minute earlier.
+            // invalidate an interaction baseline captured two minutes earlier.
             let first_at = first_memory["sampledAt"]
                 .as_f64()
                 .unwrap()
                 .max(first_cpu["sampledAt"].as_f64().unwrap());
             let mut cpu_retention = Value::Null;
-            for _ in 0..36 {
+            for _ in 0..66 {
                 std::thread::sleep(Duration::from_secs(2));
                 let current = app.state::<crate::metrics::Metrics>().diagnostics()["channels"]
                     ["memory"]["data"]
                     .clone();
-                if current["sampledAt"].as_f64().unwrap() - first_at >= 62000. {
+                if current["sampledAt"].as_f64().unwrap() - first_at >= 122000. {
                     let history = current["history"].as_array().unwrap();
-                    assert!((25..=31).contains(&history.len()));
+                    assert!((55..=61).contains(&history.len()));
                     let span = current["sampledAt"].as_f64().unwrap()
                         - history[0]["timestamp"].as_f64().unwrap();
-                    assert!((50000.0..=60010.0).contains(&span));
+                    assert!((110000.0..=120010.0).contains(&span));
                     retention = json!({"passed":true,"samples":history.len(),"spanMs":span,"oldSampleExpired":!history.iter().any(|point| point["sequence"]==first_memory["sequence"])});
                     assert_eq!(retention["oldSampleExpired"], true);
                     let cpu = app.state::<crate::metrics::Metrics>().diagnostics()["channels"]
@@ -345,8 +345,8 @@ pub fn start(app: AppHandle) {
                     let history = cpu["history"].as_array().unwrap();
                     let span = cpu["sampledAt"].as_f64().unwrap()
                         - history[0]["timestamp"].as_f64().unwrap();
-                    assert!((25..=31).contains(&history.len()));
-                    assert!((50000.0..=60010.0).contains(&span));
+                    assert!((55..=61).contains(&history.len()));
+                    assert!((110000.0..=120010.0).contains(&span));
                     assert!(!history
                         .iter()
                         .any(|p| p["sequence"] == first_cpu["sequence"]));
