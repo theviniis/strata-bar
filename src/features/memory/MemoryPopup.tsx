@@ -1,10 +1,16 @@
+import {
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card'
+import { usePopupContext } from '@/popups/context'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { MemoryData } from '@/services/system/memory.generated'
-import { usePopupContext } from '@/popups/context'
-import { useMemory } from './useMemory'
-import { MemoryGraph } from './MemoryGraph'
 import { useState } from 'react'
+import { MemoryGraph } from './MemoryGraph'
 import { formatMemoryMetric } from './presentation'
+import { useMemory } from './useMemory'
 
 export function MemoryPopup() {
   const { mode } = usePopupContext('memory')
@@ -68,32 +74,39 @@ export function MemoryPopupContent({
     ['Utilização', data.percent, 'percent']
   ] as const
   return (
-    <section aria-label="Detalhes da memória" className="w-80 p-4">
-      <h2 className="mb-3 text-sm font-semibold">Memória</h2>
-      {demo && (
-        <p className="mb-3 text-xs text-muted-foreground">
-          Dados de demonstração · sem acesso ao sistema
-        </p>
-      )}
-      {event.status === 'error' && (
-        <p role="status" className="mb-3 text-xs text-destructive">
-          {event.error} · última leitura desatualizada
-        </p>
-      )}
-      <MemoryGraph history={data.history} now={now} />
-      <dl className="grid grid-cols-2 gap-3 text-xs">
-        {fields.map(([label, metric, unit]) => (
-          <div key={label}>
-            <dt className="text-muted-foreground">{label}</dt>
-            <dd
-              title={metric.error ?? undefined}
-              className="mt-1 font-medium tabular-nums"
-            >
-              {formatMemoryMetric(metric, unit, now, event.status === 'ready')}
-            </dd>
-          </div>
-        ))}
-      </dl>
+    <section aria-label="Detalhes da memória">
+      <CardHeader>
+        <CardTitle>Memória</CardTitle>
+        <CardDescription>
+          Visualize informações sobre a memória RAM
+        </CardDescription>
+        {event.status === 'error' && (
+          <p role="status" className="mb-3 text-xs text-destructive">
+            {event.error} · última leitura desatualizada
+          </p>
+        )}
+      </CardHeader>
+      <CardContent>
+        <MemoryGraph history={data.history} now={now} />
+        <dl className="grid grid-cols-2 gap-3 text-xs">
+          {fields.map(([label, metric, unit]) => (
+            <div key={label}>
+              <dt className="text-muted-foreground">{label}</dt>
+              <dd
+                title={metric.error ?? undefined}
+                className="mt-1 font-medium tabular-nums"
+              >
+                {formatMemoryMetric(
+                  metric,
+                  unit,
+                  now,
+                  event.status === 'ready'
+                )}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </CardContent>
     </section>
   )
 }
