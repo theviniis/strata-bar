@@ -1,3 +1,6 @@
+#[path = "src/cpu_contract.rs"]
+#[allow(dead_code)]
+mod cpu_contract;
 #[path = "src/memory_contract.rs"]
 #[allow(dead_code)]
 mod memory_contract;
@@ -6,6 +9,26 @@ mod popups;
 
 fn main() {
     use ts_rs::TS;
+    println!("cargo:rerun-if-changed=src/cpu_contract.rs");
+    let cpu_declarations = [
+        cpu_contract::CpuMetricStatus::decl(),
+        cpu_contract::CpuMetric::decl(),
+        cpu_contract::CpuTemperatureSensor::decl(),
+        cpu_contract::CpuPoint::decl(),
+        cpu_contract::CpuData::decl(),
+    ];
+    let cpu_generated = format!(
+        "// Generated from Rust cpu_contract.rs by cargo build. Do not edit.\n{}\n",
+        cpu_declarations
+            .iter()
+            .map(|decl| format!("export {decl}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+    let cpu_target = std::path::Path::new("../src/services/system/cpu.generated.ts");
+    if std::fs::read_to_string(cpu_target).ok().as_deref() != Some(&cpu_generated) {
+        std::fs::write(cpu_target, cpu_generated).expect("Generate CPU contract");
+    }
     println!("cargo:rerun-if-changed=src/memory_contract.rs");
     let declarations = [
         memory_contract::MemoryMetricStatus::decl(),

@@ -1,0 +1,72 @@
+{
+  "capturedAt": "2026-10-18T15:42:51.1474103-03:00",
+  "elevated": false,
+  "processes": ["MSIAfterburner"],
+  "windows": {
+    "version": "26H2",
+    "build": "26300",
+    "revision": 9711
+  },
+  "cpu": {
+    "frequencyHz": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792348970956.0,
+      "value": 3932877292.582172
+    },
+    "history": [
+      {
+        "percent": null,
+        "sequence": 1,
+        "temperatureCelsius": 43.0,
+        "temperatureUpdatedAt": 1792348968000.0,
+        "timestamp": 1792348968953.0
+      },
+      {
+        "percent": 8.476907275556833,
+        "sequence": 2,
+        "temperatureCelsius": 39.0,
+        "temperatureUpdatedAt": 1792348970000.0,
+        "timestamp": 1792348970956.0
+      }
+    ],
+    "logicalProcessors": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792348970956.0,
+      "value": 12.0
+    },
+    "maxFrequencyHz": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792348970956.0,
+      "value": 2904000000.0
+    },
+    "percent": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792348970956.0,
+      "value": 8.476907275556833
+    },
+    "physicalCores": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792348970956.0,
+      "value": 6.0
+    },
+    "sampledAt": 1792348970956.0,
+    "sequence": 2,
+    "temperatureCelsius": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792348970000.0,
+      "value": 39.0
+    },
+    "temperatureSensor": {
+      "instance": 4294967295,
+      "name": "CPU temperature",
+      "provider": "msiAfterburner",
+      "sourceId": 128
+    }
+  }
+}

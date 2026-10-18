@@ -43,7 +43,8 @@ fn wait_for(app: &AppHandle, visible: bool) -> Value {
             .collect::<std::collections::BTreeMap<_, _>>()
     });
     let overlay = main_thread(app, |_| crate::desktop::overlay_snapshot());
-    panic!("Overlay visibility did not become {visible}; views: {state:?}; overlay: {overlay}");
+    let diagnostics = app.state::<crate::metrics::Metrics>().diagnostics();
+    panic!("Overlay visibility did not become {visible}; views: {state:?}; overlay: {overlay}; metrics: {diagnostics}");
 }
 fn focused(app: &AppHandle, label: String) -> bool {
     main_thread(app, move |app| {
@@ -69,19 +70,24 @@ fn click(app: &AppHandle, label: String, aria: &'static str) {
     });
 }
 
-fn check_memory_content(app: &AppHandle) -> Value {
+fn check_resource_content(app: &AppHandle, feature: &'static str) -> Value {
+    let (label, count, graphs, unit) = if feature == "cpu" {
+        ("Detalhes da CPU", 5, 2, "GHz")
+    } else {
+        ("Detalhes da memória", 6, 1, "GiB")
+    };
     main_thread(app, |app| {
         app.get_webview_window(crate::desktop::OVERLAY)
             .unwrap()
-            .eval("location.hash='memory-check-pending'")
+            .eval("location.hash='resource-check-pending'")
             .unwrap();
     });
     for _ in 0..60 {
-        main_thread(app, |app| {
-            app.get_webview_window(crate::desktop::OVERLAY).unwrap().eval(r#"
-                { const content = document.querySelector('section[aria-label="Detalhes da memória"]');
-                if (content && content.querySelector('svg') && content.querySelectorAll('dd').length === 6 && content.innerText.includes('GiB') && !content.innerText.includes('Dados de demonstração')) location.hash='memory-content-ready'; }
-            "#).unwrap();
+        main_thread(app, move |app| {
+            app.get_webview_window(crate::desktop::OVERLAY).unwrap().eval(&format!(r#"
+                {{ const content = document.querySelector('section[aria-label="{label}"]');
+                if (content && content.querySelectorAll('svg').length === {graphs} && content.querySelectorAll('dd').length === {count} && content.innerText.includes('{unit}') && !content.innerText.includes('Dados de demonstração')) location.hash='resource-content-ready'; }}
+            "#)).unwrap();
         });
         std::thread::sleep(Duration::from_millis(100));
         let ready = main_thread(app, |app| {
@@ -90,30 +96,42 @@ fn check_memory_content(app: &AppHandle) -> Value {
                 .url()
                 .unwrap()
                 .fragment()
-                == Some("memory-content-ready")
+                == Some("resource-content-ready")
         });
         if ready {
             let diagnostics = app.state::<crate::metrics::Metrics>().diagnostics();
-            let data = diagnostics["channels"]["memory"]["data"].clone();
-            for field in [
-                "totalBytes",
-                "availableBytes",
-                "usedBytes",
-                "cachedBytes",
-                "pagingFileBytes",
-                "percent",
-            ] {
+            let data = diagnostics["channels"][feature]["data"].clone();
+            let fields: &[&str] = if feature == "cpu" {
+                &[
+                    "percent",
+                    "frequencyHz",
+                    "maxFrequencyHz",
+                    "physicalCores",
+                    "logicalProcessors",
+                ]
+            } else {
+                &[
+                    "totalBytes",
+                    "availableBytes",
+                    "usedBytes",
+                    "cachedBytes",
+                    "pagingFileBytes",
+                    "percent",
+                ]
+            };
+            for field in fields {
                 assert!(
-                    data[field]["status"] == "ready"
-                        || (field == "pagingFileBytes" && data[field]["status"] == "notConfigured"),
-                    "Memory source {field} unavailable: {data}"
+                    data[*field]["status"] == "ready"
+                        || (*field == "pagingFileBytes"
+                            && data[*field]["status"] == "notConfigured"),
+                    "Resource source {field} unavailable: {data}"
                 );
             }
             assert!(!data["history"].as_array().unwrap().is_empty());
             return data;
         }
     }
-    panic!("Real memory content did not render six indicators and graph");
+    panic!("Real {feature} content did not render expected indicators and graphs");
 }
 
 // Real DOM -> ResizeObserver -> IPC -> Win32 rectangle round trip in both axes.
@@ -158,13 +176,30 @@ pub fn start(app: AppHandle) {
                 .collect::<Vec<_>>();
             bars.sort();
             assert!(!bars.is_empty());
+            // Cold Vite dependency optimization can leave rendered triggers
+            // waiting on their dynamic Tauri imports. Wait for real consumers
+            // and the first valid CPU observation instead of clicking too early.
+            let mut ready = false;
+            for _ in 0..300 {
+                let diagnostics = app.state::<crate::metrics::Metrics>().diagnostics();
+                if diagnostics["subscribers"].as_u64().unwrap_or(0) >= bars.len() as u64 * 3
+                    && diagnostics["channels"]["cpu"]["data"]["percent"]["status"] == "ready"
+                {
+                    ready = true;
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            assert!(ready, "Native check views did not finish subscribing");
             let mut checks = Vec::new();
             let mut retention = Value::Null;
             let mut first_memory = Value::Null;
+            let mut first_cpu = Value::Null;
             for label in &bars {
                 for (feature, aria, added_subscriptions) in [
                     ("audioOutputs", "Saída de áudio", 2),
                     ("memory", "Detalhes da memória", 1),
+                    ("cpu", "Detalhes da CPU", 1),
                 ] {
                     let baseline = app.state::<crate::metrics::Metrics>().diagnostics()
                         ["subscribers"]
@@ -190,13 +225,16 @@ pub fn start(app: AppHandle) {
                         .unwrap()
                         >= baseline + added_subscriptions;
                     assert!(subscribed, "Popup content should own its subscriptions");
-                    let memory = if feature == "memory" {
-                        check_memory_content(&app)
+                    let memory = if feature == "memory" || feature == "cpu" {
+                        check_resource_content(&app, feature)
                     } else {
                         Value::Null
                     };
                     if feature == "memory" && first_memory.is_null() {
                         first_memory = memory.clone();
+                    }
+                    if feature == "cpu" && first_cpu.is_null() {
+                        first_cpu = memory.clone();
                     }
                     check_content_size(&app, 560.0, 480.0);
                     check_content_size(&app, 280.0, 140.0);
@@ -249,8 +287,8 @@ pub fn start(app: AppHandle) {
                     // Exercise source-window outside-pointer policy through the real widget controller.
                     click(&app, label.clone(), aria);
                     wait_for(&app, true);
-                    if feature == "memory" {
-                        let reopened = check_memory_content(&app);
+                    if feature == "memory" || feature == "cpu" {
+                        let reopened = check_resource_content(&app, feature);
                         assert!(
                             reopened["sequence"].as_u64().unwrap()
                                 >= memory["sequence"].as_u64().unwrap()
@@ -283,7 +321,11 @@ pub fn start(app: AppHandle) {
             // Retention does not need an open popup. Keep lengthy sampling waits
             // outside focus/cleanup checks so ordinary desktop activity cannot
             // invalidate an interaction baseline captured a minute earlier.
-            let first_at = first_memory["sampledAt"].as_f64().unwrap();
+            let first_at = first_memory["sampledAt"]
+                .as_f64()
+                .unwrap()
+                .max(first_cpu["sampledAt"].as_f64().unwrap());
+            let mut cpu_retention = Value::Null;
             for _ in 0..36 {
                 std::thread::sleep(Duration::from_secs(2));
                 let current = app.state::<crate::metrics::Metrics>().diagnostics()["channels"]
@@ -297,6 +339,18 @@ pub fn start(app: AppHandle) {
                     assert!((50000.0..=60010.0).contains(&span));
                     retention = json!({"passed":true,"samples":history.len(),"spanMs":span,"oldSampleExpired":!history.iter().any(|point| point["sequence"]==first_memory["sequence"])});
                     assert_eq!(retention["oldSampleExpired"], true);
+                    let cpu = app.state::<crate::metrics::Metrics>().diagnostics()["channels"]
+                        ["cpu"]["data"]
+                        .clone();
+                    let history = cpu["history"].as_array().unwrap();
+                    let span = cpu["sampledAt"].as_f64().unwrap()
+                        - history[0]["timestamp"].as_f64().unwrap();
+                    assert!((25..=31).contains(&history.len()));
+                    assert!((50000.0..=60010.0).contains(&span));
+                    assert!(!history
+                        .iter()
+                        .any(|p| p["sequence"] == first_cpu["sequence"]));
+                    cpu_retention = json!({"passed":true,"samples":history.len(),"spanMs":span,"oldSampleExpired":true});
                     break;
                 }
             }
@@ -307,9 +361,28 @@ pub fn start(app: AppHandle) {
                     app.get_webview_window(&source).unwrap().eval(r#"document.querySelector('button[aria-label="Pausar memória no teste"]')?.click()"#).unwrap();
                 });
             }
-            std::thread::sleep(Duration::from_millis(300));
+            // Wait for React unmount and asynchronous unsubscribe IPC before
+            // measuring idle behavior. Only the volume widget remains per bar.
+            let mut resources_released = false;
+            for _ in 0..50 {
+                if app.state::<crate::metrics::Metrics>().diagnostics()["subscribers"].as_u64()
+                    == Some(bars.len() as u64)
+                {
+                    resources_released = true;
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            assert!(
+                resources_released,
+                "Resource fixtures did not unsubscribe: {}",
+                app.state::<crate::metrics::Metrics>().diagnostics()
+            );
             let before = app.state::<crate::metrics::Metrics>().diagnostics()["channels"]["memory"]
                 ["data"]
+                .clone();
+            let cpu_before = app.state::<crate::metrics::Metrics>().diagnostics()["channels"]
+                ["cpu"]["data"]
                 .clone();
             std::thread::sleep(Duration::from_secs(6));
             let paused = app.state::<crate::metrics::Metrics>().diagnostics()["channels"]["memory"]
@@ -318,6 +391,13 @@ pub fn start(app: AppHandle) {
             assert_eq!(
                 before["sequence"], paused["sequence"],
                 "Collection continued without memory consumers"
+            );
+            let cpu_paused = app.state::<crate::metrics::Metrics>().diagnostics()["channels"]
+                ["cpu"]["data"]
+                .clone();
+            assert_eq!(
+                cpu_before["sequence"], cpu_paused["sequence"],
+                "CPU collection continued without consumers"
             );
             for label in &bars {
                 let source = label.clone();
@@ -343,7 +423,14 @@ pub fn start(app: AppHandle) {
             let gap =
                 resumed["sampledAt"].as_f64().unwrap() - paused["sampledAt"].as_f64().unwrap();
             assert!(gap > 6000., "Pause must remain an observed history gap");
-            json!({"passed":true,"checks":checks,"memoryRetention":retention,"memoryPauseResume":{"passed":true,"gapMs":gap},"bars":crate::desktop::bar_snapshot(),"monitors":crate::desktop::monitor_snapshot()})
+            let cpu_resumed = app.state::<crate::metrics::Metrics>().diagnostics()["channels"]
+                ["cpu"]["data"]
+                .clone();
+            assert!(cpu_resumed["sequence"].as_u64() > cpu_paused["sequence"].as_u64());
+            let cpu_gap = cpu_resumed["sampledAt"].as_f64().unwrap()
+                - cpu_paused["sampledAt"].as_f64().unwrap();
+            assert!(cpu_gap > 6000.);
+            json!({"passed":true,"checks":checks,"memoryRetention":retention,"memoryPauseResume":{"passed":true,"gapMs":gap},"cpuRetention":cpu_retention,"cpuPauseResume":{"passed":true,"gapMs":cpu_gap},"bars":crate::desktop::bar_snapshot(),"monitors":crate::desktop::monitor_snapshot()})
         }));
         let report = result.unwrap_or_else(|error| {
             let message = error

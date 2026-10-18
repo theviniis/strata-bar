@@ -80,6 +80,11 @@ export function MemoryPopupContent({
         <CardDescription>
           Visualize informações sobre a memória RAM
         </CardDescription>
+        {demo && (
+          <p className="text-xs text-muted-foreground">
+            Dados de demonstração · ilustrativos
+          </p>
+        )}
         {event.status === 'error' && (
           <p role="status" className="mb-3 text-xs text-destructive">
             {event.error} · última leitura desatualizada

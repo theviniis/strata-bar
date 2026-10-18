@@ -27,7 +27,7 @@ vi.mock('../services/system/bridge', () => ({
       error: null
     })
     const data: Partial<Record<Channel, unknown>> = {
-      cpu: { percent: 23.4 },
+      cpu: { percent: metric(23.4) },
       memory: {
         sequence: 1,
         sampledAt: Date.now(),
@@ -70,7 +70,7 @@ import NativeBar from '../components/status-bar/NativeBar'
 
 it('renders real adapter snapshots and the audio popup trigger', () => {
   render(<NativeBar />)
-  expect(screen.getByLabelText('Uso da CPU')).toHaveTextContent(/^23%?$/)
+  expect(screen.getByLabelText('Uso da CPU')).toHaveTextContent(/^23.4%?$/)
   expect(screen.getByLabelText('Uso da RAM')).toHaveTextContent(/^56.3%?$/)
   expect(
     screen.getByRole('button', { name: 'Saída de áudio' })

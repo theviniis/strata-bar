@@ -5,26 +5,46 @@ import {
   WidgetItemOutput,
   WidgetItemTooltip
 } from '@/components/widget-item'
-import { renderOutput } from '@/lib/utils'
 import { Cpu as Icon } from 'lucide-react'
-import { useOverlayTooltip } from '../../hooks/useOverlayTooltip'
-import { useSystemChannel } from '../../hooks/useSystemChannel'
+import { WidgetPopup } from '@/popups/WidgetPopup'
+import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
+import { useCpu } from './useCpu'
+import { isCpuMetricStale } from './presentation'
 
 export function Cpu() {
-  const value = useSystemChannel('cpu')
-  const text = value.status === 'error' ? value.error : 'Uso total de CPU'
+  const { event, lastData, now } = useCpu()
+  const data = event.status === 'ready' ? event.data : lastData
+  const percent = data?.percent
+  const stale = isCpuMetricStale(percent, now, event.status === 'ready')
+  const text =
+    event.status === 'error'
+      ? event.error
+      : stale
+        ? 'Leitura de CPU desatualizada ou indisponível'
+        : 'Detalhes da CPU'
   const tip = useOverlayTooltip(text)
   return (
-    <WidgetItem {...tip.trigger}>
-      <WidgetItemIcon icon={Icon} />
-      <WidgetItemLabel>CPU</WidgetItemLabel>
-      <WidgetItemOutput
-        aria-label="Uso da CPU"
-        aria-describedby={tip.describedBy}
-      >
-        {renderOutput(value)}
-      </WidgetItemOutput>
-      <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
-    </WidgetItem>
+    <WidgetPopup.Root popup="cpu">
+      <WidgetPopup.Trigger asChild>
+        <WidgetItem aria-label="Detalhes da CPU" {...tip.trigger}>
+          <WidgetItemIcon icon={Icon} />
+          <WidgetItemLabel>CPU</WidgetItemLabel>
+          <WidgetItemOutput
+            aria-label="Uso da CPU"
+            aria-describedby={tip.describedBy}
+          >
+            {percent?.value != null
+              ? percent.value.toFixed(1)
+              : event.status === 'loading'
+                ? '...'
+                : '—'}
+            {stale && percent?.value != null && (
+              <span aria-label="Leitura desatualizada">*</span>
+            )}
+          </WidgetItemOutput>
+          <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
+        </WidgetItem>
+      </WidgetPopup.Trigger>
+    </WidgetPopup.Root>
   )
 }

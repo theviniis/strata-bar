@@ -5,6 +5,26 @@ popups. Memory terminology follows Windows concepts.
 
 ## Language
 
+**CPU utilization**:
+The percentage of aggregate processor time occupied during an observation interval.
+_Avoid_: Processor Utility as an equivalent definition
+
+**Current CPU frequency**:
+The mean observed frequency across all logical processors at collection time.
+_Avoid_: Nominal frequency as a synonym
+
+**Maximum nominal CPU frequency**:
+The highest nominal processor frequency reported by Windows across CPU packages.
+It is distinct from advertised turbo frequency and the highest observed frequency.
+
+**CPU package temperature**:
+The temperature reported for the processor package as a whole, distinct from
+individual core temperatures and motherboard sensors.
+
+**Physical cores / logical processors**:
+Physical execution cores and the processor contexts Windows can schedule,
+respectively. P / L denotes these counts, not performance/efficiency core types.
+
 **Total physical memory**:
 Physical RAM usable by Windows, distinct from the amount installed in the machine
 and from the amount currently available.

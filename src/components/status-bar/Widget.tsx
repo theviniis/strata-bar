@@ -157,10 +157,14 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
           : sample.status === 'error'
             ? 'Error'
             : 'Unavailable'
-  if (widget.type === 'volume' || widget.type === 'memory') {
+  if (
+    widget.type === 'volume' ||
+    widget.type === 'memory' ||
+    widget.type === 'cpu'
+  ) {
     return (
       <WidgetPopup.Root
-        popup={widget.type === 'memory' ? 'memory' : 'audioOutputs'}
+        popup={widget.type === 'volume' ? 'audioOutputs' : widget.type}
       >
         <WidgetPopup.Anchor asChild>
           <span className="inline-flex">

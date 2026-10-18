@@ -14,7 +14,7 @@ it('disposes asynchronous subscriptions that resolve after unmount', async () =>
   // Only disposal ordering matters here, so the payload is a placeholder sample.
   const cpu: Subscribable<Record<Channel, ChannelData['cpu']>> = {
     subscribe: (_channel, listener) => {
-      listener({ status: 'ready', data: { percent: 1 }, timestamp: 0 })
+      listener({ status: 'loading', timestamp: 0 })
       return new Promise((r) => (resolve = r))
     }
   }

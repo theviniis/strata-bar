@@ -1,5 +1,7 @@
 import type { MemoryData } from './memory.generated'
 import { parseMemoryEvent } from './memory'
+import type { CpuData } from './cpu.generated'
+import { parseCpuEvent } from './cpu'
 
 export type BridgeMode = 'demo' | 'native'
 
@@ -38,7 +40,7 @@ export type KomorebiAction =
 
 /** Payloads published by the native collectors. */
 export interface ChannelData {
-  cpu: { percent: number }
+  cpu: CpuData
   memory: MemoryData
   gpu: null
   network: number
@@ -189,13 +191,16 @@ export function createNativeBridge(): NativeBridge {
         listenChannel = currentWindow.listen.bind(currentWindow)
       }
       let receivedEvent = false
-      let memorySequence = -1
+      let resourceSequence = -1
       const deliver = (event: SystemEvent<ChannelData[C]>) => {
-        if (channel === 'memory') {
-          const parsed = parseMemoryEvent(event)
+        if (channel === 'memory' || channel === 'cpu') {
+          const parsed =
+            channel === 'memory'
+              ? parseMemoryEvent(event)
+              : parseCpuEvent(event)
           if (parsed.status === 'ready') {
-            if (parsed.data.sequence <= memorySequence) return
-            memorySequence = parsed.data.sequence
+            if (parsed.data.sequence <= resourceSequence) return
+            resourceSequence = parsed.data.sequence
           }
           listener(parsed as SystemEvent<ChannelData[C]>)
         } else listener(event)

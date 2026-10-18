@@ -11,11 +11,10 @@ use tauri::{AppHandle, Emitter};
 use windows::{
     core::{implement, PCWSTR},
     Win32::{
-        Foundation::{FILETIME, PROPERTYKEY},
+        Foundation::PROPERTYKEY,
         Media::Audio::{Endpoints::*, *},
         System::{
             Com::*,
-            Threading::GetSystemTimes,
         },
     },
 };
@@ -31,30 +30,6 @@ pub fn envelope(status: &str, data: Value) -> Value {
 }
 fn error(e: impl std::fmt::Display) -> Value {
     json!({"status":"error","data":null,"error":e.to_string(),"timestamp":timestamp()})
-}
-fn ticks(v: FILETIME) -> u64 {
-    ((v.dwHighDateTime as u64) << 32) | v.dwLowDateTime as u64
-}
-pub fn cpu_times() -> windows::core::Result<[u64; 3]> {
-    unsafe {
-        let (mut i, mut k, mut u) = (
-            FILETIME::default(),
-            FILETIME::default(),
-            FILETIME::default(),
-        );
-        GetSystemTimes(Some(&mut i), Some(&mut k), Some(&mut u))?;
-        Ok([ticks(i), ticks(k), ticks(u)])
-    }
-}
-pub fn cpu_percent(old: [u64; 3], new: [u64; 3]) -> Option<f64> {
-    if new.iter().zip(old).any(|(n, o)| *n < o) {
-        return None;
-    }
-    let total = (new[1] - old[1]) + (new[2] - old[2]);
-    if total == 0 {
-        return None;
-    }
-    Some((100.0 * (total.saturating_sub(new[0] - old[0])) as f64 / total as f64).clamp(0., 100.))
 }
 pub fn memory() -> windows::core::Result<Value> {
     Ok(serde_json::to_value(crate::memory::MemoryCollector::default().collect()).expect("Memory contract serializes"))
@@ -226,7 +201,7 @@ impl Metrics {
                 }
             }
             let mut audio: Option<(IAudioEndpointVolume, IAudioEndpointVolumeCallback)> = None;
-            let mut previous = None;
+            let mut cpu_collector = crate::cpu::CpuCollector::new(crate::cpu_windows::WindowsCpuSource::default());
             let mut memory_collector = crate::memory::MemoryCollector::default();
             let mut next_tick = Instant::now();
             let mut ticks=0;
@@ -278,23 +253,8 @@ impl Metrics {
                 }
                 if Instant::now() >= next_tick {
                     if self.active("cpu") {
-                        match cpu_times() {
-                            Ok(now) => {
-                                if let Some(old) = previous {
-                                    if let Some(p) = cpu_percent(old, now) {
-                                        self.publish(
-                                            &app,
-                                            "cpu",
-                                            envelope("ready", json!({"percent":p})),
-                                        );
-                                    }
-                                }
-                                previous = Some(now);
-                            }
-                            Err(e) => self.publish(&app, "cpu", error(e)),
-                        }
-                    } else {
-                        previous = None;
+                        let sample=cpu_collector.collect();
+                        self.publish(&app,"cpu",envelope("ready",serde_json::to_value(sample).expect("CPU contract serializes")));
                     }
                     if self.active("memory") {
                         let sample = memory_collector.collect();
@@ -412,9 +372,10 @@ pub fn probe() -> Result<Value, String> {
             .ok()
             .map_err(|e| e.to_string())?;
         let result = (|| {
-            let old = cpu_times().map_err(|e| e.to_string())?;
-            std::thread::sleep(Duration::from_millis(300));
-            let cpu = cpu_percent(old, cpu_times().map_err(|e| e.to_string())?);
+            let mut collector=crate::cpu::CpuCollector::new(crate::cpu_windows::WindowsCpuSource::default());
+            collector.collect();
+            std::thread::sleep(Duration::from_secs(2));
+            let cpu=collector.collect();
             let mem = memory().map_err(|e| e.to_string())?;
             let en: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
                 .map_err(|e| e.to_string())?;
@@ -430,15 +391,6 @@ pub fn probe() -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn cpu_accounts_for_idle_inside_kernel() {
-        assert_eq!(cpu_percent([10, 20, 30], [30, 60, 70]), Some(75.));
-    }
-    #[test]
-    fn cpu_rejects_no_elapsed_or_reset() {
-        assert_eq!(cpu_percent([1, 2, 3], [1, 2, 3]), None);
-        assert_eq!(cpu_percent([2, 3, 4], [1, 2, 3]), None);
-    }
     #[test]
     fn real_windows_memory_is_bounded() {
         let m = memory().unwrap();

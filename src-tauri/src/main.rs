@@ -9,6 +9,10 @@ mod komorebi;
 mod metrics;
 mod memory_contract;
 mod memory;
+mod cpu_contract;
+mod cpu;
+mod afterburner;
+mod cpu_windows;
 use serde_json::{json, Value};
 use tauri::Manager;
 #[tauri::command]
