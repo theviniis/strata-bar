@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { tooltipArrowClasses } from '../components/ui/tooltip-classes'
 import { cn } from '../lib/utils'
 import { overlay, type OverlaySide } from '../services/system/overlay'
-import { POPUP_GAP } from './catalog'
+import { POPUP_GAP } from './constants'
 import { POPUP_EXIT_MS } from './motion'
 
 export interface PopupSurfaceProps {

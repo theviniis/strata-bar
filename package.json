@@ -4,17 +4,18 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
-    "build": "vite build",
-    "test": "vitest run",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "typecheck": "tsc -b",
-    "check": "prettier --check . && eslint . && tsc -b && vitest run",
+    "dev": "pnpm generate:popups && vite --host 127.0.0.1",
+    "build": "pnpm generate:popups && vite build",
+    "test": "pnpm generate:popups && vitest run",
+    "lint": "pnpm generate:popups && eslint .",
+    "lint:fix": "pnpm generate:popups && eslint . --fix",
+    "typecheck": "pnpm generate:popups && tsc -b",
+    "check": "pnpm generate:popups && prettier --check . && eslint . && tsc -b && vitest run",
     "desktop": "tauri dev",
     "package:windows": "tauri build",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format": "pnpm generate:popups && prettier --write .",
+    "format:check": "pnpm generate:popups && prettier --check .",
+    "generate:popups": "node --experimental-strip-types scripts/generate-popups.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

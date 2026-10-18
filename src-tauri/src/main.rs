@@ -1,7 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod desktop;
-mod popup_catalog;
+mod popup_ids;
 #[cfg(debug_assertions)]
 mod popup_check;
 mod audio_policy;

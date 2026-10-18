@@ -43,7 +43,8 @@ vi.mock('../services/system/bridge', async (original) => {
 })
 import { WidgetPopup } from '../popups/WidgetPopup'
 import { PopupHost } from '../popups/PopupHost'
-import { popupRegistry, resolvePopup } from '../popups/registry'
+import { resolvePopup } from '../popups/resolve'
+import { discoveredPopups as popupRegistry } from '../popups/.generated/popups'
 import { PopupSurface } from '../popups/PopupSurface'
 import {
   Tooltip,

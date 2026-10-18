@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { overlay } from '../services/system/overlay'
-import { popupMetadata, type PopupId } from '../popups/catalog'
-import { resolvePopup, type PopupParams } from '../popups/registry'
+import {
+  popupMetadata,
+  resolvePopup,
+  type PopupId,
+  type PopupParams
+} from '../popups/resolve'
 import { claimPopup, releasePopup } from '../popups/coordinator'
 
 /** Every opening owns a new session, including repeated clicks on one widget. */

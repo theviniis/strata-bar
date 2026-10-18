@@ -25,7 +25,16 @@ fn wait_for(app: &AppHandle, visible: bool) -> Value {
         }
         std::thread::sleep(Duration::from_millis(100));
     }
-    panic!("Overlay visibility did not become {visible}");
+    main_thread(app, |app| {
+        for window in app.webview_windows().values() {
+            let _ = window.eval("location.hash=encodeURIComponent(JSON.stringify({text:document.body.innerText,buttons:document.querySelectorAll('button').length,native:!!window.__TAURI_INTERNALS__,errors:window.__popupCheckErrors}))");
+        }
+    });
+    std::thread::sleep(Duration::from_millis(200));
+    let state = main_thread(app, |app| {
+        app.webview_windows().into_iter().map(|(label, window)| (label, window.url().map(|url| url.to_string()).unwrap_or_default())).collect::<std::collections::BTreeMap<_, _>>()
+    });
+    panic!("Overlay visibility did not become {visible}; views: {state:?}");
 }
 fn focused(app: &AppHandle, label: String) -> bool {
     main_thread(app, move |app| {
@@ -46,7 +55,7 @@ fn click(app: &AppHandle, label: String) {
     main_thread(app, move |app| {
         let bar = app.get_webview_window(&label).unwrap();
         bar.set_focus().unwrap();
-        bar.eval(r#"document.querySelector('button[aria-label="Saída de áudio"]')?.click()"#)
+        bar.eval(r#"window.__popupCheckErrors=[]; addEventListener('error',event=>window.__popupCheckErrors.push(event.message)); addEventListener('unhandledrejection',event=>window.__popupCheckErrors.push(String(event.reason))); document.querySelector('button[aria-label="Saída de áudio"]')?.click()"#)
             .unwrap();
     });
 }
@@ -152,7 +161,7 @@ pub fn start(app: AppHandle) {
                 let cleaned = app.state::<crate::metrics::Metrics>().diagnostics()["subscribers"]
                     .as_u64()
                     == Some(baseline);
-                assert!(cleaned, "Popup subscriptions should be released");
+                assert!(cleaned, "Popup subscriptions should be released: baseline={baseline}, actual={}", app.state::<crate::metrics::Metrics>().diagnostics());
                 // Exercise source-window outside-pointer policy through the real widget controller.
                 click(&app, label.clone());
                 wait_for(&app, true);

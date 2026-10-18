@@ -1,6 +1,5 @@
 import { PopupContext } from './context'
-import { popupMetadata, isPopupId } from './catalog'
-import { resolvePopup } from './registry'
+import { popupMetadata, isPopupId, resolvePopup } from './resolve'
 import { PopupSurface } from './PopupSurface'
 import type { OverlaySide } from '../services/system/overlay'
 import { Component, type ReactNode } from 'react'

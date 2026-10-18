@@ -4,3 +4,4 @@ src-tauri/target/
 .rea-tools/
 research/
 node_modules
+src/popups/.generated/

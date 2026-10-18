@@ -6,7 +6,7 @@
  * studio has no overlay window, so its adapter is a labelled no-op.
  */
 
-import type { PopupId } from '../../popups/catalog'
+import type { PopupId } from '../../popups/resolve'
 
 export type OverlayMode = 'demo' | 'native'
 

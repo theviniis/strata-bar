@@ -1,6 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { PopupId } from './catalog'
-import type { PopupValues } from './registry'
+import type { PopupId, PopupValues } from './resolve'
 
 export interface PopupContextValue {
   id: PopupId

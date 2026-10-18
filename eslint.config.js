@@ -7,7 +7,15 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'src-tauri', 'research'] },
+  {
+    ignores: [
+      'dist',
+      'node_modules',
+      'src-tauri',
+      'research',
+      'src/popups/.generated'
+    ]
+  },
   {
     files: ['**/*.{js,ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
@@ -28,7 +36,7 @@ export default tseslint.config(
     extends: [reactRefresh.configs.vite]
   },
   {
-    files: ['*.{js,ts}'],
+    files: ['*.{js,ts}', 'scripts/**/*.ts'],
     languageOptions: { globals: globals.node }
   },
   {

@@ -6,21 +6,34 @@ components own their content, data and actions. Volume is the reference feature.
 
 ## Add a popup
 
-1. Add an ID to `src/popups/catalog.json`. This is also the Rust allowlist. Each
-   entry needs only `label`. Width and height follow intrinsic content size;
-   measurements include the 12 px gap between the panel and the bar.
-2. Create a content component under its feature. Content can be any React layout;
+1. Create a content component under its feature. Content can be any React layout;
    it does not need predefined header/body/footer slots.
-3. Register its schema and component in `src/popups/registry.ts` with `definePopup`.
-   The registry must match the catalog exactly. IDs, parameter inputs and parsed
-   values are inferred; do not duplicate unions or interfaces manually.
-4. Wrap the widget in `WidgetPopup.Root`, an optional `Anchor` and a `Trigger`.
+2. Add a `*.popup.ts` definition beside the component, exporting `definePopup(...)`
+   as its default export. The filename is the ID: `clock.popup.ts` becomes `clock`.
+3. Wrap the widget in `WidgetPopup.Root`, an optional `Anchor` and a `Trigger`.
+   Continue using string IDs, for example `popup="clock"`.
 
-For example, after adding a `workspaceDetails` catalog entry:
+There is no catalog or registry to edit. For a popup without parameters:
 
-```tsx
-// In registry.ts (alongside the existing registrations)
-workspaceDetails: definePopup({
+```ts
+// src/features/clock/clock.popup.ts
+import { definePopup } from '@/popups/definition'
+import { ClockPopup } from './ClockPopup'
+
+export default definePopup({ label: 'Calendário', Content: ClockPopup })
+```
+
+Only `label` and `Content` are required. An omitted schema accepts `{}` or omitted
+params, rejecting extra fields. Add a Zod schema when the content needs parameters:
+
+```ts
+// src/features/workspaces/workspaceDetails.popup.ts
+import { z } from 'zod'
+import { definePopup } from '@/popups/definition'
+import { WorkspaceDetails } from './WorkspaceDetails'
+
+export default definePopup({
+  label: 'Workspace details',
   schema: z.object({ workspace: z.number().int().nonnegative() }).strict(),
   Content: WorkspaceDetails
 })
@@ -86,9 +99,9 @@ Demo content is visibly labeled and resets when closed.
 - Panel centered on the whole anchor, shifted only to remain within the monitor;
   the arrow still points to the anchor. The gap is always 12 CSS px.
 - Rust derives top/bottom placement from the real bar/monitor rectangles, not
-  the widget's vertical position within the bar. It validates the catalog ID,
-  session, payload size and geometry. Changing catalog metadata rebuilds the host
-  during `tauri dev`; no Rust feature conditional is needed.
+  the widget's vertical position within the bar. It validates the discovered ID,
+  session, payload size and geometry. Adding or removing definitions rebuilds the
+  host during `tauri dev`; no Rust feature conditional is needed.
 - Native opening prepares a hidden window. The shared surface reports its first
   measured width and height, then the host reveals and focuses it. Subsequent resizes do
   not take focus. Tauri visibility state and Win32 visibility stay synchronized.
@@ -110,6 +123,26 @@ both axes using intrinsic layout, independently of the current window viewport.
 the native reply supplies the updated `arrowX`. Rust moves the full-size window
 inside the monitor where possible. A popup larger than the monitor keeps its
 size and aligns to that monitor's origin on the overflowing axis, allowing clipping.
+
+## Automatic discovery
+
+Definitions are discovered recursively under `src/features/**/*.popup.ts`. IDs
+must match `[A-Za-z_$][A-Za-z0-9_$]*` and be unique across features; errors identify
+invalid or conflicting paths. Renaming a definition changes its public string ID.
+
+`pnpm generate:popups` writes `src/popups/.generated/popups.ts`, with imports,
+the internal map and the ID union. It is ignored by Git, ESLint and Prettier;
+never edit it. Development, build, tests, lint, formatting, typecheck and check
+commands generate it automatically, including on a clean checkout. Vite also
+runs discovery at startup and watches added, removed and renamed definitions.
+Ordinary definition/content edits continue through HMR. Use these pnpm commands
+before expecting the editor's first typecheck on a fresh checkout.
+
+Rust's build script independently discovers the same filenames and writes its
+allowlist into Cargo's `OUT_DIR`; direct `cargo` commands need no Node generation
+step. Both scanners reject duplicate/invalid IDs. Components and Zod schemas
+remain frontend code; Rust continues validating session ownership and transport
+geometry/payload bounds. Definition schemas do not enable arbitrary native commands.
 
 ## Validate
 

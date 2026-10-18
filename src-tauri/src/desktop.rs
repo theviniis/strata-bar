@@ -424,7 +424,7 @@ impl OverlayRequest {
             return Err(format!("Unsupported overlay kind '{}'", self.kind));
         }
         if self.kind == "popover" {
-            if self.component.as_deref().and_then(crate::popup_catalog::get).is_none()
+            if !self.component.as_deref().is_some_and(crate::popup_ids::contains)
                 || self.session.as_ref().is_none_or(|s| s.is_empty() || s.len() > 128) {
                 return Err("Invalid popup component or session".into());
             }
@@ -1030,7 +1030,7 @@ pub fn bar_snapshot()->serde_json::Value{
         assert_eq!(serde_json::from_str::<Input>(r#"{"params":null}"#).unwrap().params, Some(serde_json::Value::Null));
     }
     #[test]
-    fn popup_requests_bound_payload_bytes_and_catalog_ids() {
+    fn popup_requests_bound_payload_bytes_and_discovered_ids() {
         let mut request = request("popover", "bottom");
         request.component = Some("not-registered".into());
         assert!(request.validate().is_err());
