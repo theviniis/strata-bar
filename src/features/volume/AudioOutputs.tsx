@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button'
+import { ButtonGroup } from '@/components/ui/button-group'
+import { type ButtonLoadingProps } from '@/components/ui/button-loading'
 import {
   CardContent,
   CardDescription,
@@ -7,6 +9,7 @@ import {
   CardTitle
 } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
+import { Spinner } from '@/components/ui/spinner'
 import { WidgetItemOutput } from '@/components/widget-item'
 import { Check, Volume2, VolumeX } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -76,6 +79,44 @@ function DemoAudioOutputs() {
     />
   )
 }
+
+interface AudioOutputContentItemProps extends Omit<
+  ButtonLoadingProps,
+  'variant' | 'children'
+> {
+  device: Record<'id' | 'name', string>
+  isActive?: boolean
+}
+
+function AudioOutputContentItem({
+  device,
+  isActive,
+  isLoading,
+  ...props
+}: AudioOutputContentItemProps) {
+  return (
+    <Button
+      className="grid grid-cols-[16px_1fr_16px]"
+      variant="outline"
+      {...props}
+    >
+      <Volume2 size={16} className="shrink-0 text-primary" />
+      <span>{device.name}</span>
+      {isLoading ? (
+        <Spinner width={16} height={16} className="text-primary" />
+      ) : (
+        isActive && (
+          <Check
+            size={16}
+            aria-label="Saída atual"
+            className="shrink-0 text-primary"
+          />
+        )
+      )}
+    </Button>
+  )
+}
+
 function AudioOutputsContent({
   outputs,
   volume,
@@ -176,36 +217,22 @@ function AudioOutputsContent({
           {data?.devices.length === 0 && (
             <p className="p-3">Nenhuma saída de áudio disponível.</p>
           )}
-          <div className="flex flex-col gap-2">
+          <ButtonGroup
+            orientation="vertical"
+            aria-label="Audio device controls"
+          >
             {data?.devices.map((device) => (
-              <Button
+              <AudioOutputContentItem
                 key={device.id}
-                aria-pressed={device.id === data.defaultDeviceId}
-                disabled={pending !== null}
+                isActive={device.id === data.defaultDeviceId}
+                device={device}
                 onClick={() => void select(device.id)}
-                variant={'ghost'}
-                className="font-normal"
-              >
-                <Volume2 size={16} className="shrink-0 text-secondary" />
-                <span className="min-w-0 flex-1 wrap-break-word">
-                  {device.name}
-                </span>
-                {device.id === data.defaultDeviceId && (
-                  <Check
-                    size={16}
-                    aria-label="Saída atual"
-                    className="shrink-0 text-secondary"
-                  />
-                )}
-              </Button>
+                disabled={pending !== null}
+                isLoading={!!pending}
+              />
             ))}
-          </div>
+          </ButtonGroup>
         </div>
-        {pending && (
-          <p role="status" className="px-3 py-1">
-            Aplicando…
-          </p>
-        )}
         {error && (
           <p role="alert" className="px-3 py-1 text-destructive">
             {error}
