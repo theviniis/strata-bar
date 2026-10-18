@@ -1,10 +1,10 @@
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { ArrowUpRight, Check, Layers3, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import * as Tooltip from '@radix-ui/react-tooltip'
-import { Layers3, ArrowUpRight, Check, Settings2 } from 'lucide-react'
-import { useConfig, loadConfig, watchConfig } from '../stores/config'
 import { Widget } from '../components/status-bar/Widget'
-import { bridge } from '../services/system/bridge'
 import type { BarConfig, WidgetConfig } from '../services/configuration/config'
+import { bridge } from '../services/system/bridge'
+import { loadConfig, useConfig, watchConfig } from '../stores/config'
 
 const focusRing =
   'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b7a1ff]'
@@ -22,7 +22,7 @@ export default function App() {
   const change = (bar: Partial<BarConfig>) =>
     apply(JSON.stringify({ ...config, bar: { ...config.bar, ...bar } }))
   return (
-    <Tooltip.Provider delayDuration={300}>
+    <TooltipProvider delay={250}>
       <main
         data-theme={config.bar.theme}
         className="group mx-auto max-w-360 px-[7%] pt-8 max-[1000px]:px-[4%] max-[1000px]:pt-6"
@@ -268,6 +268,6 @@ export default function App() {
           <span>Foundation preview / Windows 11 target</span>
         </footer>
       </main>
-    </Tooltip.Provider>
+    </TooltipProvider>
   )
 }

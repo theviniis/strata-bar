@@ -9,6 +9,13 @@ describe('configuration', () => {
   })
   it('normalizes defaults', () =>
     expect(parseConfig(JSON.stringify(defaultConfig)).bar.height).toBe(36))
+  it('ships the komorebi workspace widget in the default layout', () => {
+    const widget = defaultConfig.widgets.left.find((w) => w.type === 'komorebi')
+    expect(widget).toBeDefined()
+    expect(parseConfig(JSON.stringify(defaultConfig)).widgets.left).toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'komorebi' })])
+    )
+  })
   it('rejects duplicate widget identifiers', () => {
     const c = structuredClone(defaultConfig)
     c.widgets.right[0].id = 'time'

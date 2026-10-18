@@ -2,9 +2,9 @@ use std::{
     cell::Cell,
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
-    sync::atomic::{AtomicBool, AtomicU64, Ordering},
+    sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, Ordering},
 };
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use windows::{
     core::w,
     Win32::{
@@ -16,9 +16,16 @@ use windows::{
 const CALLBACK: u32 = WM_APP + 42;
 const REFRESH_GEOMETRY: u32 = WM_APP + 43;
 const SUBCLASS: usize = 0x53545241;
+const OVERLAY_SUBCLASS: usize = 0x5354524F;
+/// Window label and title of the shared floating surface. The title deliberately
+/// does not start with `"Strata ·"`, which `bar_snapshot` uses to find AppBars.
+pub const OVERLAY: &str = "overlay";
+const OVERLAY_TITLE: &str = "Strata overlay";
 static RECONCILE_PENDING: AtomicBool = AtomicBool::new(false);
 static COUNTS: [AtomicU64;4]=[const {AtomicU64::new(0)};4];
-pub fn profile()->serde_json::Value{serde_json::json!({"windowMessages":COUNTS[0].load(Ordering::Relaxed),"appbarNotifications":COUNTS[1].load(Ordering::Relaxed),"positionWrites":COUNTS[2].load(Ordering::Relaxed),"windowPositionMessages":COUNTS[3].load(Ordering::Relaxed)})}
+/// Overlay shows, positions and hides, surface failures in `diagnostics`.
+static OVERLAY_COUNTS: [AtomicU64; 3] = [const { AtomicU64::new(0) }; 3];
+pub fn profile()->serde_json::Value{serde_json::json!({"windowMessages":COUNTS[0].load(Ordering::Relaxed),"appbarNotifications":COUNTS[1].load(Ordering::Relaxed),"positionWrites":COUNTS[2].load(Ordering::Relaxed),"windowPositionMessages":COUNTS[3].load(Ordering::Relaxed),"overlayShows":OVERLAY_COUNTS[0].load(Ordering::Relaxed),"overlayPositions":OVERLAY_COUNTS[1].load(Ordering::Relaxed),"overlayHides":OVERLAY_COUNTS[2].load(Ordering::Relaxed)})}
 struct Reservation {
     app: AppHandle,
     rect: RECT,
@@ -36,7 +43,69 @@ unsafe fn data(hwnd: HWND) -> APPBARDATA {
         ..Default::default()
     }
 }
+/// Strip every non-client frame style and mark a floating window as a tool window.
+///
+/// `tao` (Tauri's window layer) always creates top-level windows with
+/// `WS_CAPTION | WS_EX_WINDOWEDGE`, even when `decorations(false)`, and
+/// `skip_taskbar` only calls `ITaskbarList::DeleteTab`. komorebi's
+/// `window_is_eligible` manages exactly the windows that still carry
+/// `WS_CAPTION && WS_EX_WINDOWEDGE`, so without this the tiler claims the window
+/// and moves it into a tile. Shared by the AppBar strip and the overlay surface:
+/// any new floating window must go through it. `WS_EX_TOOLWINDOW` keeps it out of
+/// Alt+Tab; no `WS_EX_NOACTIVATE` is used because a WebView2 host with that style
+/// can keep a stale mouse capture (and lose focus state) after Win+D / Alt+Tab.
+fn floating_frame_style(style: u32, ex: u32) -> (u32, u32) {
+    const FRAME: u32 = WS_CAPTION.0
+        | WS_THICKFRAME.0
+        | WS_SYSMENU.0
+        | WS_MINIMIZEBOX.0
+        | WS_MAXIMIZEBOX.0;
+    const FRAME_EX: u32 = WS_EX_WINDOWEDGE.0
+        | WS_EX_CLIENTEDGE.0
+        | WS_EX_DLGMODALFRAME.0
+        | WS_EX_APPWINDOW.0;
+    (
+        style & !FRAME,
+        (ex & !FRAME_EX) | WS_EX_TOOLWINDOW.0 | WS_EX_TOPMOST.0,
+    )
+}
+
+/// Mirror of komorebi's `window_is_eligible` caption requirement, used as a
+/// regression guard and reported by `bar_snapshot`.
+fn komorebi_eligible(style: u32, ex: u32) -> bool {
+    style & WS_CAPTION.0 != 0 && ex & WS_EX_WINDOWEDGE.0 != 0
+}
+
+unsafe fn enforce_floating_frame(hwnd: HWND) {
+    let style = GetWindowLongPtrW(hwnd, GWL_STYLE) as u32;
+    let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
+    let (want_style, want_ex) = floating_frame_style(style, ex);
+    if want_style == style && want_ex == ex {
+        return;
+    }
+    if want_style != style {
+        SetWindowLongPtrW(hwnd, GWL_STYLE, want_style as isize);
+    }
+    if want_ex != ex {
+        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, want_ex as isize);
+    }
+    // SWP_FRAMECHANGED recomputes the non-client area so the client fills the window.
+    if let Err(e) = SetWindowPos(
+        hwnd,
+        Some(HWND_TOPMOST),
+        0,
+        0,
+        0,
+        0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+    ) {
+        eprintln!("Floating frame style: {e}");
+    }
+}
+
 unsafe fn position(hwnd: HWND, state: &Reservation) {
+    // tao re-applies its own styles on visible/always-on-top changes; re-assert.
+    enforce_floating_frame(hwnd);
     if state.busy.replace(true) {
         return;
     }
@@ -91,6 +160,7 @@ unsafe extern "system" fn procedure(
         }
     }
     if msg==REFRESH_GEOMETRY{position(hwnd,state);return LRESULT(0);}
+    if msg==WM_STYLECHANGED{enforce_floating_frame(hwnd);return LRESULT(0);}
     if msg == WM_NCDESTROY {
         let mut d = data(hwnd);
         SHAppBarMessage(ABM_REMOVE, &mut d);
@@ -104,6 +174,8 @@ unsafe extern "system" fn procedure(
             position(hwnd, state);
         }
         if wp.0 as u32 == ABN_FULLSCREENAPP {
+            // A fullscreen app owns the screen: never float a stale tooltip over it.
+            overlay_hide(&state.app);
             let top = if lp.0 != 0 {
                 HWND_NOTOPMOST
             } else {
@@ -154,6 +226,8 @@ fn fingerprint(m: &tauri::Monitor) -> String {
 }
 fn top_strip(monitor:RECT,height:i32)->RECT{RECT{left:monitor.left,top:monitor.top,right:monitor.right,bottom:monitor.top+height.clamp(1,(monitor.bottom-monitor.top).max(1))}}
 pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    // A stale anchor must never survive a monitor/DPI change.
+    overlay_hide(app);
     let monitors = app.available_monitors()?;
     let mut desired = Vec::new();
     for m in monitors {
@@ -213,6 +287,7 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             position(hwnd, &*pointer);
         }
         window.show()?;
+        unsafe{enforce_floating_frame(HWND(window.hwnd()?.0));}
         // ShowWindow/DPI initialization must finish before the final placement.
         unsafe{SendMessageW(HWND(window.hwnd()?.0),REFRESH_GEOMETRY,Some(WPARAM(0)),Some(LPARAM(0)));}
     }
@@ -232,7 +307,12 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 pub fn release_all(app: &AppHandle) {
-    for (_, w) in app.webview_windows() {
+    overlay_hide(app);
+    for (label, w) in app.webview_windows() {
+        // Only AppBar windows own a reservation; the overlay must never remove one.
+        if !label.starts_with("bar-") {
+            continue;
+        }
         if let Ok(h) = w.hwnd() {
             unsafe {
                 let mut d = data(HWND(h.0));
@@ -241,6 +321,369 @@ pub fn release_all(app: &AppHandle) {
         }
     }
 }
+/// The single floating surface shared by tooltips and, later, widget popups.
+///
+/// It is created once at startup, never destroyed, never registered as an
+/// AppBar and always repositioned by Rust from the reporting bar's window
+/// rectangle, so mixed DPI and negative monitor origins stay correct.
+struct OverlayState {
+    app: AppHandle,
+}
+
+/// Last monitor the overlay was anchored to, so a cross-monitor hover hides
+/// instead of sliding the surface across both screens.
+static OVERLAY_MONITOR: AtomicIsize = AtomicIsize::new(0);
+
+const MAX_TEXT_CHARS: usize = 512;
+const MAX_LOGICAL_SIZE: f64 = 1024.0;
+
+fn to_physical(value: f64, scale: f64) -> i32 {
+    (value * scale)
+        .round()
+        .clamp(i32::MIN as f64, i32::MAX as f64) as i32
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OverlaySide {
+    Top,
+    Bottom,
+}
+
+impl OverlaySide {
+    fn parse(value: &str) -> Result<Self, String> {
+        match value {
+            "top" => Ok(Self::Top),
+            "bottom" => Ok(Self::Bottom),
+            other => Err(format!("Unsupported overlay side '{other}'")),
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Top => "top",
+            Self::Bottom => "bottom",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+pub struct OverlayAnchor {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+pub struct OverlaySize {
+    pub width: f64,
+    pub height: f64,
+}
+
+/// `overlay_show` payload. `source` is optional because the command already
+/// receives the calling window; when present it must match.
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct OverlayRequest {
+    pub v: u32,
+    #[serde(default)]
+    pub source: Option<String>,
+    pub kind: String,
+    pub text: String,
+    pub anchor: OverlayAnchor,
+    pub size: OverlaySize,
+    pub side: String,
+}
+
+impl OverlayRequest {
+    fn validate(&self) -> Result<OverlaySide, String> {
+        if self.v != 1 {
+            return Err(format!(
+                "Overlay contract version {} is unsupported",
+                self.v
+            ));
+        }
+        if !matches!(self.kind.as_str(), "tooltip" | "popover") {
+            return Err(format!("Unsupported overlay kind '{}'", self.kind));
+        }
+        if self.text.trim().is_empty() {
+            return Err("Overlay text is empty".into());
+        }
+        if self.text.chars().count() > MAX_TEXT_CHARS {
+            return Err(format!("Overlay text exceeds {MAX_TEXT_CHARS} characters"));
+        }
+        for value in [
+            self.anchor.x,
+            self.anchor.y,
+            self.anchor.width,
+            self.anchor.height,
+            self.size.width,
+            self.size.height,
+        ] {
+            if !value.is_finite() {
+                return Err("Overlay geometry must be finite".into());
+            }
+        }
+        if self.size.width <= 0.0 || self.size.height <= 0.0 {
+            return Err("Overlay size must be positive".into());
+        }
+        if self.size.width > MAX_LOGICAL_SIZE || self.size.height > MAX_LOGICAL_SIZE {
+            return Err(format!("Overlay size exceeds {MAX_LOGICAL_SIZE} CSS px"));
+        }
+        OverlaySide::parse(&self.side)
+    }
+}
+
+#[derive(Clone, serde::Serialize)]
+struct RenderPayload<'a> {
+    kind: &'a str,
+    text: &'a str,
+    side: &'a str,
+}
+
+/// Physical placement for a surface anchored to a bar edge.
+///
+/// `size` already includes the arrow allowance on the anchored side, so the
+/// surface edge sits flush with the bar edge and the pill keeps its gap.
+fn overlay_position(
+    bar: RECT,
+    monitor: RECT,
+    size: (i32, i32),
+    anchor_center_x: i32,
+    side: OverlaySide,
+) -> (i32, i32) {
+    let (width, height) = size;
+    let max_x = (monitor.right - width).max(monitor.left);
+    let x = (anchor_center_x - width / 2).clamp(monitor.left, max_x);
+    let y = match side {
+        OverlaySide::Bottom => bar.bottom,
+        OverlaySide::Top => bar.top - height,
+    };
+    let max_y = (monitor.bottom - height).max(monitor.top);
+    (x, y.clamp(monitor.top, max_y))
+}
+
+fn monitor_rect(hwnd: HWND) -> Option<RECT> {
+    unsafe {
+        let handle = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        let mut info = MONITORINFO {
+            cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+            ..Default::default()
+        };
+        if GetMonitorInfoW(handle, &mut info).as_bool() {
+            Some(info.rcMonitor)
+        } else {
+            None
+        }
+    }
+}
+
+pub fn ensure_overlay(app: &AppHandle) -> Result<WebviewWindow, Box<dyn std::error::Error>> {
+    if let Some(window) = app.get_webview_window(OVERLAY) {
+        return Ok(window);
+    }
+    let window = WebviewWindowBuilder::new(
+        app,
+        OVERLAY,
+        WebviewUrl::App("index.html?view=overlay".into()),
+    )
+    .title(OVERLAY_TITLE)
+    .decorations(false)
+    .transparent(true)
+    .shadow(false)
+    .resizable(false)
+    .skip_taskbar(true)
+    .always_on_top(true)
+    .focused(false)
+    .visible(false)
+    .inner_size(1., 1.)
+    .build()?;
+    unsafe {
+        let hwnd = HWND(window.hwnd()?.0);
+        let owner = Box::new(OverlayState { app: app.clone() });
+        let pointer = Box::into_raw(owner);
+        if !SetWindowSubclass(
+            hwnd,
+            Some(overlay_procedure),
+            OVERLAY_SUBCLASS,
+            pointer as usize,
+        )
+        .as_bool()
+        {
+            drop(Box::from_raw(pointer));
+            window.destroy()?;
+            return Err("Cannot install the overlay window handler".into());
+        }
+        enforce_floating_frame(hwnd);
+    }
+    // The surface is a tooltip host: clicks belong to whatever is underneath.
+    window.set_ignore_cursor_events(true)?;
+    Ok(window)
+}
+
+fn hide_overlay_hwnd(app: &AppHandle, hwnd: HWND) {
+    if unsafe { IsWindowVisible(hwnd).as_bool() } {
+        unsafe {
+            let _ = ShowWindow(hwnd, SW_HIDE);
+        }
+        OVERLAY_COUNTS[2].fetch_add(1, Ordering::Relaxed);
+    }
+    // Drop the stale pill so the next show cannot flash the previous tooltip.
+    let _ = app.emit_to(OVERLAY, "overlay:clear", ());
+}
+
+fn hide_overlay_window(app: &AppHandle, window: &WebviewWindow) {
+    if let Ok(h) = window.hwnd() {
+        hide_overlay_hwnd(app, HWND(h.0));
+    }
+}
+
+/// Hides the overlay. Safe to call when it does not exist (startup, shutdown)
+/// and when it is already hidden; a lost `pointerleave` cannot strand a ghost.
+pub fn overlay_hide(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window(OVERLAY) {
+        hide_overlay_window(app, &window);
+    }
+}
+
+pub fn overlay_show(
+    app: &AppHandle,
+    caller: &WebviewWindow,
+    request: &OverlayRequest,
+) -> Result<(), String> {
+    let side = request.validate()?;
+    if let Some(source) = request.source.as_deref() {
+        if source != caller.label() {
+            return Err("Overlay request source does not match the calling window".into());
+        }
+    }
+    if !caller.label().starts_with("bar-") {
+        return Err(format!(
+            "Only bar-* windows may show the overlay (caller: {})",
+            caller.label()
+        ));
+    }
+    let window = ensure_overlay(app).map_err(|e| e.to_string())?;
+    let bar_hwnd = HWND(caller.hwnd().map_err(|e| e.to_string())?.0);
+    let mut bar = RECT::default();
+    unsafe {
+        if GetWindowRect(bar_hwnd, &mut bar).is_err() {
+            return Err("The reporting bar window has no rectangle".into());
+        }
+    }
+    let monitor = monitor_rect(bar_hwnd).unwrap_or(bar);
+    unsafe {
+        let handle = MonitorFromWindow(bar_hwnd, MONITOR_DEFAULTTONEAREST);
+        if OVERLAY_MONITOR.swap(handle.0 as isize, Ordering::Relaxed) != handle.0 as isize {
+            // Re-anchoring on another monitor must hide instead of sliding.
+            hide_overlay_window(app, &window);
+        }
+    }
+    let scale = caller.scale_factor().unwrap_or(1.0);
+    let width = to_physical(request.size.width, scale).clamp(1, 4096);
+    let height = to_physical(request.size.height, scale).clamp(1, 4096);
+    let center = bar.left + to_physical(request.anchor.x + request.anchor.width / 2.0, scale);
+    let (x, y) = overlay_position(bar, monitor, (width, height), center, side);
+    app.emit_to(
+        OVERLAY,
+        "overlay:render",
+        RenderPayload {
+            kind: &request.kind,
+            text: &request.text,
+            side: side.as_str(),
+        },
+    )
+    .map_err(|e| e.to_string())?;
+    let hwnd = HWND(window.hwnd().map_err(|e| e.to_string())?.0);
+    unsafe {
+        // tao re-applies its own styles on visibility changes; re-assert.
+        enforce_floating_frame(hwnd);
+        if let Err(e) = SetWindowPos(
+            hwnd,
+            Some(HWND_TOPMOST),
+            x,
+            y,
+            width,
+            height,
+            SWP_NOACTIVATE | SWP_SHOWWINDOW,
+        ) {
+            return Err(format!("Cannot place the overlay: {e}"));
+        }
+        let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+    }
+    OVERLAY_COUNTS[0].fetch_add(1, Ordering::Relaxed);
+    OVERLAY_COUNTS[1].fetch_add(1, Ordering::Relaxed);
+    Ok(())
+}
+
+unsafe extern "system" fn overlay_procedure(
+    hwnd: HWND,
+    msg: u32,
+    wp: WPARAM,
+    lp: LPARAM,
+    _: usize,
+    reference: usize,
+) -> LRESULT {
+    let state = &*(reference as *const OverlayState);
+    match msg {
+        WM_STYLECHANGED => {
+            enforce_floating_frame(hwnd);
+            return LRESULT(0);
+        }
+        WM_DPICHANGED | WM_DISPLAYCHANGE => {
+            // The stored anchor belongs to the old geometry.
+            hide_overlay_hwnd(&state.app, hwnd);
+        }
+        WM_NCDESTROY => {
+            let _ = RemoveWindowSubclass(hwnd, Some(overlay_procedure), OVERLAY_SUBCLASS);
+            drop(Box::from_raw(reference as *mut OverlayState));
+            return DefSubclassProc(hwnd, msg, wp, lp);
+        }
+        _ => {}
+    }
+    DefSubclassProc(hwnd, msg, wp, lp)
+}
+
+/// Probe-only view of the overlay HWND, used by `--probe`, `diagnostics` and
+/// `scripts/test-live-geometry.ps1`.
+pub fn overlay_snapshot() -> serde_json::Value {
+    unsafe extern "system" fn collect(hwnd: HWND, param: LPARAM) -> windows::core::BOOL {
+        let mut title = [0u16; 256];
+        let len = GetWindowTextW(hwnd, &mut title);
+        let title = String::from_utf16_lossy(&title[..len.max(0) as usize]);
+        if title == OVERLAY_TITLE {
+            let mut rect = RECT::default();
+            if GetWindowRect(hwnd, &mut rect).is_ok() {
+                let style = GetWindowLongPtrW(hwnd, GWL_STYLE) as u32;
+                let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
+                let values = &mut *(param.0 as *mut Vec<serde_json::Value>);
+                values.push(serde_json::json!({
+                    "rect": [rect.left, rect.top, rect.right, rect.bottom],
+                    "visible": IsWindowVisible(hwnd).as_bool(),
+                    "toolWindow": ex & WS_EX_TOOLWINDOW.0 != 0,
+                    "topmost": ex & WS_EX_TOPMOST.0 != 0,
+                    "clickThrough": ex & WS_EX_TRANSPARENT.0 != 0,
+                    "komorebiEligible": komorebi_eligible(style, ex),
+                }));
+            }
+        }
+        true.into()
+    }
+    let mut values: Vec<serde_json::Value> = Vec::new();
+    unsafe {
+        let _ = EnumWindows(Some(collect), LPARAM(&mut values as *mut _ as isize));
+    }
+    let present = !values.is_empty();
+    serde_json::json!({
+        "present": present,
+        "window": values.into_iter().next(),
+        "counters": {
+            "shows": OVERLAY_COUNTS[0].load(Ordering::Relaxed),
+            "positions": OVERLAY_COUNTS[1].load(Ordering::Relaxed),
+            "hides": OVERLAY_COUNTS[2].load(Ordering::Relaxed),
+        },
+    })
+}
+
 pub fn monitor_snapshot() -> serde_json::Value {
     unsafe extern "system" fn collect(
         m: HMONITOR,
@@ -275,7 +718,7 @@ pub fn bar_snapshot()->serde_json::Value{
     unsafe extern "system" fn collect(hwnd:HWND,param:LPARAM)->windows::core::BOOL{
         let mut title=[0u16;256];let len=GetWindowTextW(hwnd,&mut title);
         let title=String::from_utf16_lossy(&title[..len.max(0) as usize]);
-        if title.starts_with("Strata ·") {let mut rect=RECT::default();let mut client=RECT::default();if GetWindowRect(hwnd,&mut rect).is_ok(){let _=GetClientRect(hwnd,&mut client);let values=&mut *(param.0 as *mut Vec<serde_json::Value>);values.push(serde_json::json!({"title":title,"rect":[rect.left,rect.top,rect.right,rect.bottom],"client":[client.right,client.bottom],"visible":IsWindowVisible(hwnd).as_bool()}));}}true.into()
+        if title.starts_with("Strata ·") {let mut rect=RECT::default();let mut client=RECT::default();if GetWindowRect(hwnd,&mut rect).is_ok(){let _=GetClientRect(hwnd,&mut client);let style=GetWindowLongPtrW(hwnd,GWL_STYLE) as u32;let ex=GetWindowLongPtrW(hwnd,GWL_EXSTYLE) as u32;let values=&mut *(param.0 as *mut Vec<serde_json::Value>);values.push(serde_json::json!({"title":title,"rect":[rect.left,rect.top,rect.right,rect.bottom],"client":[client.right,client.bottom],"visible":IsWindowVisible(hwnd).as_bool(),"toolWindow":ex & WS_EX_TOOLWINDOW.0 != 0,"topmost":ex & WS_EX_TOPMOST.0 != 0,"komorebiEligible":komorebi_eligible(style,ex)}));}}true.into()
     }
     let mut values:Vec<serde_json::Value>=Vec::new();unsafe{let _=EnumWindows(Some(collect),LPARAM(&mut values as *mut _ as isize));}serde_json::json!(values)
 }
@@ -283,4 +726,91 @@ pub fn bar_snapshot()->serde_json::Value{
     use super::*;
     #[test]fn secondary_above_primary_uses_monitor_top_not_work_area(){let r=top_strip(RECT{left:724,top:-1080,right:2644,bottom:0},36);assert_eq!([r.left,r.top,r.right,r.bottom],[724,-1080,2644,-1044]);}
     #[test]fn negative_x_and_scaled_height_keep_physical_origin(){let r=top_strip(RECT{left:-2560,top:120,right:0,bottom:1560},54);assert_eq!([r.left,r.top,r.right,r.bottom],[-2560,120,0,174]);}
+    #[test]fn floating_frame_styles_make_the_window_ineligible_for_komorebi(){
+        // Exactly what tao produces for an undecorated, always-on-top top-level window.
+        let style=WS_CAPTION.0|WS_CLIPSIBLINGS.0|WS_SYSMENU.0|WS_VISIBLE.0;
+        let ex=WS_EX_WINDOWEDGE.0|WS_EX_ACCEPTFILES.0|WS_EX_APPWINDOW.0|WS_EX_TOPMOST.0;
+        assert!(komorebi_eligible(style,ex));
+        let (style,ex)=floating_frame_style(style,ex);
+        assert!(!komorebi_eligible(style,ex));
+        assert_eq!(style & (WS_CAPTION.0|WS_THICKFRAME.0|WS_SYSMENU.0),0);
+        assert_ne!(ex & WS_EX_TOOLWINDOW.0,0);
+        assert_ne!(ex & WS_EX_TOPMOST.0,0);
+        assert_eq!(ex & WS_EX_WINDOWEDGE.0,0);
+        assert_eq!(ex & WS_EX_APPWINDOW.0,0);
+        // Idempotent so the WM_STYLECHANGED re-assert cannot loop.
+        assert_eq!(floating_frame_style(style,ex),(style,ex));
+    }
+    #[test]fn floating_frame_style_keeps_click_through_bits(){
+        // WS_EX_TRANSPARENT is what set_ignore_cursor_events sets; the style
+        // guard runs on every show and must never drop it.
+        let (_,ex)=floating_frame_style(WS_VISIBLE.0,WS_EX_TRANSPARENT.0|WS_EX_LAYERED.0);
+        assert_ne!(ex & WS_EX_TRANSPARENT.0,0);
+        assert_ne!(ex & WS_EX_LAYERED.0,0);
+    }
+    #[test]fn floating_frame_style_keeps_unrelated_bits(){
+        let (style,ex)=floating_frame_style(WS_VISIBLE.0|WS_CLIPSIBLINGS.0,WS_EX_ACCEPTFILES.0);
+        assert_eq!(style,WS_VISIBLE.0|WS_CLIPSIBLINGS.0);
+        assert_eq!(ex,WS_EX_ACCEPTFILES.0|WS_EX_TOOLWINDOW.0|WS_EX_TOPMOST.0);
+    }
+    fn request(kind:&str,side:&str)->OverlayRequest{
+        OverlayRequest{
+            v:1,
+            source:None,
+            kind:kind.into(),
+            text:"Uso total de CPU".into(),
+            anchor:OverlayAnchor{x:120.5,y:8.,width:74.,height:20.},
+            size:OverlaySize{width:268.,height:26.},
+            side:side.into(),
+        }
+    }
+    #[test]fn overlay_requests_reject_unknown_contracts(){
+        assert!(request("tooltip","bottom").validate().is_ok());
+        assert!(request("popover","top").validate().is_ok());
+        assert!(request("dialog","bottom").validate().is_err());
+        assert!(request("tooltip","left").validate().is_err());
+        let mut stale=request("tooltip","bottom");stale.v=2;
+        assert!(stale.validate().is_err());
+        let mut empty=request("tooltip","bottom");empty.text="   ".into();
+        assert!(empty.validate().is_err());
+        let mut huge=request("tooltip","bottom");huge.text="x".repeat(MAX_TEXT_CHARS+1);
+        assert!(huge.validate().is_err());
+        let mut nan=request("tooltip","bottom");nan.anchor.x=f64::NAN;
+        assert!(nan.validate().is_err());
+        let mut zero=request("tooltip","bottom");zero.size.width=0.;
+        assert!(zero.validate().is_err());
+        let mut oversized=request("tooltip","bottom");oversized.size.height=MAX_LOGICAL_SIZE+1.;
+        assert!(oversized.validate().is_err());
+    }
+    #[test]fn overlay_below_a_top_bar_starts_at_the_bar_edge(){
+        let bar=RECT{left:0,top:0,right:1920,bottom:36};
+        let monitor=RECT{left:0,top:0,right:1920,bottom:1080};
+        let (x,y)=overlay_position(bar,monitor,(200,40),960,OverlaySide::Bottom);
+        assert_eq!((x,y),(860,36));
+    }
+    #[test]fn overlay_above_a_bottom_bar_ends_at_the_bar_edge(){
+        let bar=RECT{left:-1920,top:1044,right:0,bottom:1080};
+        let monitor=RECT{left:-1920,top:0,right:0,bottom:1080};
+        let (x,y)=overlay_position(bar,monitor,(200,40),-960,OverlaySide::Top);
+        assert_eq!((x,y),(-1060,1004));
+    }
+    #[test]fn overlay_clamps_inside_negative_and_scaled_monitors(){
+        let bar=RECT{left:-2560,top:120,right:0,bottom:174};
+        let monitor=RECT{left:-2560,top:120,right:0,bottom:1560};
+        // Anchor at the left edge: the surface cannot start before the monitor.
+        let (x,_)=overlay_position(bar,monitor,(300,50),-2560,OverlaySide::Bottom);
+        assert_eq!(x,-2560);
+        // Anchor at the right edge: the surface cannot spill past it.
+        let (x,_)=overlay_position(bar,monitor,(300,50),0,OverlaySide::Bottom);
+        assert_eq!(x,-300);
+    }
+    #[test]fn overlay_anchor_uses_physical_pixels(){
+        // 125% scaling with a negative origin and a fractional CSS anchor.
+        let bar=RECT{left:-2560,top:0,right:-640,bottom:45};
+        let center=bar.left+to_physical(120.5+74.0/2.,1.25);
+        assert_eq!(center,-2363); // -2560 + round(157.5 * 1.25)
+        let (x,y)=overlay_position(bar,RECT{left:-2560,top:0,right:-640,bottom:1440},(335,33),center,OverlaySide::Bottom);
+        assert_eq!(x,-2530); // -2363 - 335/2
+        assert_eq!(y,45);
+    }
 }

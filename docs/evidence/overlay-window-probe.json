@@ -1,0 +1,69 @@
+{
+  "bars": [
+    {
+      "client": [1920, 36],
+      "komorebiEligible": false,
+      "rect": [724, -1080, 2644, -1044],
+      "title": "Strata · \\\\.\\DISPLAY2",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "client": [3440, 36],
+      "komorebiEligible": false,
+      "rect": [0, 0, 3440, 36],
+      "title": "Strata · \\\\.\\DISPLAY1",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    }
+  ],
+  "komorebi": {
+    "komorebic": "C:\\Program Files\\komorebi\\bin\\komorebic.exe",
+    "monitors": 2
+  },
+  "metrics": {
+    "Ok": {
+      "cpu": 18.565400843881857,
+      "memory": {
+        "percent": 52.48760133330209,
+        "totalBytes": 34254831616,
+        "usedBytes": 17979539456
+      },
+      "timestamp": 1792279928651,
+      "volume": {
+        "Ok": {
+          "level": 100.0,
+          "muted": false
+        }
+      }
+    }
+  },
+  "monitors": [
+    {
+      "monitor": [0, 0, 3440, 1440],
+      "workArea": [0, 36, 3440, 1440]
+    },
+    {
+      "monitor": [724, -1080, 2644, 0],
+      "workArea": [724, -1044, 2644, 0]
+    }
+  ],
+  "overlay": {
+    "counters": {
+      "hides": 0,
+      "positions": 0,
+      "shows": 0
+    },
+    "present": true,
+    "window": {
+      "clickThrough": true,
+      "komorebiEligible": false,
+      "rect": [30, 36, 300, 71],
+      "toolWindow": true,
+      "topmost": true,
+      "visible": false
+    }
+  }
+}

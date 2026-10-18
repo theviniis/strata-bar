@@ -2,7 +2,29 @@ export type BridgeMode = 'demo' | 'native'
 
 /** Channels the UI can subscribe to. The clock renders locally, without a channel. */
 export type Channel =
-  'cpu' | 'memory' | 'gpu' | 'network' | 'volume' | 'activeWindow'
+  'cpu' | 'memory' | 'gpu' | 'network' | 'volume' | 'activeWindow' | 'komorebi'
+
+export type WorkspaceStatus = 'active' | 'populated' | 'empty'
+
+/** One komorebi workspace as projected for a single monitor. */
+export interface KomorebiWorkspace {
+  index: number
+  name: string | null
+  status: WorkspaceStatus
+  layer: 'Tiling' | 'Floating'
+  windows: number
+}
+
+/** Per-monitor komorebi snapshot. Indices are komorebi ring positions (zero-based). */
+export interface KomorebiData {
+  monitor: number
+  floatOverride: boolean
+  workspaces: KomorebiWorkspace[]
+}
+
+export type KomorebiAction =
+  | { action: 'focusWorkspace'; monitor: number; workspace: number }
+  | { action: 'cycleWorkspace'; direction: 'next' | 'previous' }
 
 /** Payloads published by the native collectors. */
 export interface ChannelData {
@@ -12,11 +34,13 @@ export interface ChannelData {
   network: number
   volume: { level: number; muted: boolean }
   activeWindow: string
+  komorebi: KomorebiData
 }
 
 /**
- * Illustrative scalars served by the browser demo adapter. They are preview values
- * only, so they deliberately do not mirror the native payloads above.
+ * Illustrative values served by the browser demo adapter. Most are preview scalars
+ * only, so they deliberately do not mirror the native payloads above; komorebi is
+ * the exception because a workspace strip cannot be represented by a scalar.
  */
 export interface DemoChannelData {
   cpu: number
@@ -25,6 +49,7 @@ export interface DemoChannelData {
   network: number
   volume: number
   activeWindow: string
+  komorebi: KomorebiData
 }
 
 export type SystemStatus = 'loading' | 'ready' | 'unavailable' | 'error'
@@ -54,6 +79,8 @@ export interface AdapterBase {
   setVolume(value: VolumeChange): Promise<unknown>
   /** Only the native adapter owns the process, so the demo adapter cannot quit. */
   quit?(): Promise<void>
+  /** Native-only: the studio demo cannot drive a real window manager. */
+  komorebiAction?(value: KomorebiAction): Promise<void>
 }
 
 export interface DemoBridge extends AdapterBase, Subscribable<DemoChannelData> {
@@ -73,7 +100,29 @@ export function createMockBridge(): DemoBridge {
     gpu: null,
     network: 128,
     volume: 64,
-    activeWindow: 'Visual Studio Code'
+    activeWindow: 'Visual Studio Code',
+    komorebi: {
+      monitor: 0,
+      floatOverride: false,
+      workspaces: [
+        {
+          index: 0,
+          name: null,
+          status: 'populated',
+          layer: 'Tiling',
+          windows: 2
+        },
+        {
+          index: 1,
+          name: 'web',
+          status: 'active',
+          layer: 'Tiling',
+          windows: 1
+        },
+        { index: 2, name: null, status: 'empty', layer: 'Tiling', windows: 0 },
+        { index: 3, name: null, status: 'empty', layer: 'Floating', windows: 0 }
+      ]
+    }
   }
   return {
     mode: 'demo',
@@ -112,8 +161,16 @@ export function createNativeBridge(): NativeBridge {
     ) {
       const { invoke } = await import('@tauri-apps/api/core')
       const { listen } = await import('@tauri-apps/api/event')
+      let listenChannel = listen
+      if (channel === 'komorebi') {
+        const { getCurrentWebviewWindow } =
+          await import('@tauri-apps/api/webviewWindow')
+        const currentWindow = getCurrentWebviewWindow()
+        // Each bar must receive only its own per-monitor projection.
+        listenChannel = currentWindow.listen.bind(currentWindow)
+      }
       let receivedEvent = false
-      const stop = await listen<SystemEvent<ChannelData[C]>>(
+      const stop = await listenChannel<SystemEvent<ChannelData[C]>>(
         `system:${channel}`,
         (e) => {
           receivedEvent = true
@@ -146,6 +203,24 @@ export function createNativeBridge(): NativeBridge {
     async setVolume(value) {
       const { invoke } = await import('@tauri-apps/api/core')
       return invoke('set_volume', value)
+    },
+    async komorebiAction(value) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      const payload =
+        value.action === 'focusWorkspace'
+          ? {
+              action: value.action,
+              monitor: value.monitor,
+              workspace: value.workspace,
+              direction: null
+            }
+          : {
+              action: value.action,
+              monitor: null,
+              workspace: null,
+              direction: value.direction
+            }
+      return invoke('komorebi_action', payload)
     },
     async quit() {
       const { invoke } = await import('@tauri-apps/api/core')

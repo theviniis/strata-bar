@@ -1,23 +1,28 @@
 # Project Overview
 
 Strata (`strata-bar`) is a Windows 11 status bar MVP: a native, per-monitor AppBar that shows real CPU and
-physical RAM readings, a local clock, and Core Audio volume/mute controls while reserving desktop workspace
-on every connected monitor. The native host is a Tauri 2 (Rust) application that owns Win32 AppBar windows;
-the same React codebase also serves a browser-based "studio" preview with an explicitly labelled demo
-adapter. The MVP gate is the functioning Windows bar—browser-studio polish alone is not MVP success. GPU,
-network, media, tray cloning and autostart are deferred until the core acceptance gates pass.
+physical RAM readings, a local clock, Core Audio volume/mute controls and a komorebi workspace viewer while
+reserving desktop workspace on every connected monitor. The native host is a Tauri 2 (Rust) application that
+owns Win32 AppBar windows; the same React codebase also serves a browser-based "studio" preview with an
+explicitly labelled demo adapter. The MVP gate is the functioning Windows bar—browser-studio polish alone is
+not MVP success. GPU, network, media, tray cloning and autostart are deferred until the core acceptance gates
+pass; the komorebi widget is a recorded exception (`docs/plans/komorebi-workspaces.md`).
 
 ## Repository Structure
 
 - `src/` — React 19 frontend: app shell, feature widgets, hooks, services, Zustand stores and tests.
   - `src/app/` — studio shell (`App.tsx`) and global styles (`styles.css`).
   - `src/components/` — status-bar components (`NativeBar.tsx`, `Widget.tsx`) and shadcn-style `ui/`.
-  - `src/features/` — individual widgets: `clock/`, `cpu/`, `memory/`, `volume/`.
-  - `src/hooks/` — React hooks such as `useSystemChannel.ts`.
-  - `src/services/` — transport and config adapters: `system/bridge.ts`, `configuration/config.ts`.
+  - `src/features/` — individual widgets: `clock/`, `cpu/`, `memory/`, `volume/`, `komorebi/`.
+  - `src/hooks/` — React hooks such as `useSystemChannel.ts` and `useOverlayTooltip.ts`.
+  - `src/overlay/` — the shared floating surface: `Overlay.tsx` (`?view=overlay`), `TooltipSurface.tsx`
+    and the off-screen `measure.ts` probe.
+  - `src/services/` — transport and config adapters: `system/bridge.ts`, `system/overlay.ts`,
+    `configuration/config.ts`.
   - `src/stores/` — Zustand stores, e.g. `config.ts`.
   - `src/tests/` — Vitest + Testing Library suites and `setup.ts`.
-- `src-tauri/` — Rust/Tauri host: `src/main.rs`, `src/desktop.rs` (AppBar host), `src/metrics.rs` (collectors).
+- `src-tauri/` — Rust/Tauri host: `src/main.rs`, `src/desktop.rs` (AppBar host), `src/metrics.rs`
+  (collectors), `src/komorebi.rs` (named-pipe workspace viewer).
 - `scripts/` — PowerShell validation helpers: `measure-idle.ps1`, `test-live-geometry.ps1`.
 - `docs/` — design notes, plan and recorded evidence (`docs/evidence/`, `docs/performance/`).
 - `research/` — **gitignored, read-only** upstream YASB checkout used as reference; never port code from it.
@@ -109,13 +114,17 @@ powershell -File scripts/test-live-geometry.ps1
 flowchart TD
   UI[React widgets] --> Hooks[hooks / connect()]
   Hooks --> Bridge[services/system/bridge.ts]
+  Hooks --> Tooltip[useOverlayTooltip -> services/system/overlay.ts]
   Bridge -->|window.__TAURI_INTERNALS__| Native[Native bridge: invoke + listen]
   Bridge -->|browser| Mock[Demo adapter]
-  Native --> Cmd[Tauri commands: subscribe / unsubscribe / set_volume / quit]
+  Tooltip -->|browser| Noop[Demo adapter: no-op]
+  Native --> Cmd[Tauri commands: subscribe / unsubscribe / set_volume / komorebi_action / overlay_show / overlay_hide / quit]
   Cmd --> Metrics[metrics.rs collectors: CPU, RAM, Core Audio]
   Cmd --> Desktop[desktop.rs AppBar host]
+  Cmd --> Surface[desktop.rs overlay surface]
   Metrics -->|events system:channel| Native
   Desktop --> Bars[Per-monitor AppBar windows]
+  Surface -->|events overlay:render / overlay:clear| OverlayView["?view=overlay (src/overlay)"]
   Store[Zustand stores] --> UI
   Config[configuration/config.ts + Zod] --> Store
 ```
@@ -124,20 +133,40 @@ flowchart TD
   owning async setup/teardown and unmount-before-resolve. The bridge selects the native or demo adapter at
   load based on `window.__TAURI_INTERNALS__`; **native failures must never fall back to demo values.**
 - Transport contract: `subscribe(channel, listener, { intervalMs }) -> Promise<dispose>` (idempotent),
-  `capabilities() -> Promise<Record<channel, boolean>>`, `setVolume({ level, muted })`, and native
-  `configureBar` / future `mediaAction`, `launchApplication`, `powerAction`. Commands re-validate inputs
-  natively; only configured application IDs may be launched—never arbitrary shell strings. The native payload
-  map (`ChannelData`) and the studio's demo scalars (`DemoChannelData`) are separate types: feature widgets
-  read the native map, and only the browser studio reads the demo one.
+  `capabilities() -> Promise<Record<channel, boolean>>`, `setVolume({ level, muted })`,
+  `komorebiAction({ action, monitor?, workspace?, direction? })`, `overlayShow(request)` /
+  `overlayHide()` for the shared floating surface, and native `configureBar` / future
+  `mediaAction`, `launchApplication`, `powerAction`. Commands re-validate inputs natively; only configured
+  application IDs may be launched—never arbitrary shell strings—and `komorebiAction` spawns only a resolved
+  `komorebic.exe` with a fixed argument allowlist. The native payload map (`ChannelData`) and the studio's
+  demo scalars (`DemoChannelData`) are separate types: feature widgets read the native map, and only the
+  browser studio reads the demo one (its `komorebi` entry is the one non-scalar preview value).
 - Native event envelope: `{ status: 'ready'|'loading'|'error', data, timestamp, error? }`; the event name
   identifies the channel. Subscribe returns `{ token, initial }` after the listener installs; a live event
   beats the initial snapshot. CPU/RAM polling (fixed 2000 ms in the MVP) pauses with no subscribers; Core
   Audio uses endpoint callbacks and default-device notifications, not polling; the clock aligns to minute
-  boundaries. One shared native worker serves all monitors.
+  boundaries; komorebi streams named-pipe notifications (no polling, `intervalMs` ignored) and projects one
+  payload per bar window filtered to that window's monitor. One shared native worker serves all monitors.
 - AppBar host (`desktop.rs`): one undecorated, taskbar-hidden window per monitor; `ABM_NEW`/`QUERYPOS`/
   `SETPOS`/`REMOVE` with callback handling, plus Explorer-restart and display/DPI messages. Geometry is
   verified with direct `GetWindowRect` reads. A named per-session mutex prevents duplicate bars. Always call
-  `ABM_REMOVE` on exit to release reservations. Never pass COM pointers or HWNDs to the UI.
+  `ABM_REMOVE` on exit to release reservations. Never pass COM pointers or HWNDs to the UI. `floating_frame_style`
+  (shared by the bar and the overlay) strips `WS_CAPTION`/`WS_EX_WINDOWEDGE` and adds
+  `WS_EX_TOOLWINDOW`/`WS_EX_TOPMOST` so tilers such as
+  komorebi (whose `window_is_eligible` requires `WS_CAPTION && WS_EX_WINDOWEDGE`) never manage a floating
+  window; it is re-asserted in `position()`, on every overlay show and on `WM_STYLECHANGED` because `tao`
+  re-applies its own styles on visibility changes. Do **not** add `WS_EX_NOACTIVATE` to a WebView2 host
+  (stale mouse capture / focus-state bugs).
+- Overlay surface (`desktop.rs` + `src/overlay/`): a single transparent, click-through, topmost `overlay`
+  window is created once in `setup()` and reused for tooltips (and future widget popups). It is never an
+  AppBar, never focused, and every new floating window must go through `floating_frame_style`. Rust owns
+  placement from the reporting `bar-*` rectangle (`overlay_show` re-validates the versioned request, converts
+  CSS px to physical px with the bar's scale factor, clamps to the anchor monitor); the bar measures the pill
+  off-screen first and the JS side just reports an anchor plus a size through `useOverlayTooltip`
+  (150 ms intent, hidden `role="tooltip"` span for `aria-describedby`). The overlay view is `?view=overlay`
+  and shares its pill classes with the studio tooltip via `src/components/ui/tooltip-classes.ts`. Only
+  `bar-*` windows may show the overlay; `overlay_hide` is idempotent and also runs on window blur, Escape,
+  `ABN_FULLSCREENAPP`, DPI/monitor changes, reconcile and exit.
 - State: Zustand holds latest channel snapshots and configuration; each widget selects only its channel so a
   CPU update does not rerender the whole bar. Local interaction state stays in React.
 
@@ -145,12 +174,16 @@ flowchart TD
 
 - Unit / component (frontend): Vitest with `jsdom` and Testing Library (`@testing-library/react`,
   `@testing-library/jest-dom`); setup in `src/tests/setup.ts`. Run with `pnpm test` (`vitest run`).
-  Current suites: `app.test.tsx`, `bridge.test.ts`, `config.test.ts`, `native-bar.test.tsx`,
-  `native-bridge.test.ts` (12 tests as last recorded).
-- Native unit tests: `cargo test --manifest-path src-tauri/Cargo.toml` (8 tests: CPU accounting, physical
-  RAM, channel/interval validation, window ownership, per-monitor cleanup, negative/scaled monitor geometry).
+  Current suites: `app.test.tsx`, `bridge.test.ts`, `config.test.ts`, `komorebi.test.tsx`,
+  `native-bar.test.tsx`, `native-bridge.test.ts`, `overlay.test.tsx`, `overlay-render.test.tsx`
+  (28 tests as last recorded).
+- Native unit tests: `cargo test --manifest-path src-tauri/Cargo.toml` (20 tests: CPU accounting, physical
+  RAM, channel/interval validation, window ownership, per-monitor cleanup, negative/scaled monitor geometry,
+  komorebi projection/state bounds, `komorebic` argument allowlist, stream framing, floating frame
+  style/click-through, overlay request validation and overlay placement).
 - Integration / e2e: there is no automated e2e harness. Verify natively on Windows using `--probe`,
-  `scripts/measure-idle.ps1`, `scripts/test-live-geometry.ps1` and the recorded JSON under `docs/evidence/`
+  `scripts/measure-idle.ps1`, `scripts/test-live-geometry.ps1` (which also fails when a visible overlay ever
+  reports `komorebiEligible`) and the recorded JSON under `docs/evidence/`
   and `docs/performance/`. Native tests cannot be replaced by mocks.
 - CI: no `.github/` workflows exist.
   - `> TODO: add CI to run `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` on Windows runners.`
@@ -159,8 +192,12 @@ flowchart TD
 
 - Content Security Policy is set in `src-tauri/tauri.conf.json` and restricts content to bundled resources
   (`default-src 'self'`; no remote executable content, no arbitrary user JS in the MVP).
-- Capabilities (`src-tauri/capabilities/bars.json`) scope event listen/unlisten to `bar-*` windows only.
+- Capabilities (`src-tauri/capabilities/bars.json`) scope event listen/unlisten to the `bar-*` and `overlay`
+  windows only.
 - Commands validate inputs again on the native side; power actions require deliberate UI confirmation.
+  `komorebi_action` accepts only `focusWorkspace`/`cycleWorkspace`, bounds-checks monitor and workspace
+  against the last komorebi state, and spawns a resolved `komorebic.exe` with a fixed argument list (no shell,
+  no arbitrary strings).
 - No secrets are stored in the repository; there is no credentials file or environment secret usage yet.
   - `> TODO: document secrets handling once cloud/weather credentials enter scope.`
 - Dependency scanning: `npm audit` was used historically (`docs/validation.md`); no automated scan is wired.
@@ -180,6 +217,8 @@ flowchart TD
 - Preserve the invariants: no demo fallback on native failure, `ABM_REMOVE` on exit, CSP and capability
   scoping, and native input re-validation.
 - Keep AppBar geometry changes behind direct Win32 rectangle reads; do not trust cached window positions.
+- Any new floating window must go through `floating_frame_style` (komorebi exclusion) and must never be shown
+  with `WS_EX_NOACTIVATE`; `overlay_hide` stays idempotent so no policy can strand a ghost window.
 - `> TODO: define required reviewer(s) and any per-path CODEOWNERS.`
 - `> TODO: define agent rate limits / concurrency limits for this repository.`
 
@@ -187,11 +226,17 @@ flowchart TD
 
 - Widget registration: add a type to `types` and the Zod schema in `src/services/configuration/config.ts`,
   then register its icon/label in `meta` and its formatter in `formatters` in
-  `src/components/status-bar/Widget.tsx`.
+  `src/components/status-bar/Widget.tsx`. Widgets that need custom rendering (`clock`, `komorebi`) branch
+  before the formatter path in `Widget.tsx` and ship a feature component under `src/features/<name>/`.
 - Channels: native capability map is returned by the `capabilities` command in `src-tauri/src/main.rs`;
-  frontend adapters live in `src/services/system/bridge.ts`. Unsupported channels reject subscription.
-- Tauri commands: `capabilities`, `subscribe`, `unsubscribe`, `set_volume`, `diagnostics`, `quit`
-  (`src-tauri/src/main.rs`); the AppBar host is `desktop::reconcile` / `desktop::release_all`.
+  frontend adapters live in `src/services/system/bridge.ts`. Unsupported channels reject subscription;
+  `komorebi` is reported by capability and, when komorebi or `komorebic.exe` is absent, subscribes to a
+  streamed `unavailable` status instead of rejecting.
+- Tauri commands: `capabilities`, `subscribe`, `unsubscribe`, `set_volume`, `komorebi_action`, `overlay_show`,
+  `overlay_hide`, `diagnostics`, `quit` (`src-tauri/src/main.rs`); the AppBar host is `desktop::reconcile` /
+  `desktop::release_all`, the shared floating surface is `desktop::ensure_overlay` / `desktop::overlay_show` /
+  `desktop::overlay_hide` (probe via `desktop::overlay_snapshot`), and the
+  komorebi named-pipe watcher is `komorebi::Komorebi::start` (probe via `komorebi::probe`).
 - Configuration: JSON schema version 1 with unique widget IDs, `enabled`, `intervalMs`, `format`, `tooltip`,
   plus per-monitor overrides (`monitors`); browser persistence uses localStorage key `strata.config.v1` with
   last-known-good retention. Native atomic write + directory watch is planned.
@@ -202,8 +247,9 @@ flowchart TD
 
 ## Further Reading
 
-- [docs/architecture.md](docs/architecture.md) — layered design, bridge contract and Windows capability map.
+- [docs/architecture.md](docs/architecture.md) — layered design, bridge contract, overlay surface and Windows capability map.
 - [docs/implementation-plan.md](docs/implementation-plan.md) — milestones, acceptance gates, measurement protocol.
+- [docs/plans/overlay-window.md](docs/plans/overlay-window.md) — overlay window plan of record (tooltips now, widget popups later).
 - [docs/native-mvp-validation.md](docs/native-mvp-validation.md) — current native evidence and remaining limits.
 - [docs/validation.md](docs/validation.md) — historical foundation checkpoint (superseded).
 - [docs/yasb-analysis.md](docs/yasb-analysis.md) — read-only YASB source investigation and adaptations.

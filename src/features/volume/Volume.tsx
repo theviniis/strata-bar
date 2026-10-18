@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Volume2, VolumeX } from 'lucide-react'
+import { useOverlayTooltip } from '../../hooks/useOverlayTooltip'
 import { useSystemChannel } from '../../hooks/useSystemChannel'
 import { bridge, type VolumeChange } from '../../services/system/bridge'
 
@@ -11,6 +12,11 @@ export function Volume() {
     snapshot = value.status === 'ready' ? value.data : null,
     level = draft ?? snapshot?.level ?? 0,
     muted = snapshot?.muted ?? false
+  const text =
+    error ||
+    (value.status === 'error' ? value.error : '') ||
+    'Volume do dispositivo padrão'
+  const tip = useOverlayTooltip(text)
   async function commit(change: VolumeChange) {
     try {
       await bridge.setVolume(change)
@@ -23,18 +29,12 @@ export function Volume() {
   }
   const Icon = muted ? VolumeX : Volume2
   return (
-    <div
-      className="flex min-w-0 items-center gap-1.5"
-      title={
-        error ||
-        (value.status === 'error' ? value.error : '') ||
-        'Volume do dispositivo padrão'
-      }
-    >
+    <div className="flex min-w-0 items-center gap-1.5" {...tip.trigger}>
       <button
         className="flex items-center justify-center rounded-sm border-0 bg-transparent p-1 text-inherit hover:bg-[#ffffff10] disabled:opacity-50 focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[#d0b6ff]"
         aria-label={muted ? 'Ativar som' : 'Silenciar'}
         aria-pressed={muted}
+        aria-describedby={tip.describedBy}
         disabled={!ready}
         onClick={() => commit({ muted: !muted })}
       >
@@ -74,6 +74,9 @@ export function Volume() {
           !
         </span>
       )}
+      <span id={tip.describedBy} role="tooltip" className="sr-only">
+        {text}
+      </span>
     </div>
   )
 }

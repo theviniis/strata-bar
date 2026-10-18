@@ -1,25 +1,49 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod desktop;
+mod komorebi;
 mod metrics;
 use serde_json::{json, Value};
 use tauri::Manager;
 #[tauri::command]
-fn capabilities() -> Value {
-    json!({"cpu":true,"memory":true,"volume":true,"appBar":true,"gpu":false,"network":false})
+fn capabilities(komorebi: tauri::State<komorebi::Komorebi>) -> Value {
+    json!({"cpu":true,"memory":true,"volume":true,"appBar":true,"gpu":false,"network":false,"komorebi":komorebi.available()})
 }
 #[tauri::command]
 fn subscribe(
     window: tauri::WebviewWindow,
-    state: tauri::State<metrics::Metrics>,
+    metrics: tauri::State<metrics::Metrics>,
+    komorebi: tauri::State<komorebi::Komorebi>,
     channel: String,
     interval_ms: u64,
 ) -> Result<Value, String> {
-    state.subscribe(channel, window.label().into(), interval_ms)
+    if channel == "komorebi" {
+        return komorebi.subscribe(&window, interval_ms);
+    }
+    metrics.subscribe(channel, window.label().into(), interval_ms)
 }
 #[tauri::command]
-fn unsubscribe(window: tauri::WebviewWindow, state: tauri::State<metrics::Metrics>, token: String) {
-    state.unsubscribe(&token, window.label());
+fn unsubscribe(
+    window: tauri::WebviewWindow,
+    metrics: tauri::State<metrics::Metrics>,
+    komorebi: tauri::State<komorebi::Komorebi>,
+    token: String,
+) {
+    if token.starts_with('k') {
+        komorebi.unsubscribe(&token, window.label());
+    } else {
+        metrics.unsubscribe(&token, window.label());
+    }
+}
+#[tauri::command]
+fn komorebi_action(
+    state: tauri::State<komorebi::Komorebi>,
+    action: String,
+    monitor: Option<u32>,
+    workspace: Option<u32>,
+    direction: Option<String>,
+) -> Result<(), String> {
+    state.action(&action, monitor, workspace, direction)
 }
 #[tauri::command]
 async fn set_volume(
@@ -33,8 +57,24 @@ async fn set_volume(
         .map_err(|e| e.to_string())?
 }
 #[tauri::command]
-fn diagnostics(app: tauri::AppHandle, state: tauri::State<metrics::Metrics>) -> Value {
-    json!({"metrics":state.diagnostics(),"bars":app.webview_windows().keys().collect::<Vec<_>>()})
+fn overlay_show(
+    window: tauri::WebviewWindow,
+    app: tauri::AppHandle,
+    request: desktop::OverlayRequest,
+) -> Result<(), String> {
+    desktop::overlay_show(&app, &window, &request)
+}
+#[tauri::command]
+fn overlay_hide(app: tauri::AppHandle) {
+    desktop::overlay_hide(&app);
+}
+#[tauri::command]
+fn diagnostics(
+    app: tauri::AppHandle,
+    metrics: tauri::State<metrics::Metrics>,
+    komorebi: tauri::State<komorebi::Komorebi>,
+) -> Value {
+    json!({"metrics":metrics.diagnostics(),"komorebi":komorebi.diagnostics(),"overlay":desktop::overlay_snapshot(),"profile":desktop::profile(),"bars":app.webview_windows().keys().collect::<Vec<_>>()})
 }
 #[tauri::command]
 fn quit(app: tauri::AppHandle) {
@@ -42,7 +82,7 @@ fn quit(app: tauri::AppHandle) {
 }
 fn main() {
     if std::env::args().any(|v| v == "--probe") {
-        let result = json!({"metrics":metrics::probe(),"monitors":desktop::monitor_snapshot(),"bars":desktop::bar_snapshot()});
+        let result = json!({"metrics":metrics::probe(),"komorebi":komorebi::probe(),"overlay":desktop::overlay_snapshot(),"monitors":desktop::monitor_snapshot(),"bars":desktop::bar_snapshot()});
         let file = std::env::temp_dir().join("strata-native-probe.json");
         std::fs::write(&file, serde_json::to_string_pretty(&result).unwrap()).unwrap();
         println!("{}", serde_json::to_string(&result).unwrap());
@@ -71,18 +111,27 @@ fn main() {
             subscribe,
             unsubscribe,
             set_volume,
+            komorebi_action,
+            overlay_show,
+            overlay_hide,
             diagnostics,
             quit
         ])
         .setup(|app| {
             app.manage(metrics::Metrics::start(app.handle().clone()));
+            app.manage(komorebi::Komorebi::start(app.handle().clone()));
             desktop::reconcile(app.handle())?;
+            // One warm surface for every tooltip and, later, widget popup.
+            desktop::ensure_overlay(app.handle())?;
             Ok(())
         })
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
                 if let Some(metrics) = window.app_handle().try_state::<metrics::Metrics>() {
                     metrics.remove_window(window.label());
+                }
+                if let Some(komorebi) = window.app_handle().try_state::<komorebi::Komorebi>() {
+                    komorebi.remove_window(window.label());
                 }
             }
         })
@@ -93,6 +142,9 @@ fn main() {
             desktop::release_all(app);
             if let Some(m) = app.try_state::<metrics::Metrics>() {
                 m.stop();
+            }
+            if let Some(k) = app.try_state::<komorebi::Komorebi>() {
+                k.stop();
             }
         }
     });

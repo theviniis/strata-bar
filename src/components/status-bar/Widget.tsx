@@ -1,29 +1,36 @@
-import { useEffect, useState } from 'react'
-import { create } from 'zustand'
 import {
-  Cpu,
-  MemoryStick,
-  CircuitBoard,
-  ArrowDownUp,
-  Volume2,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from '@/components/ui/tooltip'
+import {
   AppWindow,
+  ArrowDownUp,
+  CircuitBoard,
   Clock3,
+  Cpu,
+  LayoutGrid,
+  MemoryStick,
+  Volume2,
   type LucideIcon
 } from 'lucide-react'
-import * as Tooltip from '@radix-ui/react-tooltip'
+import { useEffect, useState } from 'react'
+import { create } from 'zustand'
+import { Workspaces } from '../../features/komorebi/Workspaces'
+import type {
+  WidgetConfig,
+  WidgetType
+} from '../../services/configuration/config'
 import {
   bridge,
   connect,
   type Channel,
   type DemoBridge,
   type DemoChannelData,
+  type KomorebiData,
   type SystemEvent
 } from '../../services/system/bridge'
-import type {
-  WidgetConfig,
-  WidgetType
-} from '../../services/configuration/config'
-import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 
 type PreviewValue = DemoChannelData[Channel]
 type PreviewSnapshot = SystemEvent<PreviewValue>
@@ -42,6 +49,7 @@ const meta: Record<WidgetType, { icon: LucideIcon; label: string }> = {
   network: { icon: ArrowDownUp, label: 'NET' },
   volume: { icon: Volume2, label: 'Audio' },
   activeWindow: { icon: AppWindow, label: 'Active window' },
+  komorebi: { icon: LayoutGrid, label: 'Workspaces' },
   clock: { icon: Clock3, label: 'Local time' }
 }
 
@@ -51,7 +59,8 @@ const formatters: Record<Channel, (value: PreviewValue) => string> = {
   gpu: (v) => `${v}%`,
   network: (v) => `${v} KB/s`,
   volume: (v) => `${v}%`,
-  activeWindow: (v) => String(v)
+  activeWindow: (v) => String(v),
+  komorebi: () => ''
 }
 
 function Clock({ format }: { format: WidgetConfig['format'] }) {
@@ -93,6 +102,46 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
         })
     )
   }, [widget.id, widget.type, widget.intervalMs])
+  if (widget.type === 'komorebi') {
+    // The workspace strip is a row of controls, so it cannot nest inside the
+    // popover trigger button; it renders as its own compact widget instead.
+    const snapshot =
+      sample?.status === 'ready' ? (sample.data as KomorebiData) : null
+    return (
+      <div
+        className="flex min-w-0 items-center gap-1.5 rounded-sm p-1 text-[10px] whitespace-nowrap text-inherit"
+        aria-label={meta.komorebi.label}
+        title="Preview do komorebi · a barra nativa foca a área clicada"
+      >
+        <LayoutGrid
+          size={14}
+          className="shrink-0 text-[#b5a4d9] group-data-[theme=light]:text-[#78668d]"
+        />
+        {widget.format === 'label' && (
+          <small className="text-[9px] text-[#a19cab] group-data-[theme=light]:text-[#746b80]">
+            {meta.komorebi.label}
+          </small>
+        )}
+        <Workspaces
+          workspaces={snapshot?.workspaces ?? []}
+          offline={
+            sample?.status === 'unavailable' || sample?.status === 'error'
+          }
+          onSelect={(workspace) =>
+            bridge
+              .komorebiAction?.({
+                action: 'focusWorkspace',
+                monitor: snapshot?.monitor ?? 0,
+                workspace
+              })
+              .catch((e) =>
+                console.error('Falha ao focar a área de trabalho', e)
+              )
+          }
+        />
+      </div>
+    )
+  }
   const def = meta[widget.type],
     Icon = def.icon
   const type = widget.type
@@ -107,30 +156,25 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
             ? 'Error'
             : 'Unavailable'
   return (
-    <Tooltip.Root>
+    <Tooltip>
       <Popover>
-        <Tooltip.Trigger asChild>
-          <PopoverTrigger
-            className="flex min-w-0 cursor-pointer touch-manipulation items-center gap-1.5 rounded-sm border-0 bg-transparent p-1 text-[10px] whitespace-nowrap text-inherit hover:bg-[#ffffff0d] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b7a1ff]"
-            aria-label={def.label}
-          >
-            <Icon
-              size={14}
-              className="shrink-0 text-[#b5a4d9] group-data-[theme=light]:text-[#78668d]"
-            />
-            {widget.format === 'label' &&
-              !['clock', 'activeWindow', 'volume'].includes(widget.type) && (
-                <small className="text-[9px] text-[#a19cab] group-data-[theme=light]:text-[#746b80]">
-                  {def.label}
-                </small>
-              )}
-            {widget.type === 'clock' ? (
-              <Clock format={widget.format} />
-            ) : (
-              <span className="overflow-hidden text-ellipsis">{text}</span>
+        <TooltipTrigger render={<PopoverTrigger aria-label={def.label} />}>
+          <Icon
+            size={14}
+            className="shrink-0 text-[#b5a4d9] group-data-[theme=light]:text-[#78668d]"
+          />
+          {widget.format === 'label' &&
+            !['clock', 'activeWindow', 'volume'].includes(widget.type) && (
+              <small className="text-[9px] text-[#a19cab] group-data-[theme=light]:text-[#746b80]">
+                {def.label}
+              </small>
             )}
-          </PopoverTrigger>
-        </Tooltip.Trigger>
+          {widget.type === 'clock' ? (
+            <Clock format={widget.format} />
+          ) : (
+            <span className="overflow-hidden text-ellipsis">{text}</span>
+          )}
+        </TooltipTrigger>
         <PopoverContent>
           <strong>{def.label}</strong>
           <p className="text-[13px] leading-[1.8] text-[#92929f]">
@@ -147,15 +191,10 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
         </PopoverContent>
       </Popover>
       {widget.tooltip && (
-        <Tooltip.Portal>
-          <Tooltip.Content
-            className="z-50 rounded-lg border bg-popover px-2.5 py-1.75 text-[10px] text-popover-foreground shadow-[0_8px_28px_#0005]"
-            sideOffset={6}
-          >
-            {def.label} · {bridge.mode}
-          </Tooltip.Content>
-        </Tooltip.Portal>
+        <TooltipContent>
+          {def.label} · {bridge.mode}
+        </TooltipContent>
       )}
-    </Tooltip.Root>
+    </Tooltip>
   )
 }

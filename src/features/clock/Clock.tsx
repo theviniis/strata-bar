@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useOverlayTooltip } from '../../hooks/useOverlayTooltip'
 
 export function Clock() {
   const [now, setNow] = useState(() => new Date())
@@ -11,11 +12,14 @@ export function Clock() {
     update()
     return () => clearTimeout(timer)
   }, [])
+  const text = now.toLocaleDateString(undefined, { dateStyle: 'full' })
+  const tip = useOverlayTooltip(text)
   return (
     <time
       className="flex items-center gap-3"
       dateTime={now.toISOString()}
-      title={now.toLocaleDateString(undefined, { dateStyle: 'full' })}
+      aria-describedby={tip.describedBy}
+      {...tip.trigger}
     >
       <strong className="text-[12px] font-semibold">
         {now.toLocaleTimeString(undefined, {
@@ -29,6 +33,9 @@ export function Clock() {
           day: '2-digit',
           month: 'short'
         })}
+      </span>
+      <span id={tip.describedBy} role="tooltip" className="sr-only">
+        {text}
       </span>
     </time>
   )

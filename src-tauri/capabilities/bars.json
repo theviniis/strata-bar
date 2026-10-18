@@ -1,6 +1,6 @@
 {
   "identifier": "bars",
-  "description": "Core event subscriptions for local status bar windows",
-  "windows": ["bar-*"],
+  "description": "Core event subscriptions for local status bar and overlay windows",
+  "windows": ["bar-*", "overlay"],
   "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
 }

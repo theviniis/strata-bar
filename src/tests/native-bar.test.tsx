@@ -6,13 +6,14 @@ import type {
   SystemEvent
 } from '../services/system/bridge'
 
-const { setVolume, quit } = vi.hoisted(() => ({
+const { setVolume, quit, komorebiAction } = vi.hoisted(() => ({
   setVolume: vi.fn(async () => ({ level: 64, muted: false })),
-  quit: vi.fn(async () => {})
+  quit: vi.fn(async () => {}),
+  komorebiAction: vi.fn(async () => {})
 }))
 
 vi.mock('../services/system/bridge', () => ({
-  bridge: { mode: 'native', setVolume, quit },
+  bridge: { mode: 'native', setVolume, quit, komorebiAction },
   connect: (
     _bridge: unknown,
     channel: Channel,
@@ -26,7 +27,28 @@ vi.mock('../services/system/bridge', () => ({
         usedBytes: 8 * 1073741824,
         totalBytes: 16 * 1073741824
       },
-      volume: { level: 64, muted: false }
+      volume: { level: 64, muted: false },
+      komorebi: {
+        monitor: 0,
+        floatOverride: false,
+        workspaces: [
+          {
+            index: 0,
+            name: null,
+            status: 'populated',
+            layer: 'Tiling',
+            windows: 2
+          },
+          {
+            index: 1,
+            name: 'web',
+            status: 'active',
+            layer: 'Tiling',
+            windows: 1
+          },
+          { index: 2, name: null, status: 'empty', layer: 'Tiling', windows: 0 }
+        ]
+      }
     }
     onValue({ status: 'ready', data: data[channel] })
     return () => {}
@@ -51,4 +73,19 @@ it('offers a deliberate exit for all monitor bars', async () => {
   render(<NativeBar />)
   fireEvent.click(screen.getByRole('button', { name: 'Sair do Strata' }))
   await waitFor(() => expect(quit).toHaveBeenCalled())
+})
+
+it('renders komorebi workspaces and focuses the clicked one', async () => {
+  render(<NativeBar />)
+  expect(
+    screen.getByRole('button', { name: 'Workspace 2 (active)' })
+  ).toHaveAttribute('aria-pressed', 'true')
+  fireEvent.click(screen.getByRole('button', { name: 'Workspace 3 (empty)' }))
+  await waitFor(() =>
+    expect(komorebiAction).toHaveBeenCalledWith({
+      action: 'focusWorkspace',
+      monitor: 0,
+      workspace: 2
+    })
+  )
 })

@@ -7,7 +7,8 @@ export const types = [
   'gpu',
   'network',
   'volume',
-  'activeWindow'
+  'activeWindow',
+  'komorebi'
 ] as const
 
 export type WidgetType = (typeof types)[number]
@@ -56,7 +57,10 @@ export const defaultConfig = configSchema.parse({
   version: 1,
   bar: {},
   widgets: {
-    left: [{ id: 'active', type: 'activeWindow' }],
+    left: [
+      { id: 'workspaces', type: 'komorebi' },
+      { id: 'active', type: 'activeWindow' }
+    ],
     center: [{ id: 'time', type: 'clock' }],
     right: ['cpu', 'memory', 'gpu', 'network', 'volume'].map((type) => ({
       id: type,
