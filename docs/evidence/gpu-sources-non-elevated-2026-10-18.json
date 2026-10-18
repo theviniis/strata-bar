@@ -1,0 +1,112 @@
+{
+  "capturedAt": "2026-10-18T18:25:39.5668089-03:00",
+  "elevated": false,
+  "processes": ["MSIAfterburner"],
+  "windows": {
+    "version": "11 Pro",
+    "build": "26300"
+  },
+  "command": "strata-bar.exe --probe",
+  "sources": {
+    "adapter": "DXGI IDXGIFactory1::EnumAdapters1 + GetDesc1 (software adapters skipped, largest DedicatedVideoMemory wins)",
+    "utilization": "\\GPU Engine(*)\\Utilization Percentage summed per engine type, busiest type, filtered by the adapter LUID",
+    "memory": "\\GPU Adapter Memory(*)\\Dedicated Usage and Shared Usage, filtered by the adapter LUID",
+    "sharedLimit": "GlobalMemoryStatusEx total physical memory / 2 (WDDM shared-memory convention)",
+    "temperaturePowerFan": "MSI Afterburner MAHM v2 read-only mapping, matched by VEN_/DEV_"
+  },
+  "monitors": [
+    {
+      "monitor": [0, 0, 3440, 1440],
+      "workArea": [0, 36, 3440, 1440]
+    },
+    {
+      "monitor": [724, -1080, 2644, 0],
+      "workArea": [724, -1044, 2644, 0]
+    }
+  ],
+  "gpu": {
+    "adapter": {
+      "dedicatedBytes": 8413773824.0,
+      "deviceId": 9353,
+      "name": "NVIDIA GeForce RTX 3060 Ti",
+      "vendorId": 4318
+    },
+    "fanPercent": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792358660000.0,
+      "value": 0.0
+    },
+    "history": [
+      {
+        "percent": null,
+        "sequence": 1,
+        "temperatureCelsius": 47.0,
+        "temperatureUpdatedAt": 1792358658000.0,
+        "timestamp": 1792358658974.0
+      },
+      {
+        "percent": 47.0694713631822,
+        "sequence": 2,
+        "temperatureCelsius": 47.0,
+        "temperatureUpdatedAt": 1792358660000.0,
+        "timestamp": 1792358660976.0
+      }
+    ],
+    "memoryTotalBytes": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792358660976.0,
+      "value": 8413773824.0
+    },
+    "memoryUsedBytes": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792358660976.0,
+      "value": 1619656704.0
+    },
+    "percent": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792358660976.0,
+      "value": 47.0694713631822
+    },
+    "powerWatts": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792358660000.0,
+      "value": 20.736000061035156
+    },
+    "sampledAt": 1792358660976.0,
+    "sequence": 2,
+    "sharedTotalBytes": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792358660976.0,
+      "value": 17127415808.0
+    },
+    "sharedUsedBytes": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792358660976.0,
+      "value": 308408320.0
+    },
+    "temperatureCelsius": {
+      "error": null,
+      "status": "ready",
+      "updatedAt": 1792358660000.0,
+      "value": 47.0
+    },
+    "temperatureSensor": {
+      "gpu": 0,
+      "name": "NVIDIA GeForce RTX 3060 Ti",
+      "provider": "msiAfterburner",
+      "sourceId": 0
+    }
+  },
+  "notes": [
+    "A 36 px top AppBar reservation from a separately running YASB instance was already present when the probe ran, so the recorded workArea values include that foreign reservation (top 36 on DISPLAY1, -1044 on DISPLAY2) and are not Strata reservations.",
+    "DXGI reports 8413773824 dedicated bytes for this 8 GiB card (driver-reserved VRAM excluded), so the popup reads 1.5 GiB / 7.8 GiB rather than Task Manager\u0027s nominal 8.0 GB.",
+    "The first history point carries a null percentage (PDH counter warm-up) while its temperature is already valid; per-metric independence is intentional."
+  ]
+}

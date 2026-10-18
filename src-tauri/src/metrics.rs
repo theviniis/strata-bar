@@ -91,7 +91,7 @@ impl Metrics {
         window: String,
         interval: u64,
     ) -> Result<Value, String> {
-        if !["cpu", "memory", "volume", "audioOutputs"].contains(&channel.as_str()) {
+        if !["cpu", "gpu", "memory", "volume", "audioOutputs"].contains(&channel.as_str()) {
             return Err(format!("Unsupported channel: {channel}"));
         }
         if interval != 2000 {
@@ -182,7 +182,7 @@ impl Metrics {
     fn run(&self, app: AppHandle, rx: mpsc::Receiver<Request>) {
         unsafe {
             if let Err(e) = CoInitializeEx(None, COINIT_MULTITHREADED).ok() {
-                for c in ["cpu", "memory", "volume", "audioOutputs"] {
+                for c in ["cpu", "gpu", "memory", "volume", "audioOutputs"] {
                     self.publish(&app, c, error(&e));
                 }
                 return;
@@ -202,6 +202,7 @@ impl Metrics {
             }
             let mut audio: Option<(IAudioEndpointVolume, IAudioEndpointVolumeCallback)> = None;
             let mut cpu_collector = crate::cpu::CpuCollector::new(crate::cpu_windows::WindowsCpuSource::default());
+            let mut gpu_collector = crate::gpu::GpuCollector::new(crate::gpu_windows::WindowsGpuSource::default());
             let mut memory_collector = crate::memory::MemoryCollector::default();
             let mut next_tick = Instant::now();
             let mut ticks=0;
@@ -255,6 +256,10 @@ impl Metrics {
                     if self.active("cpu") {
                         let sample=cpu_collector.collect();
                         self.publish(&app,"cpu",envelope("ready",serde_json::to_value(sample).expect("CPU contract serializes")));
+                    }
+                    if self.active("gpu") {
+                        let sample = gpu_collector.collect();
+                        self.publish(&app, "gpu", envelope("ready", serde_json::to_value(sample).expect("GPU contract serializes")));
                     }
                     if self.active("memory") {
                         let sample = memory_collector.collect();
@@ -373,15 +378,18 @@ pub fn probe() -> Result<Value, String> {
             .map_err(|e| e.to_string())?;
         let result = (|| {
             let mut collector=crate::cpu::CpuCollector::new(crate::cpu_windows::WindowsCpuSource::default());
+            let mut gpu_collector=crate::gpu::GpuCollector::new(crate::gpu_windows::WindowsGpuSource::default());
             collector.collect();
+            gpu_collector.collect();
             std::thread::sleep(Duration::from_secs(2));
             let cpu=collector.collect();
+            let gpu=gpu_collector.collect();
             let mem = memory().map_err(|e| e.to_string())?;
             let en: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
                 .map_err(|e| e.to_string())?;
             let audio = endpoint(&en).and_then(|e| audio_read(&e));
             Ok(
-                json!({"cpu":cpu,"memory":mem,"volume":audio.map_err(|e|e.to_string()),"audioOutputs":crate::audio_policy::outputs(&en).map_err(|e|e.to_string()),"timestamp":timestamp()}),
+                json!({"cpu":cpu,"gpu":gpu,"memory":mem,"volume":audio.map_err(|e|e.to_string()),"audioOutputs":crate::audio_policy::outputs(&en).map_err(|e|e.to_string()),"timestamp":timestamp()}),
             )
         })();
         CoUninitialize();
@@ -438,7 +446,7 @@ mod lifecycle_tests {
     #[test]
     fn invalid_requests_do_not_create_resources() {
         let m = owner();
-        assert!(m.subscribe("gpu".into(), "bar-one".into(), 2000).is_err());
+        assert!(m.subscribe("network".into(), "bar-one".into(), 2000).is_err());
         assert!(m.subscribe("cpu".into(), "bar-one".into(), 1).is_err());
         assert_eq!(m.diagnostics()["subscribers"], 0);
         assert!(m.volume(Some(f32::NAN), None).is_err());

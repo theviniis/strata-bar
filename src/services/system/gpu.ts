@@ -1,0 +1,120 @@
+import { z } from 'zod'
+import type { SystemEvent } from './bridge'
+import type { GpuData, GpuMetric } from './gpu.generated'
+import {
+  RESOURCE_HISTORY_MS,
+  RESOURCE_HISTORY_MAX_POINTS
+} from './resource-history'
+
+const quantity = z.number().finite().nonnegative().max(Number.MAX_SAFE_INTEGER)
+const metric = z
+  .object({
+    status: z.enum(['ready', 'error', 'unavailable']),
+    value: quantity.nullable(),
+    updatedAt: quantity.nullable(),
+    error: z.string().nullable()
+  })
+  .strict()
+  .refine((m) =>
+    m.status === 'ready'
+      ? m.value !== null && m.updatedAt !== null && m.error === null
+      : m.status === 'unavailable'
+        ? m.value === null && m.updatedAt === null
+        : m.value !== null && m.updatedAt !== null && m.error !== null
+  ) satisfies z.ZodType<GpuMetric>
+const percent = metric.refine((m) => m.value === null || m.value <= 100)
+const temperature = metric.refine((m) => m.value === null || m.value <= 200)
+const power = metric.refine((m) => m.value === null || m.value <= 2000)
+const gpuSchema = z
+  .object({
+    sequence: z.number().int().nonnegative().max(4294967295),
+    sampledAt: quantity,
+    adapter: z
+      .object({
+        name: z.string(),
+        vendorId: quantity.int(),
+        deviceId: quantity.int(),
+        dedicatedBytes: quantity
+      })
+      .strict()
+      .nullable(),
+    percent,
+    memoryUsedBytes: metric,
+    memoryTotalBytes: metric,
+    sharedUsedBytes: metric,
+    sharedTotalBytes: metric,
+    temperatureCelsius: temperature,
+    powerWatts: power,
+    fanPercent: percent,
+    temperatureSensor: z
+      .object({
+        provider: z.literal('msiAfterburner'),
+        sourceId: z.literal(0),
+        gpu: quantity.int(),
+        name: z.string()
+      })
+      .strict()
+      .nullable(),
+    history: z
+      .array(
+        z
+          .object({
+            sequence: z.number().int().nonnegative(),
+            timestamp: quantity,
+            percent: z.number().finite().min(0).max(100).nullable(),
+            temperatureCelsius: z.number().finite().min(0).max(200).nullable(),
+            temperatureUpdatedAt: quantity.nullable()
+          })
+          .strict()
+      )
+      .max(RESOURCE_HISTORY_MAX_POINTS)
+  })
+  .strict()
+  .refine((data) =>
+    data.history.every(
+      (p, i, h) =>
+        p.sequence <= data.sequence &&
+        p.timestamp <= data.sampledAt &&
+        p.timestamp >= data.sampledAt - RESOURCE_HISTORY_MS &&
+        (!i ||
+          (p.sequence > h[i - 1].sequence &&
+            p.timestamp > h[i - 1].timestamp)) &&
+        ((p.temperatureCelsius === null && p.temperatureUpdatedAt === null) ||
+          (p.temperatureUpdatedAt !== null &&
+            p.temperatureUpdatedAt <= p.timestamp &&
+            p.temperatureUpdatedAt >= p.timestamp - 6000))
+    )
+  ) satisfies z.ZodType<GpuData>
+const eventSchema = z.discriminatedUnion('status', [
+  z.object({
+    status: z.literal('ready'),
+    data: gpuSchema,
+    timestamp: quantity.optional()
+  }),
+  z.object({
+    status: z.literal('loading'),
+    data: z.null().optional(),
+    timestamp: quantity.optional()
+  }),
+  z.object({
+    status: z.literal('unavailable'),
+    data: z.null().optional(),
+    timestamp: quantity.optional()
+  }),
+  z.object({
+    status: z.literal('error'),
+    data: z.null().optional(),
+    error: z.string(),
+    timestamp: quantity.optional()
+  })
+])
+export function parseGpuEvent(input: unknown): SystemEvent<GpuData> {
+  const result = eventSchema.safeParse(input)
+  return result.success
+    ? result.data
+    : {
+        status: 'error',
+        error: 'Dados de GPU inválidos',
+        timestamp: Date.now()
+      }
+}

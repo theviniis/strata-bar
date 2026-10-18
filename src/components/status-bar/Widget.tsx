@@ -31,6 +31,7 @@ import {
   type SystemEvent
 } from '../../services/system/bridge'
 import { WidgetPopup } from '../../popups/WidgetPopup'
+import type { PopupId } from '../../popups/resolve'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 
 type PreviewValue = DemoChannelData[Channel]
@@ -160,21 +161,25 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
   if (
     widget.type === 'volume' ||
     widget.type === 'memory' ||
-    widget.type === 'cpu'
+    widget.type === 'cpu' ||
+    widget.type === 'gpu'
   ) {
+    const popups: Partial<Record<WidgetType, { id: PopupId; label: string }>> =
+      {
+        cpu: { id: 'cpu', label: 'Detalhes da CPU' },
+        gpu: { id: 'gpu', label: 'Detalhes da GPU' },
+        memory: { id: 'memory', label: 'Detalhes da memória' },
+        volume: { id: 'audioOutputs', label: 'Saída de áudio' }
+      }
+    const popup = popups[widget.type]
+    if (!popup) return null
     return (
-      <WidgetPopup.Root
-        popup={widget.type === 'volume' ? 'audioOutputs' : widget.type}
-      >
+      <WidgetPopup.Root popup={popup.id}>
         <WidgetPopup.Anchor asChild>
           <span className="inline-flex">
             <WidgetPopup.Trigger asChild>
               <button
-                aria-label={
-                  widget.type === 'memory'
-                    ? 'Detalhes da memória'
-                    : 'Saída de áudio'
-                }
+                aria-label={popup.label}
                 className="flex items-center gap-1.5 rounded-sm p-1"
               >
                 <Icon size={14} />

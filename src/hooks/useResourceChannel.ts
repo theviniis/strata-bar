@@ -8,7 +8,9 @@ import {
 } from '@/services/system/bridge'
 
 /** Resource channels share retention and freshness behavior across bar and popup. */
-export function useResourceChannel<C extends 'cpu' | 'memory'>(channel: C) {
+export function useResourceChannel<C extends 'cpu' | 'gpu' | 'memory'>(
+  channel: C
+) {
   const [reading, setReading] = useState<{
     channel: C
     event: SystemEvent<ChannelData[C]>

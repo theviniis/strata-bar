@@ -41,7 +41,7 @@ it('reports subscription failure', async () => {
   )
 })
 
-it('stops mock timers after disposal and marks GPU unsupported', async () => {
+it('stops mock timers after disposal and previews GPU while audio stays unsupported', async () => {
   vi.useFakeTimers()
   try {
     const cb = vi.fn()
@@ -54,7 +54,10 @@ it('stops mock timers after disposal and marks GPU unsupported', async () => {
     expect(cb).toHaveBeenCalledTimes(1)
     const gpu = vi.fn()
     ;(await createMockBridge().subscribe('gpu', gpu))()
-    expect(gpu.mock.calls[0][0].status).toBe('unavailable')
+    expect(gpu.mock.calls[0][0]).toMatchObject({ status: 'ready', data: 27 })
+    const audio = vi.fn()
+    ;(await createMockBridge().subscribe('audioOutputs', audio))()
+    expect(audio.mock.calls[0][0].status).toBe('unavailable')
   } finally {
     vi.useRealTimers()
   }

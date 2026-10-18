@@ -1,6 +1,6 @@
 # Architecture decision: Tauri 2, provisional
 
-Implementation update: the native executable now opens actual per-monitor AppBars with CPU, physical RAM and Core Audio integration. Rust/MSVC are installed and native tests run. See `native-mvp-validation.md` for current evidence; earlier toolchain unavailability below describes the initial decision environment. The native MVP fixes sampling at 2000 ms; configurable interval scheduling remains future work.
+Implementation update: the native executable now opens actual per-monitor AppBars with CPU, physical RAM, GPU and Core Audio integration. Rust/MSVC are installed and native tests run. See `native-mvp-validation.md` for current evidence; earlier toolchain unavailability below describes the initial decision environment. The native MVP fixes sampling at 2000 ms; configurable interval scheduling remains future work.
 
 | Criterion           | Tauri                                                | Electron                                         |
 | ------------------- | ---------------------------------------------------- | ------------------------------------------------ |
@@ -19,7 +19,7 @@ Sources: [Tauri architecture](https://v2.tauri.app/concept/architecture/), [Elec
 
 React feature components → feature hooks → plain JS system adapter → Tauri commands/events → Rust collectors and window host. Browser adapter supplies explicitly labelled demo values. Never fall back to demo values on native failure. Zustand holds latest channel snapshots and configuration, each widget selects only its channel. Local interaction state stays in React.
 
-One native collector per channel across windows; activate only while subscribed. CPU/memory/network need bounded polling (default 2 seconds); volume, focus, media and monitor changes use events. Clock uses local time and a minute boundary. Emit timestamp, sequence, status and data/error. Never transmit COM pointers or HWNDs to UI. Channels have independent errors and unavailable states.
+One native collector per channel across windows; activate only while subscribed. CPU/memory/GPU/network need bounded polling (default 2 seconds); volume, focus, media and monitor changes use events. Clock uses local time and a minute boundary. Emit timestamp, sequence, status and data/error. Never transmit COM pointers or HWNDs to UI. Channels have independent errors and unavailable states.
 
 ## Bridge contract
 
@@ -29,7 +29,7 @@ Current native event envelope: `{status:'ready'|'loading'|'error', data, timesta
 
 ## Windows capability map
 
-CPU: GetSystemTimes deltas or PDH (benchmark and document semantics). RAM: GlobalMemoryStatusEx. Network: GetIfTable2 counter deltas with monotonic clock. GPU: DXGI/PDH, optional NVML/ADL temperature. Audio: Core Audio endpoint callbacks and setters. Media: Windows GSMTC WinRT sessions/events. Focus: WinEvent hook/GetWindowTextW. Desktop: documented IVirtualDesktopManager supports window membership, not full desktop enumeration/switching; defer unsupported private COM interfaces. Own tray: Shell_NotifyIcon/Tauri tray; foreign tray hosting is separate and deferred. Monitor: EnumDisplayMonitors/GetMonitorInfo and DPI awareness. Launcher: ShellExecuteEx allowlist. Power: restricted native commands with explicit action validation.
+CPU: GetSystemTimes deltas or PDH (benchmark and document semantics). RAM: GlobalMemoryStatusEx. Network: GetIfTable2 counter deltas with monotonic clock. GPU: DXGI adapter enumeration (skip software adapters, prefer the largest dedicated VRAM) plus PDH `GPU Engine`/`GPU Adapter Memory` counters keyed by the adapter LUID for utilisation and dedicated/shared bytes, with the shared denominator taken as half of physical RAM; temperature, power draw and fan speed come from the read-only MAHM mapping and stay independently unavailable without MSI Afterburner. NVML/ADL temperature providers remain out of scope. Audio: Core Audio endpoint callbacks and setters. Media: Windows GSMTC WinRT sessions/events. Focus: WinEvent hook/GetWindowTextW. Desktop: documented IVirtualDesktopManager supports window membership, not full desktop enumeration/switching; defer unsupported private COM interfaces. Own tray: Shell_NotifyIcon/Tauri tray; foreign tray hosting is separate and deferred. Monitor: EnumDisplayMonitors/GetMonitorInfo and DPI awareness. Launcher: ShellExecuteEx allowlist. Power: restricted native commands with explicit action validation.
 
 AppBar owner must register callback messages, negotiate rectangle, handle ABN_POSCHANGED, taskbar recreation, DPI and monitor removal, and always ABM_REMOVE on exit. Transparent borderless always-on-top windows alone are insufficient. Reserve workspace opt-in until validated. Popovers may require separate windows to avoid clipping to a 36px host. Mica/acrylic needs OS support checks and fallback CSS.
 
@@ -46,6 +46,12 @@ The frontend half is `?view=overlay`, routed in `src/main.tsx`, which loads `src
 ## komorebi workspace channel
 
 The `komorebi` channel is event-driven, not polled: `src-tauri/src/komorebi.rs` creates a message-mode named pipe (`\\.\pipe\strata-bar-komorebi-<pid>`), spawns `komorebic subscribe-pipe <name>` with a fixed argument list and no shell, and streams newline/concatenated JSON notifications from komorebi. Each notification carries the full komorebi `State`; the watcher keeps the latest parsed copy and projects one payload per subscribed bar window, filtered to that window's monitor via `MonitorFromWindow`. The project step reduces each workspace to `{index, name, status: active|populated|empty, layer, windows}`; only changes are emitted (per-window summary dedup) to bound event volume. A broken pipe sets status `unavailable`, then reconnects after a delay; a missing `komorebic.exe` never rejects subscription and never falls back to demo data. Focus actions (`focus-monitor-workspace`, `cycle-workspace`) are bounds-checked against the cached state before spawning `komorebic`, so the UI can only reach monitors and workspaces komorebi currently reports.
+
+## GPU resource channel
+
+`gpu` is polled on the same 2 s tick as CPU and RAM by one shared collector (`src-tauri/src/gpu.rs`). `src-tauri/src/gpu_windows.rs` enumerates DXGI adapters, skips `DXGI_ADAPTER_FLAG_SOFTWARE` and picks the largest `DedicatedVideoMemory`, then reads `\GPU Engine(*)\Utilization Percentage` and `\GPU Adapter Memory(*)\{Dedicated,Shared} Usage` through `PdhGetFormattedCounterArrayW`, matching instances by the adapter LUID embedded in the PDH instance name. Engine instances are summed per engine type and the busiest type is reported, clamped to `0..=100`; the shared denominator is half of physical RAM (`GlobalMemoryStatusEx`), matching the documented WDDM/Task Manager convention. Temperature, power draw and fan speed are read from the same read-only MAHM v2 mapping as the CPU package sensor, matched to the selected adapter by `VEN_`/`DEV_` (a sole GPU entry may be used without a match) and validated as temperature `0..=200`, fan `0..=100`, power `0..=2000`.
+
+Per-metric status is independent: `ready`, `error` (previously known value, failed read) or `unavailable` (never read). A stopped fan reports a real `0 %`, not `unavailable`. Schema-validated readings are cached and reused so a single failed read does not zero a metric. The collector keeps 61 points over 120 s, clears history on clock regression and records a null temperature observation when the Afterburner producer timestamp has not moved, so the temperature line stays honest about repeated samples. A failed instrument (PDH counters unavailable) is retried after a delay, and counters resume after sleep/resume.
 
 ## Configuration and security
 

@@ -1,6 +1,9 @@
 #[path = "src/cpu_contract.rs"]
 #[allow(dead_code)]
 mod cpu_contract;
+#[path = "src/gpu_contract.rs"]
+#[allow(dead_code)]
+mod gpu_contract;
 #[path = "src/memory_contract.rs"]
 #[allow(dead_code)]
 mod memory_contract;
@@ -47,6 +50,27 @@ fn main() {
     let target = std::path::Path::new("../src/services/system/memory.generated.ts");
     if std::fs::read_to_string(target).ok().as_deref() != Some(&generated) {
         std::fs::write(target, generated).expect("Generate memory contract");
+    }
+    println!("cargo:rerun-if-changed=src/gpu_contract.rs");
+    let gpu_declarations = [
+        gpu_contract::GpuMetricStatus::decl(),
+        gpu_contract::GpuMetric::decl(),
+        gpu_contract::GpuAdapter::decl(),
+        gpu_contract::GpuSensor::decl(),
+        gpu_contract::GpuPoint::decl(),
+        gpu_contract::GpuData::decl(),
+    ];
+    let gpu_generated = format!(
+        "// Generated from Rust gpu_contract.rs by cargo build. Do not edit.\n{}\n",
+        gpu_declarations
+            .iter()
+            .map(|decl| format!("export {decl}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+    let gpu_target = std::path::Path::new("../src/services/system/gpu.generated.ts");
+    if std::fs::read_to_string(gpu_target).ok().as_deref() != Some(&gpu_generated) {
+        std::fs::write(gpu_target, gpu_generated).expect("Generate GPU contract");
     }
     let features = std::path::Path::new("../src/features");
     // Cargo recursively watches this tree, including added/removed definitions.

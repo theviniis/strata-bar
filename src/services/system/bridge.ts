@@ -2,6 +2,8 @@ import type { MemoryData } from './memory.generated'
 import { parseMemoryEvent } from './memory'
 import type { CpuData } from './cpu.generated'
 import { parseCpuEvent } from './cpu'
+import type { GpuData } from './gpu.generated'
+import { parseGpuEvent } from './gpu'
 
 export type BridgeMode = 'demo' | 'native'
 
@@ -42,7 +44,7 @@ export type KomorebiAction =
 export interface ChannelData {
   cpu: CpuData
   memory: MemoryData
-  gpu: null
+  gpu: GpuData
   network: number
   audioOutputs: {
     devices: { id: string; name: string }[]
@@ -61,7 +63,7 @@ export interface ChannelData {
 export interface DemoChannelData {
   cpu: number
   memory: number
-  gpu: null
+  gpu: number
   network: number
   audioOutputs: null
   volume: number
@@ -117,7 +119,7 @@ export function createMockBridge(): DemoBridge {
   const values: DemoChannelData = {
     cpu: 17,
     memory: 46,
-    gpu: null,
+    gpu: 27,
     network: 128,
     volume: 64,
     audioOutputs: null,
@@ -154,14 +156,14 @@ export function createMockBridge(): DemoBridge {
     ) {
       const emit = () => {
         const data = values[channel]
-        if (channel === 'gpu' || channel === 'audioOutputs') {
+        if (channel === 'audioOutputs') {
           listener({ status: 'unavailable', data: null, timestamp: Date.now() })
         } else {
           listener({ status: 'ready', data, timestamp: Date.now() })
         }
       }
       emit()
-      const timer = ['cpu', 'memory', 'network'].includes(channel)
+      const timer = ['cpu', 'memory', 'gpu', 'network'].includes(channel)
         ? setInterval(emit, intervalMs)
         : undefined
       return () => clearInterval(timer)
@@ -192,12 +194,16 @@ export function createNativeBridge(): NativeBridge {
       }
       let receivedEvent = false
       let resourceSequence = -1
+      const parsers = {
+        cpu: parseCpuEvent,
+        gpu: parseGpuEvent,
+        memory: parseMemoryEvent
+      } as const
       const deliver = (event: SystemEvent<ChannelData[C]>) => {
-        if (channel === 'memory' || channel === 'cpu') {
-          const parsed =
-            channel === 'memory'
-              ? parseMemoryEvent(event)
-              : parseCpuEvent(event)
+        // Resource payloads are validated before they reach a widget; each
+        // subscription sees one channel, so the sequence guard is per channel.
+        if (channel === 'cpu' || channel === 'gpu' || channel === 'memory') {
+          const parsed = parsers[channel as keyof typeof parsers](event)
           if (parsed.status === 'ready') {
             if (parsed.data.sequence <= resourceSequence) return
             resourceSequence = parsed.data.sequence

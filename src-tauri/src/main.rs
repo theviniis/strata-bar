@@ -11,13 +11,17 @@ mod memory_contract;
 mod memory;
 mod cpu_contract;
 mod cpu;
+mod gpu_contract;
+mod gpu;
 mod afterburner;
+mod mahm_windows;
 mod cpu_windows;
+mod gpu_windows;
 use serde_json::{json, Value};
 use tauri::Manager;
 #[tauri::command]
 fn capabilities(komorebi: tauri::State<komorebi::Komorebi>) -> Value {
-    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"appBar":true,"gpu":false,"network":false,"komorebi":komorebi.available()})
+    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"appBar":true,"gpu":true,"network":false,"komorebi":komorebi.available()})
 }
 #[tauri::command]
 fn subscribe(

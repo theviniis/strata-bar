@@ -6,10 +6,7 @@ use std::{
 };
 use windows::{
     core::{w, BSTR, PCWSTR},
-    Win32::{
-        Foundation::{CloseHandle, HANDLE},
-        System::{Com::*, Memory::*, Performance::*, SystemInformation::*, Variant::*, Wmi::*},
-    },
+    Win32::System::{Com::*, Performance::*, SystemInformation::*, Variant::*, Wmi::*},
 };
 
 fn topology() -> Result<CpuTopology, String> {
@@ -228,60 +225,6 @@ impl Query {
     }
 }
 
-struct Mapping {
-    handle: HANDLE,
-    view: MEMORY_MAPPED_VIEW_ADDRESS,
-}
-impl Drop for Mapping {
-    fn drop(&mut self) {
-        unsafe {
-            let _ = UnmapViewOfFile(self.view);
-            let _ = CloseHandle(self.handle);
-        }
-    }
-}
-fn afterburner() -> Result<Vec<u8>, String> {
-    unsafe {
-        let handle = OpenFileMappingW(FILE_MAP_READ.0, false, w!("MAHMSharedMemory"))
-            .map_err(|e| format!("Afterburner not available: {e}"))?;
-        let mapping = Mapping {
-            handle,
-            view: MapViewOfFile(handle, FILE_MAP_READ, 0, 0, 0),
-        };
-        if mapping.view.Value.is_null() {
-            return Err("Cannot map Afterburner observations".into());
-        }
-        let mut info = MEMORY_BASIC_INFORMATION::default();
-        if VirtualQuery(
-            Some(mapping.view.Value),
-            &mut info,
-            size_of::<MEMORY_BASIC_INFORMATION>(),
-        ) == 0
-            || info.RegionSize < 32
-        {
-            return Err("Cannot inspect Afterburner mapping".into());
-        }
-        let ptr = mapping.view.Value.cast::<u8>();
-        let copy = |length| {
-            (0..length)
-                .map(|i| std::ptr::read_volatile(ptr.add(i)))
-                .collect::<Vec<u8>>()
-        };
-        for _ in 0..2 {
-            let header = copy(32);
-            let size = crate::afterburner::snapshot_size(&header)?;
-            if size > info.RegionSize {
-                return Err("Afterburner mapping is truncated".into());
-            }
-            let bytes = copy(size);
-            if bytes[..32] == header && copy(32) == header {
-                return Ok(bytes);
-            }
-        }
-        Err("Afterburner changed while reading".into())
-    }
-}
-
 #[derive(Default)]
 pub struct WindowsCpuSource {
     query: Option<Query>,
@@ -350,7 +293,7 @@ impl CpuSource for WindowsCpuSource {
         let (percent, frequencies) = counters.unwrap_or_else(|e| (Err(e.clone()), Err(e)));
         // Capture the completion time after the producer snapshot. A producer
         // update during the copy must not look newer than our observation.
-        let afterburner = afterburner();
+        let afterburner = crate::mahm_windows::snapshot();
         CpuReadings {
             timestamp: crate::metrics::timestamp() as f64,
             instant,

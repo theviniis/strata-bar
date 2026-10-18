@@ -71,10 +71,10 @@ fn click(app: &AppHandle, label: String, aria: &'static str) {
 }
 
 fn check_resource_content(app: &AppHandle, feature: &'static str) -> Value {
-    let (label, count, graphs, unit) = if feature == "cpu" {
-        ("Detalhes da CPU", 5, 2, "GHz")
-    } else {
-        ("Detalhes da memória", 6, 1, "GiB")
+    let (label, count, graphs, unit) = match feature {
+        "cpu" => ("Detalhes da CPU", 5, 2, "GHz"),
+        "gpu" => ("Detalhes da GPU", 6, 2, "GiB"),
+        _ => ("Detalhes da memória", 6, 1, "GiB"),
     };
     main_thread(app, |app| {
         app.get_webview_window(crate::desktop::OVERLAY)
@@ -101,23 +101,32 @@ fn check_resource_content(app: &AppHandle, feature: &'static str) -> Value {
         if ready {
             let diagnostics = app.state::<crate::metrics::Metrics>().diagnostics();
             let data = diagnostics["channels"][feature]["data"].clone();
-            let fields: &[&str] = if feature == "cpu" {
-                &[
+            // Temperature, power and fan come from MSI Afterburner and may be
+            // independently unavailable, so only the vendor-neutral readings
+            // are required to be ready here.
+            let fields: &[&str] = match feature {
+                "cpu" => &[
                     "percent",
                     "frequencyHz",
                     "maxFrequencyHz",
                     "physicalCores",
                     "logicalProcessors",
-                ]
-            } else {
-                &[
+                ],
+                "gpu" => &[
+                    "percent",
+                    "memoryUsedBytes",
+                    "memoryTotalBytes",
+                    "sharedUsedBytes",
+                    "sharedTotalBytes",
+                ],
+                _ => &[
                     "totalBytes",
                     "availableBytes",
                     "usedBytes",
                     "cachedBytes",
                     "pagingFileBytes",
                     "percent",
-                ]
+                ],
             };
             for field in fields {
                 assert!(
@@ -125,6 +134,12 @@ fn check_resource_content(app: &AppHandle, feature: &'static str) -> Value {
                         || (*field == "pagingFileBytes"
                             && data[*field]["status"] == "notConfigured"),
                     "Resource source {field} unavailable: {data}"
+                );
+            }
+            if feature == "gpu" {
+                assert!(
+                    !data["adapter"]["name"].as_str().unwrap().is_empty(),
+                    "GPU popup must report the selected adapter: {data}"
                 );
             }
             assert!(!data["history"].as_array().unwrap().is_empty());
@@ -182,7 +197,7 @@ pub fn start(app: AppHandle) {
             let mut ready = false;
             for _ in 0..300 {
                 let diagnostics = app.state::<crate::metrics::Metrics>().diagnostics();
-                if diagnostics["subscribers"].as_u64().unwrap_or(0) >= bars.len() as u64 * 3
+                if diagnostics["subscribers"].as_u64().unwrap_or(0) >= bars.len() as u64 * 4
                     && diagnostics["channels"]["cpu"]["data"]["percent"]["status"] == "ready"
                 {
                     ready = true;
@@ -200,6 +215,7 @@ pub fn start(app: AppHandle) {
                     ("audioOutputs", "Saída de áudio", 2),
                     ("memory", "Detalhes da memória", 1),
                     ("cpu", "Detalhes da CPU", 1),
+                    ("gpu", "Detalhes da GPU", 1),
                 ] {
                     let baseline = app.state::<crate::metrics::Metrics>().diagnostics()
                         ["subscribers"]
@@ -225,7 +241,7 @@ pub fn start(app: AppHandle) {
                         .unwrap()
                         >= baseline + added_subscriptions;
                     assert!(subscribed, "Popup content should own its subscriptions");
-                    let memory = if feature == "memory" || feature == "cpu" {
+                    let memory = if feature == "memory" || feature == "cpu" || feature == "gpu" {
                         check_resource_content(&app, feature)
                     } else {
                         Value::Null
@@ -287,7 +303,7 @@ pub fn start(app: AppHandle) {
                     // Exercise source-window outside-pointer policy through the real widget controller.
                     click(&app, label.clone(), aria);
                     wait_for(&app, true);
-                    if feature == "memory" || feature == "cpu" {
+                    if feature == "memory" || feature == "cpu" || feature == "gpu" {
                         let reopened = check_resource_content(&app, feature);
                         assert!(
                             reopened["sequence"].as_u64().unwrap()

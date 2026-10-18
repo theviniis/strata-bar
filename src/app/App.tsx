@@ -123,7 +123,7 @@ export default function App() {
             </div>
             <div className="absolute bottom-4.5 left-5.5 right-5.5 flex justify-between text-[9px] tracking-[1px] text-[#c0b4ca]">
               {bridge.mode === 'demo'
-                ? 'Sample metrics · GPU unavailable'
+                ? 'Sample metrics · preview data'
                 : 'Native collectors pending'}
               <span>STRATA / 0.1</span>
             </div>

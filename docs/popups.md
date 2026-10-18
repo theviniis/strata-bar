@@ -158,8 +158,8 @@ cargo run --manifest-path src-tauri/Cargo.toml -- --check-popups
 ```
 
 This debug-only check opens real per-monitor AppBars containing the real volume
-widget and overlay, temporarily changes focus, checks opening/resizing/Escape/
-outside-pointer dismissal and subscription cleanup, then exits normally and
+widget plus the CPU, memory and GPU resource fixtures and overlay, temporarily changes focus, checks
+opening/resizing/Escape/outside-pointer dismissal and subscription cleanup, then exits normally and
 releases AppBar reservations. It does not change audio routing or volume. It
 writes `%TEMP%/strata-popup-framework-check.json`; require `passed: true` and save
 new evidence files rather than overwriting historical ones. Avoid interacting

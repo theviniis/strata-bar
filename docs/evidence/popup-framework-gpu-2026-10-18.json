@@ -1,0 +1,944 @@
+{
+  "bars": [
+    {
+      "client": [1920, 36],
+      "komorebiEligible": false,
+      "rect": [724, -1044, 2644, -1008],
+      "title": "Strata · \\\\.\\DISPLAY2",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "client": [3440, 36],
+      "komorebiEligible": false,
+      "rect": [0, 36, 3440, 72],
+      "title": "Strata · \\\\.\\DISPLAY1",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "client": [1131, 985],
+      "komorebiEligible": true,
+      "rect": [728, -997, 1875, -4],
+      "title": "Strata · Status bar studio - Google Chrome",
+      "toolWindow": false,
+      "topmost": false,
+      "visible": true
+    }
+  ],
+  "checks": [
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "audioOutputs",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 1,
+          "positions": 6,
+          "shows": 1
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [3060, 72, 3440, 417],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": null,
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 0,
+          "positions": 3,
+          "shows": 1
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [3060, 72, 3440, 417],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-22c6be2639ba7101",
+      "subscriptionsReleased": true
+    },
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "memory",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 3,
+          "positions": 15,
+          "shows": 3
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [2923, 72, 3286, 480],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": {
+        "availableBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359887275.0,
+          "value": 16221159424.0
+        },
+        "cachedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359887275.0,
+          "value": 15717183488.0
+        },
+        "history": [
+          {
+            "percent": 52.50328949099103,
+            "sequence": 1,
+            "timestamp": 1792359883219.0
+          },
+          {
+            "percent": 52.00621882397169,
+            "sequence": 2,
+            "timestamp": 1792359885255.0
+          },
+          {
+            "percent": 52.13949641970414,
+            "sequence": 3,
+            "timestamp": 1792359887275.0
+          }
+        ],
+        "pagingFileBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359887275.0,
+          "value": 180158464.0
+        },
+        "percent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359887275.0,
+          "value": 52.13949641970414
+        },
+        "sampledAt": 1792359887275.0,
+        "sequence": 3,
+        "totalBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359887275.0,
+          "value": 34254831616.0
+        },
+        "usedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359887275.0,
+          "value": 17860296704.0
+        }
+      },
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 2,
+          "positions": 12,
+          "shows": 3
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [2923, 72, 3286, 480],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-22c6be2639ba7101",
+      "subscriptionsReleased": true
+    },
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "cpu",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 5,
+          "positions": 24,
+          "shows": 5
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [3028, 72, 3385, 688],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": {
+        "frequencyHz": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359889294.0,
+          "value": 4003848465.8890195
+        },
+        "history": [
+          {
+            "percent": null,
+            "sequence": 1,
+            "temperatureCelsius": 43.0,
+            "temperatureUpdatedAt": 1792359882000.0,
+            "timestamp": 1792359883194.0
+          },
+          {
+            "percent": 61.968766341260476,
+            "sequence": 2,
+            "temperatureCelsius": 44.0,
+            "temperatureUpdatedAt": 1792359884000.0,
+            "timestamp": 1792359885248.0
+          },
+          {
+            "percent": 72.0952641761395,
+            "sequence": 3,
+            "temperatureCelsius": 44.0,
+            "temperatureUpdatedAt": 1792359886000.0,
+            "timestamp": 1792359887268.0
+          },
+          {
+            "percent": 45.37284755542472,
+            "sequence": 4,
+            "temperatureCelsius": 39.0,
+            "temperatureUpdatedAt": 1792359888000.0,
+            "timestamp": 1792359889294.0
+          }
+        ],
+        "logicalProcessors": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359889294.0,
+          "value": 12.0
+        },
+        "maxFrequencyHz": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359889294.0,
+          "value": 2904000000.0
+        },
+        "percent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359889294.0,
+          "value": 45.37284755542472
+        },
+        "physicalCores": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359889294.0,
+          "value": 6.0
+        },
+        "sampledAt": 1792359889294.0,
+        "sequence": 4,
+        "temperatureCelsius": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359888000.0,
+          "value": 39.0
+        },
+        "temperatureSensor": {
+          "instance": 4294967295,
+          "name": "CPU temperature",
+          "provider": "msiAfterburner",
+          "sourceId": 128
+        }
+      },
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 4,
+          "positions": 21,
+          "shows": 5
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [3028, 72, 3385, 688],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-22c6be2639ba7101",
+      "subscriptionsReleased": true
+    },
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "gpu",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 7,
+          "positions": 33,
+          "shows": 7
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [3068, 72, 3440, 688],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": {
+        "adapter": {
+          "dedicatedBytes": 8413773824.0,
+          "deviceId": 9353,
+          "name": "NVIDIA GeForce RTX 3060 Ti",
+          "vendorId": 4318
+        },
+        "fanPercent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359888000.0,
+          "value": 55.0
+        },
+        "history": [
+          {
+            "percent": null,
+            "sequence": 1,
+            "temperatureCelsius": 53.0,
+            "temperatureUpdatedAt": 1792359882000.0,
+            "timestamp": 1792359883217.0
+          },
+          {
+            "percent": 41.89714724130045,
+            "sequence": 2,
+            "temperatureCelsius": 53.0,
+            "temperatureUpdatedAt": 1792359884000.0,
+            "timestamp": 1792359885252.0
+          },
+          {
+            "percent": 45.22202772775355,
+            "sequence": 3,
+            "temperatureCelsius": 53.0,
+            "temperatureUpdatedAt": 1792359886000.0,
+            "timestamp": 1792359887272.0
+          },
+          {
+            "percent": 41.8238106348406,
+            "sequence": 4,
+            "temperatureCelsius": 52.0,
+            "temperatureUpdatedAt": 1792359888000.0,
+            "timestamp": 1792359889299.0
+          }
+        ],
+        "memoryTotalBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359889299.0,
+          "value": 8413773824.0
+        },
+        "memoryUsedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359889299.0,
+          "value": 1523953664.0
+        },
+        "percent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359889299.0,
+          "value": 41.8238106348406
+        },
+        "powerWatts": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359888000.0,
+          "value": 36.362998962402344
+        },
+        "sampledAt": 1792359889299.0,
+        "sequence": 4,
+        "sharedTotalBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359889299.0,
+          "value": 17127415808.0
+        },
+        "sharedUsedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359889299.0,
+          "value": 211959808.0
+        },
+        "temperatureCelsius": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359888000.0,
+          "value": 52.0
+        },
+        "temperatureSensor": {
+          "gpu": 0,
+          "name": "NVIDIA GeForce RTX 3060 Ti",
+          "provider": "msiAfterburner",
+          "sourceId": 0
+        }
+      },
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 6,
+          "positions": 30,
+          "shows": 7
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [3068, 72, 3440, 688],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-22c6be2639ba7101",
+      "subscriptionsReleased": true
+    },
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "audioOutputs",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 9,
+          "positions": 42,
+          "shows": 9
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [2264, -1008, 2644, -663],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": null,
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 8,
+          "positions": 39,
+          "shows": 9
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [2264, -1008, 2644, -663],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-24b83c25257477dd",
+      "subscriptionsReleased": true
+    },
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "memory",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 11,
+          "positions": 51,
+          "shows": 11
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [2127, -1008, 2490, -600],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": {
+        "availableBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359893330.0,
+          "value": 16258879488.0
+        },
+        "cachedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359893330.0,
+          "value": 15714942976.0
+        },
+        "history": [
+          {
+            "percent": 52.50328949099103,
+            "sequence": 1,
+            "timestamp": 1792359883219.0
+          },
+          {
+            "percent": 52.00621882397169,
+            "sequence": 2,
+            "timestamp": 1792359885255.0
+          },
+          {
+            "percent": 52.13949641970414,
+            "sequence": 3,
+            "timestamp": 1792359887275.0
+          },
+          {
+            "percent": 52.18342804420808,
+            "sequence": 4,
+            "timestamp": 1792359889301.0
+          },
+          {
+            "percent": 52.25398888149653,
+            "sequence": 5,
+            "timestamp": 1792359891311.0
+          },
+          {
+            "percent": 52.163052571112075,
+            "sequence": 6,
+            "timestamp": 1792359893330.0
+          }
+        ],
+        "pagingFileBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359893330.0,
+          "value": 180158464.0
+        },
+        "percent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359893330.0,
+          "value": 52.163052571112075
+        },
+        "sampledAt": 1792359893330.0,
+        "sequence": 6,
+        "totalBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359893330.0,
+          "value": 34254831616.0
+        },
+        "usedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359893330.0,
+          "value": 17868365824.0
+        }
+      },
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 10,
+          "positions": 48,
+          "shows": 11
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [2127, -1008, 2490, -600],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-24b83c25257477dd",
+      "subscriptionsReleased": true
+    },
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "cpu",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 13,
+          "positions": 60,
+          "shows": 13
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [2232, -1008, 2589, -392],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": {
+        "frequencyHz": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359895341.0,
+          "value": 3998525634.0991235
+        },
+        "history": [
+          {
+            "percent": null,
+            "sequence": 1,
+            "temperatureCelsius": 43.0,
+            "temperatureUpdatedAt": 1792359882000.0,
+            "timestamp": 1792359883194.0
+          },
+          {
+            "percent": 61.968766341260476,
+            "sequence": 2,
+            "temperatureCelsius": 44.0,
+            "temperatureUpdatedAt": 1792359884000.0,
+            "timestamp": 1792359885248.0
+          },
+          {
+            "percent": 72.0952641761395,
+            "sequence": 3,
+            "temperatureCelsius": 44.0,
+            "temperatureUpdatedAt": 1792359886000.0,
+            "timestamp": 1792359887268.0
+          },
+          {
+            "percent": 45.37284755542472,
+            "sequence": 4,
+            "temperatureCelsius": 39.0,
+            "temperatureUpdatedAt": 1792359888000.0,
+            "timestamp": 1792359889294.0
+          },
+          {
+            "percent": 36.54113859778004,
+            "sequence": 5,
+            "temperatureCelsius": 40.0,
+            "temperatureUpdatedAt": 1792359890000.0,
+            "timestamp": 1792359891305.0
+          },
+          {
+            "percent": 31.472395192513204,
+            "sequence": 6,
+            "temperatureCelsius": 39.0,
+            "temperatureUpdatedAt": 1792359892000.0,
+            "timestamp": 1792359893325.0
+          },
+          {
+            "percent": 33.81113752556034,
+            "sequence": 7,
+            "temperatureCelsius": 41.0,
+            "temperatureUpdatedAt": 1792359894000.0,
+            "timestamp": 1792359895341.0
+          }
+        ],
+        "logicalProcessors": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359895341.0,
+          "value": 12.0
+        },
+        "maxFrequencyHz": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359895341.0,
+          "value": 2904000000.0
+        },
+        "percent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359895341.0,
+          "value": 33.81113752556034
+        },
+        "physicalCores": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359895341.0,
+          "value": 6.0
+        },
+        "sampledAt": 1792359895341.0,
+        "sequence": 7,
+        "temperatureCelsius": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359894000.0,
+          "value": 41.0
+        },
+        "temperatureSensor": {
+          "instance": 4294967295,
+          "name": "CPU temperature",
+          "provider": "msiAfterburner",
+          "sourceId": 128
+        }
+      },
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 12,
+          "positions": 57,
+          "shows": 13
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [2232, -1008, 2589, -392],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-24b83c25257477dd",
+      "subscriptionsReleased": true
+    },
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "gpu",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 15,
+          "positions": 69,
+          "shows": 15
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [2272, -1008, 2644, -392],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": {
+        "adapter": {
+          "dedicatedBytes": 8413773824.0,
+          "deviceId": 9353,
+          "name": "NVIDIA GeForce RTX 3060 Ti",
+          "vendorId": 4318
+        },
+        "fanPercent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359896000.0,
+          "value": 55.0
+        },
+        "history": [
+          {
+            "percent": null,
+            "sequence": 1,
+            "temperatureCelsius": 53.0,
+            "temperatureUpdatedAt": 1792359882000.0,
+            "timestamp": 1792359883217.0
+          },
+          {
+            "percent": 41.89714724130045,
+            "sequence": 2,
+            "temperatureCelsius": 53.0,
+            "temperatureUpdatedAt": 1792359884000.0,
+            "timestamp": 1792359885252.0
+          },
+          {
+            "percent": 45.22202772775355,
+            "sequence": 3,
+            "temperatureCelsius": 53.0,
+            "temperatureUpdatedAt": 1792359886000.0,
+            "timestamp": 1792359887272.0
+          },
+          {
+            "percent": 41.8238106348406,
+            "sequence": 4,
+            "temperatureCelsius": 52.0,
+            "temperatureUpdatedAt": 1792359888000.0,
+            "timestamp": 1792359889299.0
+          },
+          {
+            "percent": 40.94396889202918,
+            "sequence": 5,
+            "temperatureCelsius": 52.0,
+            "temperatureUpdatedAt": 1792359890000.0,
+            "timestamp": 1792359891308.0
+          },
+          {
+            "percent": 40.291435720571116,
+            "sequence": 6,
+            "temperatureCelsius": 51.0,
+            "temperatureUpdatedAt": 1792359892000.0,
+            "timestamp": 1792359893328.0
+          },
+          {
+            "percent": 40.18324501494219,
+            "sequence": 7,
+            "temperatureCelsius": 51.0,
+            "temperatureUpdatedAt": 1792359894000.0,
+            "timestamp": 1792359895346.0
+          },
+          {
+            "percent": 43.180584097985076,
+            "sequence": 8,
+            "temperatureCelsius": 50.0,
+            "temperatureUpdatedAt": 1792359896000.0,
+            "timestamp": 1792359897367.0
+          }
+        ],
+        "memoryTotalBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359897367.0,
+          "value": 8413773824.0
+        },
+        "memoryUsedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359897367.0,
+          "value": 1514459136.0
+        },
+        "percent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359897367.0,
+          "value": 43.180584097985076
+        },
+        "powerWatts": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359896000.0,
+          "value": 36.2140007019043
+        },
+        "sampledAt": 1792359897367.0,
+        "sequence": 8,
+        "sharedTotalBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359897367.0,
+          "value": 17127415808.0
+        },
+        "sharedUsedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359897367.0,
+          "value": 220749824.0
+        },
+        "temperatureCelsius": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792359896000.0,
+          "value": 50.0
+        },
+        "temperatureSensor": {
+          "gpu": 0,
+          "name": "NVIDIA GeForce RTX 3060 Ti",
+          "provider": "msiAfterburner",
+          "sourceId": 0
+        }
+      },
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 14,
+          "positions": 66,
+          "shows": 15
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [2272, -1008, 2644, -392],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-24b83c25257477dd",
+      "subscriptionsReleased": true
+    }
+  ],
+  "cpuPauseResume": {
+    "gapMs": 8051.0,
+    "passed": true
+  },
+  "cpuRetention": {
+    "oldSampleExpired": true,
+    "passed": true,
+    "samples": 60,
+    "spanMs": 119118.0
+  },
+  "memoryPauseResume": {
+    "gapMs": 8051.0,
+    "passed": true
+  },
+  "memoryRetention": {
+    "oldSampleExpired": true,
+    "passed": true,
+    "samples": 60,
+    "spanMs": 119121.0
+  },
+  "monitors": [
+    {
+      "monitor": [0, 0, 3440, 1440],
+      "workArea": [0, 72, 3440, 1440]
+    },
+    {
+      "monitor": [724, -1080, 2644, 0],
+      "workArea": [724, -1008, 2644, 0]
+    }
+  ],
+  "passed": true
+}

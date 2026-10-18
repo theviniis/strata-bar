@@ -1,6 +1,7 @@
 import { Volume } from '../features/volume/Volume'
 import { Memory } from '../features/memory/Memory'
 import { Cpu } from '../features/cpu/Cpu'
+import { Gpu } from '../features/gpu/Gpu'
 import { useState } from 'react'
 
 /** Development-only fixture for --check-popups; excludes unrelated widget work. */
@@ -10,6 +11,7 @@ export function PopupCheckBar() {
     <nav className="native-bar flex h-screen items-center justify-end px-4">
       {!paused && <Memory />}
       {!paused && <Cpu />}
+      {!paused && <Gpu />}
       <button
         aria-label={
           paused ? 'Retomar memória no teste' : 'Pausar memória no teste'

@@ -5,15 +5,16 @@ physical RAM readings, a local clock, Core Audio volume/mute controls and a komo
 reserving desktop workspace on every connected monitor. The native host is a Tauri 2 (Rust) application that
 owns Win32 AppBar windows; the same React codebase also serves a browser-based "studio" preview with an
 explicitly labelled demo adapter. The MVP gate is the functioning Windows bar—browser-studio polish alone is
-not MVP success. GPU, network, media, tray cloning and autostart are deferred until the core acceptance gates
-pass; the komorebi widget is a recorded exception (`docs/plans/komorebi-workspaces.md`).
+not MVP success. Network, media, tray cloning and autostart are deferred until the core acceptance gates
+pass; the komorebi and GPU widgets are recorded exceptions (`docs/plans/komorebi-workspaces.md`,
+`docs/plans/gpu-popup.md`).
 
 ## Repository Structure
 
 - `src/` — React 19 frontend: app shell, feature widgets, hooks, services, Zustand stores and tests.
   - `src/app/` — studio shell (`App.tsx`) and global styles (`styles.css`).
   - `src/components/` — status-bar components (`NativeBar.tsx`, `Widget.tsx`) and shadcn-style `ui/`.
-  - `src/features/` — individual widgets: `clock/`, `cpu/`, `memory/`, `volume/`, `komorebi/`.
+  - `src/features/` — individual widgets: `clock/`, `cpu/`, `gpu/`, `memory/`, `volume/`, `komorebi/`.
   - `src/hooks/` — React hooks such as `useSystemChannel.ts` and `useOverlayTooltip.ts`.
   - `src/overlay/` — the shared floating surface: `Overlay.tsx` (`?view=overlay`), `TooltipSurface.tsx`
     and the off-screen `measure.ts` probe.
@@ -22,7 +23,9 @@ pass; the komorebi widget is a recorded exception (`docs/plans/komorebi-workspac
   - `src/stores/` — Zustand stores, e.g. `config.ts`.
   - `src/tests/` — Vitest + Testing Library suites and `setup.ts`.
 - `src-tauri/` — Rust/Tauri host: `src/main.rs`, `src/desktop.rs` (AppBar host), `src/metrics.rs`
-  (collectors), `src/komorebi.rs` (named-pipe workspace viewer).
+  (collectors), `src/gpu.rs` + `src/gpu_windows.rs` (GPU collector and its DXGI/PDH source),
+  `src/afterburner.rs` + `src/mahm_windows.rs` (read-only MSI Afterburner sensors),
+  `src/komorebi.rs` (named-pipe workspace viewer).
 - `scripts/` — PowerShell validation helpers: `measure-idle.ps1`, `test-live-geometry.ps1`.
 - `docs/` — design notes, plan and recorded evidence (`docs/evidence/`, `docs/performance/`).
 - `research/` — **gitignored, read-only** upstream YASB checkout used as reference; never port code from it.
@@ -119,7 +122,7 @@ flowchart TD
   Bridge -->|browser| Mock[Demo adapter]
   Tooltip -->|browser| Noop[Demo adapter: no-op]
   Native --> Cmd[Tauri commands: subscribe / unsubscribe / set_volume / komorebi_action / overlay_show / overlay_hide / quit]
-  Cmd --> Metrics[metrics.rs collectors: CPU, RAM, Core Audio]
+  Cmd --> Metrics[metrics.rs collectors: CPU, GPU, RAM, Core Audio]
   Cmd --> Desktop[desktop.rs AppBar host]
   Cmd --> Surface[desktop.rs overlay surface]
   Metrics -->|events system:channel| Native
@@ -174,13 +177,18 @@ flowchart TD
 
 - Unit / component (frontend): Vitest with `jsdom` and Testing Library (`@testing-library/react`,
   `@testing-library/jest-dom`); setup in `src/tests/setup.ts`. Run with `pnpm test` (`vitest run`).
-  Current suites: `app.test.tsx`, `bridge.test.ts`, `config.test.ts`, `komorebi.test.tsx`,
-  `native-bar.test.tsx`, `native-bridge.test.ts`, `overlay.test.tsx`, `overlay-render.test.tsx`
-  (28 tests as last recorded).
-- Native unit tests: `cargo test --manifest-path src-tauri/Cargo.toml` (20 tests: CPU accounting, physical
-  RAM, channel/interval validation, window ownership, per-monitor cleanup, negative/scaled monitor geometry,
-  komorebi projection/state bounds, `komorebic` argument allowlist, stream framing, floating frame
-  style/click-through, overlay request validation and overlay placement).
+  Current suites: `app.test.tsx`, `bridge.test.ts`, `config.test.ts`, `cpu-bridge.test.ts`, `cpu-popup.test.tsx`,
+  `cpu-temperature-sampling.test.tsx`, `gpu-bridge.test.ts`, `gpu-popup.test.tsx`, `komorebi.test.tsx`,
+  `memory-bridge.test.ts`, `memory-popup.test.tsx`, `native-bar.test.tsx`, `native-bridge.test.ts`,
+  `overlay.test.tsx`, `overlay-render.test.tsx`, `popup-animation.test.tsx`, `popup-definition.test.ts`,
+  `popover.test.tsx`, `resource-graph.test.tsx`, `widget-hover.test.tsx`, `widget-popup.test.tsx`
+  (107 tests; seven failures in `audio-outputs.test.tsx`, `widget-popup.test.tsx` and
+  `resource-graph.test.tsx` pre-date the GPU work and must be fixed).
+- Native unit tests: `cargo test --manifest-path src-tauri/Cargo.toml` (61 tests: CPU accounting, physical
+  RAM, GPU collector composition/partial failure/bounds and MAHM parsing, channel/interval validation, window
+  ownership, per-monitor cleanup, negative/scaled monitor geometry, komorebi projection/state bounds,
+  `komorebic` argument allowlist, stream framing, floating frame style/click-through, overlay request
+  validation and overlay placement).
 - Integration / e2e: there is no automated e2e harness. Verify natively on Windows using `--probe`,
   `scripts/measure-idle.ps1`, `scripts/test-live-geometry.ps1` (which also fails when a visible overlay ever
   reports `komorebiEligible`) and the recorded JSON under `docs/evidence/`
@@ -231,7 +239,8 @@ flowchart TD
 - Channels: native capability map is returned by the `capabilities` command in `src-tauri/src/main.rs`;
   frontend adapters live in `src/services/system/bridge.ts`. Unsupported channels reject subscription;
   `komorebi` is reported by capability and, when komorebi or `komorebic.exe` is absent, subscribes to a
-  streamed `unavailable` status instead of rejecting.
+  streamed `unavailable` status instead of rejecting. `gpu` reports per-metric `unavailable` when a sensor
+  (for example a missing MSI Afterburner) is absent and always keeps its vendor-neutral readings.
 - Tauri commands: `capabilities`, `subscribe`, `unsubscribe`, `set_volume`, `komorebi_action`, `overlay_show`,
   `overlay_hide`, `diagnostics`, `quit` (`src-tauri/src/main.rs`); the AppBar host is `desktop::reconcile` /
   `desktop::release_all`, the shared floating surface is `desktop::ensure_overlay` / `desktop::overlay_show` /
@@ -241,7 +250,7 @@ flowchart TD
   plus per-monitor overrides (`monitors`); browser persistence uses localStorage key `strata.config.v1` with
   last-known-good retention. Native atomic write + directory watch is planned.
 - Feature flags: the per-widget `enabled` flag and per-channel `capabilities()` booleans are the current
-  toggle points (e.g. GPU is reported unavailable).
+  toggle points (e.g. network is reported unavailable).
 - Environment variables: none are documented.
   - `> TODO: document any build/dev environment variables (Vite `import.meta.env`, Tauri env) if added.`
 
@@ -250,6 +259,7 @@ flowchart TD
 - [docs/architecture.md](docs/architecture.md) — layered design, bridge contract, overlay surface and Windows capability map.
 - [docs/implementation-plan.md](docs/implementation-plan.md) — milestones, acceptance gates, measurement protocol.
 - [docs/plans/overlay-window.md](docs/plans/overlay-window.md) — overlay window plan of record (tooltips now, widget popups later).
+- [docs/plans/gpu-popup.md](docs/plans/gpu-popup.md) — GPU channel/widget/popup plan of record and its recorded gate exception.
 - [docs/native-mvp-validation.md](docs/native-mvp-validation.md) — current native evidence and remaining limits.
 - [docs/validation.md](docs/validation.md) — historical foundation checkpoint (superseded).
 - [docs/yasb-analysis.md](docs/yasb-analysis.md) — read-only YASB source investigation and adaptations.

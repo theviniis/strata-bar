@@ -1,8 +1,8 @@
 # Strata
 
-A Windows 11 status bar: native CPU and RAM readings, a local clock, real Core Audio volume/mute controls,
-and a reserved top bar on every connected monitor. The native application opens actual bars; the browser
-route remains a separate demo studio.
+A Windows 11 status bar: native CPU, GPU and RAM readings, a local clock, real Core Audio volume/mute
+controls, and a reserved top bar on every connected monitor. The native application opens actual bars; the
+browser route remains a separate demo studio.
 
 - **Native host** — Tauri 2 (Rust) app that owns per-monitor Win32 AppBar windows.
 - **Frontend** — React 19 + TypeScript (strict) + Vite 7 + Tailwind 4, shared between the native bars and the
@@ -88,13 +88,13 @@ separate release gates.
 # Frontend tests (Vitest, jsdom + Testing Library)
 pnpm test
 
-# Native tests (CPU accounting, physical RAM, subscription ownership, window geometry)
+# Native tests (CPU accounting, physical RAM, GPU collector, subscription ownership, window geometry)
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
 Validate the native bar on Windows:
 
-1. Run the executable with `--probe` to write real CPU/RAM/audio readings and monitor/work-area rectangles
+1. Run the executable with `--probe` to write real CPU/GPU/RAM/audio readings and monitor/work-area rectangles
    to `%TEMP%\strata-native-probe.json`, without opening another bar.
 2. Startup geometry is recorded in `%TEMP%\strata-layout.json`.
 3. With only the production instance running, `powershell -File scripts/measure-idle.ps1` records the full
@@ -102,13 +102,17 @@ Validate the native bar on Windows:
 
 ## Native defaults & current limits
 
-Current native defaults: top, 36 logical pixels, dark theme, all monitors, CPU/RAM every 2 seconds,
+Current native defaults: top, 36 logical pixels, dark theme, all monitors, CPU/GPU/RAM every 2 seconds,
 event-driven audio.
 
 - The browser JSON editor does not yet configure the native host; native configuration editing, bottom
   placement, light theme, transparency/backdrops and autostart are not part of this increment.
 - CPU uses `GetSystemTimes` elapsed CPU time and can differ from Task Manager's frequency-adjusted utility.
-- GPU, network, media, tray cloning, native settings/hot reload and autostart are deferred until the core
+- GPU utilisation and dedicated/shared memory come from DXGI + PDH and stay available without extra
+  software; temperature, power draw and fan speed come from the read-only MSI Afterburner mapping and are
+  reported independently unavailable when it is not running. GPU overclocking/tuning and per-process GPU
+  attribution are out of scope (`docs/plans/gpu-popup.md`).
+- Network, media, tray cloning, native settings/hot reload and autostart are deferred until the core
   MVP passes its acceptance gates.
 
 ## Project layout
