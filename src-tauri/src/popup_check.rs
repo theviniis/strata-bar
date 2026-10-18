@@ -160,6 +160,7 @@ pub fn start(app: AppHandle) {
             assert!(!bars.is_empty());
             let mut checks = Vec::new();
             let mut retention = Value::Null;
+            let mut first_memory = Value::Null;
             for label in &bars {
                 for (feature, aria, added_subscriptions) in [
                     ("audioOutputs", "Saída de áudio", 2),
@@ -194,25 +195,8 @@ pub fn start(app: AppHandle) {
                     } else {
                         Value::Null
                     };
-                    if feature == "memory" && retention.is_null() {
-                        let first_at = memory["sampledAt"].as_f64().unwrap();
-                        for _ in 0..36 {
-                            std::thread::sleep(Duration::from_secs(2));
-                            let current = app.state::<crate::metrics::Metrics>().diagnostics()
-                                ["channels"]["memory"]["data"]
-                                .clone();
-                            if current["sampledAt"].as_f64().unwrap() - first_at >= 62000. {
-                                let history = current["history"].as_array().unwrap();
-                                assert!((25..=31).contains(&history.len()));
-                                let span = current["sampledAt"].as_f64().unwrap()
-                                    - history[0]["timestamp"].as_f64().unwrap();
-                                assert!((50000.0..=60010.0).contains(&span));
-                                retention = json!({"passed":true,"samples":history.len(),"spanMs":span,"oldSampleExpired":!history.iter().any(|point| point["sequence"]==memory["sequence"])});
-                                assert_eq!(retention["oldSampleExpired"], true);
-                                break;
-                            }
-                        }
-                        assert!(!retention.is_null(), "Memory retention check timed out");
+                    if feature == "memory" && first_memory.is_null() {
+                        first_memory = memory.clone();
                     }
                     check_content_size(&app, 560.0, 480.0);
                     check_content_size(&app, 280.0, 140.0);
@@ -296,6 +280,27 @@ pub fn start(app: AppHandle) {
                     checks.push(json!({"source":label,"feature":feature,"memory":memory,"shown":shown,"hidden":hidden,"interactive":interactive,"floating":floating,"focused":overlay_focused,"contentSizeRoundTrip":true,"resizePreservesFocus":resized_without_focus,"subscriptionsReleased":cleaned,"escape":true,"outsidePointer":true,"passed":true}));
                 }
             }
+            // Retention does not need an open popup. Keep lengthy sampling waits
+            // outside focus/cleanup checks so ordinary desktop activity cannot
+            // invalidate an interaction baseline captured a minute earlier.
+            let first_at = first_memory["sampledAt"].as_f64().unwrap();
+            for _ in 0..36 {
+                std::thread::sleep(Duration::from_secs(2));
+                let current = app.state::<crate::metrics::Metrics>().diagnostics()["channels"]
+                    ["memory"]["data"]
+                    .clone();
+                if current["sampledAt"].as_f64().unwrap() - first_at >= 62000. {
+                    let history = current["history"].as_array().unwrap();
+                    assert!((25..=31).contains(&history.len()));
+                    let span = current["sampledAt"].as_f64().unwrap()
+                        - history[0]["timestamp"].as_f64().unwrap();
+                    assert!((50000.0..=60010.0).contains(&span));
+                    retention = json!({"passed":true,"samples":history.len(),"spanMs":span,"oldSampleExpired":!history.iter().any(|point| point["sequence"]==first_memory["sequence"])});
+                    assert_eq!(retention["oldSampleExpired"], true);
+                    break;
+                }
+            }
+            assert!(!retention.is_null(), "Memory retention check timed out");
             for label in &bars {
                 let source = label.clone();
                 main_thread(&app, move |app| {

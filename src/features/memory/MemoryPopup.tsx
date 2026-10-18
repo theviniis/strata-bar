@@ -4,6 +4,7 @@ import { usePopupContext } from '@/popups/context'
 import { useMemory } from './useMemory'
 import { MemoryGraph } from './MemoryGraph'
 import { useState } from 'react'
+import { formatMemoryMetric } from './presentation'
 
 export function MemoryPopup() {
   const { mode } = usePopupContext('memory')
@@ -59,12 +60,12 @@ export function MemoryPopupContent({
       </p>
     )
   const fields = [
-    ['Em uso', data.usedBytes],
-    ['Memória total', data.totalBytes],
-    ['Em cache', data.cachedBytes],
-    ['Disponível', data.availableBytes],
-    ['Arquivo de paginação em uso', data.pagingFileBytes],
-    ['Utilização', data.percent]
+    ['Em uso', data.usedBytes, 'bytes'],
+    ['Memória total', data.totalBytes, 'bytes'],
+    ['Em cache', data.cachedBytes, 'bytes'],
+    ['Disponível', data.availableBytes, 'bytes'],
+    ['Arquivo de paginação em uso', data.pagingFileBytes, 'bytes'],
+    ['Utilização', data.percent, 'percent']
   ] as const
   return (
     <section aria-label="Detalhes da memória" className="w-80 p-4">
@@ -81,18 +82,14 @@ export function MemoryPopupContent({
       )}
       <MemoryGraph history={data.history} now={now} />
       <dl className="grid grid-cols-2 gap-3 text-xs">
-        {fields.map(([label, metric]) => (
+        {fields.map(([label, metric, unit]) => (
           <div key={label}>
             <dt className="text-muted-foreground">{label}</dt>
             <dd
               title={metric.error ?? undefined}
               className="mt-1 font-medium tabular-nums"
             >
-              {metric.status === 'notConfigured'
-                ? 'Não configurado'
-                : metric.value === null
-                  ? 'Indisponível'
-                  : `${label === 'Utilização' ? `${metric.value.toFixed(1)}%` : `${(metric.value / 1073741824).toFixed(1)} GiB`}${metric.status !== 'ready' || event.status !== 'ready' || now - (metric.updatedAt ?? 0) > 6000 ? ' · desatualizada' : ''}`}
+              {formatMemoryMetric(metric, unit, now, event.status === 'ready')}
             </dd>
           </div>
         ))}

@@ -99,6 +99,15 @@ rounding differences, not claimed to be simultaneous snapshots of Task Manager.
   modified-page and paging-file comparisons collected within 1.6 seconds of the
   Strata probe. See the new memory evidence records in docs/evidence.
 - Rust tests: 34 passed, one existing audio-routing test intentionally ignored.
+  After review, six deterministic tests were added through the public collector
+  interface, bringing the result to 40 passed and one ignored. They control only
+  Windows observations and time, covering composition, page conversion, invalid
+  bounds, partial failures, stale timestamps, recovery, absence/overflow of paging
+  files, retention, gaps and clock rollback.
+- Final post-review native verification also passed on both monitors. The latest
+  record is `memory-popup-native-reviewed-2026-10-18.json`. Retention is measured
+  after closing the panels, independently of focus-sensitive interaction checks.
+  A post-exit probe confirmed both work areas returned to their pre-check values.
 - Production frontend build passed. Formatting, ESLint and TypeScript passed.
   The full frontend run had 69 passing tests and six failures in existing audio
   popup suites after the separate audio UI refactor. Failures involve absent
@@ -110,3 +119,21 @@ rounding differences, not claimed to be simultaneous snapshots of Task Manager.
 - Editing or regenerating frontend modules during native smoke verification can
   reload WebViews and invalidate subscription baselines. The passing long run
   used stable sources; the development-reload lifecycle is a separate limitation.
+
+## Review
+
+### Standards
+
+No documented-standard violations were found. Review identified two maintainability
+issues: selecting units through translated labels and duplicating freshness rules.
+Both were corrected with explicit unit descriptors and shared presentation logic.
+Follow-up review found no remaining findings.
+
+### Spec
+
+Review identified missing deterministic native coverage for arithmetic and source
+failures. The user confirmed the public collector as an additional testing seam;
+six controlled tests now cover those behaviors. Follow-up review found no remaining
+findings or scope regression.
+
+Review totals: Standards 0 unresolved; Spec 0 unresolved.

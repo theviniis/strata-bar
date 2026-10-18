@@ -40,7 +40,7 @@ impl Counters {
             counters: [None; 4],
         })
     }
-    fn read(&mut self) -> [Result<f64, String>; 4] {
+    fn read(&mut self) -> [Result<u64, String>; 4] {
         let mut errors: [Option<String>; 4] = Default::default();
         for (index, path) in PATHS.iter().enumerate() {
             if self.counters[index].is_none() {
@@ -79,7 +79,7 @@ impl Counters {
             if bytes < 0 {
                 return Err("Negative memory counter".into());
             }
-            Ok(bytes as f64)
+            Ok(bytes as u64)
         })
     }
 }
@@ -105,7 +105,13 @@ unsafe extern "system" fn pagefile(
     sum.count += 1;
     BOOL(1)
 }
-fn paging_files() -> Result<Option<f64>, String> {
+#[derive(Clone)]
+pub struct PagingFileUsage {
+    pub pages: u64,
+    pub page_size: u32,
+}
+
+fn paging_files() -> Result<Option<PagingFileUsage>, String> {
     unsafe {
         let mut info = SYSTEM_INFO::default();
         GetSystemInfo(&mut info);
@@ -115,12 +121,13 @@ fn paging_files() -> Result<Option<f64>, String> {
         let mut sum = PagingFiles::default();
         EnumPageFilesW(Some(pagefile), &mut sum as *mut _ as *mut c_void)
             .map_err(|e| e.to_string())?;
-        let bytes = sum
-            .pages
-            .checked_mul(info.dwPageSize as u64)
-            .filter(|_| !sum.overflow)
-            .ok_or("Pagefile usage overflow")?;
-        Ok((sum.count > 0).then_some(bytes as f64))
+        if sum.overflow {
+            return Err("Pagefile usage overflow".into());
+        }
+        Ok((sum.count > 0).then_some(PagingFileUsage {
+            pages: sum.pages,
+            page_size: info.dwPageSize,
+        }))
     }
 }
 
@@ -145,16 +152,24 @@ fn metric(result: Result<f64, String>, old: Option<&MemoryMetric>, at: f64) -> M
     }
 }
 
-#[derive(Default)]
-pub struct MemoryCollector {
-    counters: Option<Counters>,
-    last: Option<MemoryData>,
-    history: VecDeque<(Instant, MemoryPoint)>,
-    sequence: u32,
+pub struct MemoryReadings {
+    pub timestamp: f64,
+    pub instant: Instant,
+    pub physical: Result<(u64, u64), String>,
+    pub lists: [Result<u64, String>; 4],
+    pub paging_files: Result<Option<PagingFileUsage>, String>,
 }
-impl MemoryCollector {
-    pub fn collect(&mut self) -> MemoryData {
-        let at = crate::metrics::timestamp() as f64;
+pub trait MemorySource {
+    fn read(&mut self) -> MemoryReadings;
+}
+
+#[derive(Default)]
+pub struct WindowsMemorySource {
+    counters: Option<Counters>,
+}
+impl MemorySource for WindowsMemorySource {
+    fn read(&mut self) -> MemoryReadings {
+        let timestamp = crate::metrics::timestamp() as f64;
         let instant = Instant::now();
         let physical = unsafe {
             let mut info = MEMORYSTATUSEX {
@@ -163,13 +178,7 @@ impl MemoryCollector {
             };
             GlobalMemoryStatusEx(&mut info)
                 .map_err(|e| e.to_string())
-                .and_then(|_| {
-                    if info.ullTotalPhys == 0 || info.ullAvailPhys > info.ullTotalPhys {
-                        Err("Invalid physical memory bounds".into())
-                    } else {
-                        Ok((info.ullTotalPhys as f64, info.ullAvailPhys as f64))
-                    }
-                })
+                .map(|_| (info.ullTotalPhys, info.ullAvailPhys))
         };
         let counters = (|| {
             if self.counters.is_none() {
@@ -178,10 +187,51 @@ impl MemoryCollector {
             Ok::<_, String>(self.counters.as_mut().unwrap().read())
         })();
         let lists = counters.unwrap_or_else(|error| std::array::from_fn(|_| Err(error.clone())));
-        // Reopen failed queries on the next sample; never make a failure permanent.
         if lists.iter().any(Result::is_err) {
             self.counters = None;
         }
+        MemoryReadings {
+            timestamp,
+            instant,
+            physical,
+            lists,
+            paging_files: paging_files(),
+        }
+    }
+}
+
+pub struct MemoryCollector<S = WindowsMemorySource> {
+    source: S,
+    last: Option<MemoryData>,
+    history: VecDeque<(Instant, MemoryPoint)>,
+    sequence: u32,
+}
+impl Default for MemoryCollector {
+    fn default() -> Self {
+        Self::new(WindowsMemorySource::default())
+    }
+}
+impl<S: MemorySource> MemoryCollector<S> {
+    pub fn new(source: S) -> Self {
+        Self {
+            source,
+            last: None,
+            history: VecDeque::new(),
+            sequence: 0,
+        }
+    }
+    pub fn collect(&mut self) -> MemoryData {
+        let raw = self.source.read();
+        let at = raw.timestamp;
+        let instant = raw.instant;
+        let physical = raw.physical.and_then(|(total, available)| {
+            if total == 0 || available > total {
+                Err("Invalid physical memory bounds".into())
+            } else {
+                Ok((total as f64, available as f64))
+            }
+        });
+        let lists = raw.lists.map(|value| value.map(|bytes| bytes as f64));
         let modified = lists[0].clone();
         let cached = lists
             .iter()
@@ -224,7 +274,7 @@ impl MemoryCollector {
             self.history.pop_front();
         }
         let old = self.last.as_ref();
-        let paging = match paging_files() {
+        let paging = match raw.paging_files {
             Ok(None) => MemoryMetric {
                 status: Status::NotConfigured,
                 value: None,
@@ -232,7 +282,15 @@ impl MemoryCollector {
                 error: None,
             },
             result => metric(
-                result.map(|value| value.unwrap()),
+                result.and_then(|value| {
+                    let value = value.expect("No-pagefile state handled separately");
+                    value
+                        .pages
+                        .checked_mul(value.page_size as u64)
+                        .filter(|_| value.page_size > 0)
+                        .map(|bytes| bytes as f64)
+                        .ok_or_else(|| "Invalid pagefile size or usage overflow".into())
+                }),
                 old.map(|v| &v.paging_file_bytes),
                 at,
             ),
@@ -258,5 +316,192 @@ impl MemoryCollector {
         };
         self.last = Some(data.clone());
         data
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    impl MemorySource for VecDeque<MemoryReadings> {
+        fn read(&mut self) -> MemoryReadings {
+            self.pop_front().expect("Scripted Windows observation")
+        }
+    }
+
+    fn reading(base: Instant, elapsed: u64) -> MemoryReadings {
+        MemoryReadings {
+            timestamp: 100000. + elapsed as f64,
+            instant: base + Duration::from_millis(elapsed),
+            physical: Ok((16384, 6144)),
+            lists: [Ok(1024), Ok(2048), Ok(1024), Ok(0)],
+            paging_files: Ok(Some(PagingFileUsage {
+                pages: 3,
+                page_size: 4096,
+            })),
+        }
+    }
+
+    #[test]
+    fn composes_physical_cache_and_actual_paging_usage() {
+        let mut collector = MemoryCollector::new(VecDeque::from([reading(Instant::now(), 0)]));
+        let data = collector.collect();
+        assert_eq!(data.used_bytes.value, Some(9216.));
+        assert_eq!(data.cached_bytes.value, Some(4096.));
+        assert_eq!(data.paging_file_bytes.value, Some(12288.));
+        assert_eq!(data.percent.value, Some(56.25));
+    }
+
+    #[test]
+    fn failed_modified_reading_preserves_independent_metrics_and_recovers() {
+        let base = Instant::now();
+        let mut failed = reading(base, 2000);
+        failed.lists[0] = Err("Counter offline".into());
+        let mut recovered = reading(base, 4000);
+        recovered.physical = Ok((8192, 1024));
+        recovered.lists[0] = Ok(512);
+        let mut collector =
+            MemoryCollector::new(VecDeque::from([reading(base, 0), failed, recovered]));
+        collector.collect();
+        let stale = collector.collect();
+        assert_eq!(stale.total_bytes.status, Status::Ready);
+        assert_eq!(stale.available_bytes.updated_at, Some(102000.));
+        assert_eq!(stale.used_bytes.status, Status::Error);
+        assert_eq!(stale.used_bytes.value, Some(9216.));
+        assert_eq!(stale.used_bytes.updated_at, Some(100000.));
+        assert_eq!(stale.percent.updated_at, Some(100000.));
+        assert_eq!(stale.cached_bytes.status, Status::Error);
+        assert_eq!(stale.history.last().unwrap().percent, None);
+        let fresh = collector.collect();
+        assert_eq!(fresh.used_bytes.status, Status::Ready);
+        assert_eq!(fresh.used_bytes.value, Some(6656.));
+        assert_eq!(fresh.percent.value, Some(81.25));
+        assert_eq!(fresh.percent.updated_at, Some(104000.));
+        assert_eq!(fresh.percent.error, None);
+    }
+
+    #[test]
+    fn invalid_physical_bounds_do_not_fabricate_utilization() {
+        let base = Instant::now();
+        let mut zero = reading(base, 0);
+        zero.physical = Ok((0, 0));
+        let mut inconsistent = reading(base, 2000);
+        inconsistent.physical = Ok((1024, 2048));
+        let mut collector = MemoryCollector::new(VecDeque::from([zero, inconsistent]));
+        for _ in 0..2 {
+            let data = collector.collect();
+            assert_eq!(data.percent.status, Status::Unavailable);
+            assert_eq!(data.percent.value, None);
+            assert_eq!(data.used_bytes.value, None);
+            assert_eq!(data.cached_bytes.status, Status::Ready);
+            assert_eq!(data.paging_file_bytes.value, Some(12288.));
+        }
+    }
+
+    #[test]
+    fn distinguishes_absent_paging_files_from_failed_or_overflowed_readings() {
+        let base = Instant::now();
+        let mut absent = reading(base, 0);
+        absent.paging_files = Ok(None);
+        let mut failed = reading(base, 2000);
+        failed.paging_files = Err("Enumeration failed".into());
+        let mut overflow = reading(base, 4000);
+        overflow.paging_files = Ok(Some(PagingFileUsage {
+            pages: u64::MAX,
+            page_size: 4096,
+        }));
+        let mut collector = MemoryCollector::new(VecDeque::from([
+            absent,
+            failed,
+            overflow,
+            reading(base, 6000),
+        ]));
+        let missing = collector.collect();
+        assert_eq!(missing.paging_file_bytes.status, Status::NotConfigured);
+        assert_eq!(missing.paging_file_bytes.value, None);
+        for _ in 0..2 {
+            let bad = collector.collect();
+            assert_eq!(bad.paging_file_bytes.status, Status::Unavailable);
+            assert_eq!(bad.paging_file_bytes.value, None);
+            assert_eq!(bad.percent.value, Some(56.25));
+        }
+        let recovered = collector.collect();
+        assert_eq!(recovered.paging_file_bytes.status, Status::Ready);
+        assert_eq!(recovered.paging_file_bytes.value, Some(12288.));
+    }
+
+    #[test]
+    fn retains_only_observed_history_and_expires_by_elapsed_time() {
+        let base = Instant::now();
+        let mut failed = reading(base, 2000);
+        failed.lists[0] = Err("Unavailable".into());
+        let mut backwards = reading(base, 66000);
+        backwards.timestamp = 90000.;
+        let mut collector = MemoryCollector::new(VecDeque::from([
+            reading(base, 0),
+            failed,
+            reading(base, 10000),
+            reading(base, 62000),
+            reading(base, 64000),
+            backwards,
+        ]));
+        collector.collect();
+        collector.collect();
+        let after_gap = collector.collect();
+        assert_eq!(after_gap.history.len(), 3);
+        assert_eq!(after_gap.history[1].percent, None);
+        assert_eq!(
+            after_gap.history[2].timestamp - after_gap.history[1].timestamp,
+            8000.
+        );
+        let expired = collector.collect();
+        assert_eq!(
+            expired
+                .history
+                .iter()
+                .map(|point| point.sequence)
+                .collect::<Vec<_>>(),
+            vec![2, 3, 4]
+        );
+        assert_eq!(expired.history[0].percent, None);
+        let next = collector.collect();
+        assert_eq!(
+            next.history
+                .iter()
+                .map(|point| point.sequence)
+                .collect::<Vec<_>>(),
+            vec![3, 4, 5]
+        );
+        let reset = collector.collect();
+        assert_eq!(reset.history.len(), 1);
+        assert_eq!(reset.history[0].sequence, 6);
+        assert_eq!(reset.history[0].timestamp, 90000.);
+    }
+
+    #[test]
+    fn supplementary_failures_do_not_invalidate_physical_usage() {
+        let base = Instant::now();
+        let mut failed = reading(base, 2000);
+        failed.lists[1] = Err("Standby counter offline".into());
+        failed.paging_files = Err("Pagefile enumeration failed".into());
+        let mut collector = MemoryCollector::new(VecDeque::from([
+            reading(base, 0),
+            failed,
+            reading(base, 4000),
+        ]));
+        collector.collect();
+        let partial = collector.collect();
+        assert_eq!(partial.used_bytes.status, Status::Ready);
+        assert_eq!(partial.percent.value, Some(56.25));
+        assert_eq!(partial.percent.updated_at, Some(102000.));
+        assert_eq!(partial.cached_bytes.status, Status::Error);
+        assert_eq!(partial.cached_bytes.value, Some(4096.));
+        assert_eq!(partial.paging_file_bytes.status, Status::Error);
+        assert_eq!(partial.paging_file_bytes.value, Some(12288.));
+        assert_eq!(partial.paging_file_bytes.updated_at, Some(100000.));
+        let recovered = collector.collect();
+        assert_eq!(recovered.cached_bytes.status, Status::Ready);
+        assert_eq!(recovered.paging_file_bytes.status, Status::Ready);
     }
 }
