@@ -7,6 +7,7 @@ export const types = [
   'gpu',
   'disk',
   'network',
+  'music',
   'volume',
   'activeWindow',
   'komorebi'
@@ -63,7 +64,7 @@ export const defaultConfig = configSchema.parse({
       { id: 'active', type: 'activeWindow' }
     ],
     center: [{ id: 'time', type: 'clock' }],
-    right: ['cpu', 'memory', 'gpu', 'disk', 'network', 'volume'].map(
+    right: ['cpu', 'memory', 'gpu', 'disk', 'network', 'music', 'volume'].map(
       (type) => ({
         id: type,
         type

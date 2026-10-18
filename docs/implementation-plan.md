@@ -40,3 +40,12 @@ CPU sustained load and idle; memory allocation/release; interface reset and VPN 
 ## Open risks
 
 Minimum supported Windows version (proposed Windows 11 x64), WebView2 installation policy, desired foreign tray fidelity, private desktop API tolerance, multi-window memory cost, GPU sensor support, backdrop behavior and signing identity remain unresolved. Conservative defaults: documented APIs, no admin requirement, no foreign injection, unsupported sensors visibly unavailable.
+
+## Authorized music exception — 2026-10-18
+
+The music widget and extensible media API are explicitly authorized independently
+of the remaining core MVP gates. See [the plan of record](plans/music-widget.md).
+The implementation adds real Windows GSMTC playback, per-application Core Audio
+volume and an independent Spotify PKCE connection. It does not widen the network
+widget, tray, autostart or arbitrary-command scope. Studio interaction and native
+read probes do not close the live authenticated Spotify or multi-monitor gates.

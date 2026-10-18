@@ -1,3 +1,5 @@
+import type { MediaData, MediaRequest, SpotifyStatus } from './media.generated'
+import { demoMedia, mediaPosition, parseMediaEvent } from './media'
 import type { MemoryData } from './memory.generated'
 import { parseMemoryEvent } from './memory'
 import type { CpuData } from './cpu.generated'
@@ -20,6 +22,7 @@ export type Channel =
   | 'activeWindow'
   | 'komorebi'
   | 'audioOutputs'
+  | 'media'
 
 export type WorkspaceStatus = 'active' | 'populated' | 'empty'
 
@@ -45,6 +48,7 @@ export type KomorebiAction =
 
 /** Payloads published by the native collectors. */
 export interface ChannelData {
+  media: MediaData
   cpu: CpuData
   memory: MemoryData
   gpu: GpuData
@@ -66,6 +70,7 @@ export interface ChannelData {
  * be represented by a scalar.
  */
 export interface DemoChannelData {
+  media: MediaData
   cpu: number
   memory: number
   gpu: number
@@ -101,6 +106,10 @@ export interface Subscribable<D extends Record<Channel, unknown>> {
 }
 
 export interface AdapterBase {
+  mediaAction?(request: MediaRequest): Promise<unknown>
+  spotifyStatus?(): Promise<SpotifyStatus>
+  spotifyConnect?(clientId: string): Promise<void>
+  spotifyDisconnect?(): Promise<void>
   setVolume(value: VolumeChange): Promise<unknown>
   setAudioOutput?(value: {
     deviceId: string
@@ -122,7 +131,9 @@ export interface NativeBridge extends AdapterBase, Subscribable<ChannelData> {
 export type Bridge = DemoBridge | NativeBridge
 
 export function createMockBridge(): DemoBridge {
+  const mediaListeners = new Set<(event: SystemEvent<MediaData>) => void>()
   const values: DemoChannelData = {
+    media: demoMedia(),
     cpu: 17,
     memory: 46,
     gpu: 27,
@@ -203,12 +214,73 @@ export function createMockBridge(): DemoBridge {
         }
       }
       emit()
+      if (channel === 'media') {
+        const mediaListener = listener as (
+          event: SystemEvent<MediaData>
+        ) => void
+        mediaListeners.add(mediaListener)
+        return () => {
+          mediaListeners.delete(mediaListener)
+        }
+      }
       const timer = ['cpu', 'memory', 'gpu', 'disk', 'network'].includes(
         channel
       )
         ? setInterval(emit, intervalMs)
         : undefined
       return () => clearInterval(timer)
+    },
+    async mediaAction(request) {
+      const data = {
+        ...values.media,
+        progress: { ...values.media.progress },
+        volume: { ...values.media.volume }
+      }
+      if (
+        request.sessionId !== data.sessionId ||
+        request.trackId !== data.trackId
+      )
+        throw new Error('Demo media changed')
+      const action = request.action
+      if (action.action === 'playPause') {
+        if (data.progress.value)
+          data.progress.value = {
+            ...data.progress.value,
+            positionMs: mediaPosition(data.progress.value),
+            measuredAt: Date.now(),
+            rate: data.playback === 'playing' ? 0 : 1
+          }
+        data.playback = data.playback === 'playing' ? 'paused' : 'playing'
+      } else if (action.action === 'next' || action.action === 'previous') {
+        data.title = data.title === 'Dragonaut' ? 'The Druid' : 'Dragonaut'
+        data.trackId =
+          data.trackId === 'demo-track-1' ? 'demo-track-2' : 'demo-track-1'
+      } else if (action.action === 'seek' && data.progress.value) {
+        if (
+          !Number.isFinite(action.positionMs) ||
+          action.positionMs < 0 ||
+          action.positionMs > data.progress.value.durationMs
+        )
+          throw new Error('Invalid demo seek')
+        data.progress.value = {
+          ...data.progress.value,
+          positionMs: action.positionMs,
+          measuredAt: Date.now()
+        }
+      } else if (action.action === 'volume' && data.volume.value) {
+        if (
+          !Number.isFinite(action.level) ||
+          action.level < 0 ||
+          action.level > 100
+        )
+          throw new Error('Invalid demo volume')
+        data.volume.value = { ...data.volume.value, level: action.level }
+      } else if (action.action === 'mute' && data.volume.value)
+        data.volume.value = { ...data.volume.value, muted: action.muted }
+      else throw new Error('Demo action unsupported')
+      values.media = { ...data }
+      for (const listener of mediaListeners)
+        listener({ status: 'ready', data: values.media })
     },
     async setVolume() {
       throw new Error('Volume control is unavailable in browser demo')
@@ -257,7 +329,9 @@ export function createNativeBridge(): NativeBridge {
             resourceSequence = parsed.data.sequence
           }
           listener(parsed as SystemEvent<ChannelData[C]>)
-        } else listener(event)
+        } else if (channel === 'media')
+          listener(parseMediaEvent(event) as SystemEvent<ChannelData[C]>)
+        else listener(event)
       }
       const stop = await listenChannel<SystemEvent<ChannelData[C]>>(
         `system:${channel}`,
@@ -288,6 +362,22 @@ export function createNativeBridge(): NativeBridge {
         stop()
         await invoke('unsubscribe', { token })
       }
+    },
+    async mediaAction(request) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke('media_action', { request })
+    },
+    async spotifyStatus() {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke<SpotifyStatus>('spotify_status')
+    },
+    async spotifyConnect(clientId) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke('spotify_connect', { clientId })
+    },
+    async spotifyDisconnect() {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke('spotify_disconnect')
     },
     async setVolume(value) {
       const { invoke } = await import('@tauri-apps/api/core')

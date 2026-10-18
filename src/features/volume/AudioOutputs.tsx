@@ -1,3 +1,4 @@
+import { SpotifySettings } from '../music/SpotifySettings'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { type ButtonLoadingProps } from '@/components/ui/button-loading'
@@ -284,6 +285,7 @@ function AudioOutputsContent({
           {volume.status === 'ready' ? `${level}` : '—'}
         </WidgetItemOutput>
       </CardFooter>
+      <SpotifySettings />
     </div>
   )
 }

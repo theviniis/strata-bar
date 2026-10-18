@@ -112,7 +112,8 @@ event-driven audio.
   software; temperature, power draw and fan speed come from the read-only MSI Afterburner mapping and are
   reported independently unavailable when it is not running. GPU overclocking/tuning and per-process GPU
   attribution are out of scope (`docs/plans/gpu-popup.md`).
-- Network, media, tray cloning, native settings/hot reload and autostart are deferred until the core
+- Music ships under the authorized [media exception](docs/plans/music-widget.md), with GSMTC playback, application volume and an independent Spotify account connection.
+- Network, tray cloning, native settings/hot reload and autostart are deferred until the core
   MVP passes its acceptance gates.
 
 ## Project layout
@@ -130,6 +131,7 @@ event-driven audio.
 - [AGENTS.md](AGENTS.md) — architecture, conventions and agent guardrails.
 - [research](docs/yasb-analysis.md) — read-only YASB source investigation.
 - [architecture](docs/architecture.md) — layered design and bridge contract.
+- [music widget and API](docs/plans/music-widget.md) — media contract, Spotify setup and validation limits.
 - [widget popups](docs/popups.md) — reusable API, registration, studio simulation and native checks.
 - [milestones](docs/implementation-plan.md) — phased plan and acceptance gates.
 - [current native validation](docs/native-mvp-validation.md) — evidence and remaining limits.

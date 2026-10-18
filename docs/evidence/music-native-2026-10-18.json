@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-18",
+  "command": "strata-bar.exe --probe-media",
+  "build": "release",
+  "readOnly": true,
+  "exitCode": 0,
+  "nativeRead": {
+    "data": {
+      "album": "Crowded House",
+      "artist": "Crowded House",
+      "artwork": {
+        "status": "ready",
+        "mime": "image/jpeg",
+        "sourceBytes": 229266,
+        "sha256": "ce543c0403d72c99eb106dec19ebf2af50bf41e45c5d0cf00a465af87c7df561"
+      },
+      "capabilities": {
+        "favorite": false,
+        "mute": true,
+        "next": true,
+        "playPause": true,
+        "previous": true,
+        "seek": true,
+        "volume": true
+      },
+      "favorite": {
+        "reason": "Spotify account enrichment is separate from native media reads",
+        "status": "unavailable",
+        "value": null
+      },
+      "playback": "playing",
+      "playerId": "spotatui.exe",
+      "playerName": "spotatui",
+      "progress": {
+        "reason": null,
+        "status": "ready",
+        "value": {
+          "durationMs": 236933.0,
+          "maxSeekMs": 236933.0,
+          "measuredAt": 1792363674462.9648,
+          "minSeekMs": 0.0,
+          "positionMs": 137872.0,
+          "rate": 1.0
+        }
+      },
+      "sessionId": "session-1",
+      "spotifyUri": null,
+      "title": "Don't Dream It's Over",
+      "trackId": "track-1-2",
+      "volume": {
+        "reason": null,
+        "status": "ready",
+        "value": {
+          "level": 100.0,
+          "muted": false,
+          "source": "applicationSession"
+        }
+      }
+    },
+    "status": "ready",
+    "timestamp": 1792363674504,
+    "sourceAudioSessions": [
+      {
+        "active": false
+      },
+      {
+        "active": true
+      }
+    ]
+  },
+  "manualChecksNotPerformed": [
+    "authenticated Spotify OAuth/favorite round-trip",
+    "playback, seek and volume mutation round-trips",
+    "multi-monitor native widget interaction and Win32 geometry regression"
+  ]
+}

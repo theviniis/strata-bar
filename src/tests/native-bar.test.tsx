@@ -1,3 +1,4 @@
+import { demoMedia } from '../services/system/media'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { it, expect, vi } from 'vitest'
 import type {
@@ -27,6 +28,7 @@ vi.mock('../services/system/bridge', () => ({
       error: null
     })
     const data: Partial<Record<Channel, unknown>> = {
+      media: demoMedia(),
       cpu: { percent: metric(23.4) },
       gpu: { percent: metric(27.3) },
       disk: {
@@ -125,4 +127,11 @@ it('renders komorebi workspaces and focuses the clicked one', async () => {
       workspace: 2
     })
   )
+})
+
+it('places music immediately before the audio controls', () => {
+  render(<NativeBar />)
+  const music = screen.getByLabelText('Música')
+  const audio = screen.getByRole('button', { name: 'Saída de áudio' })
+  expect(music.nextElementSibling?.contains(audio)).toBe(true)
 })

@@ -1,30 +1,34 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod media;
+mod media_contract;
+mod media_windows;
+mod spotify;
 
+mod afterburner;
+mod audio_policy;
+mod cpu;
+mod cpu_contract;
+mod cpu_windows;
 mod desktop;
-mod popup_ids;
+mod disk;
+mod disk_contract;
+mod disk_windows;
+mod gpu;
+mod gpu_contract;
+mod gpu_windows;
+mod komorebi;
+mod mahm_windows;
+mod memory;
+mod memory_contract;
+mod metrics;
 #[cfg(debug_assertions)]
 mod popup_check;
-mod audio_policy;
-mod komorebi;
-mod metrics;
-mod memory_contract;
-mod memory;
-mod cpu_contract;
-mod cpu;
-mod disk_contract;
-mod disk;
-mod gpu_contract;
-mod gpu;
-mod afterburner;
-mod mahm_windows;
-mod cpu_windows;
-mod disk_windows;
-mod gpu_windows;
+mod popup_ids;
 use serde_json::{json, Value};
 use tauri::Manager;
 #[tauri::command]
 fn capabilities(komorebi: tauri::State<komorebi::Komorebi>) -> Value {
-    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"appBar":true,"gpu":true,"disk":true,"network":false,"komorebi":komorebi.available()})
+    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"media":true,"appBar":true,"gpu":true,"disk":true,"network":false,"komorebi":komorebi.available()})
 }
 #[tauri::command]
 fn subscribe(
@@ -34,6 +38,9 @@ fn subscribe(
     channel: String,
     interval_ms: u64,
 ) -> Result<Value, String> {
+    if channel == "media" {
+        return window.state::<media::Media>().subscribe(window.label());
+    }
     if channel == "komorebi" {
         return komorebi.subscribe(&window, interval_ms);
     }
@@ -46,7 +53,11 @@ fn unsubscribe(
     komorebi: tauri::State<komorebi::Komorebi>,
     token: String,
 ) {
-    if token.starts_with('k') {
+    if token.starts_with('m') {
+        window
+            .state::<media::Media>()
+            .unsubscribe(&token, window.label());
+    } else if token.starts_with('k') {
         komorebi.unsubscribe(&token, window.label());
     } else {
         metrics.unsubscribe(&token, window.label());
@@ -74,9 +85,14 @@ async fn set_volume(
         .map_err(|e| e.to_string())?
 }
 #[tauri::command]
-async fn set_audio_output(state: tauri::State<'_, metrics::Metrics>, device_id: String) -> Result<Value, String> {
+async fn set_audio_output(
+    state: tauri::State<'_, metrics::Metrics>,
+    device_id: String,
+) -> Result<Value, String> {
     let owner = state.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || owner.audio_output(device_id)).await.map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || owner.audio_output(device_id))
+        .await
+        .map_err(|e| e.to_string())?
 }
 #[tauri::command]
 fn overlay_show(
@@ -85,20 +101,30 @@ fn overlay_show(
     request: desktop::OverlayRequest,
 ) -> Result<(), String> {
     let result = desktop::overlay_show(&app, &window, &request);
-    if result.is_err() { desktop::overlay_hide_request(&app, request.session.as_deref()); }
+    if result.is_err() {
+        desktop::overlay_hide_request(&app, request.session.as_deref());
+    }
     result
 }
 #[tauri::command]
 fn overlay_hide(app: tauri::AppHandle, window: tauri::WebviewWindow, session: Option<String>) {
-    if window.label() == desktop::OVERLAY { desktop::overlay_dismiss(&app, session.as_deref()); }
-    else { desktop::overlay_hide_request(&app, session.as_deref()); }
+    if window.label() == desktop::OVERLAY {
+        desktop::overlay_dismiss(&app, session.as_deref());
+    } else {
+        desktop::overlay_hide_request(&app, session.as_deref());
+    }
 }
 #[tauri::command]
 fn overlay_ready(window: tauri::WebviewWindow) -> Result<Value, String> {
     desktop::overlay_ready(&window)
 }
 #[tauri::command]
-fn overlay_resize(app: tauri::AppHandle, window: tauri::WebviewWindow, session: String, size: desktop::OverlaySize) -> Result<Value, String> {
+fn overlay_resize(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    session: String,
+    size: desktop::OverlaySize,
+) -> Result<Value, String> {
     desktop::overlay_resize(&app, &window, &session, &size)
 }
 #[tauri::command]
@@ -110,10 +136,63 @@ fn diagnostics(
     json!({"metrics":metrics.diagnostics(),"komorebi":komorebi.diagnostics(),"overlay":desktop::overlay_snapshot(),"profile":desktop::profile(),"bars":app.webview_windows().keys().collect::<Vec<_>>()})
 }
 #[tauri::command]
+async fn media_action(
+    window: tauri::WebviewWindow,
+    state: tauri::State<'_, media::Media>,
+    request: media_contract::MediaRequest,
+) -> Result<(), String> {
+    let owner = state.inner().clone();
+    let label = window.label().to_string();
+    tauri::async_runtime::spawn_blocking(move || owner.action(label, request))
+        .await
+        .map_err(|_| "Media worker failed")?
+}
+#[tauri::command]
+fn spotify_status(
+    window: tauri::WebviewWindow,
+    state: tauri::State<media::Media>,
+) -> Result<media_contract::SpotifyStatus, String> {
+    if !media::allowed_window(window.label()) {
+        return Err("Spotify settings require a bar or overlay".into());
+    }
+    Ok(state.spotify.status())
+}
+#[tauri::command]
+async fn spotify_connect(
+    window: tauri::WebviewWindow,
+    state: tauri::State<'_, media::Media>,
+    client_id: String,
+) -> Result<(), String> {
+    if !media::allowed_window(window.label()) {
+        return Err("Spotify settings require a bar or overlay".into());
+    }
+    let spotify = state.spotify.clone();
+    tauri::async_runtime::spawn_blocking(move || spotify.connect(client_id))
+        .await
+        .map_err(|_| "Spotify worker failed")?
+}
+#[tauri::command]
+async fn spotify_disconnect(
+    window: tauri::WebviewWindow,
+    state: tauri::State<'_, media::Media>,
+) -> Result<(), String> {
+    if !media::allowed_window(window.label()) {
+        return Err("Spotify settings require a bar or overlay".into());
+    }
+    let spotify = state.spotify.clone();
+    tauri::async_runtime::spawn_blocking(move || spotify.disconnect())
+        .await
+        .map_err(|_| "Spotify worker failed")?
+}
+#[tauri::command]
 fn quit(app: tauri::AppHandle) {
     app.exit(0);
 }
 fn main() {
+    if std::env::args().any(|arg| arg == "--probe-media") {
+        println!("{}", media::probe());
+        return;
+    }
     if std::env::args().any(|v| v == "--probe") {
         let result = json!({"metrics":metrics::probe(),"komorebi":komorebi::probe(),"overlay":desktop::overlay_snapshot(),"monitors":desktop::monitor_snapshot(),"bars":desktop::bar_snapshot()});
         let file = std::env::temp_dir().join("strata-native-probe.json");
@@ -140,6 +219,10 @@ fn main() {
     }
     let app = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
+            media_action,
+            spotify_status,
+            spotify_connect,
+            spotify_disconnect,
             capabilities,
             subscribe,
             unsubscribe,
@@ -154,6 +237,7 @@ fn main() {
             quit
         ])
         .setup(|app| {
+            app.manage(media::Media::start(app.handle().clone()));
             app.manage(metrics::Metrics::start(app.handle().clone()));
             app.manage(komorebi::Komorebi::start(app.handle().clone()));
             desktop::reconcile(app.handle())?;
@@ -167,6 +251,9 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
+                if let Some(media) = window.app_handle().try_state::<media::Media>() {
+                    media.remove_window(window.label());
+                }
                 if let Some(metrics) = window.app_handle().try_state::<metrics::Metrics>() {
                     metrics.remove_window(window.label());
                 }
@@ -180,6 +267,9 @@ fn main() {
     app.run(|app, event| {
         if matches!(event, tauri::RunEvent::Exit) {
             desktop::release_all(app);
+            if let Some(media) = app.try_state::<media::Media>() {
+                media.stop();
+            }
             if let Some(m) = app.try_state::<metrics::Metrics>() {
                 m.stop();
             }

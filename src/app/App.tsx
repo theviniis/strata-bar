@@ -1,3 +1,4 @@
+import { SpotifySettings } from '../features/music/SpotifySettings'
 import { WidgetHoverGroup } from '../components/widget-hover'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ArrowUpRight, Check, Layers3, Settings2 } from 'lucide-react'
@@ -78,7 +79,7 @@ export default function App() {
             <WidgetHoverGroup>
               <nav
                 aria-label="Status bar"
-                className={`grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center rounded-[9px] border border-[#ffffff12] bg-[#12121ce0] px-2.5 py-1 text-[#dddce8] shadow-[0_4px_16px_#0002] group-data-[theme=light]:bg-[#f8f5f2ed] group-data-[theme=light]:text-[#302a3e] max-[1000px]:grid-cols-[1fr_auto] ${
+                className={`grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center rounded-[9px] border border-[#ffffff12] bg-[#12121ce0] px-2.5 py-1 text-[#dddce8] shadow-[0_4px_16px_#0002] group-data-[theme=light]:bg-[#f8f5f2ed] group-data-[theme=light]:text-[#302a3e] max-[1400px]:grid-cols-[1fr_auto] ${
                   config.bar.position === 'bottom'
                     ? 'absolute inset-x-3 bottom-10.5'
                     : 'relative'
@@ -92,9 +93,9 @@ export default function App() {
                   <div
                     className={`flex min-w-0 items-center ${
                       group === 'right'
-                        ? 'justify-end max-[1000px]:col-span-full max-[1000px]:justify-center'
+                        ? 'justify-end max-[1400px]:col-span-full max-[1400px]:justify-center'
                         : group === 'center'
-                          ? 'max-[1000px]:col-start-2 max-[1000px]:row-start-1'
+                          ? 'max-[1400px]:col-start-2 max-[1400px]:row-start-1'
                           : ''
                     }`}
                     key={group}
@@ -108,7 +109,11 @@ export default function App() {
                           data-widget-hover={
                             widget.type === 'komorebi' ? undefined : ''
                           }
-                          className="min-w-0 rounded p-1"
+                          className={
+                            widget.type === 'music'
+                              ? 'flex min-w-0 rounded p-1'
+                              : 'shrink-0 rounded p-1'
+                          }
                         >
                           <Widget widget={widget} />
                         </div>
@@ -230,6 +235,7 @@ export default function App() {
               ))}
           </div>
         </section>
+        <SpotifySettings />
         <section className="pb-6">
           <button
             className={`inline-flex cursor-pointer touch-manipulation items-center gap-3.5 border-0 bg-transparent py-3 text-[12px] text-[#d3c4f5] no-underline ${focusRing}`}

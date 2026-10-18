@@ -1,3 +1,4 @@
+import { Music } from '../../features/music/Music'
 import { Clock } from '../../features/clock/Clock'
 import { Cpu } from '../../features/cpu/Cpu'
 import { Disk } from '../../features/disk/Disk'
@@ -27,10 +28,13 @@ export default function NativeBar() {
           <BarVerticalSeparator />
           <Disk />
         </div>
-        <div className="flex min-w-0 items-center justify-end gap-2">
-          <Volume />
-          <BarVerticalSeparator />
-          <Clock showDate />
+        <div className="flex min-w-0 items-center justify-end overflow-hidden">
+          <Music />
+          <div className="flex shrink-0 items-center gap-2">
+            <Volume />
+            <BarVerticalSeparator />
+            <Clock showDate />
+          </div>
         </div>
       </nav>
     </WidgetHoverGroup>

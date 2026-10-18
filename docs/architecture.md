@@ -60,3 +60,13 @@ Per-metric status is independent: `ready`, `error` (previously known value, fail
 ## Configuration and security
 
 JSON schema version 1; unique widget IDs, known feature types, enabled state, update interval, display format, tooltip. Last-known-good config survives invalid edits. Browser persistence uses localStorage with visible errors and storage-event reload. Native target: app config directory, atomic write and debounced directory watch, validate before geometry change. Per-monitor overrides merge with validated defaults. CSP restricts content to bundled resources; no remote executable content or arbitrary user JS in MVP.
+
+## Media service
+
+`media.rs` owns one native service for all monitor windows. `media_windows.rs`
+uses GSMTC events and Core Audio session/device callbacks; a cached-snapshot tick
+schedules independent Spotify enrichment without polling those native APIs.
+`spotify.rs` owns fixed-host HTTP, PKCE and Windows Credential Manager storage.
+Native `media_action` and Spotify account commands are scoped to bar/overlay
+windows. The `media` channel contract is generated from Rust and validated before
+frontend delivery. See [music API and account setup](plans/music-widget.md).

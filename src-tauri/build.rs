@@ -7,6 +7,9 @@ mod disk_contract;
 #[path = "src/gpu_contract.rs"]
 #[allow(dead_code)]
 mod gpu_contract;
+#[path = "src/media_contract.rs"]
+#[allow(dead_code)]
+mod media_contract;
 #[path = "src/memory_contract.rs"]
 #[allow(dead_code)]
 mod memory_contract;
@@ -15,6 +18,31 @@ mod popups;
 
 fn main() {
     use ts_rs::TS;
+    println!("cargo:rerun-if-changed=src/media_contract.rs");
+    let media = [
+        media_contract::MediaAvailability::decl(),
+        media_contract::MediaValue::<String>::decl(),
+        media_contract::MediaProgress::decl(),
+        media_contract::PlayerVolume::decl(),
+        media_contract::MediaCapabilities::decl(),
+        media_contract::MediaData::decl(),
+        media_contract::MediaAction::decl(),
+        media_contract::MediaRequest::decl(),
+        media_contract::SpotifyStatus::decl(),
+    ];
+    let generated = format!(
+        "// Generated from Rust media_contract.rs by cargo build. Do not edit.\n{}\n",
+        media
+            .iter()
+            .map(|d| format!("export {d}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+    let target = std::path::Path::new("../src/services/system/media.generated.ts");
+    if std::fs::read_to_string(target).ok().as_deref() != Some(&generated) {
+        std::fs::write(target, generated).expect("Generate media contract");
+    }
+
     println!("cargo:rerun-if-changed=src/cpu_contract.rs");
     let cpu_declarations = [
         cpu_contract::CpuMetricStatus::decl(),
