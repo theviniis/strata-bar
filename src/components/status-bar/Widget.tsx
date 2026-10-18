@@ -9,6 +9,7 @@ import {
   CircuitBoard,
   Clock3,
   Cpu,
+  HardDrive,
   LayoutGrid,
   MemoryStick,
   Volume2,
@@ -16,6 +17,8 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { create } from 'zustand'
+import { DiskBar } from '../../features/disk/Disk'
+import { localVolumes } from '../../features/disk/presentation'
 import { Workspaces } from '../../features/komorebi/Workspaces'
 import type {
   WidgetConfig,
@@ -30,6 +33,7 @@ import {
   type KomorebiData,
   type SystemEvent
 } from '../../services/system/bridge'
+import type { DiskData } from '../../services/system/disk.generated'
 import { WidgetPopup } from '../../popups/WidgetPopup'
 import type { PopupId } from '../../popups/resolve'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
@@ -48,6 +52,7 @@ const meta: Record<WidgetType, { icon: LucideIcon; label: string }> = {
   cpu: { icon: Cpu, label: 'CPU' },
   memory: { icon: MemoryStick, label: 'RAM' },
   gpu: { icon: CircuitBoard, label: 'GPU' },
+  disk: { icon: HardDrive, label: 'HD' },
   network: { icon: ArrowDownUp, label: 'NET' },
   volume: { icon: Volume2, label: 'Audio' },
   activeWindow: { icon: AppWindow, label: 'Active window' },
@@ -59,6 +64,7 @@ const formatters: Record<Channel, (value: PreviewValue) => string> = {
   cpu: (v) => `${v}%`,
   memory: (v) => `${v}%`,
   gpu: (v) => `${v}%`,
+  disk: () => '',
   network: (v) => `${v} KB/s`,
   volume: (v) => `${v}%`,
   activeWindow: (v) => String(v),
@@ -162,14 +168,16 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
     widget.type === 'volume' ||
     widget.type === 'memory' ||
     widget.type === 'cpu' ||
-    widget.type === 'gpu'
+    widget.type === 'gpu' ||
+    widget.type === 'disk'
   ) {
     const popups: Partial<Record<WidgetType, { id: PopupId; label: string }>> =
       {
         cpu: { id: 'cpu', label: 'Detalhes da CPU' },
         gpu: { id: 'gpu', label: 'Detalhes da GPU' },
         memory: { id: 'memory', label: 'Detalhes da memória' },
-        volume: { id: 'audioOutputs', label: 'Saída de áudio' }
+        volume: { id: 'audioOutputs', label: 'Saída de áudio' },
+        disk: { id: 'disk', label: 'Detalhes dos discos' }
       }
     const popup = popups[widget.type]
     if (!popup) return null
@@ -182,8 +190,20 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
                 aria-label={popup.label}
                 className="flex items-center gap-1.5 rounded-sm p-1"
               >
-                <Icon size={14} />
-                <span>{text}</span>
+                {widget.type === 'disk' ? (
+                  <DiskBar
+                    volumes={localVolumes(
+                      sample?.status === 'ready'
+                        ? (sample.data as DiskData).volumes
+                        : []
+                    )}
+                  />
+                ) : (
+                  <>
+                    <Icon size={14} />
+                    <span>{text}</span>
+                  </>
+                )}
               </button>
             </WidgetPopup.Trigger>
           </span>

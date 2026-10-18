@@ -4,6 +4,8 @@ import type { CpuData } from './cpu.generated'
 import { parseCpuEvent } from './cpu'
 import type { GpuData } from './gpu.generated'
 import { parseGpuEvent } from './gpu'
+import type { DiskData } from './disk.generated'
+import { parseDiskEvent } from './disk'
 
 export type BridgeMode = 'demo' | 'native'
 
@@ -12,6 +14,7 @@ export type Channel =
   | 'cpu'
   | 'memory'
   | 'gpu'
+  | 'disk'
   | 'network'
   | 'volume'
   | 'activeWindow'
@@ -45,6 +48,7 @@ export interface ChannelData {
   cpu: CpuData
   memory: MemoryData
   gpu: GpuData
+  disk: DiskData
   network: number
   audioOutputs: {
     devices: { id: string; name: string }[]
@@ -57,13 +61,15 @@ export interface ChannelData {
 
 /**
  * Illustrative values served by the browser demo adapter. Most are preview scalars
- * only, so they deliberately do not mirror the native payloads above; komorebi is
- * the exception because a workspace strip cannot be represented by a scalar.
+ * only, so they deliberately do not mirror the native payloads above; komorebi and
+ * disk are the exceptions because a workspace strip and a row of volume bars cannot
+ * be represented by a scalar.
  */
 export interface DemoChannelData {
   cpu: number
   memory: number
   gpu: number
+  disk: DiskData
   network: number
   audioOutputs: null
   volume: number
@@ -120,6 +126,40 @@ export function createMockBridge(): DemoBridge {
     cpu: 17,
     memory: 46,
     gpu: 27,
+    disk: {
+      sequence: 1,
+      sampledAt: Date.now(),
+      volumes: [
+        {
+          mount: 'C:',
+          label: 'System',
+          kind: 'fixed',
+          totalBytes: 512_000_000_000,
+          freeBytes: 286_720_000_000,
+          usedBytes: 225_280_000_000,
+          percent: 44
+        },
+        {
+          mount: 'D:',
+          label: 'Data',
+          kind: 'fixed',
+          totalBytes: 1_000_000_000_000,
+          freeBytes: 450_000_000_000,
+          usedBytes: 550_000_000_000,
+          percent: 55
+        },
+        // A mapped network drive: reported, but not part of "Dispositivos e unidades".
+        {
+          mount: 'Z:',
+          label: 'Compartilhamento',
+          kind: 'remote',
+          totalBytes: 2_000_000_000_000,
+          freeBytes: 1_000_000_000_000,
+          usedBytes: 1_000_000_000_000,
+          percent: 50
+        }
+      ]
+    },
     network: 128,
     volume: 64,
     audioOutputs: null,
@@ -163,7 +203,9 @@ export function createMockBridge(): DemoBridge {
         }
       }
       emit()
-      const timer = ['cpu', 'memory', 'gpu', 'network'].includes(channel)
+      const timer = ['cpu', 'memory', 'gpu', 'disk', 'network'].includes(
+        channel
+      )
         ? setInterval(emit, intervalMs)
         : undefined
       return () => clearInterval(timer)
@@ -197,12 +239,18 @@ export function createNativeBridge(): NativeBridge {
       const parsers = {
         cpu: parseCpuEvent,
         gpu: parseGpuEvent,
-        memory: parseMemoryEvent
+        memory: parseMemoryEvent,
+        disk: parseDiskEvent
       } as const
       const deliver = (event: SystemEvent<ChannelData[C]>) => {
         // Resource payloads are validated before they reach a widget; each
         // subscription sees one channel, so the sequence guard is per channel.
-        if (channel === 'cpu' || channel === 'gpu' || channel === 'memory') {
+        if (
+          channel === 'cpu' ||
+          channel === 'gpu' ||
+          channel === 'memory' ||
+          channel === 'disk'
+        ) {
           const parsed = parsers[channel as keyof typeof parsers](event)
           if (parsed.status === 'ready') {
             if (parsed.data.sequence <= resourceSequence) return

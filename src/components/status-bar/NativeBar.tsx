@@ -1,5 +1,6 @@
 import { Clock } from '../../features/clock/Clock'
 import { Cpu } from '../../features/cpu/Cpu'
+import { Disk } from '../../features/disk/Disk'
 import { Gpu } from '../../features/gpu/Gpu'
 import { Komorebi } from '../../features/komorebi/Komorebi'
 import { Memory } from '../../features/memory/Memory'
@@ -23,6 +24,8 @@ export default function NativeBar() {
           <Gpu />
           <BarVerticalSeparator />
           <Memory />
+          <BarVerticalSeparator />
+          <Disk />
         </div>
         <div className="flex min-w-0 items-center justify-end gap-2">
           <Volume />

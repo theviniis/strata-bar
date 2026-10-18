@@ -6,3 +6,4 @@ src/popups/.generated/
 src/services/system/memory.generated.ts
 src/services/system/cpu.generated.ts
 src/services/system/gpu.generated.ts
+src/services/system/disk.generated.ts

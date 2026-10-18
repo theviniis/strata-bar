@@ -14,7 +14,7 @@ pass; the komorebi and GPU widgets are recorded exceptions (`docs/plans/komorebi
 - `src/` — React 19 frontend: app shell, feature widgets, hooks, services, Zustand stores and tests.
   - `src/app/` — studio shell (`App.tsx`) and global styles (`styles.css`).
   - `src/components/` — status-bar components (`NativeBar.tsx`, `Widget.tsx`) and shadcn-style `ui/`.
-  - `src/features/` — individual widgets: `clock/`, `cpu/`, `gpu/`, `memory/`, `volume/`, `komorebi/`.
+  - `src/features/` — individual widgets: `clock/`, `cpu/`, `disk/`, `gpu/`, `memory/`, `volume/`, `komorebi/`.
   - `src/hooks/` — React hooks such as `useSystemChannel.ts` and `useOverlayTooltip.ts`.
   - `src/overlay/` — the shared floating surface: `Overlay.tsx` (`?view=overlay`), `TooltipSurface.tsx`
     and the off-screen `measure.ts` probe.
@@ -24,6 +24,7 @@ pass; the komorebi and GPU widgets are recorded exceptions (`docs/plans/komorebi
   - `src/tests/` — Vitest + Testing Library suites and `setup.ts`.
 - `src-tauri/` — Rust/Tauri host: `src/main.rs`, `src/desktop.rs` (AppBar host), `src/metrics.rs`
   (collectors), `src/gpu.rs` + `src/gpu_windows.rs` (GPU collector and its DXGI/PDH source),
+  `src/disk.rs` + `src/disk_windows.rs` (disk volume collector and its Win32 source),
   `src/afterburner.rs` + `src/mahm_windows.rs` (read-only MSI Afterburner sensors),
   `src/komorebi.rs` (named-pipe workspace viewer).
 - `scripts/` — PowerShell validation helpers: `measure-idle.ps1`, `test-live-geometry.ps1`.
@@ -122,7 +123,7 @@ flowchart TD
   Bridge -->|browser| Mock[Demo adapter]
   Tooltip -->|browser| Noop[Demo adapter: no-op]
   Native --> Cmd[Tauri commands: subscribe / unsubscribe / set_volume / komorebi_action / overlay_show / overlay_hide / quit]
-  Cmd --> Metrics[metrics.rs collectors: CPU, GPU, RAM, Core Audio]
+  Cmd --> Metrics[metrics.rs collectors: CPU, GPU, RAM, Disk, Core Audio]
   Cmd --> Desktop[desktop.rs AppBar host]
   Cmd --> Surface[desktop.rs overlay surface]
   Metrics -->|events system:channel| Native
@@ -178,14 +179,18 @@ flowchart TD
 - Unit / component (frontend): Vitest with `jsdom` and Testing Library (`@testing-library/react`,
   `@testing-library/jest-dom`); setup in `src/tests/setup.ts`. Run with `pnpm test` (`vitest run`).
   Current suites: `app.test.tsx`, `bridge.test.ts`, `config.test.ts`, `cpu-bridge.test.ts`, `cpu-popup.test.tsx`,
-  `cpu-temperature-sampling.test.tsx`, `gpu-bridge.test.ts`, `gpu-popup.test.tsx`, `komorebi.test.tsx`,
+  `cpu-temperature-sampling.test.tsx`, `disk-bridge.test.ts`, `disk-popup.test.tsx`, `disk-widget.test.tsx`,
+  `gpu-bridge.test.ts`,
+  `gpu-popup.test.tsx`, `komorebi.test.tsx`,
   `memory-bridge.test.ts`, `memory-popup.test.tsx`, `native-bar.test.tsx`, `native-bridge.test.ts`,
   `overlay.test.tsx`, `overlay-render.test.tsx`, `popup-animation.test.tsx`, `popup-definition.test.ts`,
   `popover.test.tsx`, `resource-graph.test.tsx`, `widget-hover.test.tsx`, `widget-popup.test.tsx`
-  (107 tests; seven failures in `audio-outputs.test.tsx`, `widget-popup.test.tsx` and
+  (117 tests; seven failures in `audio-outputs.test.tsx`, `widget-popup.test.tsx` and
   `resource-graph.test.tsx` pre-date the GPU work and must be fixed).
-- Native unit tests: `cargo test --manifest-path src-tauri/Cargo.toml` (61 tests: CPU accounting, physical
-  RAM, GPU collector composition/partial failure/bounds and MAHM parsing, channel/interval validation, window
+- Native unit tests: `cargo test --manifest-path src-tauri/Cargo.toml` (68 tests: CPU accounting, physical
+  RAM, disk volume projection/skipping and Windows drive-type mapping, GPU collector composition/partial
+  failure/bounds and MAHM
+  parsing, channel/interval validation, window
   ownership, per-monitor cleanup, negative/scaled monitor geometry, komorebi projection/state bounds,
   `komorebic` argument allowlist, stream framing, floating frame style/click-through, overlay request
   validation and overlay placement).
@@ -234,8 +239,8 @@ flowchart TD
 
 - Widget registration: add a type to `types` and the Zod schema in `src/services/configuration/config.ts`,
   then register its icon/label in `meta` and its formatter in `formatters` in
-  `src/components/status-bar/Widget.tsx`. Widgets that need custom rendering (`clock`, `komorebi`) branch
-  before the formatter path in `Widget.tsx` and ship a feature component under `src/features/<name>/`.
+  `src/components/status-bar/Widget.tsx`. Widgets that need custom rendering (`clock`, `komorebi`, `disk`)
+  branch before the formatter path in `Widget.tsx` and ship a feature component under `src/features/<name>/`.
 - Channels: native capability map is returned by the `capabilities` command in `src-tauri/src/main.rs`;
   frontend adapters live in `src/services/system/bridge.ts`. Unsupported channels reject subscription;
   `komorebi` is reported by capability and, when komorebi or `komorebic.exe` is absent, subscribes to a

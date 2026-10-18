@@ -1,6 +1,9 @@
 #[path = "src/cpu_contract.rs"]
 #[allow(dead_code)]
 mod cpu_contract;
+#[path = "src/disk_contract.rs"]
+#[allow(dead_code)]
+mod disk_contract;
 #[path = "src/gpu_contract.rs"]
 #[allow(dead_code)]
 mod gpu_contract;
@@ -71,6 +74,24 @@ fn main() {
     let gpu_target = std::path::Path::new("../src/services/system/gpu.generated.ts");
     if std::fs::read_to_string(gpu_target).ok().as_deref() != Some(&gpu_generated) {
         std::fs::write(gpu_target, gpu_generated).expect("Generate GPU contract");
+    }
+    println!("cargo:rerun-if-changed=src/disk_contract.rs");
+    let disk_declarations = [
+        disk_contract::DiskVolumeKind::decl(),
+        disk_contract::DiskVolume::decl(),
+        disk_contract::DiskData::decl(),
+    ];
+    let disk_generated = format!(
+        "// Generated from Rust disk_contract.rs by cargo build. Do not edit.\n{}\n",
+        disk_declarations
+            .iter()
+            .map(|decl| format!("export {decl}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+    let disk_target = std::path::Path::new("../src/services/system/disk.generated.ts");
+    if std::fs::read_to_string(disk_target).ok().as_deref() != Some(&disk_generated) {
+        std::fs::write(disk_target, disk_generated).expect("Generate disk contract");
     }
     let features = std::path::Path::new("../src/features");
     // Cargo recursively watches this tree, including added/removed definitions.

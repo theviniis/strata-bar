@@ -5,6 +5,7 @@ export const types = [
   'cpu',
   'memory',
   'gpu',
+  'disk',
   'network',
   'volume',
   'activeWindow',
@@ -62,10 +63,12 @@ export const defaultConfig = configSchema.parse({
       { id: 'active', type: 'activeWindow' }
     ],
     center: [{ id: 'time', type: 'clock' }],
-    right: ['cpu', 'memory', 'gpu', 'network', 'volume'].map((type) => ({
-      id: type,
-      type
-    }))
+    right: ['cpu', 'memory', 'gpu', 'disk', 'network', 'volume'].map(
+      (type) => ({
+        id: type,
+        type
+      })
+    )
   }
 })
 

@@ -29,6 +29,30 @@ vi.mock('../services/system/bridge', () => ({
     const data: Partial<Record<Channel, unknown>> = {
       cpu: { percent: metric(23.4) },
       gpu: { percent: metric(27.3) },
+      disk: {
+        sequence: 1,
+        sampledAt: Date.now(),
+        volumes: [
+          {
+            mount: 'C:',
+            label: 'System',
+            kind: 'fixed',
+            totalBytes: 100,
+            freeBytes: 56,
+            usedBytes: 44,
+            percent: 44
+          },
+          {
+            mount: 'D:',
+            label: null,
+            kind: 'fixed',
+            totalBytes: 100,
+            freeBytes: 45,
+            usedBytes: 55,
+            percent: 55
+          }
+        ]
+      },
       memory: {
         sequence: 1,
         sampledAt: Date.now(),
@@ -74,6 +98,15 @@ it('renders real adapter snapshots and the audio popup trigger', () => {
   expect(screen.getByLabelText('Uso da CPU')).toHaveTextContent(/^23.4%?$/)
   expect(screen.getByLabelText('Uso da GPU')).toHaveTextContent(/^27.3%?$/)
   expect(screen.getByLabelText('Uso da RAM')).toHaveTextContent(/^56.3%?$/)
+  expect(
+    screen.getByRole('button', { name: 'Detalhes dos discos' })
+  ).toHaveTextContent('C: 44%')
+  expect(
+    screen.getByRole('progressbar', { name: 'Uso do disco D:' })
+  ).toHaveAttribute('aria-valuenow', '55')
+  expect(
+    screen.getByRole('button', { name: 'Detalhes dos discos' })
+  ).toHaveAttribute('aria-haspopup', 'dialog')
   expect(
     screen.getByRole('button', { name: 'Saída de áudio' })
   ).toHaveAttribute('aria-haspopup', 'dialog')
