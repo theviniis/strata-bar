@@ -1,0 +1,617 @@
+{
+  "bars": [
+    {
+      "client": [1920, 36],
+      "komorebiEligible": false,
+      "rect": [724, -1044, 2644, -1008],
+      "title": "Strata · \\\\.\\DISPLAY2",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "client": [3440, 36],
+      "komorebiEligible": false,
+      "rect": [0, 36, 3440, 72],
+      "title": "Strata · \\\\.\\DISPLAY1",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    }
+  ],
+  "checks": [
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "audioOutputs",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 1,
+          "positions": 6,
+          "shows": 1
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [3060, 72, 3440, 417],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": null,
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 0,
+          "positions": 3,
+          "shows": 1
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [3060, 72, 3440, 417],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-22c6be2639ba7101",
+      "subscriptionsReleased": true
+    },
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "memory",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 3,
+          "positions": 15,
+          "shows": 3
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [3033, 72, 3396, 480],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": {
+        "availableBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349229649.0,
+          "value": 15835418624.0
+        },
+        "cachedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349229649.0,
+          "value": 15155408896.0
+        },
+        "history": [
+          {
+            "percent": 52.61077489454736,
+            "sequence": 1,
+            "timestamp": 1792349225611.0
+          },
+          {
+            "percent": 52.488689460093006,
+            "sequence": 2,
+            "timestamp": 1792349227638.0
+          },
+          {
+            "percent": 52.77144697904914,
+            "sequence": 3,
+            "timestamp": 1792349229649.0
+          }
+        ],
+        "pagingFileBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349229649.0,
+          "value": 157999104.0
+        },
+        "percent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349229649.0,
+          "value": 52.77144697904914
+        },
+        "sampledAt": 1792349229649.0,
+        "sequence": 3,
+        "totalBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349229649.0,
+          "value": 34254831616.0
+        },
+        "usedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349229649.0,
+          "value": 18076770304.0
+        }
+      },
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 2,
+          "positions": 12,
+          "shows": 3
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [3033, 72, 3396, 480],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-22c6be2639ba7101",
+      "subscriptionsReleased": true
+    },
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "cpu",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 5,
+          "positions": 24,
+          "shows": 5
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [3083, 72, 3440, 688],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": {
+        "frequencyHz": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349231663.0,
+          "value": 3994134308.3405843
+        },
+        "history": [
+          {
+            "percent": null,
+            "sequence": 1,
+            "temperatureCelsius": 43.0,
+            "temperatureUpdatedAt": 1792349225000.0,
+            "timestamp": 1792349225609.0
+          },
+          {
+            "percent": 7.69047814036462,
+            "sequence": 2,
+            "temperatureCelsius": 37.0,
+            "temperatureUpdatedAt": 1792349227000.0,
+            "timestamp": 1792349227636.0
+          },
+          {
+            "percent": 26.70735667128612,
+            "sequence": 3,
+            "temperatureCelsius": 42.0,
+            "temperatureUpdatedAt": 1792349229000.0,
+            "timestamp": 1792349229647.0
+          },
+          {
+            "percent": 30.829098684448088,
+            "sequence": 4,
+            "temperatureCelsius": 37.0,
+            "temperatureUpdatedAt": 1792349231000.0,
+            "timestamp": 1792349231663.0
+          }
+        ],
+        "logicalProcessors": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349231663.0,
+          "value": 12.0
+        },
+        "maxFrequencyHz": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349231663.0,
+          "value": 2904000000.0
+        },
+        "percent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349231663.0,
+          "value": 30.829098684448088
+        },
+        "physicalCores": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349231663.0,
+          "value": 6.0
+        },
+        "sampledAt": 1792349231663.0,
+        "sequence": 4,
+        "temperatureCelsius": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349231000.0,
+          "value": 37.0
+        },
+        "temperatureSensor": {
+          "instance": 4294967295,
+          "name": "CPU temperature",
+          "provider": "msiAfterburner",
+          "sourceId": 128
+        }
+      },
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 4,
+          "positions": 21,
+          "shows": 5
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [3083, 72, 3440, 688],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-22c6be2639ba7101",
+      "subscriptionsReleased": true
+    },
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "audioOutputs",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 7,
+          "positions": 33,
+          "shows": 7
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [2264, -1008, 2644, -663],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": null,
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 6,
+          "positions": 30,
+          "shows": 7
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [2264, -1008, 2644, -663],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-24b83c25257477dd",
+      "subscriptionsReleased": true
+    },
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "memory",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 9,
+          "positions": 42,
+          "shows": 9
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [2228, -1008, 2591, -600],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": {
+        "availableBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349233680.0,
+          "value": 15813591040.0
+        },
+        "cachedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349233680.0,
+          "value": 15150108672.0
+        },
+        "history": [
+          {
+            "percent": 52.61077489454736,
+            "sequence": 1,
+            "timestamp": 1792349225611.0
+          },
+          {
+            "percent": 52.488689460093006,
+            "sequence": 2,
+            "timestamp": 1792349227638.0
+          },
+          {
+            "percent": 52.77144697904914,
+            "sequence": 3,
+            "timestamp": 1792349229649.0
+          },
+          {
+            "percent": 52.89161922354142,
+            "sequence": 4,
+            "timestamp": 1792349231665.0
+          },
+          {
+            "percent": 52.94554726559716,
+            "sequence": 5,
+            "timestamp": 1792349233680.0
+          }
+        ],
+        "pagingFileBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349233680.0,
+          "value": 157999104.0
+        },
+        "percent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349233680.0,
+          "value": 52.94554726559716
+        },
+        "sampledAt": 1792349233680.0,
+        "sequence": 5,
+        "totalBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349233680.0,
+          "value": 34254831616.0
+        },
+        "usedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349233680.0,
+          "value": 18136408064.0
+        }
+      },
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 8,
+          "positions": 39,
+          "shows": 9
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [2228, -1008, 2591, -600],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-24b83c25257477dd",
+      "subscriptionsReleased": true
+    },
+    {
+      "contentSizeRoundTrip": true,
+      "escape": true,
+      "feature": "cpu",
+      "floating": true,
+      "focused": true,
+      "hidden": {
+        "counters": {
+          "hides": 11,
+          "positions": 51,
+          "shows": 11
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [2287, -1008, 2644, -392],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "interactive": true,
+      "memory": {
+        "frequencyHz": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349235695.0,
+          "value": 4000732783.895701
+        },
+        "history": [
+          {
+            "percent": null,
+            "sequence": 1,
+            "temperatureCelsius": 43.0,
+            "temperatureUpdatedAt": 1792349225000.0,
+            "timestamp": 1792349225609.0
+          },
+          {
+            "percent": 7.69047814036462,
+            "sequence": 2,
+            "temperatureCelsius": 37.0,
+            "temperatureUpdatedAt": 1792349227000.0,
+            "timestamp": 1792349227636.0
+          },
+          {
+            "percent": 26.70735667128612,
+            "sequence": 3,
+            "temperatureCelsius": 42.0,
+            "temperatureUpdatedAt": 1792349229000.0,
+            "timestamp": 1792349229647.0
+          },
+          {
+            "percent": 30.829098684448088,
+            "sequence": 4,
+            "temperatureCelsius": 37.0,
+            "temperatureUpdatedAt": 1792349231000.0,
+            "timestamp": 1792349231663.0
+          },
+          {
+            "percent": 30.663431075186853,
+            "sequence": 5,
+            "temperatureCelsius": 44.0,
+            "temperatureUpdatedAt": 1792349233000.0,
+            "timestamp": 1792349233678.0
+          },
+          {
+            "percent": 30.723088143773392,
+            "sequence": 6,
+            "temperatureCelsius": 40.0,
+            "temperatureUpdatedAt": 1792349235000.0,
+            "timestamp": 1792349235695.0
+          }
+        ],
+        "logicalProcessors": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349235695.0,
+          "value": 12.0
+        },
+        "maxFrequencyHz": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349235695.0,
+          "value": 2904000000.0
+        },
+        "percent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349235695.0,
+          "value": 30.723088143773392
+        },
+        "physicalCores": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349235695.0,
+          "value": 6.0
+        },
+        "sampledAt": 1792349235695.0,
+        "sequence": 6,
+        "temperatureCelsius": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792349235000.0,
+          "value": 40.0
+        },
+        "temperatureSensor": {
+          "instance": 4294967295,
+          "name": "CPU temperature",
+          "provider": "msiAfterburner",
+          "sourceId": 128
+        }
+      },
+      "outsidePointer": true,
+      "passed": true,
+      "resizePreservesFocus": true,
+      "shown": {
+        "counters": {
+          "hides": 10,
+          "positions": 48,
+          "shows": 11
+        },
+        "present": true,
+        "window": {
+          "clickThrough": false,
+          "komorebiEligible": false,
+          "rect": [2287, -1008, 2644, -392],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      },
+      "source": "bar-24b83c25257477dd",
+      "subscriptionsReleased": true
+    }
+  ],
+  "cpuPauseResume": {
+    "gapMs": 8046.0,
+    "passed": true
+  },
+  "cpuRetention": {
+    "oldSampleExpired": true,
+    "passed": true,
+    "samples": 30,
+    "spanMs": 58322.0
+  },
+  "memoryPauseResume": {
+    "gapMs": 8046.0,
+    "passed": true
+  },
+  "memoryRetention": {
+    "oldSampleExpired": true,
+    "passed": true,
+    "samples": 30,
+    "spanMs": 58321.0
+  },
+  "monitors": [
+    {
+      "monitor": [0, 0, 3440, 1440],
+      "workArea": [0, 72, 3440, 1440]
+    },
+    {
+      "monitor": [724, -1080, 2644, 0],
+      "workArea": [724, -1008, 2644, 0]
+    }
+  ],
+  "passed": true
+}

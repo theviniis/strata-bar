@@ -8,11 +8,11 @@ import {
 import { MemoryStick } from 'lucide-react'
 import { useOverlayTooltip } from '../../hooks/useOverlayTooltip'
 import { WidgetPopup } from '@/popups/WidgetPopup'
-import { useMemory } from './useMemory'
+import { useResourceChannel } from '@/hooks/useResourceChannel'
 import { isMemoryMetricStale } from './presentation'
 
 export function Memory() {
-  const { event, lastData, now } = useMemory()
+  const { event, lastData, now } = useResourceChannel('memory')
   const data = event.status === 'ready' ? event.data : lastData
   const percent = data?.percent
   const stale = isMemoryMetricStale(percent, now, event.status === 'ready')

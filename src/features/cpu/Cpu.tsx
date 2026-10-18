@@ -8,11 +8,11 @@ import {
 import { Cpu as Icon } from 'lucide-react'
 import { WidgetPopup } from '@/popups/WidgetPopup'
 import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
-import { useCpu } from './useCpu'
+import { useResourceChannel } from '@/hooks/useResourceChannel'
 import { isCpuMetricStale } from './presentation'
 
 export function Cpu() {
-  const { event, lastData, now } = useCpu()
+  const { event, lastData, now } = useResourceChannel('cpu')
   const data = event.status === 'ready' ? event.data : lastData
   const percent = data?.percent
   const stale = isCpuMetricStale(percent, now, event.status === 'ready')

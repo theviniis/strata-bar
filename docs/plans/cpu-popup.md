@@ -1,8 +1,10 @@
 # CPU resource API and popup
 
-Status: planned. Product decisions agreed on 2026-10-18; implementation has not
-started. This extends the existing CPU channel and reuses the memory popup's
-behavior and the shared native popup infrastructure.
+Status: implemented on 2026-10-18. Native popup verification passed on both
+monitors without elevation; see ../cpu.md for evidence and explicit validation
+limits. The requested visual Task Manager comparison awaits user observation.
+This extends the existing CPU channel and reuses the memory popup's behavior
+and the shared native popup infrastructure.
 
 ## Result
 

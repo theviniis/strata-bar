@@ -10,14 +10,14 @@ import type { MemoryData } from '@/services/system/memory.generated'
 import { useState } from 'react'
 import { MemoryGraph } from './MemoryGraph'
 import { formatMemoryMetric } from './presentation'
-import { useMemory } from './useMemory'
+import { useResourceChannel } from '@/hooks/useResourceChannel'
 
 export function MemoryPopup() {
   const { mode } = usePopupContext('memory')
   return mode === 'native' ? <NativeMemoryPopup /> : <DemoMemoryPopup />
 }
 function NativeMemoryPopup() {
-  return <MemoryPopupContent {...useMemory()} />
+  return <MemoryPopupContent {...useResourceChannel('memory')} />
 }
 function DemoMemoryPopup() {
   const [at] = useState(Date.now)

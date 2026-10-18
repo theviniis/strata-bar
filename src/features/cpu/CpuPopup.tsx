@@ -9,7 +9,7 @@ import { usePopupContext } from '@/popups/context'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { CpuData } from '@/services/system/cpu.generated'
 import { useState } from 'react'
-import { useCpu } from './useCpu'
+import { useResourceChannel } from '@/hooks/useResourceChannel'
 import { formatCpuMetric } from './presentation'
 
 export function CpuPopup() {
@@ -17,7 +17,7 @@ export function CpuPopup() {
   return mode === 'native' ? <NativeCpuPopup /> : <DemoCpuPopup />
 }
 function NativeCpuPopup() {
-  return <CpuPopupContent {...useCpu()} />
+  return <CpuPopupContent {...useResourceChannel('cpu')} />
 }
 function DemoCpuPopup() {
   const [at] = useState(Date.now)

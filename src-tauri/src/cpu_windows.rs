@@ -131,6 +131,8 @@ struct Query {
     handle: PDH_HQUERY,
     usage: Result<PDH_HCOUNTER, String>,
     frequencies: Vec<(u16, u8, Result<PDH_HCOUNTER, String>)>,
+    usage_failed: bool,
+    frequency_failures: Vec<bool>,
 }
 impl Drop for Query {
     fn drop(&mut self) {
@@ -170,7 +172,42 @@ impl Query {
                     )
                 })
                 .collect(),
+            usage_failed: false,
+            frequency_failures: vec![false; processors.len()],
         })
+    }
+    fn retry_failed(&mut self) {
+        let replace = |counter: &mut Result<PDH_HCOUNTER, String>, path: String| {
+            if let Ok(handle) = counter {
+                unsafe {
+                    PdhRemoveCounter(*handle);
+                }
+            }
+            let wide: Vec<u16> = path.encode_utf16().chain(Some(0)).collect();
+            let mut handle = PDH_HCOUNTER::default();
+            let status = unsafe {
+                PdhAddEnglishCounterW(self.handle, PCWSTR(wide.as_ptr()), 0, &mut handle)
+            };
+            *counter = if status == 0 {
+                Ok(handle)
+            } else {
+                Err(format!("CPU PDH retry {path}: {status:#x}"))
+            };
+        };
+        if self.usage_failed {
+            replace(
+                &mut self.usage,
+                r"\Processor Information(_Total)\% Processor Time".into(),
+            );
+        }
+        for (index, (group, processor, counter)) in self.frequencies.iter_mut().enumerate() {
+            if self.frequency_failures[index] {
+                replace(
+                    counter,
+                    format!(r"\Processor Information({group},{processor})\Actual Frequency"),
+                );
+            }
+        }
     }
     fn value(counter: &Result<PDH_HCOUNTER, String>) -> Result<f64, String> {
         let counter = counter.as_ref().map_err(Clone::clone)?;
@@ -252,7 +289,6 @@ pub struct WindowsCpuSource {
     last: Option<Instant>,
     refreshed: Option<Instant>,
     nominal: Option<Result<f64, String>>,
-    counters_failed: bool,
 }
 impl CpuSource for WindowsCpuSource {
     fn read(&mut self) -> CpuReadings {
@@ -274,39 +310,44 @@ impl CpuSource for WindowsCpuSource {
             self.nominal = Some(nominal_frequency());
         }
         if retry {
-            if self.counters_failed
-                || self.query.as_ref().is_some_and(|q| {
-                    q.usage.is_err() || q.frequencies.iter().any(|(_, _, c)| c.is_err())
-                })
-            {
-                self.query = None;
+            if let Some(query) = self.query.as_mut() {
+                query.retry_failed();
             }
             self.refreshed = Some(instant);
         }
         self.last = Some(instant);
         let counters = (|| {
-            let topology = topology.as_ref().map_err(Clone::clone)?;
             if self.query.is_none() {
-                self.query = Some(Query::open(&topology.processors)?);
-                self.processors = topology.processors.clone();
+                let processors = topology
+                    .as_ref()
+                    .map(|t| t.processors.clone())
+                    .unwrap_or_default();
+                self.query = Some(Query::open(&processors)?);
+                self.processors = processors;
             }
-            let query = self.query.as_ref().unwrap();
+            let query = self.query.as_mut().unwrap();
             let status = unsafe { PdhCollectQueryData(query.handle) };
             if status != 0 {
                 self.query = None;
                 return Err(format!("CPU PDH collect: {status:#x}"));
             }
-            Ok((
-                Query::value(&query.usage),
-                query
-                    .frequencies
-                    .iter()
-                    .map(|(g, p, c)| Query::value(c).map(|v| (*g, *p, v * 1_000_000.)))
-                    .collect::<Result<Vec<_>, String>>(),
-            ))
+            let percent = Query::value(&query.usage);
+            query.usage_failed = percent.is_err();
+            let frequencies = query
+                .frequencies
+                .iter()
+                .enumerate()
+                .map(|(index, (g, p, c))| {
+                    let value = Query::value(c);
+                    query.frequency_failures[index] = value.is_err();
+                    value.map(|v| (*g, *p, v * 1_000_000.))
+                })
+                .collect::<Vec<_>>()
+                .into_iter()
+                .collect::<Result<Vec<_>, String>>();
+            Ok((percent, frequencies))
         })();
         let (percent, frequencies) = counters.unwrap_or_else(|e| (Err(e.clone()), Err(e)));
-        self.counters_failed = percent.is_err() || frequencies.is_err();
         CpuReadings {
             timestamp: crate::metrics::timestamp() as f64,
             instant,

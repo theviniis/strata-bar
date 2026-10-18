@@ -90,7 +90,60 @@ changes, retention, rendering and transport validation. Legacy GetSystemTimes
 arithmetic was retired with its implementation-specific tests when the public
 collector replaced that source.
 
-Validation results and native evidence are recorded after the final checks.
+Results on 2026-10-18:
+
+- Rust: 45 passed, one existing audio-routing test intentionally ignored.
+- Focused frontend: 18 passed across six suites, including memory regressions.
+- Full frontend: 75 passed, six failures in existing audio output / widget popup
+  tests (ResizeObserver and changed audio controls). No CPU test failed.
+- TypeScript and production frontend build passed. The build retains existing
+  Zod annotation and bundle-size warnings.
+- The aggregate pnpm check stops on formatting in existing button-loading,
+  card and empty components. Global ESLint also reports existing button-group
+  classes and classes in the parallel user-added chart component. The files
+  changed for this delivery pass focused formatting and ESLint.
+- Native debug popup check passed for CPU, memory and audio on both monitors:
+  focus, floating styles, resizing, Escape/outside dismissal and subscription
+  cleanup. CPU history retained 30 samples over 58,322 ms and expired its old
+  observations. Pausing all consumers stopped collection; resuming preserved an
+  8,046 ms observed gap. The test exited and AppBar work areas were restored.
+
+Evidence:
+
+- [Non-elevated sources](evidence/cpu-sources-non-elevated-2026-10-18.json)
+- [Native popup check](evidence/cpu-popup-native-2026-10-18.json)
+- [Work areas after exit](evidence/cpu-popup-post-exit-2026-10-18.json)
+
+The native popup fixture is gated by Vite's development mode. Run it with the
+development server and a debug host built by cargo; a frontend packaged by
+`tauri build --debug` uses the real bar instead and does not expose fixture
+pause controls. Cold startup waits for actual subscriptions before interaction.
+Pause measurements wait for asynchronous unsubscription before sampling idle.
+
+Not claimed: live OS suspension, hardware outside this machine, an induced real
+PDH counter failure/retry, or exact visual equality with Task Manager. The user
+volunteered the visual comparison; its result is still pending. Controlled
+collector tests cover source failures, but do not establish real PDH handle
+lifecycle under an induced outage.
+
+## Standards review
+
+No documented-standard violations remain. The review identified duplicated CPU
+and memory subscription hooks; useResourceChannel now owns both resources'
+typed lifecycle directly, without changing other channels. Follow-up review
+found no actionable standards issue.
+
+## Spec review
+
+No confirmed code findings remain. A P2 finding identified that frequency retry
+could discard a healthy utilization baseline. Retry now removes/re-adds only
+failed PDH counters and preserves healthy counters in the query; every frequency
+member updates its own failure state. Topology failures no longer suppress an
+existing utilization read. Follow-up review confirmed the fix. The visual
+comparison and induced real PDH outage remain explicit validation limitations.
+
+Both reviews used starting HEAD 3796de0 and excluded parallel local changes to
+package dependencies, the chart component and memory presentation helpers.
 
 ## References
 
