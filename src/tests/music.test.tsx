@@ -52,33 +52,7 @@ it('retains paused sessions and disables unsupported controls', () => {
   expect(screen.getByRole('button', { name: 'Faixa anterior' })).toBeDisabled()
 })
 
-it('retains content through exit, makes it inert and reverses a disappearing session', () => {
-  const data = demoMedia()
-  const onAction = vi.fn()
-  const { rerender } = render(
-    <MusicContent event={{ status: 'ready', data }} onAction={onAction} />
-  )
-  act(() => vi.advanceTimersByTime(20))
-  rerender(
-    <MusicContent event={{ status: 'unavailable' }} onAction={onAction} />
-  )
-  expect(screen.getByLabelText('Música')).toHaveAttribute('inert')
-  expect(screen.getAllByText('Dragonaut — Sleep')[0]).toBeInTheDocument()
-  act(() => vi.advanceTimersByTime(90))
-  rerender(
-    <MusicContent event={{ status: 'ready', data }} onAction={onAction} />
-  )
-  act(() => vi.advanceTimersByTime(200))
-  expect(screen.getByRole('button', { name: 'Pausar' })).toBeEnabled()
-  rerender(
-    <MusicContent event={{ status: 'unavailable' }} onAction={onAction} />
-  )
-  act(() => vi.advanceTimersByTime(180))
-  expect(screen.queryAllByText('Dragonaut — Sleep')).toHaveLength(0)
-})
-
-it('removes content immediately when reduced motion is requested', () => {
-  vi.stubGlobal('matchMedia', () => ({ matches: true }))
+it('keeps the widget visible without a session and disables playback controls', () => {
   const onAction = vi.fn()
   const { rerender } = render(
     <MusicContent
@@ -89,8 +63,23 @@ it('removes content immediately when reduced motion is requested', () => {
   rerender(
     <MusicContent event={{ status: 'unavailable' }} onAction={onAction} />
   )
-  act(() => vi.advanceTimersByTime(1))
+  const widget = screen.getByLabelText('Música')
+  expect(widget).not.toHaveAttribute('aria-hidden', 'true')
+  expect(widget).not.toHaveAttribute('inert')
+  expect(widget).toHaveClass('max-w-45')
+  expect(screen.getAllByText('Nenhuma música tocando')[0]).toBeVisible()
   expect(screen.queryAllByText('Dragonaut — Sleep')).toHaveLength(0)
+  for (const button of screen.getAllByRole('button'))
+    expect(button).toBeDisabled()
+  fireEvent.click(screen.getByRole('button', { name: 'Reproduzir' }))
+  expect(onAction).not.toHaveBeenCalled()
+  rerender(
+    <MusicContent
+      event={{ status: 'ready', data: demoMedia() }}
+      onAction={onAction}
+    />
+  )
+  expect(screen.getByRole('button', { name: 'Pausar' })).toBeEnabled()
 })
 
 it('blocks duplicate commands and reports native rejection without demo substitution', async () => {
@@ -110,6 +99,11 @@ it('blocks duplicate commands and reports native rejection without demo substitu
   fireEvent.click(screen.getByRole('button', { name: 'Próxima faixa' }))
   fireEvent.click(screen.getByRole('button', { name: 'Próxima faixa' }))
   expect(onAction).toHaveBeenCalledTimes(1)
+  expect(screen.getByRole('button', { name: 'Próxima faixa' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Próxima faixa' })).toHaveAttribute(
+    'aria-disabled',
+    'true'
+  )
   await act(async () => reject(new Error('Player rejected command')))
   expect(screen.getByRole('tooltip', { hidden: true })).toHaveTextContent(
     'Player rejected command'
@@ -165,4 +159,47 @@ it('demo media actions update only demo subscribers and dispose cleanly', async 
     action: { action: 'next' }
   })
   expect(receive).toHaveBeenCalledTimes(calls)
+})
+
+it('limits width and scrolls overflowing metadata back and forth, cancelling on unmount', () => {
+  const cancel = vi.fn()
+  const animate = vi.fn(() => ({ cancel }))
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+    }
+  )
+  const width = vi
+    .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+    .mockReturnValue(100)
+  const scroll = vi
+    .spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
+    .mockReturnValue(220)
+  const original = HTMLElement.prototype.animate
+  HTMLElement.prototype.animate = animate as unknown as typeof original
+  try {
+    const { unmount } = render(
+      <MusicContent
+        event={{ status: 'ready', data: demoMedia() }}
+        onAction={vi.fn()}
+      />
+    )
+    act(() => vi.advanceTimersByTime(20))
+    expect(screen.getByLabelText('Música')).toHaveClass('max-w-45')
+    expect(animate).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ transform: 'translateX(-120px)' }),
+        { transform: 'translateX(0)', offset: 1 }
+      ]),
+      { duration: 12400, iterations: Infinity, easing: 'linear' }
+    )
+    unmount()
+    expect(cancel).toHaveBeenCalled()
+  } finally {
+    HTMLElement.prototype.animate = original
+    width.mockRestore()
+    scroll.mockRestore()
+  }
 })

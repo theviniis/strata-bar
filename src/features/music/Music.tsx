@@ -180,11 +180,11 @@ export function MusicContent({
       className="min-w-0 max-w-45 shrink overflow-hidden"
     >
       <div
-        className="relative isolate flex min-w-0 items-center overflow-hidden rounded bg-muted/40 text-inherit [text-shadow:0_1px_2px_rgb(0_0_0/0.9)] group-data-[theme=light]:bg-[#302a3e]/5 group-data-[theme=light]:text-shadow-none"
+        className="relative isolate flex min-w-0 items-center overflow-hidden rounded bg-muted/40 text-foreground group-data-[theme=light]:bg-[#302a3e]/5"
         {...tip.trigger}
       >
         {current?.artwork.status === 'ready' && current.artwork.value && (
-          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]">
+          <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]">
             <img
               src={current.artwork.value}
               alt=""
@@ -193,6 +193,7 @@ export function MusicContent({
               }}
               className="absolute inset-0 h-full w-full object-cover"
             />
+            <span className="absolute rounded inset-0 bg-black/70 group-data-[theme=light]:bg-[#f8f5f2]/50" />
           </div>
         )}
         <MediaControls current={current} pending={pending} onClick={act} />
@@ -224,19 +225,22 @@ interface MediaControlsProps {
 
 function MediaControls({ current, pending, onClick }: MediaControlsProps) {
   return (
-    <div className="flex items-center">
+    <div className="flex items-center" aria-busy={pending}>
       {mediaControlMap(current).map(([action, label, Icon]) => (
         <WidgetItem
           key={action}
           aria-label={label}
-          disabled={!current || pending || !current.capabilities[action]}
+          disabled={!current || !current.capabilities[action]}
+          aria-disabled={pending || undefined}
           className="relative z-10 shrink-0 px-1 disabled:opacity-40"
-          onClick={() => onClick({ action })}
+          onClick={() => {
+            if (!pending) onClick({ action })
+          }}
         >
           <WidgetItemIcon
             icon={Icon}
             size={14}
-            className="text-primary cursor-pointer"
+            className="text-secondary cursor-pointer"
           />
         </WidgetItem>
       ))}
