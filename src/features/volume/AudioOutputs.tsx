@@ -8,6 +8,13 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle
+} from '@/components/ui/empty'
 import { Slider } from '@/components/ui/slider'
 import { Spinner } from '@/components/ui/spinner'
 import { WidgetItemOutput } from '@/components/widget-item'
@@ -92,12 +99,14 @@ function AudioOutputContentItem({
   device,
   isActive,
   isLoading,
+  disabled,
   ...props
 }: AudioOutputContentItemProps) {
   return (
     <Button
       className="grid grid-cols-[16px_1fr_16px]"
       variant="outline"
+      disabled={isLoading || disabled}
       {...props}
     >
       <Volume2 size={16} className="shrink-0 text-primary" />
@@ -114,6 +123,22 @@ function AudioOutputContentItem({
         )
       )}
     </Button>
+  )
+}
+
+function EmptyOutputItems() {
+  return (
+    <Empty>
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <Spinner className="text-primary" />
+        </EmptyMedia>
+        <EmptyTitle>Carregando dispositivos de audio</EmptyTitle>
+        <EmptyDescription>
+          Por favor aguarde enquanto carregamos os dispositivos de audio
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
   )
 }
 
@@ -196,11 +221,7 @@ function AudioOutputsContent({
       </CardHeader>
       <CardContent>
         <div className="" aria-busy={pending !== null}>
-          {outputs.status === 'loading' && (
-            <p role="status" className="p-3">
-              Carregando saídas…
-            </p>
-          )}
+          {outputs.status === 'loading' && <EmptyOutputItems />}
           {outputs.status === 'error' && (
             <p role="alert" className="p-3 text-destructive">
               {outputs.error}
