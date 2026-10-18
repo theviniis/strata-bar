@@ -348,6 +348,9 @@ impl CpuSource for WindowsCpuSource {
             Ok((percent, frequencies))
         })();
         let (percent, frequencies) = counters.unwrap_or_else(|e| (Err(e.clone()), Err(e)));
+        // Capture the completion time after the producer snapshot. A producer
+        // update during the copy must not look newer than our observation.
+        let afterburner = afterburner();
         CpuReadings {
             timestamp: crate::metrics::timestamp() as f64,
             instant,
@@ -358,7 +361,7 @@ impl CpuSource for WindowsCpuSource {
                 .nominal
                 .clone()
                 .unwrap_or_else(|| Err("Nominal frequency unavailable".into())),
-            afterburner: afterburner(),
+            afterburner,
         }
     }
 }

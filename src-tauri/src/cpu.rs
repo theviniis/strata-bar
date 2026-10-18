@@ -167,7 +167,9 @@ impl<S: CpuSource> CpuCollector<S> {
                 } else {
                     None
                 },
-                temperature_updated_at: if new_temperature {
+                // A timestamp without a new value means a still-valid repeated
+                // observation. Neither field means the source was unavailable.
+                temperature_updated_at: if temperature_celsius.status == Status::Ready {
                     temperature_celsius.updated_at
                 } else {
                     None
@@ -276,6 +278,7 @@ mod tests {
         let data = collector.collect();
         assert_eq!(data.temperature_celsius.updated_at, Some(100000.));
         assert!(data.history[1].temperature_celsius.is_none());
+        assert_eq!(data.history[1].temperature_updated_at, Some(100000.));
         assert_eq!(data.history[0].temperature_celsius, Some(42.5));
     }
     #[test]
@@ -301,6 +304,51 @@ mod tests {
         assert_eq!(recovered.temperature_celsius.value, Some(45.));
         assert_eq!(recovered.temperature_celsius.status, Status::Ready);
         assert_eq!(recovered.history[2].temperature_celsius, Some(45.));
+    }
+    #[test]
+    fn public_collector_distinguishes_unchanged_stale_and_recovered_temperature() {
+        let instant = Instant::now();
+        let mut samples = Vec::new();
+        for seconds in [0, 2, 4, 6, 8, 10] {
+            let mut sample = reading(
+                100000. + seconds as f64 * 1000.,
+                instant + std::time::Duration::from_secs(seconds),
+            );
+            sample.afterburner = Ok(if seconds == 10 {
+                mahm(110, 45.)
+            } else {
+                mahm(100, 42.)
+            });
+            samples.push(sample);
+        }
+        let mut collector = CpuCollector::new(Source(samples));
+        assert_eq!(
+            collector.collect().history[0].temperature_celsius,
+            Some(42.)
+        );
+        for _ in 0..3 {
+            let data = collector.collect();
+            let point = data.history.last().unwrap();
+            assert_eq!(data.temperature_celsius.status, Status::Ready);
+            assert_eq!(data.temperature_celsius.updated_at, Some(100000.));
+            assert!(point.temperature_celsius.is_none());
+            assert_eq!(point.temperature_updated_at, Some(100000.));
+        }
+        let stale = collector.collect();
+        assert_eq!(stale.temperature_celsius.status, Status::Error);
+        assert_eq!(stale.temperature_celsius.value, Some(42.));
+        assert!(stale
+            .history
+            .last()
+            .unwrap()
+            .temperature_updated_at
+            .is_none());
+        let recovered = collector.collect();
+        assert_eq!(recovered.temperature_celsius.status, Status::Ready);
+        assert_eq!(
+            recovered.history.last().unwrap().temperature_celsius,
+            Some(45.)
+        );
     }
     #[test]
     fn public_collector_preserves_independent_values_through_failures_and_recovery() {

@@ -68,8 +68,7 @@ const cpuSchema = z
           (p.sequence > h[i - 1].sequence &&
             p.timestamp > h[i - 1].timestamp)) &&
         ((p.temperatureCelsius === null && p.temperatureUpdatedAt === null) ||
-          (p.temperatureCelsius !== null &&
-            p.temperatureUpdatedAt !== null &&
+          (p.temperatureUpdatedAt !== null &&
             p.temperatureUpdatedAt <= p.timestamp &&
             p.temperatureUpdatedAt >= p.timestamp - 6000))
     )

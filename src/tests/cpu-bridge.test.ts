@@ -66,3 +66,47 @@ it('ignores older snapshots, recovers from invalid values and releases the liste
   await dispose()
   expect(host.send).toBeNull()
 })
+it('accepts unchanged fresh sensor markers but rejects stale markers', async () => {
+  const data = observation(2)
+  data.sampledAt = 102000
+  data.history = [
+    {
+      sequence: 1,
+      timestamp: 100000,
+      percent: 25.5,
+      temperatureCelsius: 42,
+      temperatureUpdatedAt: 100000
+    },
+    {
+      sequence: 2,
+      timestamp: 102000,
+      percent: 25.5,
+      temperatureCelsius: null,
+      temperatureUpdatedAt: 100000
+    }
+  ]
+  host.initial = { status: 'ready', data }
+  const receive = vi.fn()
+  const dispose = await createNativeBridge().subscribe('cpu', receive)
+  expect(receive.mock.lastCall?.[0].status).toBe('ready')
+  host.send?.({
+    payload: {
+      status: 'ready',
+      data: {
+        ...data,
+        sequence: 3,
+        history: [
+          {
+            sequence: 3,
+            timestamp: 102000,
+            percent: 25.5,
+            temperatureCelsius: null,
+            temperatureUpdatedAt: 90000
+          }
+        ]
+      }
+    }
+  })
+  expect(receive.mock.lastCall?.[0].status).toBe('error')
+  await dispose()
+})

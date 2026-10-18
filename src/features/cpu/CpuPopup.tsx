@@ -132,15 +132,21 @@ export function CpuPopupContent({
           unit="%"
         />
         <ResourceGraph
-          points={data.history.map((p) => ({
-            sequence: p.sequence,
-            timestamp: p.temperatureUpdatedAt ?? p.timestamp,
-            value: p.temperatureCelsius
-          }))}
+          points={data.history
+            .filter(
+              (p) =>
+                p.temperatureCelsius !== null || p.temperatureUpdatedAt === null
+            )
+            .map((p) => ({
+              sequence: p.sequence,
+              timestamp: p.temperatureUpdatedAt ?? p.timestamp,
+              value: p.temperatureCelsius
+            }))}
           now={now}
           label="Temperatura"
           description="Temperatura do pacote da CPU"
           unit="°C"
+          maxGapMs={6000}
           maximum={maximum}
         />
         <dl className="grid grid-cols-2 gap-3 text-xs">

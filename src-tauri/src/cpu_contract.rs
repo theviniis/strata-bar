@@ -35,6 +35,8 @@ pub struct CpuPoint {
     pub timestamp: f64,
     pub percent: Option<f64>,
     pub temperature_celsius: Option<f64>,
+    // Some time with no new temperature denotes an unchanged, valid reading.
+    // Both fields None denote an unavailable observation.
     pub temperature_updated_at: Option<f64>,
 }
 

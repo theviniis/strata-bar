@@ -72,13 +72,28 @@ History contains at most 31 actual observations covering 60 seconds. The bar kee
 it warm for popup opening and reopening across monitors. No consumers means no
 collection. Missing samples, warm-up, suspension and provider stalls remain gaps.
 Temperature points retain their producer timestamps; repeated provider times do
-not invent new observations. Utilization and temperature can therefore have
+not invent new observations. A null temperature with a non-null producer time
+means the reading is unchanged but still within the six-second freshness window.
+Both fields null mean an unavailable reading. The popup omits unchanged markers
+instead of counting them as failures, and connects genuine temperature
+observations up to six seconds apart. Explicit failure markers still break the
+line; other resource charts retain their three-second gap tolerance.
+Utilization and temperature can therefore have
 different availability in the same channel observation.
 
 The shared ResourceGraph also renders memory without changing its percentage
 semantics. Temperature has a zero-based axis of at least 100 C, expanded in
 10-degree steps to include observed higher values. The scale is not a thermal
 limit or an alarm. Both graphs support keyboard and pointer sample inspection.
+
+The Windows source captures its local completion timestamp after copying the
+Afterburner snapshot. This prevents a producer update during the copy from being
+rejected merely because it occurred after the collector's earlier start time.
+Truly future timestamps remain invalid. Regression coverage checks repeated
+readings, their original timestamps, expiry after six seconds, recovery and
+the popup's unavailable-reading count. On 2026-10-18, 46 Rust tests passed
+(one existing audio-routing test ignored), TypeScript and focused ESLint passed,
+and the frontend suite had 87 passing tests and six existing audio-test failures.
 
 ## Verification
 

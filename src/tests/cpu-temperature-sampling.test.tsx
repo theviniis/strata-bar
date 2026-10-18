@@ -1,0 +1,77 @@
+import { render, screen } from '@testing-library/react'
+import { expect, it } from 'vitest'
+import { CpuPopupContent } from '@/features/cpu/CpuPopup'
+import type { CpuData } from '@/services/system/cpu.generated'
+
+function observation(): CpuData {
+  const metric = (value: number) => ({
+    status: 'ready' as const,
+    value,
+    updatedAt: 100000,
+    error: null
+  })
+  return {
+    sequence: 3,
+    sampledAt: 104000,
+    percent: metric(25),
+    frequencyHz: metric(4e9),
+    maxFrequencyHz: metric(2.9e9),
+    physicalCores: metric(6),
+    logicalProcessors: metric(12),
+    temperatureCelsius: metric(42),
+    temperatureSensor: {
+      provider: 'msiAfterburner',
+      sourceId: 128,
+      instance: 4294967295,
+      name: 'CPU temperature'
+    },
+    history: [
+      {
+        sequence: 1,
+        timestamp: 100000,
+        percent: 25,
+        temperatureCelsius: 42,
+        temperatureUpdatedAt: 100000
+      },
+      {
+        sequence: 2,
+        timestamp: 102000,
+        percent: 25,
+        temperatureCelsius: null,
+        temperatureUpdatedAt: 100000
+      },
+      {
+        sequence: 3,
+        timestamp: 104000,
+        percent: 25,
+        temperatureCelsius: 43,
+        temperatureUpdatedAt: 104000
+      }
+    ]
+  }
+}
+it('does not label a still-valid repeated temperature as a failed reading', () => {
+  render(
+    <CpuPopupContent
+      event={{ status: 'ready', data: observation() }}
+      now={104000}
+    />
+  )
+  expect(screen.queryByText(/leitura.*indisponíve/)).not.toBeInTheDocument()
+  expect(screen.getByText('42.0 °C')).toBeVisible()
+})
+it('continues to identify actual source failures while ignoring unchanged readings', () => {
+  const data = observation()
+  data.sequence = 4
+  data.sampledAt = 106000
+  data.history.push({
+    sequence: 4,
+    timestamp: 106000,
+    percent: 25,
+    temperatureCelsius: null,
+    temperatureUpdatedAt: null
+  })
+  render(<CpuPopupContent event={{ status: 'ready', data }} now={106000} />)
+  expect(screen.getByText(/1 leitura indisponível/)).toBeVisible()
+  expect(screen.queryByText(/2 leituras indisponíveis/)).not.toBeInTheDocument()
+})

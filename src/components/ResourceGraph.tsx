@@ -7,7 +7,8 @@ export function ResourceGraph({
   label,
   description,
   unit,
-  maximum = 100
+  maximum = 100,
+  maxGapMs = 3000
 }: {
   points: GraphPoint[]
   now: number
@@ -15,6 +16,7 @@ export function ResourceGraph({
   description: string
   unit: '%' | '°C'
   maximum?: number
+  maxGapMs?: number
 }) {
   const [selected, setSelected] = useState<number | null>(null)
   const samples = points.filter(
@@ -32,7 +34,8 @@ export function ResourceGraph({
     }
     const x = ((point.timestamp - now + 60000) / 60000) * 288
     const y = 100 - (point.value / maximum) * 100
-    const connected = previous && point.timestamp - previous.timestamp <= 3000
+    const connected =
+      previous && point.timestamp - previous.timestamp <= maxGapMs
     path += `${connected ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)} `
     previous = point
   }
