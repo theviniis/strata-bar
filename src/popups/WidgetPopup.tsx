@@ -14,7 +14,7 @@ import {
 import { useOverlayPopover } from '../hooks/useOverlayPopover'
 import { overlay } from '../services/system/overlay'
 import { overlayTextClasses } from '../overlay/typography'
-import { popupMetadata, type PopupId } from './catalog'
+import { type PopupId } from './catalog'
 import { resolvePopup, type PopupParams } from './registry'
 import { claimPopup, releasePopup } from './coordinator'
 import { PopupHost } from './PopupHost'
@@ -114,7 +114,6 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
     anchorRef: setAnchor,
     toggle
   }
-  const metadata = popupMetadata(popup)
   return (
     <TriggerContext.Provider value={context}>
       {native ? (
@@ -130,6 +129,7 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
               align="center"
               sideOffset={0}
               collisionPadding={0}
+              sticky="always"
               onEscapeKeyDown={(event) => {
                 event.preventDefault()
                 changePreview(false)
@@ -143,7 +143,7 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
               <div
                 data-theme={theme}
                 className={`group z-50 ${overlayTextClasses}`}
-                style={{ width: metadata.width, maxWidth: '100vw' }}
+                style={{ width: 'max-content' }}
               >
                 <PreviewContent
                   closing={previewClosing}

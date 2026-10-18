@@ -52,7 +52,7 @@ it('opens a typed popup, closes on a second click and ignores another owner clos
     kind: 'popover',
     component: 'audioOutputs',
     anchor: { x: 100, y: 0, width: 80, height: 36 },
-    size: { width: 320, height: 380 }
+    size: { width: 1, height: 1 }
   })
   act(() => host.closed!({ payload: { session: 'another-owner' } }))
   expect(screen.getByRole('button')).toHaveAttribute('aria-expanded', 'true')

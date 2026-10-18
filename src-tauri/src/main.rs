@@ -85,8 +85,8 @@ fn overlay_ready(window: tauri::WebviewWindow) -> Result<Value, String> {
     desktop::overlay_ready(&window)
 }
 #[tauri::command]
-fn overlay_resize(app: tauri::AppHandle, window: tauri::WebviewWindow, session: String, height: f64) -> Result<Value, String> {
-    desktop::overlay_resize(&app, &window, &session, height)
+fn overlay_resize(app: tauri::AppHandle, window: tauri::WebviewWindow, session: String, size: desktop::OverlaySize) -> Result<Value, String> {
+    desktop::overlay_resize(&app, &window, &session, &size)
 }
 #[tauri::command]
 fn diagnostics(

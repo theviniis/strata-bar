@@ -7,7 +7,6 @@ import { POPUP_EXIT_MS } from './motion'
 
 export interface PopupSurfaceProps {
   label: string
-  maxHeight: number
   mode: 'native' | 'demo'
   session?: string
   side?: OverlaySide
@@ -20,7 +19,6 @@ export interface PopupSurfaceProps {
 /** Owns window mechanics only. Feature content is unrestricted React. */
 export function PopupSurface({
   label,
-  maxHeight,
   mode,
   session,
   side = 'bottom',
@@ -34,7 +32,7 @@ export function PopupSurface({
   const visual = useRef<HTMLDivElement>(null)
   const openingFrame = useRef<number | undefined>(undefined)
   const motion = useRef<Animation | undefined>(undefined)
-  const [available, setAvailable] = useState(maxHeight)
+  const [placedArrowX, setPlacedArrowX] = useState(arrowX)
   useLayoutEffect(() => {
     const node = surface.current
     let animation: Animation | undefined
@@ -86,19 +84,24 @@ export function PopupSurface({
     }
     if (!session || !node) return
     let cancelled = false
-    let previous = 0
+    let previous = ''
     let generation = 0
     let focused = false
     const measure = () => {
-      const height = Math.ceil(node.getBoundingClientRect().height)
-      if (height <= 0 || height === previous) return
-      previous = height
+      const rect = node.getBoundingClientRect()
+      const size = {
+        width: Math.ceil(rect.width),
+        height: Math.ceil(rect.height)
+      }
+      const key = `${size.width}:${size.height}`
+      if (size.width <= 0 || size.height <= 0 || key === previous) return
+      previous = key
       const current = ++generation
       void overlay
-        .resize(session, height)
+        .resize(session, size)
         .then((size) => {
           if (cancelled || generation !== current) return
-          setAvailable(Math.min(maxHeight, size.maxHeight))
+          setPlacedArrowX(size.arrowX)
           if (!focused) {
             focused = true
             root.current?.focus()
@@ -120,7 +123,7 @@ export function PopupSurface({
       stopAnimation()
       observer?.disconnect()
     }
-  }, [mode, session, maxHeight, side])
+  }, [mode, session, side])
   useLayoutEffect(() => {
     const node = visual.current
     if (
@@ -156,7 +159,7 @@ export function PopupSurface({
     return () => exit?.cancel()
   }, [closing, side])
   return (
-    <div ref={surface} inert={closing || undefined}>
+    <div ref={surface} className="w-max" inert={closing || undefined}>
       <div
         ref={visual}
         className="relative"
@@ -164,11 +167,11 @@ export function PopupSurface({
           side === 'bottom'
             ? {
                 paddingTop: POPUP_GAP,
-                transformOrigin: `${arrowX ?? '50%'}${typeof arrowX === 'number' ? 'px' : ''} 0%`
+                transformOrigin: `${(mode === 'native' ? placedArrowX : arrowX) ?? '50%'}${typeof (mode === 'native' ? placedArrowX : arrowX) === 'number' ? 'px' : ''} 0%`
               }
             : {
                 paddingBottom: POPUP_GAP,
-                transformOrigin: `${arrowX ?? '50%'}${typeof arrowX === 'number' ? 'px' : ''} 100%`
+                transformOrigin: `${(mode === 'native' ? placedArrowX : arrowX) ?? '50%'}${typeof (mode === 'native' ? placedArrowX : arrowX) === 'number' ? 'px' : ''} 100%`
               }
         }
       >
@@ -177,13 +180,7 @@ export function PopupSurface({
           role="dialog"
           aria-label={label}
           tabIndex={-1}
-          style={{
-            maxHeight:
-              mode === 'demo'
-                ? `min(${maxHeight - POPUP_GAP}px, calc(var(--radix-popover-content-available-height, 100vh) - ${POPUP_GAP}px))`
-                : Math.max(1, available - POPUP_GAP)
-          }}
-          className="overflow-y-auto rounded-xl border border-border bg-popover p-3 text-[12px] text-popover-foreground shadow-lg outline-none group-data-[theme=light]:border-[#ded7e5] group-data-[theme=light]:bg-[#faf8fc] group-data-[theme=light]:text-[#302a3e]"
+          className="rounded-xl border border-border bg-popover p-3 text-[12px] text-popover-foreground shadow-lg outline-none group-data-[theme=light]:border-[#ded7e5] group-data-[theme=light]:bg-[#faf8fc] group-data-[theme=light]:text-[#302a3e]"
           onKeyDown={(event) => {
             if (event.key === 'Escape') {
               event.preventDefault()
@@ -221,7 +218,7 @@ export function PopupSurface({
         </div>
         <span
           aria-hidden="true"
-          style={{ left: arrowX ?? '50%' }}
+          style={{ left: (mode === 'native' ? placedArrowX : arrowX) ?? '50%' }}
           className={cn(
             tooltipArrowClasses,
             'pointer-events-none absolute -translate-x-1/2 border-border group-data-[theme=light]:border-[#ded7e5] group-data-[theme=light]:bg-[#faf8fc]',

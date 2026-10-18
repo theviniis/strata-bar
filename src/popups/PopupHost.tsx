@@ -50,16 +50,13 @@ export function PopupHost({
   } catch (e) {
     error = String(e)
   }
-  const metadata = isPopupId(id)
-    ? popupMetadata(id)
-    : { label: 'Popup', maxHeight: 380 }
+  const metadata = isPopupId(id) ? popupMetadata(id) : { label: 'Popup' }
   const Content = resolved?.Content
   return (
     <PopupSurface
       {...placement}
       mode={mode}
       label={metadata.label}
-      maxHeight={metadata.maxHeight}
       close={close}
     >
       {mode === 'demo' && (

@@ -9,11 +9,5 @@ export function isPopupId(value: unknown): value is PopupId {
 }
 
 export function popupMetadata(id: PopupId) {
-  const entry: { label: string; width?: number; maxHeight?: number } =
-    catalog[id]
-  return {
-    label: entry.label,
-    width: entry.width ?? 320,
-    maxHeight: entry.maxHeight ?? 380
-  }
+  return catalog[id]
 }

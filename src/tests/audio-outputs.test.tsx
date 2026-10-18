@@ -52,7 +52,7 @@ beforeEach(() => {
   })
   host.mute.mockResolvedValue(undefined)
   host.hide.mockResolvedValue(undefined)
-  host.resize.mockResolvedValue({ maxHeight: 380 })
+  host.resize.mockResolvedValue({ arrowX: 160 })
 })
 
 it('confirms selection, retains the popup and controls mute', async () => {
@@ -161,13 +161,29 @@ it('reports content height for the active session and disconnects on close', asy
     const { unmount } = render(<AudioOutputs session="popup-session" />)
     act(() => measure())
     await waitFor(() =>
-      expect(host.resize).toHaveBeenCalledWith('popup-session', 238)
+      expect(host.resize).toHaveBeenCalledWith('popup-session', {
+        width: 320,
+        height: 238
+      })
     )
-    rect.mockReturnValue(new DOMRect(0, 0, 320, 304))
+    rect.mockReturnValue(new DOMRect(0, 0, 450, 304))
     act(() => measure())
     await waitFor(() =>
-      expect(host.resize).toHaveBeenCalledWith('popup-session', 304)
+      expect(host.resize).toHaveBeenCalledWith('popup-session', {
+        width: 450,
+        height: 304
+      })
     )
+    rect.mockReturnValue(new DOMRect(0, 0, 240, 180))
+    act(() => measure())
+    await waitFor(() =>
+      expect(host.resize).toHaveBeenLastCalledWith('popup-session', {
+        width: 240,
+        height: 180
+      })
+    )
+    expect(screen.getByRole('dialog').style.maxHeight).toBe('')
+    expect(screen.getByRole('dialog')).not.toHaveClass('overflow-y-auto')
     unmount()
     expect(disconnect).toHaveBeenCalled()
   } finally {

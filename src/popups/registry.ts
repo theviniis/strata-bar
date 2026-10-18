@@ -1,3 +1,4 @@
+import { ClockPopup } from '@/features/clock/ClockPopup'
 import type { ComponentType } from 'react'
 import { z } from 'zod'
 import { AudioOutputs } from '../features/volume/AudioOutputs'
@@ -15,6 +16,10 @@ export const popupRegistry = {
   audioOutputs: definePopup({
     schema: z.object({}).strict().default({}),
     Content: AudioOutputs
+  }),
+  clock: definePopup({
+    schema: z.object({}).strict().default({}),
+    Content: ClockPopup
   })
 } satisfies Record<PopupId, { schema: z.ZodType; Content: ComponentType }>
 

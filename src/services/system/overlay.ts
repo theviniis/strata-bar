@@ -67,7 +67,7 @@ export interface OverlayAdapter {
   readonly mode: OverlayMode
   show(request: OverlayRequest): Promise<void>
   hide(session?: string): Promise<void>
-  resize(session: string, height: number): Promise<{ maxHeight: number }>
+  resize(session: string, size: OverlaySize): Promise<{ arrowX: number }>
 }
 
 export function createNativeOverlay(): OverlayAdapter {
@@ -81,9 +81,9 @@ export function createNativeOverlay(): OverlayAdapter {
       const { invoke } = await import('@tauri-apps/api/core')
       await invoke('overlay_hide', { session })
     },
-    async resize(session, height) {
+    async resize(session, size) {
       const { invoke } = await import('@tauri-apps/api/core')
-      return invoke('overlay_resize', { session, height })
+      return invoke('overlay_resize', { session, size })
     }
   }
 }
@@ -94,7 +94,7 @@ export function createDemoOverlay(): OverlayAdapter {
     async show() {},
     async hide() {},
     async resize() {
-      return { maxHeight: 380 }
+      return { arrowX: 0 }
     }
   }
 }

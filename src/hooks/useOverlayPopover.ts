@@ -98,7 +98,7 @@ export function useOverlayPopover<K extends PopupId>(
           width: rect.width,
           height: rect.height
         },
-        size: { width: metadata.width, height: metadata.maxHeight },
+        size: { width: 1, height: 1 },
         side:
           rect.top + rect.height / 2 < window.innerHeight / 2 ? 'bottom' : 'top'
       })

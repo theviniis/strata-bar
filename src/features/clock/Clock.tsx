@@ -3,50 +3,44 @@ import {
   WidgetItemLabel,
   WidgetItemTooltip
 } from '@/components/widget-item'
-import { useEffect, useState } from 'react'
+import { WidgetPopup } from '@/popups/WidgetPopup'
 import { useOverlayTooltip } from '../../hooks/useOverlayTooltip'
+import { useTime } from './useTime'
 
 export interface ClockProps {
   showDate?: boolean
 }
 
 export function Clock({ showDate = false }: ClockProps) {
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const update = () => {
-      setNow(new Date())
-      timer = setTimeout(update, 60000 - (Date.now() % 60000))
-    }
-    update()
-    return () => clearTimeout(timer)
-  }, [])
-  const text = now.toLocaleDateString(undefined, { dateStyle: 'full' })
+  const { text, dateTime, hours, date } = useTime()
   const tip = useOverlayTooltip(text)
+
   return (
-    <WidgetItem asChild>
-      <time
-        dateTime={now.toISOString()}
-        aria-describedby={tip.describedBy}
-        {...tip.trigger}
-      >
-        <WidgetItemLabel className="font-semibold text-foreground">
-          {now.toLocaleTimeString(undefined, {
-            hour: '2-digit',
-            minute: '2-digit'
-          })}
-        </WidgetItemLabel>
-        {showDate && (
-          <span className="text-[10px] text-subtext">
-            {now.toLocaleDateString(undefined, {
-              weekday: 'short',
-              day: '2-digit',
-              month: 'short'
-            })}
-          </span>
-        )}
-        <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
-      </time>
-    </WidgetItem>
+    <WidgetPopup.Root popup="clock">
+      <WidgetPopup.Anchor asChild>
+        <div>
+          <WidgetPopup.Trigger asChild>
+            <WidgetItem
+              type="button"
+              aria-label="Abrir calendário"
+              aria-describedby={tip.describedBy}
+              {...tip.trigger}
+            >
+              <time dateTime={dateTime}>
+                <WidgetItemLabel className="font-semibold text-foreground">
+                  {hours}
+                </WidgetItemLabel>
+              </time>
+
+              {showDate && (
+                <span className="text-[10px] text-subtext">{date}</span>
+              )}
+
+              <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
+            </WidgetItem>
+          </WidgetPopup.Trigger>
+        </div>
+      </WidgetPopup.Anchor>
+    </WidgetPopup.Root>
   )
 }

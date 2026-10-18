@@ -24,9 +24,9 @@ export function Volume() {
           <WidgetPopup.Trigger asChild>
             <WidgetItem aria-label="Saída de áudio" {...tip.trigger}>
               <WidgetItemIcon icon={Icon} />
+              <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
             </WidgetItem>
           </WidgetPopup.Trigger>
-          <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
         </div>
       </WidgetPopup.Anchor>
     </WidgetPopup.Root>

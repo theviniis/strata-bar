@@ -209,21 +209,21 @@ it('does not apply an older resize response after newer content was measured', a
   const rect = vi
     .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
     .mockReturnValue(new DOMRect(0, 0, 320, 200))
-  let old!: (value: { maxHeight: number }) => void
+  let old!: (value: { arrowX: number }) => void
   host.overlay.resize
     .mockReturnValueOnce(
       new Promise((resolve) => {
         old = resolve
       })
     )
-    .mockResolvedValue({ maxHeight: 330 })
+    .mockResolvedValue({ arrowX: 165 })
   try {
     render(
       <PopupSurface
         mode="native"
         session="size-session"
         label="Free content"
-        maxHeight={380}
+
         close={() => {}}
       >
         <section>Any content</section>
@@ -232,10 +232,14 @@ it('does not apply an older resize response after newer content was measured', a
     rect.mockReturnValue(new DOMRect(0, 0, 320, 250))
     act(() => measure())
     await waitFor(() =>
-      expect(screen.getByRole('dialog')).toHaveStyle({ maxHeight: '318px' })
+      expect(
+        screen.getByRole('dialog').parentElement?.querySelector('[aria-hidden]')
+      ).toHaveStyle({ left: '165px' })
     )
-    await act(async () => old({ maxHeight: 40 }))
-    expect(screen.getByRole('dialog')).toHaveStyle({ maxHeight: '318px' })
+    await act(async () => old({ arrowX: 20 }))
+    expect(
+      screen.getByRole('dialog').parentElement?.querySelector('[aria-hidden]')
+    ).toHaveStyle({ left: '165px' })
   } finally {
     rect.mockRestore()
   }

@@ -1,7 +1,8 @@
 {
   "audioOutputs": {
-    "label": "Saída de áudio",
-    "width": 320,
-    "maxHeight": 380
+    "label": "Saída de áudio"
+  },
+  "clock": {
+    "label": "Calendário"
   }
 }

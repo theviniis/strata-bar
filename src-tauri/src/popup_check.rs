@@ -51,6 +51,28 @@ fn click(app: &AppHandle, label: String) {
     });
 }
 
+// Real DOM -> ResizeObserver -> IPC -> Win32 rectangle round trip in both axes.
+fn check_content_size(app: &AppHandle, width: f64, height: f64) {
+    let scale = main_thread(app, |app| app.get_webview_window(crate::desktop::OVERLAY).unwrap().scale_factor().unwrap());
+    main_thread(app, move |app| {
+        app.get_webview_window(crate::desktop::OVERLAY).unwrap().eval(&format!(
+            "Object.assign(document.querySelector('[role=dialog]').style, {{width:'{width}px',height:'{height}px'}})"
+        )).unwrap();
+    });
+    for _ in 0..50 {
+        let snapshot = main_thread(app, |_| crate::desktop::overlay_snapshot());
+        let rect = &snapshot["window"]["rect"];
+        let actual_width = rect[2].as_f64().unwrap() - rect[0].as_f64().unwrap();
+        let actual_height = rect[3].as_f64().unwrap() - rect[1].as_f64().unwrap();
+        if (actual_width - width * scale).abs() <= 1.0 && (actual_height - (height + 12.0) * scale).abs() <= 1.0 {
+            assert_eq!(snapshot["window"]["komorebiEligible"], false);
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    panic!("Popup did not follow content size {width}x{height}");
+}
+
 pub fn start(app: AppHandle) {
     std::thread::spawn(move || {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -89,6 +111,11 @@ pub fn start(app: AppHandle) {
                     .unwrap()
                     >= baseline + 2;
                 assert!(subscribed, "Popup content should own audio subscriptions");
+                check_content_size(&app, 560.0, 480.0);
+                check_content_size(&app, 280.0, 140.0);
+                main_thread(&app, |app| {
+                    app.get_webview_window(crate::desktop::OVERLAY).unwrap().eval("{ const dialog=document.querySelector('[role=dialog]'); dialog.style.removeProperty('width'); dialog.style.removeProperty('height'); }").unwrap();
+                });
                 // Resizing an existing popup must not steal focus back from its source.
                 let source = label.clone();
                 main_thread(&app, move |app| {
@@ -137,7 +164,7 @@ pub fn start(app: AppHandle) {
                 });
                 wait_for(&app, false);
                 assert!(wait_focus(&app, &label));
-                checks.push(json!({"source":label,"shown":shown,"hidden":hidden,"interactive":interactive,"floating":floating,"focused":overlay_focused,"resizePreservesFocus":resized_without_focus,"subscriptionsReleased":cleaned,"escape":true,"outsidePointer":true,"passed":true}));
+                checks.push(json!({"source":label,"shown":shown,"hidden":hidden,"interactive":interactive,"floating":floating,"focused":overlay_focused,"contentSizeRoundTrip":true,"resizePreservesFocus":resized_without_focus,"subscriptionsReleased":cleaned,"escape":true,"outsidePointer":true,"passed":true}));
             }
             json!({"passed":true,"checks":checks,"bars":crate::desktop::bar_snapshot(),"monitors":crate::desktop::monitor_snapshot()})
         }));

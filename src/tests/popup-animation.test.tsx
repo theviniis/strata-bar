@@ -17,7 +17,7 @@ it('animates the shared surface once and cancels on unmount', () => {
   HTMLElement.prototype.animate = animate
   try {
     const { rerender, unmount } = render(
-      <PopupSurface mode="demo" label="Popup" maxHeight={380} close={() => {}}>
+      <PopupSurface mode="demo" label="Popup" close={() => {}}>
         Content
       </PopupSurface>
     )
@@ -45,7 +45,7 @@ it('animates the shared surface once and cancels on unmount', () => {
       { duration: 420, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
     )
     rerender(
-      <PopupSurface mode="demo" label="Popup" maxHeight={380} close={() => {}}>
+      <PopupSurface mode="demo" label="Popup" close={() => {}}>
         Updated content
       </PopupSurface>
     )
@@ -58,13 +58,14 @@ it('animates the shared surface once and cancels on unmount', () => {
 })
 
 it('keeps the native animation paused until the first resize reveals the window', async () => {
-  let reveal!: (size: { maxHeight: number }) => void
+  let reveal!: (size: { arrowX: number }) => void
   vi.spyOn(overlay, 'resize').mockReturnValue(
     new Promise((resolve) => {
       reveal = resolve
     })
   )
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+    width: 320,
     height: 200
   } as DOMRect)
   const pause = vi.fn()
@@ -81,7 +82,7 @@ it('keeps the native animation paused until the first resize reveals the window'
         mode="native"
         session="opening"
         label="Popup"
-        maxHeight={380}
+
         close={() => {}}
       >
         Content
@@ -89,7 +90,7 @@ it('keeps the native animation paused until the first resize reveals the window'
     )
     expect(pause).toHaveBeenCalledOnce()
     expect(frame).not.toHaveBeenCalled()
-    await act(async () => reveal({ maxHeight: 380 }))
+    await act(async () => reveal({ arrowX: 160 }))
     expect(play).not.toHaveBeenCalled()
     act(() => frame.mock.calls[0][0](0))
     act(() => frame.mock.calls[1][0](16))
@@ -114,7 +115,7 @@ it('contracts toward the widget before unmount and disables interaction during e
       <PopupSurface
         mode="demo"
         label="Popup"
-        maxHeight={380}
+
         arrowX={280}
         close={() => {}}
       >
@@ -126,7 +127,7 @@ it('contracts toward the widget before unmount and disables interaction during e
         mode="demo"
         closing
         label="Popup"
-        maxHeight={380}
+
         arrowX={280}
         close={() => {}}
       >

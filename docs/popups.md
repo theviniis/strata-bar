@@ -1,14 +1,14 @@
 # Widget popups
 
 `WidgetPopup` is the public trigger API. One shared host owns the native window,
-sessions, focus, measurement, scrolling, arrow and monitor placement. Feature
+sessions, focus, measurement, arrow and monitor placement. Feature
 components own their content, data and actions. Volume is the reference feature.
 
 ## Add a popup
 
 1. Add an ID to `src/popups/catalog.json`. This is also the Rust allowlist. Each
-   entry needs `label`; `width` defaults to 320 CSS px and `maxHeight` to 380 CSS px.
-   Height includes the 12 px gap between the panel and the bar.
+   entry needs only `label`. Width and height follow intrinsic content size;
+   measurements include the 12 px gap between the panel and the bar.
 2. Create a content component under its feature. Content can be any React layout;
    it does not need predefined header/body/footer slots.
 3. Register its schema and component in `src/popups/registry.ts` with `definePopup`.
@@ -90,7 +90,7 @@ Demo content is visibly labeled and resets when closed.
   session, payload size and geometry. Changing catalog metadata rebuilds the host
   during `tauri dev`; no Rust feature conditional is needed.
 - Native opening prepares a hidden window. The shared surface reports its first
-  measured height, then the host reveals and focuses it. Subsequent resizes do
+  measured width and height, then the host reveals and focuses it. Subsequent resizes do
   not take focus. Tauri visibility state and Win32 visibility stay synchronized.
 - The host replays prepared content after overlay listeners install, including
   after a development reload. Old event generations and stale sessions are ignored.
@@ -100,9 +100,16 @@ Demo content is visibly labeled and resets when closed.
   unmount, fullscreen, display/DPI changes and exit also dismiss. The window returns
   to click-through mode after hiding. Keyboard Tab navigation stays in the popup.
 - Studio uses Radix positioning in a body portal, escaping preview clipping while
-  preserving theme/typography, collision handling, gap, arrow and dynamic height.
+  preserving theme/typography, collision handling, gap, arrow and dynamic dimensions.
 - Invalid parameters or content render errors produce an accessible error surface
   with a close action, never a demo fallback or a permanently blank window.
+
+The surface has no fixed dimensions or scrolling. Content grows and shrinks in
+both axes using intrinsic layout, independently of the current window viewport.
+`overlay.resize(session, { width, height })` invokes `overlay_resize` in CSS pixels;
+the native reply supplies the updated `arrowX`. Rust moves the full-size window
+inside the monitor where possible. A popup larger than the monitor keeps its
+size and aligns to that monitor's origin on the overflowing axis, allowing clipping.
 
 ## Validate
 

@@ -27,7 +27,7 @@ static COUNTS: [AtomicU64;4]=[const {AtomicU64::new(0)};4];
 static OVERLAY_COUNTS: [AtomicU64; 3] = [const { AtomicU64::new(0) }; 3];
 pub fn profile()->serde_json::Value{serde_json::json!({"windowMessages":COUNTS[0].load(Ordering::Relaxed),"appbarNotifications":COUNTS[1].load(Ordering::Relaxed),"positionWrites":COUNTS[2].load(Ordering::Relaxed),"windowPositionMessages":COUNTS[3].load(Ordering::Relaxed),"overlayShows":OVERLAY_COUNTS[0].load(Ordering::Relaxed),"overlayPositions":OVERLAY_COUNTS[1].load(Ordering::Relaxed),"overlayHides":OVERLAY_COUNTS[2].load(Ordering::Relaxed)})}
 #[derive(Clone)]
-struct PopupSession { id: String, source: String, side: OverlaySide, max_height: f64, revealed: bool, closing: bool }
+struct PopupSession { id: String, source: String, side: OverlaySide, anchor: OverlayAnchor, revealed: bool, closing: bool }
 static POPUP: Mutex<Option<PopupSession>> = Mutex::new(None);
 static LAST_OVERLAY_RENDER: Mutex<Option<serde_json::Value>> = Mutex::new(None);
 static OVERLAY_OWNER: Mutex<Option<String>> = Mutex::new(None);
@@ -658,17 +658,22 @@ pub fn overlay_ready(caller: &WebviewWindow) -> Result<serde_json::Value, String
     Ok(serde_json::json!({"session": OVERLAY_SESSION.load(Ordering::Relaxed), "render": LAST_OVERLAY_RENDER.lock().unwrap().clone()}))
 }
 
+// Safety bound for Win32 conversion; popup layout is never clamped to this value.
+fn valid_popup_size(size: &OverlaySize) -> bool {
+    [size.width, size.height].into_iter().all(|value| value.is_finite() && value > 0.0 && value <= 1_000_000.0)
+}
+
 /// Resize only the current interactive session; placement remains native-owned.
 pub fn overlay_resize(
     app: &AppHandle,
     caller: &WebviewWindow,
     session: &str,
-    height: f64,
+    size: &OverlaySize,
 ) -> Result<serde_json::Value, String> {
-    if caller.label() != OVERLAY || !height.is_finite() || height <= 0.0 || height > MAX_LOGICAL_SIZE {
+    if caller.label() != OVERLAY || !valid_popup_size(size) {
         return Err("Invalid popup resize request".into());
     }
-    let popup = POPUP.lock().unwrap().clone().filter(|p| p.id == session)
+    let popup = POPUP.lock().unwrap().clone().filter(|p| p.id == session && !p.closing)
         .ok_or("Popup session is no longer active")?;
     let source = app.get_webview_window(&popup.source).ok_or("Popup source is unavailable")?;
     let source_hwnd = HWND(source.hwnd().map_err(|e| e.to_string())?.0);
@@ -680,22 +685,17 @@ pub fn overlay_resize(
         GetWindowRect(hwnd, &mut current).map_err(|e| e.to_string())?;
     }
     let monitor = monitor_rect(source_hwnd).ok_or("Popup monitor is unavailable")?;
-    let available = match popup.side {
-        OverlaySide::Bottom => monitor.bottom - bar.bottom,
-        OverlaySide::Top => bar.top - monitor.top,
-    }.max(1);
     let scale = source.scale_factor().map_err(|e| e.to_string())?;
-    let available = available.min(to_physical(popup.max_height, scale).max(1));
-    let height = to_physical(height, scale).clamp(1, available);
-    let y = match popup.side {
-        OverlaySide::Bottom => bar.bottom,
-        OverlaySide::Top => bar.top - height,
-    };
-    if !popup.revealed || current.bottom - current.top != height || current.top != y {
+    let width = to_physical(size.width, scale).max(1);
+    let height = to_physical(size.height, scale).max(1);
+    let center = bar.left + to_physical(popup.anchor.x + popup.anchor.width / 2.0, scale);
+    let (x, y) = overlay_position(bar, monitor, (width, height), center, popup.side);
+    let arrow_x = overlay_arrow_x(center, x, scale);
+    if !popup.revealed || current.right - current.left != width || current.bottom - current.top != height || current.left != x || current.top != y {
         unsafe {
             enforce_floating_frame(hwnd);
-            SetWindowPos(hwnd, Some(HWND_TOPMOST), current.left, y,
-                current.right - current.left, height, SWP_NOACTIVATE)
+            SetWindowPos(hwnd, Some(HWND_TOPMOST), x, y,
+                width, height, SWP_NOACTIVATE)
                 .map_err(|e| e.to_string())?;
         }
         OVERLAY_COUNTS[1].fetch_add(1, Ordering::Relaxed);
@@ -707,7 +707,10 @@ pub fn overlay_resize(
         caller.set_focus().map_err(|e| e.to_string())?;
         OVERLAY_COUNTS[0].fetch_add(1, Ordering::Relaxed);
     }
-    Ok(serde_json::json!({"maxHeight": available as f64 / scale}))
+    if let Some(render) = LAST_OVERLAY_RENDER.lock().unwrap().as_mut() {
+        render["arrowX"] = serde_json::json!(arrow_x);
+    }
+    Ok(serde_json::json!({"arrowX": arrow_x}))
 }
 
 #[cfg(debug_assertions)]
@@ -717,7 +720,7 @@ pub fn check_resize_active(app: &AppHandle) -> Result<(), String> {
     let mut rect = RECT::default();
     unsafe { GetWindowRect(HWND(window.hwnd().map_err(|e| e.to_string())?.0), &mut rect).map_err(|e| e.to_string())?; }
     let scale = window.scale_factor().map_err(|e| e.to_string())?;
-    overlay_resize(app, &window, &popup.id, (rect.bottom - rect.top) as f64 / scale)?;
+    overlay_resize(app, &window, &popup.id, &OverlaySize { width: (rect.right - rect.left) as f64 / scale, height: (rect.bottom - rect.top) as f64 / scale })?;
     Ok(())
 }
 
@@ -765,8 +768,7 @@ pub fn overlay_show(
         }
     }
     let scale = caller.scale_factor().unwrap_or(1.0);
-    let spec = request.component.as_deref().and_then(crate::popup_catalog::get);
-    let logical_width = if request.kind == "popover" { spec.as_ref().unwrap().width } else { request.size.width };
+    let logical_width = if request.kind == "popover" { 1.0 } else { request.size.width };
     let width = to_physical(logical_width, scale).clamp(1, (monitor.right - monitor.left).clamp(1, 4096));
     let height = to_physical(if request.kind == "popover" { 1.0 } else { request.size.height }, scale).clamp(1, (monitor.bottom - monitor.top).clamp(1, 4096));
     let center = bar.left + to_physical(request.anchor.x + request.anchor.width / 2.0, scale);
@@ -774,7 +776,7 @@ pub fn overlay_show(
     let session = OVERLAY_SESSION.fetch_add(1, Ordering::Relaxed) + 1;
     let interactive = request.kind == "popover";
     if interactive {
-        *POPUP.lock().unwrap() = Some(PopupSession { id: request.session.clone().unwrap(), source: caller.label().into(), side, max_height: spec.as_ref().unwrap().max_height, revealed: false, closing: false });
+        *POPUP.lock().unwrap() = Some(PopupSession { id: request.session.clone().unwrap(), source: caller.label().into(), side, anchor: OverlayAnchor { x: request.anchor.x, y: request.anchor.y, width: request.anchor.width, height: request.anchor.height }, revealed: false, closing: false });
     }
     *OVERLAY_OWNER.lock().unwrap() = request.session.clone();
     window.set_ignore_cursor_events(!interactive).map_err(|e| e.to_string())?;
@@ -934,6 +936,22 @@ pub fn bar_snapshot()->serde_json::Value{
 }
 #[cfg(test)]mod geometry_tests{
     use super::*;
+    #[test]
+    fn popup_sizes_allow_large_content_but_reject_invalid_numbers() {
+        for (width, height) in [(0.0, 20.0), (20.0, -1.0), (f64::NAN, 20.0), (20.0, f64::INFINITY), (1_000_001.0, 20.0)] {
+            assert!(!valid_popup_size(&OverlaySize { width, height }));
+        }
+        assert!(valid_popup_size(&OverlaySize { width: 5000.0, height: 3000.0 }));
+    }
+
+    #[test]
+    fn oversized_popups_keep_their_size_and_align_to_monitor_origin() {
+        let monitor = RECT { left: -1920, top: -200, right: 0, bottom: 880 };
+        let bar = RECT { left: -1920, top: -200, right: 0, bottom: -164 };
+        assert_eq!(overlay_position(bar, monitor, (2400, 1400), -900, OverlaySide::Bottom), (-1920, -200));
+        assert_eq!(overlay_position(bar, monitor, (400, 1060), -1900, OverlaySide::Bottom), (-1920, -180));
+    }
+
     #[test]fn secondary_above_primary_uses_monitor_top_not_work_area(){let r=top_strip(RECT{left:724,top:-1080,right:2644,bottom:0},36);assert_eq!([r.left,r.top,r.right,r.bottom],[724,-1080,2644,-1044]);}
     #[test]fn negative_x_and_scaled_height_keep_physical_origin(){let r=top_strip(RECT{left:-2560,top:120,right:0,bottom:1560},54);assert_eq!([r.left,r.top,r.right,r.bottom],[-2560,120,0,174]);}
     #[test]fn floating_frame_styles_make_the_window_ineligible_for_komorebi(){
