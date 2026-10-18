@@ -30,14 +30,14 @@ export function Clock({ showDate = false }: ClockProps) {
         aria-describedby={tip.describedBy}
         {...tip.trigger}
       >
-        <WidgetItemLabel className="font-semibold">
+        <WidgetItemLabel className="font-semibold text-foreground">
           {now.toLocaleTimeString(undefined, {
             hour: '2-digit',
             minute: '2-digit'
           })}
         </WidgetItemLabel>
         {showDate && (
-          <span className="text-[10px] color-subtext">
+          <span className="text-[10px] text-subtext">
             {now.toLocaleDateString(undefined, {
               weekday: 'short',
               day: '2-digit',
