@@ -235,7 +235,9 @@ export function createMockBridge(): DemoBridge {
       const data = {
         ...values.media,
         progress: { ...values.media.progress },
-        volume: { ...values.media.volume }
+        volume: { ...values.media.volume },
+        shuffle: { ...values.media.shuffle },
+        repeat: { ...values.media.repeat }
       }
       if (
         request.sessionId !== data.sessionId ||
@@ -278,6 +280,8 @@ export function createMockBridge(): DemoBridge {
         data.volume.value = { ...data.volume.value, level: action.level }
       } else if (action.action === 'mute' && data.volume.value)
         data.volume.value = { ...data.volume.value, muted: action.muted }
+      else if (action.action === 'shuffle') data.shuffle.value = action.active
+      else if (action.action === 'repeat') data.repeat.value = action.mode
       else throw new Error('Demo action unsupported')
       values.media = { ...data }
       for (const listener of mediaListeners)

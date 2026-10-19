@@ -35,6 +35,30 @@ pub struct Media {
 pub fn allowed_window(label: &str) -> bool {
     label.starts_with("bar-") || label == "overlay"
 }
+/// A track change reaches the worker as a burst of GSMTC notifications. Fold the
+/// queue into the newest pending request, dropping redundant wakes so one burst
+/// costs one read. A wake also promotes the periodic tick, so an event that lands
+/// with the timeout is never lost. Actions and `Stop` are preserved.
+fn coalesce(request: Request, mut queued: impl FnMut() -> Option<Request>) -> Request {
+    if !matches!(request, Request::Wake | Request::Tick) {
+        return request;
+    }
+    let mut current = request;
+    while let Some(next) = queued() {
+        match next {
+            Request::Wake => {
+                if matches!(current, Request::Tick) {
+                    current = Request::Wake;
+                }
+            }
+            other => {
+                current = other;
+                break;
+            }
+        }
+    }
+    current
+}
 pub fn validate(request: &MediaRequest, data: &MediaData) -> Result<(), String> {
     if request.session_id != data.session_id || request.track_id != data.track_id {
         return Err("Media session or track changed".into());
@@ -63,6 +87,8 @@ pub fn validate(request: &MediaRequest, data: &MediaData) -> Result<(), String> 
             data.capabilities.volume
         }
         MediaAction::Mute { .. } => data.capabilities.mute,
+        MediaAction::Shuffle { .. } => data.capabilities.shuffle,
+        MediaAction::Repeat { .. } => data.capabilities.repeat,
         MediaAction::Favorite { .. } => data.capabilities.favorite,
     };
     if !supported {
@@ -149,6 +175,7 @@ impl Media {
             )
         };
         let mut source = None;
+        let mut stale = false;
         loop {
             let active = !self.data.lock().unwrap().subscribers.is_empty();
             if !active {
@@ -156,7 +183,7 @@ impl Media {
                 self.spotify.invalidate();
                 self.data.lock().unwrap().latest = None;
             }
-            let request = if active {
+            let mut request = if active {
                 match rx.recv_timeout(Duration::from_secs(1)) {
                     Ok(r) => r,
                     Err(mpsc::RecvTimeoutError::Timeout) => Request::Tick,
@@ -168,6 +195,7 @@ impl Media {
                     Err(_) => break,
                 }
             };
+            request = coalesce(request, || rx.try_recv().ok());
             if matches!(request, Request::Stop) {
                 break;
             }
@@ -182,13 +210,14 @@ impl Media {
                 initialized.as_ref().map_err(|e| e.to_string())?;
                 if source.is_none() {
                     source = Some(WindowsMedia::new(self.tx.clone()).map_err(|e| e.to_string())?);
-                } else if matches!(request, Request::Tick) {
+                } else if matches!(request, Request::Tick) && !stale {
                     return Ok(source.as_ref().unwrap().snapshot());
                 }
                 source.as_mut().unwrap().read().map_err(|e| e.to_string())
             })();
             match read {
                 Ok(Some(mut data)) => {
+                    stale = false;
                     self.spotify.enrich(&mut data);
                     if let Request::Action(window, request, reply) = request {
                         let owned = self
@@ -231,22 +260,30 @@ impl Media {
                         crate::metrics::envelope("ready", serde_json::to_value(data).unwrap()),
                     );
                 }
-                result => {
-                    if result.is_err() {
-                        source = None;
-                    }
+                Ok(None) => {
+                    stale = false;
                     if let Request::Action(_, _, reply) = request {
                         let _ = reply.send(Err("No current media session".into()));
                     }
                     self.spotify.invalidate();
-                    let event = match result {
-                        Ok(None) => crate::metrics::envelope("unavailable", Value::Null),
-                        Err(error) => {
-                            json!({"status":"error","error":error,"data":null,"timestamp":crate::metrics::timestamp()})
-                        }
-                        _ => unreachable!(),
-                    };
-                    self.publish(&app, event);
+                    self.publish(&app, crate::metrics::envelope("unavailable", Value::Null));
+                }
+                Err(error) => {
+                    // A transient read failure (a timed-out WinRT call, a session
+                    // caught mid-switch) must not blank the bar or rebuild the
+                    // session. Keep the last good snapshot and retry on the tick.
+                    stale = true;
+                    eprintln!("Media read failed, retrying: {error}");
+                    if let Request::Action(_, _, reply) = request {
+                        let _ = reply.send(Err("Media is temporarily unavailable".into()));
+                    }
+                    if self.data.lock().unwrap().latest.is_none() {
+                        self.spotify.invalidate();
+                        self.publish(
+                            &app,
+                            json!({"status":"error","error":error,"data":null,"timestamp":crate::metrics::timestamp()}),
+                        );
+                    }
                 }
             }
         }
@@ -299,6 +336,44 @@ mod tests {
             action,
         }
     }
+    fn action_request() -> Request {
+        let (tx, _rx) = mpsc::sync_channel(1);
+        Request::Action("bar-1".into(), request(MediaAction::PlayPause), tx)
+    }
+    #[test]
+    fn folds_notification_bursts_into_one_read() {
+        // Repeated wakes from the same burst collapse into a single read.
+        let mut queued = vec![Request::Wake, Request::Wake, Request::Wake].into_iter();
+        assert!(matches!(
+            coalesce(Request::Wake, || queued.next()),
+            Request::Wake
+        ));
+        // A wake landing with the periodic tick promotes it, never lost.
+        let mut queued = vec![Request::Wake].into_iter();
+        assert!(matches!(
+            coalesce(Request::Tick, || queued.next()),
+            Request::Wake
+        ));
+        // A queued action is preserved, never merged away.
+        let mut queued = vec![Request::Wake, action_request()].into_iter();
+        assert!(matches!(
+            coalesce(Request::Tick, || queued.next()),
+            Request::Action(..)
+        ));
+        // Stop still wins over the coalesced wake.
+        let mut queued = vec![Request::Wake, Request::Stop].into_iter();
+        assert!(matches!(
+            coalesce(Request::Wake, || queued.next()),
+            Request::Stop
+        ));
+        // A non-wake request is returned untouched, leaving the queue alone.
+        let mut queued = vec![Request::Wake].into_iter();
+        assert!(matches!(
+            coalesce(action_request(), || queued.next()),
+            Request::Action(..)
+        ));
+        assert!(queued.next().is_some());
+    }
     #[test]
     fn opening_player_requires_capability_and_current_identity() {
         let mut data = crate::media_contract::fixture();
@@ -332,6 +407,28 @@ mod tests {
             assert!(validate(&request(MediaAction::Seek { position_ms: v }), &data).is_ok());
         }
         assert!(validate(&request(MediaAction::Volume { level: 0. }), &data).is_ok());
+    }
+    #[test]
+    fn honors_shuffle_and_repeat_capabilities() {
+        let mut data = fixture();
+        assert!(validate(&request(MediaAction::Shuffle { active: true }), &data).is_ok());
+        assert!(validate(
+            &request(MediaAction::Repeat {
+                mode: RepeatMode::List
+            }),
+            &data
+        )
+        .is_ok());
+        data.capabilities.shuffle = false;
+        data.capabilities.repeat = false;
+        assert!(validate(&request(MediaAction::Shuffle { active: false }), &data).is_err());
+        assert!(validate(
+            &request(MediaAction::Repeat {
+                mode: RepeatMode::Track
+            }),
+            &data
+        )
+        .is_err());
     }
     #[test]
     fn honors_capabilities_and_unknown_favorite() {
@@ -368,6 +465,9 @@ mod tests {
             json!({"action":"shell","command":"anything"}),
             json!({"action":"volume","level":20,"endpoint":"master"}),
             json!({"action":"seek","positionMs":"10"}),
+            json!({"action":"repeat","mode":"forever"}),
+            json!({"action":"repeat"}),
+            json!({"action":"shuffle","active":"yes"}),
         ] {
             assert!(serde_json::from_value::<MediaAction>(value).is_err());
         }

@@ -66,6 +66,8 @@ const mediaSchema = z
         })
         .strict()
     ),
+    shuffle: resource(z.boolean()),
+    repeat: resource(z.enum(['none', 'track', 'list'])),
     favorite: resource(z.boolean()),
     spotifyUri: z
       .string()
@@ -79,6 +81,8 @@ const mediaSchema = z
         seek: z.boolean(),
         volume: z.boolean(),
         mute: z.boolean(),
+        shuffle: z.boolean(),
+        repeat: z.boolean(),
         favorite: z.boolean(),
         openPlayer: z.boolean()
       })
@@ -95,7 +99,11 @@ export function parseMediaEvent(
     ? { ...event, data: parsed.data }
     : {
         status: 'error',
-        error: 'Invalid native media payload',
+        error: `Invalid native media payload: ${parsed.error.issues
+          .map(
+            (issue) => `${issue.path.join('.') || '<payload>'} ${issue.message}`
+          )
+          .join('; ')}`,
         data: null,
         timestamp: event.timestamp
       }
@@ -145,6 +153,8 @@ export function demoMedia(): MediaData {
       value: { level: 64, muted: false, source: 'applicationSession' },
       reason: null
     },
+    shuffle: { status: 'ready', value: false, reason: null },
+    repeat: { status: 'ready', value: 'none', reason: null },
     favorite: { status: 'unsupported', value: null, reason: 'Demonstração' },
     spotifyUri: null,
     capabilities: {
@@ -154,6 +164,8 @@ export function demoMedia(): MediaData {
       seek: true,
       volume: true,
       mute: true,
+      shuffle: true,
+      repeat: true,
       favorite: false,
       openPlayer: false
     }
