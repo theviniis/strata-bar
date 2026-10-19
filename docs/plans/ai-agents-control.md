@@ -12,7 +12,9 @@ acordados: serviço público e comportamento visível do popup.
       criar a conversa; enviar uma única vez somente para o ID recém-criado.
 - [x] Adicionar prompt opcional ao formulário e preservar ID/resultado parcial
       em falhas; bloquear envio durante desconexão e não repetir automaticamente.
-- [ ] Validar testes, builds e revisão; commitar na branch atual.
+- [x] Validar testes, build frontend e revisão; commitar na branch atual
+      (`66bd872`).
+- [x] Confirmar build release com o frontend atualizado.
 - [x] Validar admissão do prompt no provedor real com resume:false, sem iniciar
       execução do agente, e remover a conversa temporária.
 - [ ] Validar agendamento real com resume:true e interação no WebView2.
@@ -38,6 +40,11 @@ Validação da implementação:
   executado separadamente e passou, removendo sua própria conversa de teste.
 - Suíte frontend completa: 237 passaram; a falha preexistente da posição dos
   controles de áudio em `native-bar.test.tsx` permaneceu.
+- Revisão de padrões: nenhuma violação documentada ou problema acionável.
+- Revisão de especificação: sem problemas acionáveis de implementação ou escopo;
+  agendamento real com resume:true e interação WebView2 continuam pendentes.
+- Build release passou; executável atualizado em
+  `src-tauri/target/release/strata-bar.exe`. A barra aberta não foi interrompida.
 
 ## Ticket 4 — Criar sessão vazia do OpenCode
 
