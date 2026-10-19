@@ -11,6 +11,60 @@ import type {
   AgentPermission,
   OpenCodeSnapshot
 } from '@/services/system/agents'
+import { AgentAlerts } from '@/features/agents/AgentAlerts'
+import { AgentAlertCount } from '@/features/agents/Agents'
+
+it('shows unread counts without an open popup and exposes capacity limits', () => {
+  const { rerender } = render(<AgentAlertCount count={3} />)
+  expect(screen.getByLabelText('Alertas de agentes')).toHaveTextContent('3')
+  rerender(<AgentAlertCount count={0} />)
+  expect(screen.queryByLabelText('Alertas de agentes')).not.toBeInTheDocument()
+  rerender(
+    <AgentAlerts alerts={{ items: [], overflowCount: 2, paused: true }} />
+  )
+  expect(screen.getByText(/2 alertas anteriores/)).toBeInTheDocument()
+  expect(screen.getByRole('alert')).toHaveTextContent('Novos alertas pausados')
+})
+
+it('shows attention and completion alerts and dismisses only the IDs currently displayed', async () => {
+  const onDismiss = vi.fn(async () => {})
+  render(
+    <AgentAlerts
+      alerts={{
+        items: [
+          {
+            id: 'agent-alert-1',
+            agent: 'opencode',
+            sessionId: 'ses_test',
+            sessionTitle: 'Projeto A',
+            kind: 'attention',
+            createdAt: 1000
+          },
+          {
+            id: 'agent-alert-2',
+            agent: 'antigravity',
+            sessionId: '11111111-1111-1111-1111-111111111111',
+            sessionTitle: 'Projeto B',
+            kind: 'completed',
+            createdAt: 2000
+          }
+        ],
+        overflowCount: 0,
+        paused: false
+      }}
+      onDismiss={onDismiss}
+    />
+  )
+  expect(screen.getByText('OpenCode · Atenção necessária')).toBeInTheDocument()
+  expect(screen.getByText('Antigravity · Turno concluído')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Dispensar exibidos' }))
+  await vi.waitFor(() =>
+    expect(onDismiss).toHaveBeenCalledExactlyOnceWith([
+      'agent-alert-1',
+      'agent-alert-2'
+    ])
+  )
+})
 
 const pendingPermission: AgentPermission = {
   id: 'per_test',
@@ -27,6 +81,7 @@ const permissionConnection: OpenCodeSnapshot = {
   error: null,
   hasMore: false,
   questions: [],
+  completedTurns: {},
   permissions: [pendingPermission],
   sessions: [
     {
@@ -161,6 +216,7 @@ it('answers a pending textual question in its session card and blocks a duplicat
         status: 'connected',
         error: null,
         hasMore: false,
+        completedTurns: {},
         permissions: [],
         questions: [pendingQuestion],
         sessions: [
@@ -257,11 +313,13 @@ it('distinguishes detected applications from unavailable session control', () =>
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 6,
+        version: 7,
+        alerts: { items: [], overflowCount: 0, paused: false },
         antigravity: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
           sessions: [],
+          completedTurns: {},
           permissions: [],
           questions: [],
           hasMore: false,
@@ -361,11 +419,13 @@ it('does not show stale process presence after discovery fails', () => {
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 6,
+        version: 7,
+        alerts: { items: [], overflowCount: 0, paused: false },
         antigravity: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
           sessions: [],
+          completedTurns: {},
           permissions: [],
           questions: [],
           hasMore: false,
@@ -417,6 +477,7 @@ it('blocks creating while pending or disconnected and keeps ambiguous failures v
   const connection = {
     status: 'connected' as const,
     sessions: [],
+    completedTurns: {},
     permissions: [],
     questions: [],
     hasMore: false,
@@ -500,6 +561,7 @@ it('keeps the created conversation visible when prompt admission is uncertain an
   const connection = {
     status: 'connected' as const,
     sessions: [],
+    completedTurns: {},
     permissions: [],
     questions: [],
     hasMore: false,
@@ -534,6 +596,7 @@ it('shows attention and history limits, then marks sessions disconnected on a tr
   const connection = {
     status: 'connected' as const,
     error: null,
+    completedTurns: {},
     permissions: [],
     questions: [],
     hasMore: true,

@@ -8,7 +8,8 @@ import type {
   AgentMessage,
   AgentReplyRequest,
   AgentPermission,
-  AgentPermissionRequest
+  AgentPermissionRequest,
+  AgentAlertsSnapshot
 } from './agents.generated'
 
 export type {
@@ -23,7 +24,9 @@ export type {
   AgentReplyRequest,
   AgentPermission,
   AgentPermissionRequest,
-  AgentPermissionDecision
+  AgentPermissionDecision,
+  AgentAlert,
+  AgentAlertsSnapshot
 } from './agents.generated'
 
 const session: z.ZodType<AgentSession> = z
@@ -114,6 +117,10 @@ const opencode: z.ZodType<OpenCodeSnapshot> = z
     hasMore: z.boolean(),
     questions: z.array(question).max(128),
     permissions: z.array(permission).max(128),
+    completedTurns: z.record(
+      z.string(),
+      z.number().min(0).max(8_640_000_000_000_000)
+    ),
     error: z.string().nullable()
   })
   .strict()
@@ -131,6 +138,10 @@ const opencode: z.ZodType<OpenCodeSnapshot> = z
         value.permissions.length &&
       value.permissions.every((p) =>
         value.sessions.some((s) => s.id === p.sessionId)
+      ) &&
+      Object.keys(value.completedTurns).length <= 178 &&
+      Object.keys(value.completedTurns).every((id) =>
+        value.sessions.some((s) => s.id === id)
       )
   )
 
@@ -148,9 +159,35 @@ const antigravity: z.ZodType<AntigravitySnapshot> = z
         value.sessions.length
   )
 
+const alerts: z.ZodType<AgentAlertsSnapshot> = z
+  .object({
+    items: z
+      .array(
+        z
+          .object({
+            id: z.string().regex(/^agent-alert-[1-9][0-9]{0,9}$/),
+            agent: z.enum(['opencode', 'antigravity']),
+            sessionId: z.string().min(1).max(128),
+            sessionTitle: z.string().max(1024),
+            kind: z.enum(['attention', 'completed']),
+            createdAt: z.number().min(0).max(8_640_000_000_000_000)
+          })
+          .strict()
+      )
+      .max(32),
+    overflowCount: z.number().int().min(0).max(4_294_967_295),
+    paused: z.boolean()
+  })
+  .strict()
+  .refine(
+    (value) =>
+      new Set(value.items.map((item) => item.id)).size === value.items.length
+  )
+
 const schema: z.ZodType<AgentsSnapshot> = z
   .object({
-    version: z.literal(6),
+    version: z.literal(7),
+    alerts,
     revision: z.number().int().min(0).max(4_294_967_295),
     observedAt: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
     applications: z
@@ -189,6 +226,7 @@ const creationResult: z.ZodType<CreateAgentSessionResult> = z
 
 export interface AgentsAdapter {
   readonly kind: 'native' | 'demo'
+  dismissAlerts(ids: string[]): Promise<AgentsSnapshot>
   decideOpenCode(request: AgentPermissionRequest): Promise<void>
   replyOpenCode(request: AgentReplyRequest): Promise<void>
   load(): Promise<AgentsSnapshot>
@@ -207,6 +245,10 @@ export interface AgentsAdapter {
 export function createNativeAgentsAdapter(): AgentsAdapter {
   return {
     kind: 'native',
+    async dismissAlerts(ids) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return parseAgentsSnapshot(await invoke('agents_dismiss_alerts', { ids }))
+    },
     async decideOpenCode(request) {
       const { invoke } = await import('@tauri-apps/api/core')
       await invoke('agents_decide_opencode', { request })
@@ -256,7 +298,8 @@ export function createNativeAgentsAdapter(): AgentsAdapter {
 export function createDemoAgentsAdapter(): AgentsAdapter {
   const listeners = new Set<(snapshot: AgentsSnapshot) => void>()
   let snapshot: AgentsSnapshot = {
-    version: 6,
+    version: 7,
+    alerts: { items: [], overflowCount: 0, paused: false },
     revision: 0,
     observedAt: Date.now(),
     error: null,
@@ -268,6 +311,7 @@ export function createDemoAgentsAdapter(): AgentsAdapter {
     opencode: {
       status: 'disabled',
       sessions: [],
+      completedTurns: {},
       permissions: [],
       questions: [],
       hasMore: false,
@@ -277,6 +321,20 @@ export function createDemoAgentsAdapter(): AgentsAdapter {
   }
   return {
     kind: 'demo',
+    async dismissAlerts(ids) {
+      snapshot = {
+        ...snapshot,
+        revision: snapshot.revision + 1,
+        alerts: {
+          ...snapshot.alerts,
+          items: snapshot.alerts.items.filter(
+            (alert) => !ids.includes(alert.id)
+          )
+        }
+      }
+      for (const listener of listeners) listener(structuredClone(snapshot))
+      return structuredClone(snapshot)
+    },
     async decideOpenCode(request) {
       if (snapshot.opencode.status !== 'connected')
         throw new Error('OpenCode desconectado')
@@ -367,6 +425,7 @@ export function createDemoAgentsAdapter(): AgentsAdapter {
           ? {
               status: 'connected',
               error: null,
+              completedTurns: {},
               permissions: [],
               questions: [
                 {
@@ -405,6 +464,7 @@ export function createDemoAgentsAdapter(): AgentsAdapter {
           : {
               status: 'disabled',
               sessions: [],
+              completedTurns: {},
               permissions: [],
               questions: [],
               hasMore: false,

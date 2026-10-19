@@ -143,6 +143,23 @@ limitações das integrações.
 - Notificar com o popup fechado. Integrar notificações nativas do Windows 11 quando
   suportadas; o mecanismo exato ainda deve ser validado, pois não existe toast na
   infraestrutura identificada. O alerta no popup faz parte do escopo.
+- A primeira entrega de alertas usa fila visual nativa compartilhada, contador
+  na barra e lista no popup; não toca som nem abre janelas. Notificações nativas
+  do Windows permanecem separadas. A linha de base inicial de cada conexão não
+  anuncia pendências ou conclusões antigas, inclusive após reconexão.
+- Atenção usa IDs/versões das perguntas e permissões do OpenCode; nos hooks do
+  Antigravity, usa a transição observada para atenção. Conclusão requer sucesso
+  explícito depois de processamento/atenção observados. Não anunciar como nova
+  execução um estado terminal recém-descoberto ou uma mudança apenas no título.
+  Execuções inteiras entre consultas podem passar sem alerta.
+- No OpenCode, correlacionar sucesso com a marca time.idle da API, exigindo que
+  ela seja posterior à atividade observada. Outcome antigo sem nova marca não
+  confirma término do turno em execução. Não emitir conclusão se a marca faltar.
+- Manter até 32 alertas visuais recentes e indicar quantos anteriores saíram da
+  lista. Guardar até 4096 chaves de deduplicação em memória; ao atingir o limite,
+  pausar novos alertas sem expulsar chaves antigas para abrir espaço. Dispensar
+  somente IDs exibidos, preservar eventos concorrentes e manter deduplicação
+  após dispensa.
 - Coletar somente metadados e conteúdo de perguntas pendentes necessários ao popup,
   mantidos em memória; não persistir histórico pelo Strata.
 - No Antigravity App, observar os hooks públicos após ativação explícita no

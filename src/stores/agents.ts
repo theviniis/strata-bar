@@ -13,6 +13,7 @@ import {
 type AgentsState = {
   snapshot: AgentsSnapshot | null
   error: string | null
+  dismissAlerts(ids: string[]): Promise<void>
   decideOpenCode(request: AgentPermissionRequest): Promise<void>
   replyOpenCode(request: AgentReplyRequest): Promise<void>
   connect(): () => void
@@ -42,6 +43,9 @@ export function createAgentsStore(adapter: AgentsAdapter) {
     return {
       snapshot: null,
       error: null,
+      async dismissAlerts(ids) {
+        accept(await adapter.dismissAlerts(ids))
+      },
       async decideOpenCode(request) {
         const snapshot = get().snapshot
         if (

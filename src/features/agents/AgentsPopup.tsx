@@ -23,6 +23,7 @@ import { usePopupContext } from '@/popups/context'
 import { useEffect, useState } from 'react'
 import { OpenCodeSessions } from './OpenCodeSessions'
 import { AntigravitySessions } from './AntigravitySessions'
+import { AgentAlerts } from './AgentAlerts'
 
 export function AgentsPopup() {
   const { mode } = usePopupContext('agents')
@@ -42,6 +43,7 @@ function ConnectedAgentsPopup({ mode }: { mode: 'native' | 'demo' }) {
   const createOpenCode = useStore((state) => state.createOpenCode)
   const replyOpenCode = useStore((state) => state.replyOpenCode)
   const decideOpenCode = useStore((state) => state.decideOpenCode)
+  const dismissAlerts = useStore((state) => state.dismissAlerts)
   useEffect(() => useStore.getState().connect(), [useStore])
   return (
     <AgentsPopupContent
@@ -53,6 +55,7 @@ function ConnectedAgentsPopup({ mode }: { mode: 'native' | 'demo' }) {
       onCreateOpenCode={createOpenCode}
       onReplyOpenCode={replyOpenCode}
       onDecideOpenCode={decideOpenCode}
+      onDismissAlerts={dismissAlerts}
     />
   )
 }
@@ -71,7 +74,8 @@ export function AgentsPopupContent({
   onConfigureAntigravity,
   onCreateOpenCode,
   onReplyOpenCode,
-  onDecideOpenCode
+  onDecideOpenCode,
+  onDismissAlerts
 }: {
   snapshot: AgentsSnapshot | null
   error: string | null
@@ -84,6 +88,7 @@ export function AgentsPopupContent({
   ) => Promise<CreateAgentSessionResult>
   onReplyOpenCode?: (request: AgentReplyRequest) => Promise<void>
   onDecideOpenCode?: (request: AgentPermissionRequest) => Promise<void>
+  onDismissAlerts?: (ids: string[]) => Promise<void>
 }) {
   const discoveryError = error ?? snapshot?.error
   return (
@@ -104,6 +109,9 @@ export function AgentsPopupContent({
           </p>
         )}
         {!snapshot && !error && <p role="status">Detectando aplicativos…</p>}
+        {snapshot && (
+          <AgentAlerts alerts={snapshot.alerts} onDismiss={onDismissAlerts} />
+        )}
         <Accordion multiple={false}>
           {snapshot?.applications.map((application) => (
             <AccordionItem key={application.agent} value={application.agent}>

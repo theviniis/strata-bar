@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod agents;
+mod agent_alerts;
 mod agents_contract;
 mod agents_windows;
 mod antigravity;
@@ -325,6 +326,7 @@ fn main() {
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             agents::agents_snapshot,
+            agents::agents_dismiss_alerts,
             agents::agents_set_opencode,
             agents::agents_create_opencode,
             agents::agents_reply_opencode,

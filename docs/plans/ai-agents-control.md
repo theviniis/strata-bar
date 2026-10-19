@@ -1,5 +1,54 @@
 # Controle de agentes de IA — Windows 11
 
+## Ticket 8 — Alertas visuais em segundo plano
+
+Primeira fatia da Subtask 4. Serviço nativo compartilhado produz alertas de
+atenção e conclusão, sem depender de assinantes ou do popup aberto. Entregar
+contador na barra, lista no popup e dispensa compartilhada entre monitores.
+Notificações nativas do Windows ficam em uma próxima fatia, não nesta entrega.
+
+- [x] Implementar fila nativa de alertas e deduplicação, com linha de base sem
+      alertas retroativos ao conectar/reconectar cada provedor.
+- [x] Emitir atenção por perguntas/permissões novas ou transição observada dos
+      hooks; concluir somente após execução observada e sucesso explícito.
+- [x] Exibir contador no widget e lista de alertas no popup, com dispensa
+      validada nativamente, sem apagar eventos novos por corrida entre monitores.
+- [ ] Validar serviço e UI nos pontos já acordados, testar transporte nativo,
+      executar checks/builds/revisão e commitar na branch atual.
+- [ ] Validar alertas com provedores reais e interação no WebView2.
+- [ ] Integrar e validar notificações nativas do Windows em uma próxima fatia.
+
+Referência de revisão: `6d43162`. Não criar janelas, tocar som, enviar decisões ou
+tratar inatividade/erro como conclusão. Alertas retêm somente identificação de
+sessão, título, tipo e horário em memória. A amostragem pode perder execuções
+inteiramente ocorridas entre consultas; não inventar um identificador de turno.
+Uma conclusão exige que processamento/atenção tenham sido observados antes.
+No OpenCode, exige também outcome succeeded e time.idle posterior à última
+atividade observada, para não anunciar o sucesso retido do turno anterior.
+
+Contrato versão 7 e host atualizado. Fila mantém até 32 alertas recentes; o
+contador de descarte é explícito. Até 4096 chaves de eventos permanecem em memória,
+incluindo a linha de base. Ao atingir esse limite, novos alertas pausam até
+reiniciar o Strata; dispensar a lista não limpa as chaves. Alertas não guardam
+texto de perguntas, respostas, comandos ou caminhos de workspace.
+
+O serviço compõe alertas antes de publicar cada snapshot, sob o mesmo estado
+nativo compartilhado. O widget assina apenas contagem/pausa para atualizar a barra
+com popup fechado. A dispensa recebe os IDs da lista exibida, não um comando
+genérico de apagar tudo que possa eliminar um evento concorrente.
+
+Validação da implementação:
+
+- 26 testes frontend focados passaram; TypeScript, lint e formatação dos arquivos
+  alterados passaram. Build frontend passou.
+- Suíte Rust padrão: 151 passaram e 16 ignorados, incluindo cinco testes novos
+  para linha de base, correlação de término, atenção, reconexão e limites.
+- Suíte frontend completa: 245 passaram e permaneceu a falha preexistente da
+  posição dos controles de áudio em `native-bar.test.tsx`.
+- Consulta nativa real do OpenCode passou com 22 sessões; a API forneceu marca
+  time.idle para os 18 resultados succeeded consultados. Somente contagens foram
+  observadas, sem registrar títulos ou conteúdo. Isso não prova um evento novo.
+
 ## Ticket 7 — Aprovar uma vez ou recusar ferramentas do OpenCode
 
 Quarta fatia da Subtask 3. A API pública v2 usa permissões pendentes separadas

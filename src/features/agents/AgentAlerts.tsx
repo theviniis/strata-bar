@@ -1,0 +1,116 @@
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import type { AgentAlertsSnapshot } from '@/services/system/agents'
+
+const labels = {
+  opencode: 'OpenCode',
+  antigravity: 'Antigravity',
+  chatgpt: 'ChatGPT Desktop'
+} as const
+
+export function AgentAlerts({
+  alerts,
+  onDismiss
+}: {
+  alerts: AgentAlertsSnapshot
+  onDismiss?: (ids: string[]) => Promise<void>
+}) {
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const dismiss = async (ids: string[]) => {
+    if (!onDismiss || pending) return
+    setPending(true)
+    setError(null)
+    try {
+      await onDismiss(ids)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setPending(false)
+    }
+  }
+  return (
+    <section
+      aria-label="Alertas dos agentes"
+      className="space-y-2 rounded-md border p-2"
+    >
+      <h3 className="text-sm font-medium">Alertas recentes</h3>
+      <p className="text-xs text-muted-foreground">
+        Alertas visuais na barra e neste popup.
+      </p>
+      {alerts.items.length === 0 ? (
+        <p className="text-xs">Sem novos alertas.</p>
+      ) : (
+        <>
+          <ul
+            aria-label="Alertas recentes"
+            aria-live="polite"
+            aria-relevant="additions"
+            className="max-h-48 space-y-2 overflow-y-auto"
+          >
+            {[...alerts.items].reverse().map((alert) => (
+              <li
+                key={alert.id}
+                className="space-y-1 border-b pb-2 last:border-0"
+              >
+                <p className="text-xs font-medium">
+                  {labels[alert.agent]} ·{' '}
+                  {alert.kind === 'attention'
+                    ? 'Atenção necessária'
+                    : 'Turno concluído'}
+                </p>
+                <p className="text-xs wrap-anywhere">{alert.sessionTitle}</p>
+                <time
+                  className="text-xs text-muted-foreground"
+                  dateTime={new Date(alert.createdAt).toISOString()}
+                >
+                  {new Date(alert.createdAt).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </time>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="ml-2"
+                  disabled={!onDismiss || pending}
+                  onClick={() => void dismiss([alert.id])}
+                  aria-label={`Dispensar alerta de ${alert.sessionTitle}`}
+                >
+                  Dispensar
+                </Button>
+              </li>
+            ))}
+          </ul>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={!onDismiss || pending}
+            onClick={() => void dismiss(alerts.items.map((alert) => alert.id))}
+          >
+            Dispensar exibidos
+          </Button>
+        </>
+      )}
+      {alerts.overflowCount > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {alerts.overflowCount} alertas anteriores saíram da lista nesta
+          execução. São mantidos até 32 alertas recentes.
+        </p>
+      )}
+      {alerts.paused && (
+        <p role="alert" className="text-xs text-destructive">
+          Novos alertas pausados por limite de capacidade. Reinicie o Strata
+          para retomar.
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="text-xs text-destructive">
+          {error}
+        </p>
+      )}
+    </section>
+  )
+}

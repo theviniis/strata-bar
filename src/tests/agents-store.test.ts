@@ -7,7 +7,8 @@ import {
 import type { AgentsSnapshot } from '@/services/system/agents.generated'
 
 const snapshot = (revision: number): AgentsSnapshot => ({
-  version: 6,
+  version: 7,
+  alerts: { items: [], overflowCount: 0, paused: false },
   antigravity: { status: 'disabled', sessions: [], error: null },
   revision,
   observedAt: revision * 1000,
@@ -20,6 +21,7 @@ const snapshot = (revision: number): AgentsSnapshot => ({
   opencode: {
     status: 'disabled',
     sessions: [],
+    completedTurns: {},
     permissions: [],
     questions: [],
     hasMore: false,
@@ -33,6 +35,7 @@ it('releases a listener that finishes connecting after its consumer closes', asy
   const load = vi.fn(async () => snapshot(1))
   const store = createAgentsStore({
     kind: 'native',
+    dismissAlerts: async () => snapshot(3),
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
     setAntigravity: async () => snapshot(3),
@@ -59,6 +62,7 @@ it('releases a listener that finishes connecting after its consumer closes', asy
 it('reports a native connection failure without populating demo applications', async () => {
   const store = createAgentsStore({
     kind: 'native',
+    dismissAlerts: async () => snapshot(3),
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
     setAntigravity: async () => snapshot(3),
@@ -91,6 +95,7 @@ it('keeps a process enumeration failure separate from the session transport', as
   value.opencode.status = 'connected'
   const store = createAgentsStore({
     kind: 'native',
+    dismissAlerts: async () => snapshot(3),
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
     setAntigravity: async () => snapshot(3),
@@ -144,6 +149,7 @@ it('rechecks discovery when reopening instead of retaining a previous transport 
   let reportError: (error: unknown) => void = () => {}
   const store = createAgentsStore({
     kind: 'native',
+    dismissAlerts: async () => snapshot(3),
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
     setAntigravity: async () => snapshot(3),
@@ -174,6 +180,7 @@ it('keeps a live observation when the initial snapshot arrives late', async () =
   const stop = vi.fn()
   const adapter: AgentsAdapter = {
     kind: 'native',
+    dismissAlerts: async () => snapshot(3),
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
     setAntigravity: async () => snapshot(3),
@@ -206,6 +213,7 @@ it('keeps live discovery working when the initial snapshot request fails', async
   })
   const store = createAgentsStore({
     kind: 'native',
+    dismissAlerts: async () => snapshot(3),
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
     setAntigravity: async () => snapshot(3),

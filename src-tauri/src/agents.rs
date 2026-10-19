@@ -35,7 +35,7 @@ pub fn observe(
     })
     .collect();
     AgentsSnapshot {
-        version: 6,
+        version: 7,
         revision,
         observed_at: SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -45,6 +45,7 @@ pub fn observe(
         error: result.err(),
         opencode: Default::default(),
         antigravity: Default::default(),
+        alerts: Default::default(),
     }
 }
 
@@ -62,6 +63,7 @@ struct Shared {
     connection: crate::opencode::Connection,
     antigravity: crate::antigravity::Monitor,
     hook_bridge: Option<crate::antigravity_hooks::Bridge>,
+    alerts: crate::agent_alerts::Alerts,
 }
 
 impl Shared {
@@ -69,8 +71,18 @@ impl Shared {
         self.snapshot.revision = self.snapshot.revision.saturating_add(1);
         self.snapshot.opencode = self.connection.snapshot();
         self.snapshot.antigravity = self.antigravity.snapshot();
+        self.alerts
+            .observe(&self.snapshot.opencode, &self.snapshot.antigravity, now());
+        self.snapshot.alerts = self.alerts.snapshot();
         self.snapshot.clone()
     }
+}
+
+fn now() -> f64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as f64
 }
 
 fn publish(app: &tauri::AppHandle, snapshot: &AgentsSnapshot) {
@@ -95,6 +107,7 @@ impl Agents {
             connection: Default::default(),
             antigravity: Default::default(),
             hook_bridge: None,
+            alerts: Default::default(),
         }));
         let (stop, receiver) = mpsc::channel();
         let (opencode_wake, opencode_receiver) = mpsc::channel();
@@ -285,6 +298,24 @@ pub fn agents_snapshot(
         return Err("Agent discovery requires a bar or overlay".into());
     }
     state.snapshot()
+}
+
+#[tauri::command]
+pub fn agents_dismiss_alerts(
+    window: tauri::WebviewWindow,
+    app: tauri::AppHandle,
+    state: tauri::State<Agents>,
+    ids: Vec<String>,
+) -> Result<AgentsSnapshot, String> {
+    if !allowed_window(window.label()) {
+        return Err("Agent alerts require a bar or overlay".into());
+    }
+    let mut current = state.shared.lock().map_err(|_| "Alertas indisponíveis")?;
+    current.alerts.dismiss(&ids)?;
+    let snapshot = current.updated();
+    drop(current);
+    publish(&app, &snapshot);
+    Ok(snapshot)
 }
 
 #[tauri::command]

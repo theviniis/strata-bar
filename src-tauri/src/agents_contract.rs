@@ -137,6 +137,7 @@ pub struct OpenCodeSnapshot {
     pub has_more: bool,
     pub questions: Vec<AgentMessage>,
     pub permissions: Vec<AgentPermission>,
+    pub completed_turns: std::collections::BTreeMap<String, f64>,
     pub error: Option<String>,
 }
 
@@ -148,6 +149,7 @@ impl Default for OpenCodeSnapshot {
             has_more: false,
             questions: Vec::new(),
             permissions: Vec::new(),
+            completed_turns: Default::default(),
             error: None,
         }
     }
@@ -172,6 +174,32 @@ impl Default for AntigravitySnapshot {
 }
 
 /// Application discovery and independently configured session connections.
+#[derive(Clone, Debug, PartialEq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum AgentAlertKind {
+    Attention,
+    Completed,
+}
+
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentAlert {
+    pub id: String,
+    pub agent: AgentType,
+    pub session_id: String,
+    pub session_title: String,
+    pub kind: AgentAlertKind,
+    pub created_at: f64,
+}
+
+#[derive(Clone, Debug, Default, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentAlertsSnapshot {
+    pub items: Vec<AgentAlert>,
+    pub overflow_count: u32,
+    pub paused: bool,
+}
+
 #[derive(Clone, Debug, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentsSnapshot {
@@ -182,4 +210,5 @@ pub struct AgentsSnapshot {
     pub error: Option<String>,
     pub opencode: OpenCodeSnapshot,
     pub antigravity: AntigravitySnapshot,
+    pub alerts: AgentAlertsSnapshot,
 }

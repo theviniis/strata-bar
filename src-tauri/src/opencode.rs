@@ -445,6 +445,7 @@ struct Location {
 #[derive(Deserialize)]
 struct SessionTime {
     updated: f64,
+    idle: Option<f64>,
     archived: Option<f64>,
 }
 #[derive(Deserialize)]
@@ -776,6 +777,7 @@ pub fn collect(
         }
     }
     let mut sessions = Vec::new();
+    let mut completed_turns = BTreeMap::new();
     for info in infos {
         if info.location.directory.is_empty()
             || info.location.directory.len() > 4096
@@ -791,6 +793,14 @@ pub fn collect(
         let running = active.data.contains_key(&info.id);
         if info.time.archived.is_some() && !running {
             continue;
+        }
+        if let Some(idle) = info.time.idle {
+            if !idle.is_finite() || !(0.0..=8_640_000_000_000_000.0).contains(&idle) {
+                return Err(invalid());
+            }
+            if info.outcome.as_deref() == Some("succeeded") {
+                completed_turns.insert(info.id.clone(), idle);
+            }
         }
         let status = if attention.contains(&info.id) {
             SessionStatus::Attention
@@ -824,6 +834,7 @@ pub fn collect(
         has_more: page.cursor.next.is_some(),
         questions,
         permissions,
+        completed_turns,
         error: None,
     })
 }
