@@ -110,7 +110,9 @@ limitações das integrações.
   exigir decisão explícita para cada aprovação, sem aprovações automáticas.
 - Validar nativamente ações, capacidades, sessão e pedido pendente. Novas sessões
   recebem projeto/pasta e prompt conforme a integração, sem comandos arbitrários.
-- A criação do OpenCode recebe pasta local existente e prompt inicial opcional.
+- A criação do OpenCode recebe pasta e prompt inicial opcionais. Sem pasta,
+  omitir location no pedido para usar o local padrão administrado pelo OpenCode.
+  Se informada, a pasta deve ser local, absoluta e existente, validada nativamente.
   Sem prompt, cria uma conversa vazia; com prompt, envia texto com resume:true
   somente para a conversa recém-criada. Validar o texto antes de criar (até
   4096 bytes UTF-8, sem controles exceto quebra de linha e tabulação). Admissão

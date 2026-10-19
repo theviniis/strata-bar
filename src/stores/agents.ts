@@ -20,7 +20,7 @@ type AgentsState = {
   configureOpenCode(enabled: boolean): Promise<void>
   configureAntigravity(enabled: boolean): Promise<void>
   createOpenCode(
-    directory: string,
+    directory?: string,
     prompt?: string
   ): Promise<CreateAgentSessionResult>
 }

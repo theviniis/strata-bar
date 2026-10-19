@@ -247,7 +247,7 @@ export interface AgentsAdapter {
   setOpenCode(enabled: boolean): Promise<AgentsSnapshot>
   setAntigravity(enabled: boolean): Promise<AgentsSnapshot>
   createOpenCode(
-    directory: string,
+    directory?: string,
     prompt?: string
   ): Promise<CreateAgentSessionResult>
   listen(
@@ -275,7 +275,7 @@ export function createNativeAgentsAdapter(): AgentsAdapter {
       const { invoke } = await import('@tauri-apps/api/core')
       return creationResult.parse(
         await invoke('agents_create_opencode', {
-          directory,
+          directory: directory ?? null,
           prompt: prompt ?? null
         })
       )
@@ -414,7 +414,7 @@ export function createDemoAgentsAdapter(): AgentsAdapter {
               agent: 'opencode',
               connectionId: 'opencode-local',
               title: 'Nova conversa',
-              directory,
+              directory: directory?.trim() || 'C:\\Projetos\\demo',
               status: prompt ? 'processing' : 'idle',
               updatedAt: Date.now()
             },

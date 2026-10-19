@@ -154,22 +154,28 @@ pub fn create_empty(
     send: impl FnOnce(Value) -> Result<Value, String>,
 ) -> Result<String, String> {
     let bytes = directory.as_bytes();
+    let use_default_location = directory.trim().is_empty();
     if directory.len() > 4096
-        || bytes.len() < 3
-        || !bytes[0].is_ascii_alphabetic()
-        || bytes[1] != b':'
-        || !matches!(bytes[2], b'\\' | b'/')
-        || directory[2..].contains(':')
-        || directory.chars().any(char::is_control)
-        || !std::path::Path::new(directory).is_dir()
+        || (!use_default_location
+            && (bytes.len() < 3
+                || !bytes[0].is_ascii_alphabetic()
+                || bytes[1] != b':'
+                || !matches!(bytes[2], b'\\' | b'/')
+                || directory[2..].contains(':')
+                || directory.chars().any(char::is_control)
+                || !std::path::Path::new(directory).is_dir()))
     {
         return Err("Escolha uma pasta local existente com caminho absoluto".into());
     }
     let uncertain = || {
         "Não foi possível confirmar a criação. Confira a lista no OpenCode antes de tentar novamente.".to_string()
     };
-    let response =
-        send(serde_json::json!({"location":{"directory":directory}})).map_err(|_| uncertain())?;
+    let body = if use_default_location {
+        serde_json::json!({})
+    } else {
+        serde_json::json!({"location":{"directory":directory}})
+    };
+    let response = send(body).map_err(|_| uncertain())?;
     response
         .get("data")
         .and_then(|v| v.get("id"))
@@ -845,6 +851,57 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    #[ignore = "Creates and deletes only its own empty OpenCode conversation without specifying a directory; no model execution"]
+    fn live_opencode_creates_empty_conversation_without_directory() {
+        let path = installed_cli().unwrap();
+        let id = create_empty_live("", || false).expect("Creating without a directory failed");
+        let valid_location = read_cli(&path, ReadRequest::Session(id.clone()), &|| false)
+            .ok()
+            .is_some_and(|info| {
+                info["data"]["location"]["directory"]
+                    .as_str()
+                    .is_some_and(|directory| {
+                        !directory.is_empty() && std::path::Path::new(directory).is_dir()
+                    })
+            });
+        let removed = execute_cli(
+            &path,
+            &["api", "DELETE", &format!("/api/session/{id}")],
+            &|| false,
+        )
+        .is_ok();
+        println!(
+            "OPENCODE_OPTIONAL_DIRECTORY {}",
+            json!({"createdWithoutDirectory":true,"providerDefaultLocationVerified":valid_location,"testConversationRemoved":removed,"modelExecutionStarted":false,"conversationContentRecorded":false})
+        );
+        assert!(removed, "Own empty conversation was not removed");
+        assert!(
+            valid_location,
+            "OpenCode did not select a valid default location"
+        );
+    }
+
+    #[test]
+    fn creating_without_a_directory_lets_opencode_choose_its_default_location() {
+        for directory in ["", "   "] {
+            let created = create_with_prompt(directory, Some("OK"), |route, body| {
+                if route == "/api/session" {
+                    assert_eq!(body, json!({}));
+                    Ok(json!({"data":{"id":"ses_default"}}))
+                } else {
+                    assert_eq!(route, "/api/session/ses_default/prompt");
+                    assert_eq!(body, json!({"text":"OK","resume":true}));
+                    Ok(json!({"data":{"sessionID":"ses_default","id":"msg_default","type":"user"}}))
+                }
+            }, || false).unwrap();
+            assert_eq!(
+                created.prompt_status,
+                crate::agents_contract::InitialPromptStatus::Accepted
+            );
+        }
+    }
+
+    #[test]
     #[ignore = "Runs one short real model turn in its own temporary OpenCode conversation with tools denied, checks metadata-only completion alert, then deletes it"]
     fn live_opencode_real_turn_generates_one_completion_alert() {
         use crate::{
@@ -1422,7 +1479,6 @@ mod tests {
         .unwrap();
         assert_eq!(id, "ses_created");
         for invalid in [
-            "",
             "relative",
             "\\\\server\\share",
             "C:\\missing-strata-directory-45912",

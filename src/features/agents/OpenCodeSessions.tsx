@@ -30,7 +30,7 @@ export function OpenCodeSessions({
   onConfigure?: (enabled: boolean) => Promise<void>
   stale?: boolean
   onCreate?: (
-    directory: string,
+    directory?: string,
     prompt?: string
   ) => Promise<CreateAgentSessionResult>
   onReply?: (request: AgentReplyRequest) => Promise<void>
@@ -165,17 +165,13 @@ export function OpenCodeSessions({
           className="space-y-2"
           onSubmit={(event) => {
             event.preventDefault()
-            if (
-              !canCreate ||
-              pending ||
-              !directory.trim() ||
-              !onCreate ||
-              promptTooLong
-            )
-              return
+            if (!canCreate || pending || !onCreate || promptTooLong) return
             setPending(true)
             setError(null)
-            void onCreate(directory.trim(), prompt.trim() ? prompt : undefined)
+            void onCreate(
+              directory.trim() || undefined,
+              prompt.trim() ? prompt : undefined
+            )
               .then((result) => {
                 setCreated(result)
                 setError(result.error)
@@ -190,15 +186,17 @@ export function OpenCodeSessions({
           }}
         >
           <label className="space-y-1 text-xs">
-            <span>Pasta do projeto</span>
+            <span>Pasta do projeto (opcional)</span>
             <Input
               value={directory}
               maxLength={4096}
               disabled={pending || !canCreate}
               onChange={(event) => setDirectory(event.target.value)}
-              required
             />
           </label>
+          <p className="text-xs text-muted-foreground">
+            Sem pasta, usa o local padrão do OpenCode.
+          </p>
           <label className="space-y-1 text-xs">
             <span>Prompt inicial (opcional)</span>
             <Textarea
@@ -220,9 +218,7 @@ export function OpenCodeSessions({
           <Button
             size="sm"
             type="submit"
-            disabled={
-              !canCreate || pending || !directory.trim() || promptTooLong
-            }
+            disabled={!canCreate || pending || promptTooLong}
           >
             {pending
               ? 'Criando…'

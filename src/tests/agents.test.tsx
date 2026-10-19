@@ -14,6 +14,48 @@ import type {
 import { AgentAlerts } from '@/features/agents/AgentAlerts'
 import { AgentAlertCount } from '@/features/agents/Agents'
 
+it.each(['', 'Responda OK'])(
+  'creates without a project folder with optional prompt %s',
+  async (prompt) => {
+    const onCreate = vi.fn(async () => ({
+      sessionId: 'ses_no_folder',
+      promptStatus: 'notRequested' as const,
+      error: null
+    }))
+    render(
+      <OpenCodeSessions
+        connection={{
+          status: 'connected',
+          sessions: [],
+          questions: [],
+          permissions: [],
+          completedTurns: {},
+          hasMore: false,
+          error: null
+        }}
+        onCreate={onCreate}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
+    expect(screen.getByLabelText(/Pasta do projeto/)).not.toBeRequired()
+    if (prompt)
+      fireEvent.change(screen.getByLabelText('Prompt inicial (opcional)'), {
+        target: { value: prompt }
+      })
+    const submit = screen.getByRole('button', {
+      name: prompt ? 'Criar e enviar prompt' : 'Criar conversa vazia'
+    })
+    expect(submit).toBeEnabled()
+    fireEvent.click(submit)
+    await vi.waitFor(() =>
+      expect(onCreate).toHaveBeenCalledExactlyOnceWith(
+        undefined,
+        prompt || undefined
+      )
+    )
+  }
+)
+
 it('shows unread counts without an open popup and exposes capacity limits', () => {
   const { rerender } = render(<AgentAlertCount count={3} />)
   expect(screen.getByLabelText('Alertas de agentes')).toHaveTextContent('3')
@@ -489,7 +531,7 @@ it('blocks creating while pending or disconnected and keeps ambiguous failures v
     <OpenCodeSessions connection={connection} onCreate={onCreate} />
   )
   fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
-  fireEvent.change(screen.getByLabelText('Pasta do projeto'), {
+  fireEvent.change(screen.getByLabelText(/Pasta do projeto/), {
     target: { value: 'D:\\project' }
   })
   fireEvent.click(screen.getByRole('button', { name: 'Criar conversa vazia' }))
@@ -517,7 +559,7 @@ it('creates an empty OpenCode conversation in the chosen folder through the popu
   fireEvent.click(screen.getByRole('button', { name: 'Conectar OpenCode' }))
   await screen.findByText('Exemplo de sessão')
   fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
-  fireEvent.change(screen.getByLabelText('Pasta do projeto'), {
+  fireEvent.change(screen.getByLabelText(/Pasta do projeto/), {
     target: { value: 'C:\\Projetos\\novo' }
   })
   fireEvent.click(screen.getByRole('button', { name: 'Criar conversa vazia' }))
@@ -538,7 +580,7 @@ it('admits an optional initial prompt without reporting the task as completed', 
   fireEvent.click(screen.getByRole('button', { name: 'Conectar OpenCode' }))
   await screen.findByText('Exemplo de sessão')
   fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
-  fireEvent.change(screen.getByLabelText('Pasta do projeto'), {
+  fireEvent.change(screen.getByLabelText(/Pasta do projeto/), {
     target: { value: 'C:\\Projetos\\novo' }
   })
   fireEvent.change(screen.getByLabelText('Prompt inicial (opcional)'), {
@@ -573,7 +615,7 @@ it('keeps the created conversation visible when prompt admission is uncertain an
     <OpenCodeSessions connection={connection} onCreate={onCreate} />
   )
   fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
-  fireEvent.change(screen.getByLabelText('Pasta do projeto'), {
+  fireEvent.change(screen.getByLabelText(/Pasta do projeto/), {
     target: { value: 'D:\\project' }
   })
   fireEvent.change(screen.getByLabelText('Prompt inicial (opcional)'), {

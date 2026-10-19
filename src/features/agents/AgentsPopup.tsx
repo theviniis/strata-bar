@@ -83,7 +83,7 @@ export function AgentsPopupContent({
   onConfigureOpenCode?: (enabled: boolean) => Promise<void>
   onConfigureAntigravity?: (enabled: boolean) => Promise<void>
   onCreateOpenCode?: (
-    directory: string,
+    directory?: string,
     prompt?: string
   ) => Promise<CreateAgentSessionResult>
   onReplyOpenCode?: (request: AgentReplyRequest) => Promise<void>
