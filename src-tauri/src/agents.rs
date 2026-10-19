@@ -85,6 +85,7 @@ pub struct Agents {
     shared: Arc<Mutex<Shared>>,
     workers: Mutex<Vec<(mpsc::Sender<Wake>, JoinHandle<()>)>>,
     opencode_wake: mpsc::Sender<Wake>,
+    creation: Arc<Mutex<()>>,
 }
 
 impl Agents {
@@ -101,6 +102,7 @@ impl Agents {
             shared: shared.clone(),
             workers: Mutex::new(Vec::new()),
             opencode_wake,
+            creation: Arc::new(Mutex::new(())),
         };
         let application = app.clone();
         let hook_app = app.clone();
@@ -298,6 +300,54 @@ pub fn agents_set_opencode(
     let snapshot = state.configure_opencode(enabled)?;
     publish(&app, &snapshot);
     Ok(snapshot)
+}
+
+#[tauri::command]
+pub async fn agents_create_opencode(
+    window: tauri::WebviewWindow,
+    state: tauri::State<'_, Agents>,
+    directory: String,
+) -> Result<String, String> {
+    if !allowed_window(window.label()) {
+        return Err("OpenCode creation requires a bar or overlay".into());
+    }
+    let shared = state.shared.clone();
+    let creation = state.creation.clone();
+    let wake = state.opencode_wake.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = creation
+            .try_lock()
+            .map_err(|_| "Já existe uma criação em andamento")?;
+        let generation = {
+            let current = shared.lock().map_err(|_| "OpenCode indisponível")?;
+            if current.connection.snapshot().status
+                != crate::agents_contract::AgentConnectionStatus::Connected
+            {
+                return Err("Conecte o OpenCode antes de criar uma conversa".into());
+            }
+            current
+                .connection
+                .request()
+                .ok_or("OpenCode desconectado")?
+        };
+        let result = crate::opencode::create_empty_live(&directory, || {
+            shared
+                .lock()
+                .map(|current| {
+                    current.connection.request() != Some(generation)
+                        || current.connection.snapshot().status
+                            != crate::agents_contract::AgentConnectionStatus::Connected
+                })
+                .unwrap_or(true)
+        });
+        // Refresh on either result: a timeout may have happened after creation.
+        let _ = wake.send(Wake::Refresh);
+        result
+    })
+    .await
+    .map_err(|_| {
+        "Falha na criação. Confira a lista no OpenCode antes de tentar novamente.".to_string()
+    })?
 }
 
 #[tauri::command]

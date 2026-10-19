@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { AgentsPopup, AgentsPopupContent } from '@/features/agents/AgentsPopup'
 import { PopupContext } from '@/popups/context'
 import { OpenCodeSessions } from '@/features/agents/OpenCodeSessions'
@@ -135,7 +135,7 @@ it('does not show stale process presence after discovery fails', () => {
   expect(screen.getAllByText('Detecção indisponível')).toHaveLength(3)
 })
 
-it('connects and disconnects OpenCode inside its accordion without enabling session actions', async () => {
+it('connects and disconnects OpenCode inside its accordion', async () => {
   render(
     <PopupContext.Provider
       value={{ mode: 'demo', id: 'agents', params: {}, close: () => {} }}
@@ -147,10 +147,65 @@ it('connects and disconnects OpenCode inside its accordion without enabling sess
   fireEvent.click(screen.getByRole('button', { name: 'Conectar OpenCode' }))
   expect(await screen.findByText('Exemplo de sessão')).toBeInTheDocument()
   expect(screen.getByText('Em execução')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Nova sessão' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Nova sessão' })).toBeEnabled()
   fireEvent.click(screen.getByRole('button', { name: 'Desconectar OpenCode' }))
   await screen.findByRole('button', { name: 'Conectar OpenCode' })
   expect(screen.queryByText('Exemplo de sessão')).not.toBeInTheDocument()
+})
+
+it('blocks creating while pending or disconnected and keeps ambiguous failures visible without retry', async () => {
+  let fail: ((error: Error) => void) | undefined
+  const onCreate = vi.fn(
+    () =>
+      new Promise<string>((_, reject) => {
+        fail = reject
+      })
+  )
+  const connection = {
+    status: 'connected' as const,
+    sessions: [],
+    hasMore: false,
+    error: null
+  }
+  const { rerender } = render(
+    <OpenCodeSessions connection={connection} onCreate={onCreate} />
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
+  fireEvent.change(screen.getByLabelText('Pasta do projeto'), {
+    target: { value: 'D:\\project' }
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Criar conversa vazia' }))
+  expect(screen.getByRole('button', { name: 'Criando…' })).toBeDisabled()
+  fail!(new Error('Confira a lista antes de tentar novamente'))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Confira a lista')
+  rerender(
+    <OpenCodeSessions connection={connection} onCreate={onCreate} stale />
+  )
+  expect(
+    screen.getByRole('button', { name: 'Criar conversa vazia' })
+  ).toBeDisabled()
+  expect(onCreate).toHaveBeenCalledExactlyOnceWith('D:\\project')
+})
+
+it('creates an empty OpenCode conversation in the chosen folder through the popup', async () => {
+  render(
+    <PopupContext.Provider
+      value={{ mode: 'demo', id: 'agents', params: {}, close: () => {} }}
+    >
+      <AgentsPopup />
+    </PopupContext.Provider>
+  )
+  fireEvent.click(await screen.findByRole('button', { name: /^OpenCode/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'Conectar OpenCode' }))
+  await screen.findByText('Exemplo de sessão')
+  fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
+  fireEvent.change(screen.getByLabelText('Pasta do projeto'), {
+    target: { value: 'C:\\Projetos\\novo' }
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Criar conversa vazia' }))
+  expect(await screen.findByText(/Conversa criada:/)).toBeInTheDocument()
+  expect(await screen.findByText('Nova conversa')).toBeInTheDocument()
+  expect(screen.getByText('C:\\Projetos\\novo')).toBeInTheDocument()
 })
 
 it('shows attention and history limits, then marks sessions disconnected on a transport error', () => {

@@ -34,6 +34,7 @@ function ConnectedAgentsPopup({ mode }: { mode: 'native' | 'demo' }) {
   const error = useStore((state) => state.error)
   const configureOpenCode = useStore((state) => state.configureOpenCode)
   const configureAntigravity = useStore((state) => state.configureAntigravity)
+  const createOpenCode = useStore((state) => state.createOpenCode)
   useEffect(() => useStore.getState().connect(), [useStore])
   return (
     <AgentsPopupContent
@@ -42,6 +43,7 @@ function ConnectedAgentsPopup({ mode }: { mode: 'native' | 'demo' }) {
       demo={mode === 'demo'}
       onConfigureOpenCode={configureOpenCode}
       onConfigureAntigravity={configureAntigravity}
+      onCreateOpenCode={createOpenCode}
     />
   )
 }
@@ -57,13 +59,15 @@ export function AgentsPopupContent({
   error,
   demo = false,
   onConfigureOpenCode,
-  onConfigureAntigravity
+  onConfigureAntigravity,
+  onCreateOpenCode
 }: {
   snapshot: AgentsSnapshot | null
   error: string | null
   demo?: boolean
   onConfigureOpenCode?: (enabled: boolean) => Promise<void>
   onConfigureAntigravity?: (enabled: boolean) => Promise<void>
+  onCreateOpenCode?: (directory: string) => Promise<string>
 }) {
   const discoveryError = error ?? snapshot?.error
   return (
@@ -105,6 +109,7 @@ export function AgentsPopupContent({
                     connection={snapshot.opencode}
                     onConfigure={onConfigureOpenCode}
                     stale={!!error}
+                    onCreate={onCreateOpenCode}
                   />
                 ) : application.agent === 'antigravity' ? (
                   <AntigravitySessions

@@ -63,11 +63,19 @@ fn read_cli(
         ReadRequest::Permissions(id) if valid_id(&id) => format!("/api/session/{id}/permission"),
         _ => return Err(invalid()),
     };
+    execute_cli(path, &["api", "GET", &route], cancelled)
+}
+
+fn execute_cli(
+    path: &std::path::Path,
+    args: &[&str],
+    cancelled: &impl Fn() -> bool,
+) -> Result<Value, String> {
     if cancelled() {
         return Err("Conexão cancelada".into());
     }
     let mut child = Command::new(path)
-        .args(["api", "GET", &route])
+        .args(args)
         .creation_flags(0x08000000)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -117,6 +125,11 @@ fn read_cli(
     if bytes.len() as u64 > MAX_RESPONSE {
         return Err("Resposta OpenCode excede o limite".into());
     }
+    // The public DELETE used by the live test returns HTTP 204 with no body.
+    // Callers that need JSON still validate their own response contract.
+    if bytes.iter().all(u8::is_ascii_whitespace) {
+        return Ok(Value::Null);
+    }
     serde_json::from_slice(&bytes).map_err(|_| invalid())
 }
 
@@ -127,6 +140,48 @@ pub fn collect_live(cancelled: impl Fn() -> bool) -> Result<OpenCodeSnapshot, St
         read_cli(&path, request, &|| {
             cancelled() || Instant::now() >= deadline
         })
+    })
+}
+
+/// Creates a conversation only; never starts a prompt or changes permission policy.
+pub fn create_empty(
+    directory: &str,
+    send: impl FnOnce(Value) -> Result<Value, String>,
+) -> Result<String, String> {
+    let bytes = directory.as_bytes();
+    if directory.len() > 4096
+        || bytes.len() < 3
+        || !bytes[0].is_ascii_alphabetic()
+        || bytes[1] != b':'
+        || !matches!(bytes[2], b'\\' | b'/')
+        || directory[2..].contains(':')
+        || directory.chars().any(char::is_control)
+        || !std::path::Path::new(directory).is_dir()
+    {
+        return Err("Escolha uma pasta local existente com caminho absoluto".into());
+    }
+    let uncertain = || {
+        "Não foi possível confirmar a criação. Confira a lista no OpenCode antes de tentar novamente.".to_string()
+    };
+    let response =
+        send(serde_json::json!({"location":{"directory":directory}})).map_err(|_| uncertain())?;
+    response
+        .get("data")
+        .and_then(|v| v.get("id"))
+        .and_then(Value::as_str)
+        .filter(|id| valid_id(id))
+        .map(str::to_string)
+        .ok_or_else(uncertain)
+}
+
+pub fn create_empty_live(directory: &str, cancelled: impl Fn() -> bool) -> Result<String, String> {
+    let path = installed_cli()?;
+    create_empty(directory, |body| {
+        execute_cli(
+            &path,
+            &["api", "POST", "/api/session", "--data", &body.to_string()],
+            &cancelled,
+        )
     })
 }
 
@@ -432,6 +487,58 @@ mod tests {
             _ => panic!("Unexpected read"),
         })).unwrap();
         assert_eq!(snapshot.sessions[0].status, SessionStatus::Attention);
+    }
+
+    #[test]
+    #[ignore = "Requires the installed OpenCode v2 service; creates and removes its own empty test session"]
+    fn live_windows_creates_and_removes_its_own_empty_conversation() {
+        let folder =
+            std::env::temp_dir().join(format!("strata-empty-session-{}", std::process::id()));
+        std::fs::create_dir(&folder).unwrap();
+        let result = create_empty_live(folder.to_str().unwrap(), || false);
+        let cleanup = result
+            .as_ref()
+            .map(|id| {
+                execute_cli(
+                    &installed_cli().unwrap(),
+                    &["api", "DELETE", &format!("/api/session/{id}")],
+                    &|| false,
+                )
+                .is_ok()
+            })
+            .unwrap_or(false);
+        let _ = std::fs::remove_dir(&folder);
+        assert!(result.is_ok(), "Creation failed: {result:?}");
+        assert!(cleanup, "Could not remove the empty test conversation");
+        println!("OPENCODE_CREATE {{\"emptyConversationCreated\":true,\"testConversationRemoved\":true,\"promptSent\":false}}");
+    }
+
+    #[test]
+    fn creates_only_an_empty_conversation_at_a_valid_existing_local_directory() {
+        let directory = std::env::current_dir()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+        let id = create_empty(&directory, |body| {
+            assert_eq!(body, json!({"location":{"directory": directory}}));
+            Ok(json!({"data":{"id":"ses_created"}}))
+        })
+        .unwrap();
+        assert_eq!(id, "ses_created");
+        for invalid in [
+            "",
+            "relative",
+            "\\\\server\\share",
+            "C:\\missing-strata-directory-45912",
+        ] {
+            assert!(create_empty(invalid, |_| panic!(
+                "Invalid folders must never reach the provider"
+            ))
+            .is_err());
+        }
+        assert!(create_empty(&directory, |_| Ok(json!({"data":{"id":"wrong"}}))).is_err());
+        let error = create_empty(&directory, |_| Err("timeout".into())).unwrap_err();
+        assert!(error.contains("Confira a lista"));
     }
 
     #[test]

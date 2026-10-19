@@ -1,5 +1,38 @@
 # Controle de agentes de IA — Windows 11
 
+## Ticket 4 — Criar sessão vazia do OpenCode
+
+Primeira fatia da Subtask 3: a API v2 instalada permite criar uma conversa com
+`POST /api/session`, informando `location.directory`. Prompt inicial é uma
+operação separada e permanece para a próxima fatia; esta ação não inicia trabalho.
+
+- [x] Consultar o contrato OpenAPI público da instalação e a ajuda do CLI.
+- [x] Validar pasta local existente e conexão nativamente; enviar uma única
+      criação, sem repetição automática em falhas ou reconexões.
+- [x] Adicionar formulário no accordion, com bloqueio durante envio/desconexão e
+      confirmação por identificador da sessão criada.
+- [ ] Testar serviço e comportamento visível, executar checks, revisar e commitar.
+
+Referência de revisão: `1b52d2b`. Não alterar permissões, iniciar prompt ou executar
+comandos de projeto ao criar a conversa. Falhas ambíguas devem orientar o usuário
+a conferir a lista antes de tentar novamente.
+
+Validação desta fatia:
+
+- 16 testes frontend focados passaram. TypeScript e lint dos arquivos alterados
+  passaram; build frontend passou.
+- Suíte Rust: 138 passaram e 12 ignorados. O teste explícito do OpenCode real
+  criou uma conversa vazia em pasta temporária e removeu somente essa conversa.
+  Nenhum prompt foi enviado. Evidência:
+  `docs/evidence/ai-agents-opencode-create-2026-10-19.json`.
+- A primeira execução desse teste identificou que DELETE retorna 204 sem corpo;
+  a conversa já havia sido removida. Após corrigir a interpretação da resposta,
+  o teste passou incluindo a limpeza.
+- Suíte frontend completa: 235 passaram; permanece a falha preexistente em
+  `native-bar.test.tsx` sobre posição dos controles de áudio.
+- Interação do formulário no WebView2 real ainda não exercitada. Teste do
+  provedor não substitui a validação visual nativa.
+
 ## Execução
 
 Trabalhar em uma subtask por vez. Marcar cada item somente após implementação e

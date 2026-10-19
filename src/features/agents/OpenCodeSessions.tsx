@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type { OpenCodeSnapshot } from '@/services/system/agents'
 import { AgentSessionList } from './AgentSessionList'
+import { Input } from '@/components/ui/input'
 const connectionLabels = {
   disabled: 'Conexão desativada',
   connecting: 'Conectando…',
@@ -12,14 +13,20 @@ const connectionLabels = {
 export function OpenCodeSessions({
   connection,
   onConfigure,
-  stale = false
+  stale = false,
+  onCreate
 }: {
   connection: OpenCodeSnapshot
   onConfigure?: (enabled: boolean) => Promise<void>
   stale?: boolean
+  onCreate?: (directory: string) => Promise<string>
 }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [directory, setDirectory] = useState('')
+  const [created, setCreated] = useState<string | null>(null)
+  const canCreate = !stale && connection.status === 'connected' && !!onCreate
   const enabled = connection.status !== 'disabled'
   const configure = async () => {
     if (!onConfigure || pending) return
@@ -73,17 +80,81 @@ export function OpenCodeSessions({
         </p>
       )}
       <p className="text-xs text-muted-foreground">
-        Somente leitura. Perguntas e aprovações são verificadas nas execuções
-        ativas.
+        Perguntas e aprovações são verificadas nas execuções ativas. Respostas
+        ainda indisponíveis.
       </p>
       <div className="flex gap-2">
-        <Button size="sm" disabled>
+        <Button
+          size="sm"
+          disabled={!canCreate || pending}
+          onClick={() => {
+            setCreating(true)
+            setCreated(null)
+          }}
+        >
           Nova sessão
         </Button>
         <Button size="sm" variant="outline" disabled>
           Responder
         </Button>
       </div>
+      {creating && (
+        <form
+          className="space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!canCreate || pending || !directory.trim() || !onCreate) return
+            setPending(true)
+            setError(null)
+            void onCreate(directory.trim())
+              .then((id) => {
+                setCreated(id)
+                setCreating(false)
+                setDirectory('')
+              })
+              .catch((error: unknown) => {
+                setError(error instanceof Error ? error.message : String(error))
+              })
+              .finally(() => setPending(false))
+          }}
+        >
+          <label className="space-y-1 text-xs">
+            <span>Pasta do projeto</span>
+            <Input
+              value={directory}
+              maxLength={4096}
+              disabled={pending || !canCreate}
+              onChange={(event) => setDirectory(event.target.value)}
+              required
+            />
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Cria uma conversa vazia. Nenhum prompt será enviado ou trabalho
+            iniciado.
+          </p>
+          <Button
+            size="sm"
+            type="submit"
+            disabled={!canCreate || pending || !directory.trim()}
+          >
+            {pending ? 'Criando…' : 'Criar conversa vazia'}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            type="button"
+            disabled={pending}
+            onClick={() => setCreating(false)}
+          >
+            Cancelar
+          </Button>
+        </form>
+      )}
+      {created && (
+        <p role="status" className="text-xs">
+          Conversa criada: {created}
+        </p>
+      )}
     </div>
   )
 }

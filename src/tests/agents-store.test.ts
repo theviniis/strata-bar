@@ -27,6 +27,7 @@ it('releases a listener that finishes connecting after its consumer closes', asy
   const store = createAgentsStore({
     kind: 'native',
     setAntigravity: async () => snapshot(3),
+    createOpenCode: async () => 'ses_created',
     setOpenCode: async () => snapshot(3),
     listen: () =>
       new Promise((resolve) => {
@@ -46,6 +47,7 @@ it('reports a native connection failure without populating demo applications', a
   const store = createAgentsStore({
     kind: 'native',
     setAntigravity: async () => snapshot(3),
+    createOpenCode: async () => 'ses_created',
     setOpenCode: async () => snapshot(3),
     async listen() {
       throw new Error('Access denied')
@@ -71,6 +73,7 @@ it('keeps a process enumeration failure separate from the session transport', as
   const store = createAgentsStore({
     kind: 'native',
     setAntigravity: async () => snapshot(3),
+    createOpenCode: async () => 'ses_created',
     setOpenCode: async () => value,
     listen: async () => () => {},
     load: async () => value
@@ -117,6 +120,7 @@ it('rechecks discovery when reopening instead of retaining a previous transport 
   const store = createAgentsStore({
     kind: 'native',
     setAntigravity: async () => snapshot(3),
+    createOpenCode: async () => 'ses_created',
     setOpenCode: async () => snapshot(3),
     async listen(_listener, onError) {
       reportError = onError
@@ -140,6 +144,7 @@ it('keeps a live observation when the initial snapshot arrives late', async () =
   const adapter: AgentsAdapter = {
     kind: 'native',
     setAntigravity: async () => snapshot(3),
+    createOpenCode: async () => 'ses_created',
     setOpenCode: async () => snapshot(3),
     async listen(listener) {
       listener(snapshot(2))
@@ -165,6 +170,7 @@ it('keeps live discovery working when the initial snapshot request fails', async
   const store = createAgentsStore({
     kind: 'native',
     setAntigravity: async () => snapshot(3),
+    createOpenCode: async () => 'ses_created',
     setOpenCode: async () => snapshot(3),
     async listen(listener) {
       publish = listener

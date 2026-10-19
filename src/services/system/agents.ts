@@ -106,6 +106,7 @@ export interface AgentsAdapter {
   load(): Promise<AgentsSnapshot>
   setOpenCode(enabled: boolean): Promise<AgentsSnapshot>
   setAntigravity(enabled: boolean): Promise<AgentsSnapshot>
+  createOpenCode(directory: string): Promise<string>
   listen(
     listener: (snapshot: AgentsSnapshot) => void,
     onError: (error: unknown) => void
@@ -115,6 +116,14 @@ export interface AgentsAdapter {
 export function createNativeAgentsAdapter(): AgentsAdapter {
   return {
     kind: 'native',
+    async createOpenCode(directory) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return z
+        .string()
+        .regex(/^ses[A-Za-z0-9_-]*$/)
+        .max(128)
+        .parse(await invoke('agents_create_opencode', { directory }))
+    },
     async load() {
       const { invoke } = await import('@tauri-apps/api/core')
       return parseAgentsSnapshot(await invoke('agents_snapshot'))
@@ -161,6 +170,32 @@ export function createDemoAgentsAdapter(): AgentsAdapter {
   }
   return {
     kind: 'demo',
+    async createOpenCode(directory) {
+      if (snapshot.opencode.status !== 'connected')
+        throw new Error('OpenCode desconectado')
+      const id = `ses_demo_${snapshot.revision + 1}`
+      snapshot = {
+        ...snapshot,
+        revision: snapshot.revision + 1,
+        opencode: {
+          ...snapshot.opencode,
+          sessions: [
+            {
+              id,
+              agent: 'opencode',
+              connectionId: 'opencode-local',
+              title: 'Nova conversa',
+              directory,
+              status: 'idle',
+              updatedAt: Date.now()
+            },
+            ...snapshot.opencode.sessions
+          ]
+        }
+      }
+      for (const listener of listeners) listener(structuredClone(snapshot))
+      return id
+    },
     async load() {
       return structuredClone(snapshot)
     },
