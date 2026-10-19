@@ -1,5 +1,7 @@
 // Generated from Rust agents_contract.rs by cargo build. Do not edit.
 export type AgentType = "chatgpt" | "opencode" | "antigravity";
+export type InitialPromptStatus = "notRequested" | "accepted" | "notSent" | "unknown";
+export type CreateAgentSessionResult = { sessionId: string, promptStatus: InitialPromptStatus, error: string | null, };
 export type AgentApplication = { agent: AgentType, 
 /**
  * None means enumeration failed; false means no matching process was found.

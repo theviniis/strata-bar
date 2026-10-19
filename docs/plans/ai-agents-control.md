@@ -1,5 +1,44 @@
 # Controle de agentes de IA — Windows 11
 
+## Ticket 5 — Prompt inicial ao criar conversa do OpenCode
+
+Segunda fatia da Subtask 3. A API v2 instalada admite o prompt por
+`POST /api/session/{sessionID}/prompt` com `text` e `resume: true`. A resposta
+confirma admissão na fila, não conclusão do trabalho. Pontos de teste já
+acordados: serviço público e comportamento visível do popup.
+
+- [x] Conferir o contrato OpenAPI instalado para envio e confirmação do prompt.
+- [x] Adicionar resultado tipado de criação/envio e validar o prompt antes de
+      criar a conversa; enviar uma única vez somente para o ID recém-criado.
+- [x] Adicionar prompt opcional ao formulário e preservar ID/resultado parcial
+      em falhas; bloquear envio durante desconexão e não repetir automaticamente.
+- [ ] Validar testes, builds e revisão; commitar na branch atual.
+- [x] Validar admissão do prompt no provedor real com resume:false, sem iniciar
+      execução do agente, e remover a conversa temporária.
+- [ ] Validar agendamento real com resume:true e interação no WebView2.
+
+Referência de revisão: `4075d08`. Não enviar prompts para sessões preexistentes,
+não alterar permissões e não reenviar após reconexão. Se a criação funcionar e
+o prompt falhar, mostrar a conversa criada e o resultado incerto do envio.
+
+O contrato agora exige snapshot versão 4 e host atualizado, pois o comando de
+criação retorna resultado estruturado em vez de apenas uma string. O texto fica
+somente no formulário e na requisição ao provedor, sem entrar nos snapshots ou
+ser persistido pelo Strata. Não ler histórico para conferir o envio.
+
+O teste Windows confirmou a admissão e correlação dos IDs usando resume:false.
+Isso valida transporte/contrato, não o agendamento com resume:true nem a execução
+do modelo. Evidência: `docs/evidence/ai-agents-opencode-prompt-2026-10-19.json`.
+
+Validação da implementação:
+
+- 18 testes frontend focados passaram. TypeScript, lint e formatação dos arquivos
+  alterados passaram. Build frontend passou.
+- Suíte Rust: 140 passaram e 13 ignorados; o teste Windows de admissão foi
+  executado separadamente e passou, removendo sua própria conversa de teste.
+- Suíte frontend completa: 237 passaram; a falha preexistente da posição dos
+  controles de áudio em `native-bar.test.tsx` permaneceu.
+
 ## Ticket 4 — Criar sessão vazia do OpenCode
 
 Primeira fatia da Subtask 3: a API v2 instalada permite criar uma conversa com

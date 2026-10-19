@@ -3,12 +3,13 @@ import { expect, it, vi } from 'vitest'
 import { AgentsPopup, AgentsPopupContent } from '@/features/agents/AgentsPopup'
 import { PopupContext } from '@/popups/context'
 import { OpenCodeSessions } from '@/features/agents/OpenCodeSessions'
+import type { CreateAgentSessionResult } from '@/services/system/agents'
 
 it('distinguishes detected applications from unavailable session control', () => {
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 3,
+        version: 4,
         antigravity: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
@@ -110,7 +111,7 @@ it('does not show stale process presence after discovery fails', () => {
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 3,
+        version: 4,
         antigravity: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
@@ -157,7 +158,7 @@ it('blocks creating while pending or disconnected and keeps ambiguous failures v
   let fail: ((error: Error) => void) | undefined
   const onCreate = vi.fn(
     () =>
-      new Promise<string>((_, reject) => {
+      new Promise<CreateAgentSessionResult>((_, reject) => {
         fail = reject
       })
   )
@@ -184,7 +185,7 @@ it('blocks creating while pending or disconnected and keeps ambiguous failures v
   expect(
     screen.getByRole('button', { name: 'Criar conversa vazia' })
   ).toBeDisabled()
-  expect(onCreate).toHaveBeenCalledExactlyOnceWith('D:\\project')
+  expect(onCreate).toHaveBeenCalledExactlyOnceWith('D:\\project', undefined)
 })
 
 it('creates an empty OpenCode conversation in the chosen folder through the popup', async () => {
@@ -206,6 +207,71 @@ it('creates an empty OpenCode conversation in the chosen folder through the popu
   expect(await screen.findByText(/Conversa criada:/)).toBeInTheDocument()
   expect(await screen.findByText('Nova conversa')).toBeInTheDocument()
   expect(screen.getByText('C:\\Projetos\\novo')).toBeInTheDocument()
+})
+
+it('admits an optional initial prompt without reporting the task as completed', async () => {
+  render(
+    <PopupContext.Provider
+      value={{ mode: 'demo', id: 'agents', params: {}, close: () => {} }}
+    >
+      <AgentsPopup />
+    </PopupContext.Provider>
+  )
+  fireEvent.click(await screen.findByRole('button', { name: /^OpenCode/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'Conectar OpenCode' }))
+  await screen.findByText('Exemplo de sessão')
+  fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
+  fireEvent.change(screen.getByLabelText('Pasta do projeto'), {
+    target: { value: 'C:\\Projetos\\novo' }
+  })
+  fireEvent.change(screen.getByLabelText('Prompt inicial (opcional)'), {
+    target: { value: 'Leia o README' }
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Criar e enviar prompt' }))
+  expect(
+    await screen.findByText(
+      'Prompt aceito pelo OpenCode. Acompanhe o andamento na lista.'
+    )
+  ).toBeInTheDocument()
+  expect(screen.getByText(/Conversa criada:/)).toBeInTheDocument()
+  expect(screen.queryByText('Concluído')).not.toBeInTheDocument()
+})
+
+it('keeps the created conversation visible when prompt admission is uncertain and never recreates it on reconnect', async () => {
+  const onCreate = vi.fn(async () => ({
+    sessionId: 'ses_partial',
+    promptStatus: 'unknown' as const,
+    error: 'Não reenvie: confira a conversa no OpenCode.'
+  }))
+  const connection = {
+    status: 'connected' as const,
+    sessions: [],
+    hasMore: false,
+    error: null
+  }
+  const { rerender } = render(
+    <OpenCodeSessions connection={connection} onCreate={onCreate} />
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
+  fireEvent.change(screen.getByLabelText('Pasta do projeto'), {
+    target: { value: 'D:\\project' }
+  })
+  fireEvent.change(screen.getByLabelText('Prompt inicial (opcional)'), {
+    target: { value: 'Leia' }
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Criar e enviar prompt' }))
+  expect(
+    await screen.findByText('Conversa criada: ses_partial')
+  ).toBeInTheDocument()
+  expect(screen.getByRole('alert')).toHaveTextContent('Não reenvie')
+  expect(
+    screen.queryByLabelText('Prompt inicial (opcional)')
+  ).not.toBeInTheDocument()
+  rerender(
+    <OpenCodeSessions connection={connection} onCreate={onCreate} stale />
+  )
+  rerender(<OpenCodeSessions connection={connection} onCreate={onCreate} />)
+  expect(onCreate).toHaveBeenCalledExactlyOnceWith('D:\\project', 'Leia')
 })
 
 it('shows attention and history limits, then marks sessions disconnected on a transport error', () => {

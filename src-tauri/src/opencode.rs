@@ -174,6 +174,7 @@ pub fn create_empty(
         .ok_or_else(uncertain)
 }
 
+#[cfg(test)]
 pub fn create_empty_live(directory: &str, cancelled: impl Fn() -> bool) -> Result<String, String> {
     let path = installed_cli()?;
     create_empty(directory, |body| {
@@ -183,6 +184,86 @@ pub fn create_empty_live(directory: &str, cancelled: impl Fn() -> bool) -> Resul
             &cancelled,
         )
     })
+}
+
+pub fn create_with_prompt(
+    directory: &str,
+    prompt: Option<&str>,
+    mut send: impl FnMut(&str, Value) -> Result<Value, String>,
+    cancelled: impl Fn() -> bool,
+) -> Result<crate::agents_contract::CreateAgentSessionResult, String> {
+    use crate::agents_contract::{CreateAgentSessionResult, InitialPromptStatus};
+    if prompt.is_some_and(|text| {
+        text.trim().is_empty()
+            || text.len() > 4096
+            || text
+                .chars()
+                .any(|c| c.is_control() && !matches!(c, '\n' | '\r' | '\t'))
+    }) {
+        return Err("O prompt deve conter texto e ter até 4096 bytes UTF-8".into());
+    }
+    if cancelled() {
+        return Err("OpenCode desconectado".into());
+    }
+    let session_id = create_empty(directory, |body| send("/api/session", body))?;
+    let mut result = CreateAgentSessionResult {
+        session_id,
+        prompt_status: InitialPromptStatus::NotRequested,
+        error: None,
+    };
+    let Some(text) = prompt else {
+        return Ok(result);
+    };
+    if cancelled() {
+        result.prompt_status = InitialPromptStatus::NotSent;
+        result.error = Some("Conversa criada, mas o prompt não foi enviado porque a conexão mudou. Confira a conversa no OpenCode.".into());
+        return Ok(result);
+    }
+    let response = send(
+        &format!("/api/session/{}/prompt", result.session_id),
+        serde_json::json!({"text":text,"resume":true}),
+    );
+    let accepted = response.ok().is_some_and(|response| {
+        let data = &response["data"];
+        data["sessionID"].as_str() == Some(result.session_id.as_str())
+            && data["type"].as_str() == Some("user")
+            && data["id"].as_str().is_some_and(|id| {
+                id.starts_with("msg")
+                    && id.len() <= 128
+                    && id
+                        .bytes()
+                        .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'-'))
+            })
+    });
+    result.prompt_status = if accepted {
+        InitialPromptStatus::Accepted
+    } else {
+        InitialPromptStatus::Unknown
+    };
+    if !accepted {
+        result.error = Some("Conversa criada; envio do prompt sem confirmação. Não reenvie automaticamente: confira a conversa no OpenCode.".into());
+    }
+    Ok(result)
+}
+
+pub fn create_with_prompt_live(
+    directory: &str,
+    prompt: Option<&str>,
+    cancelled: impl Fn() -> bool,
+) -> Result<crate::agents_contract::CreateAgentSessionResult, String> {
+    let path = installed_cli()?;
+    create_with_prompt(
+        directory,
+        prompt,
+        |route, body| {
+            execute_cli(
+                &path,
+                &["api", "POST", route, "--data", &body.to_string()],
+                &cancelled,
+            )
+        },
+        &cancelled,
+    )
 }
 
 /// Owns connection generations so a cancelled poll cannot restore old sessions.
@@ -511,6 +592,147 @@ mod tests {
         assert!(result.is_ok(), "Creation failed: {result:?}");
         assert!(cleanup, "Could not remove the empty test conversation");
         println!("OPENCODE_CREATE {{\"emptyConversationCreated\":true,\"testConversationRemoved\":true,\"promptSent\":false}}");
+    }
+
+    #[test]
+    fn initial_prompt_is_admitted_once_only_to_the_new_conversation_and_partial_failure_keeps_its_id(
+    ) {
+        let directory = std::env::current_dir()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+        let mut writes = Vec::new();
+        let result = create_with_prompt(
+            &directory,
+            Some("Leia o README"),
+            |route, body| {
+                writes.push((route.to_string(), body));
+                Ok(if route == "/api/session" {
+                    json!({"data":{"id":"ses_new"}})
+                } else {
+                    json!({"data":{"id":"msg_initial","sessionID":"ses_new","type":"user"}})
+                })
+            },
+            || false,
+        )
+        .unwrap();
+        assert_eq!(result.session_id, "ses_new");
+        assert_eq!(
+            result.prompt_status,
+            crate::agents_contract::InitialPromptStatus::Accepted
+        );
+        assert_eq!(
+            writes,
+            vec![
+                (
+                    "/api/session".into(),
+                    json!({"location":{"directory":directory}})
+                ),
+                (
+                    "/api/session/ses_new/prompt".into(),
+                    json!({"text":"Leia o README","resume":true})
+                )
+            ]
+        );
+        let partial = create_with_prompt(
+            &directory,
+            Some("Leia"),
+            |route, _| {
+                if route == "/api/session" {
+                    Ok(json!({"data":{"id":"ses_partial"}}))
+                } else {
+                    Err("timeout".into())
+                }
+            },
+            || false,
+        )
+        .unwrap();
+        assert_eq!(partial.session_id, "ses_partial");
+        assert_eq!(
+            partial.prompt_status,
+            crate::agents_contract::InitialPromptStatus::Unknown
+        );
+        assert!(partial.error.unwrap().contains("Não reenvie"));
+        assert!(create_with_prompt(
+            &directory,
+            Some(&"x".repeat(4097)),
+            |_, _| panic!("Must validate before creating"),
+            || false
+        )
+        .is_err());
+    }
+
+    #[test]
+    #[ignore = "Requires OpenCode v2; verifies prompt admission with resume:false, then removes its own test conversation"]
+    fn live_windows_admits_initial_prompt_without_starting_agent_execution() {
+        let path = installed_cli().unwrap();
+        let folder =
+            std::env::temp_dir().join(format!("strata-prompt-admission-{}", std::process::id()));
+        std::fs::create_dir(&folder).unwrap();
+        let result = create_with_prompt(
+            folder.to_str().unwrap(),
+            Some("Teste de admissão do Strata; não executar."),
+            |route, mut body| {
+                if route.ends_with("/prompt") {
+                    body["resume"] = Value::Bool(false);
+                }
+                execute_cli(
+                    &path,
+                    &["api", "POST", route, "--data", &body.to_string()],
+                    &|| false,
+                )
+            },
+            || false,
+        );
+        let cleanup = result
+            .as_ref()
+            .map(|created| {
+                execute_cli(
+                    &path,
+                    &[
+                        "api",
+                        "DELETE",
+                        &format!("/api/session/{}", created.session_id),
+                    ],
+                    &|| false,
+                )
+                .is_ok()
+            })
+            .unwrap_or(false);
+        let _ = std::fs::remove_dir(&folder);
+        let created = result.unwrap();
+        assert_eq!(
+            created.prompt_status,
+            crate::agents_contract::InitialPromptStatus::Accepted
+        );
+        assert!(cleanup, "Could not remove own test conversation");
+        println!("OPENCODE_PROMPT {{\"promptAdmissionVerified\":true,\"resumeRequested\":false,\"agentExecutionVerified\":false,\"testConversationRemoved\":true,\"conversationContentRecorded\":false}}");
+    }
+
+    #[test]
+    fn changing_connection_after_creation_keeps_the_conversation_without_sending_the_prompt() {
+        use std::cell::Cell;
+        let disconnected = Cell::new(false);
+        let directory = std::env::current_dir()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+        let result = create_with_prompt(
+            &directory,
+            Some("Leia"),
+            |route, _| {
+                assert_eq!(route, "/api/session");
+                disconnected.set(true);
+                Ok(json!({"data":{"id":"ses_created"}}))
+            },
+            || disconnected.get(),
+        )
+        .unwrap();
+        assert_eq!(result.session_id, "ses_created");
+        assert_eq!(
+            result.prompt_status,
+            crate::agents_contract::InitialPromptStatus::NotSent
+        );
     }
 
     #[test]

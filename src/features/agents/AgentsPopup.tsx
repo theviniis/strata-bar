@@ -11,7 +11,10 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
-import type { AgentsSnapshot } from '@/services/system/agents.generated'
+import type {
+  AgentsSnapshot,
+  CreateAgentSessionResult
+} from '@/services/system/agents.generated'
 import { createDemoAgentsAdapter } from '@/services/system/agents'
 import { createAgentsStore, getAgentsStore } from '@/stores/agents'
 import { usePopupContext } from '@/popups/context'
@@ -67,7 +70,10 @@ export function AgentsPopupContent({
   demo?: boolean
   onConfigureOpenCode?: (enabled: boolean) => Promise<void>
   onConfigureAntigravity?: (enabled: boolean) => Promise<void>
-  onCreateOpenCode?: (directory: string) => Promise<string>
+  onCreateOpenCode?: (
+    directory: string,
+    prompt?: string
+  ) => Promise<CreateAgentSessionResult>
 }) {
   const discoveryError = error ?? snapshot?.error
   return (

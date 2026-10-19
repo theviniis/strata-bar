@@ -4,7 +4,8 @@ import {
   createNativeAgentsAdapter,
   parseAgentsSnapshot,
   type AgentsAdapter,
-  type AgentsSnapshot
+  type AgentsSnapshot,
+  type CreateAgentSessionResult
 } from '@/services/system/agents'
 
 type AgentsState = {
@@ -13,7 +14,10 @@ type AgentsState = {
   connect(): () => void
   configureOpenCode(enabled: boolean): Promise<void>
   configureAntigravity(enabled: boolean): Promise<void>
-  createOpenCode(directory: string): Promise<string>
+  createOpenCode(
+    directory: string,
+    prompt?: string
+  ): Promise<CreateAgentSessionResult>
 }
 
 export function createAgentsStore(adapter: AgentsAdapter) {
@@ -34,11 +38,11 @@ export function createAgentsStore(adapter: AgentsAdapter) {
     return {
       snapshot: null,
       error: null,
-      async createOpenCode(directory) {
+      async createOpenCode(directory, prompt) {
         if (get().error || get().snapshot?.opencode.status !== 'connected') {
           throw new Error('Conecte o OpenCode antes de criar uma conversa')
         }
-        return adapter.createOpenCode(directory)
+        return adapter.createOpenCode(directory, prompt)
       },
       async configureOpenCode(enabled) {
         accept(await adapter.setOpenCode(enabled))

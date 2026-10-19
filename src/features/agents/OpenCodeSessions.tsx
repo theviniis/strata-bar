@@ -1,8 +1,12 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import type { OpenCodeSnapshot } from '@/services/system/agents'
+import type {
+  OpenCodeSnapshot,
+  CreateAgentSessionResult
+} from '@/services/system/agents'
 import { AgentSessionList } from './AgentSessionList'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 const connectionLabels = {
   disabled: 'Conexão desativada',
   connecting: 'Conectando…',
@@ -19,13 +23,18 @@ export function OpenCodeSessions({
   connection: OpenCodeSnapshot
   onConfigure?: (enabled: boolean) => Promise<void>
   stale?: boolean
-  onCreate?: (directory: string) => Promise<string>
+  onCreate?: (
+    directory: string,
+    prompt?: string
+  ) => Promise<CreateAgentSessionResult>
 }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [directory, setDirectory] = useState('')
-  const [created, setCreated] = useState<string | null>(null)
+  const [created, setCreated] = useState<CreateAgentSessionResult | null>(null)
+  const [prompt, setPrompt] = useState('')
+  const promptTooLong = new TextEncoder().encode(prompt).length > 4096
   const canCreate = !stale && connection.status === 'connected' && !!onCreate
   const enabled = connection.status !== 'disabled'
   const configure = async () => {
@@ -103,14 +112,23 @@ export function OpenCodeSessions({
           className="space-y-2"
           onSubmit={(event) => {
             event.preventDefault()
-            if (!canCreate || pending || !directory.trim() || !onCreate) return
+            if (
+              !canCreate ||
+              pending ||
+              !directory.trim() ||
+              !onCreate ||
+              promptTooLong
+            )
+              return
             setPending(true)
             setError(null)
-            void onCreate(directory.trim())
-              .then((id) => {
-                setCreated(id)
+            void onCreate(directory.trim(), prompt.trim() ? prompt : undefined)
+              .then((result) => {
+                setCreated(result)
+                setError(result.error)
                 setCreating(false)
                 setDirectory('')
+                setPrompt('')
               })
               .catch((error: unknown) => {
                 setError(error instanceof Error ? error.message : String(error))
@@ -128,16 +146,36 @@ export function OpenCodeSessions({
               required
             />
           </label>
+          <label className="space-y-1 text-xs">
+            <span>Prompt inicial (opcional)</span>
+            <Textarea
+              value={prompt}
+              maxLength={4096}
+              disabled={pending || !canCreate}
+              onChange={(event) => setPrompt(event.target.value)}
+            />
+          </label>
           <p className="text-xs text-muted-foreground">
-            Cria uma conversa vazia. Nenhum prompt será enviado ou trabalho
-            iniciado.
+            Sem prompt, cria uma conversa vazia. Com prompt, envia o texto e
+            inicia o trabalho nessa nova conversa. Limite: 4096 bytes UTF-8.
           </p>
+          {promptTooLong && (
+            <p role="alert" className="text-xs text-destructive">
+              O prompt excede 4096 bytes UTF-8.
+            </p>
+          )}
           <Button
             size="sm"
             type="submit"
-            disabled={!canCreate || pending || !directory.trim()}
+            disabled={
+              !canCreate || pending || !directory.trim() || promptTooLong
+            }
           >
-            {pending ? 'Criando…' : 'Criar conversa vazia'}
+            {pending
+              ? 'Criando…'
+              : prompt.trim()
+                ? 'Criar e enviar prompt'
+                : 'Criar conversa vazia'}
           </Button>
           <Button
             size="sm"
@@ -152,7 +190,12 @@ export function OpenCodeSessions({
       )}
       {created && (
         <p role="status" className="text-xs">
-          Conversa criada: {created}
+          Conversa criada: {created.sessionId}
+          {created.promptStatus === 'accepted' && (
+            <span className="block">
+              Prompt aceito pelo OpenCode. Acompanhe o andamento na lista.
+            </span>
+          )}
         </p>
       )}
     </div>

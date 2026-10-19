@@ -1,6 +1,23 @@
 use serde::Serialize;
 use ts_rs::TS;
 
+#[derive(Clone, Debug, PartialEq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum InitialPromptStatus {
+    NotRequested,
+    Accepted,
+    NotSent,
+    Unknown,
+}
+
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateAgentSessionResult {
+    pub session_id: String,
+    pub prompt_status: InitialPromptStatus,
+    pub error: Option<String>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum AgentType {

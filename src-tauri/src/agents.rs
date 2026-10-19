@@ -35,7 +35,7 @@ pub fn observe(
     })
     .collect();
     AgentsSnapshot {
-        version: 3,
+        version: 4,
         revision,
         observed_at: SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -307,7 +307,8 @@ pub async fn agents_create_opencode(
     window: tauri::WebviewWindow,
     state: tauri::State<'_, Agents>,
     directory: String,
-) -> Result<String, String> {
+    prompt: Option<String>,
+) -> Result<crate::agents_contract::CreateAgentSessionResult, String> {
     if !allowed_window(window.label()) {
         return Err("OpenCode creation requires a bar or overlay".into());
     }
@@ -330,16 +331,17 @@ pub async fn agents_create_opencode(
                 .request()
                 .ok_or("OpenCode desconectado")?
         };
-        let result = crate::opencode::create_empty_live(&directory, || {
-            shared
-                .lock()
-                .map(|current| {
-                    current.connection.request() != Some(generation)
-                        || current.connection.snapshot().status
-                            != crate::agents_contract::AgentConnectionStatus::Connected
-                })
-                .unwrap_or(true)
-        });
+        let result =
+            crate::opencode::create_with_prompt_live(&directory, prompt.as_deref(), || {
+                shared
+                    .lock()
+                    .map(|current| {
+                        current.connection.request() != Some(generation)
+                            || current.connection.snapshot().status
+                                != crate::agents_contract::AgentConnectionStatus::Connected
+                    })
+                    .unwrap_or(true)
+            });
         // Refresh on either result: a timeout may have happened after creation.
         let _ = wake.send(Wake::Refresh);
         result

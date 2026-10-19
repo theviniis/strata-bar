@@ -110,11 +110,15 @@ limitações das integrações.
   exigir decisão explícita para cada aprovação, sem aprovações automáticas.
 - Validar nativamente ações, capacidades, sessão e pedido pendente. Novas sessões
   recebem projeto/pasta e prompt conforme a integração, sem comandos arbitrários.
-- A primeira ação do OpenCode cria somente uma conversa vazia na pasta local
-  existente escolhida. A API v2 separa criação de conversa e envio de prompt;
-  o formulário informa essa distinção. Prompt inicial e respostas são fatias
-  posteriores. Não repetir a criação automaticamente após falha; uma resposta
-  ambígua orienta conferir a lista antes de tentar novamente.
+- A criação do OpenCode recebe pasta local existente e prompt inicial opcional.
+  Sem prompt, cria uma conversa vazia; com prompt, envia texto com resume:true
+  somente para a conversa recém-criada. Validar o texto antes de criar (até
+  4096 bytes UTF-8, sem controles exceto quebra de linha e tabulação). Admissão
+  do prompt não significa conclusão do trabalho. Resultado tipado preserva o ID
+  da conversa e distingue sem prompt, aceito, não enviado e envio incerto.
+  Não repetir criação ou envio após falha ou reconexão. Falha parcial fecha o
+  formulário e informa a conversa existente para conferência no OpenCode.
+  Respostas a perguntas e aprovações permanecem nas fatias posteriores.
 - Ao desconectar, desabilitar respostas e reconciliar estado antes de reabilitá-las;
   não reenviar ações automaticamente.
 - Estabelecer linha de base inicial sem notificações retroativas. Deduplicar eventos
