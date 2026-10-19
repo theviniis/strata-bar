@@ -36,9 +36,10 @@ pub fn memory() -> windows::core::Result<Value> {
 }
 unsafe fn endpoint(
     enumerator: &IMMDeviceEnumerator,
+    flow: EDataFlow,
 ) -> windows::core::Result<IAudioEndpointVolume> {
     enumerator
-        .GetDefaultAudioEndpoint(eRender, eMultimedia)?
+        .GetDefaultAudioEndpoint(flow, eMultimedia)?
         .Activate(CLSCTX_ALL, None)
 }
 pub unsafe fn audio_read(ep: &IAudioEndpointVolume) -> windows::core::Result<Value> {
@@ -67,11 +68,12 @@ pub struct Metrics {
 enum Request {
     Wake,
     Volume(
+        bool,
         Option<f32>,
         Option<bool>,
         mpsc::SyncSender<Result<Value, String>>,
     ),
-    Output(String, mpsc::SyncSender<Result<Value, String>>),
+    Output(bool, String, mpsc::SyncSender<Result<Value, String>>),
     Stop,
 }
 impl Metrics {
@@ -91,7 +93,7 @@ impl Metrics {
         window: String,
         interval: u64,
     ) -> Result<Value, String> {
-        if !["cpu", "gpu", "memory", "disk", "volume", "audioOutputs"].contains(&channel.as_str()) {
+        if !["cpu", "gpu", "memory", "disk", "volume", "audioOutputs", "microphone", "audioInputs"].contains(&channel.as_str()) {
             return Err(format!("Unsupported channel: {channel}"));
         }
         if interval != 2000 {
@@ -140,7 +142,7 @@ impl Metrics {
             *d.incoming.entry(channel.into()).or_default()+=1;
             // Core Audio may repeat the same state. Do not wake every WebView
             // for a notification that cannot change the displayed volume.
-            if channel=="volume" && d.latest.get(channel).is_some_and(|old|old["status"]==value["status"] && old["data"]==value["data"] && old["error"]==value["error"]){return;}
+            if (channel=="volume" || channel=="microphone") && d.latest.get(channel).is_some_and(|old|old["status"]==value["status"] && old["data"]==value["data"] && old["error"]==value["error"]){return;}
             *d.emitted.entry(channel.into()).or_default()+=1;
             d.latest.insert(channel.into(), value.clone());
             d.subs
@@ -156,20 +158,26 @@ impl Metrics {
         }
     }
     pub fn volume(&self, level: Option<f32>, muted: Option<bool>) -> Result<Value, String> {
+        self.audio_volume(false, level, muted)
+    }
+    pub fn audio_volume(&self, capture: bool, level: Option<f32>, muted: Option<bool>) -> Result<Value, String> {
         if level.is_some_and(|v| !v.is_finite() || !(0.0..=100.0).contains(&v)) {
             return Err("Volume must be between 0 and 100".into());
         }
         let (tx, rx) = mpsc::sync_channel(1);
         self.tx
-            .send(Request::Volume(level, muted, tx))
+            .send(Request::Volume(capture, level, muted, tx))
             .map_err(|e| e.to_string())?;
         rx.recv_timeout(Duration::from_secs(3))
             .map_err(|e| e.to_string())?
     }
     pub fn audio_output(&self, id: String) -> Result<Value, String> {
+        self.audio_device(false, id)
+    }
+    pub fn audio_device(&self, capture: bool, id: String) -> Result<Value, String> {
         if id.is_empty() || id.contains('\0') || id.len() > 4096 { return Err("Invalid endpoint ID".into()); }
         let (tx, rx) = mpsc::sync_channel(1);
-        self.tx.send(Request::Output(id, tx)).map_err(|e| e.to_string())?;
+        self.tx.send(Request::Output(capture, id, tx)).map_err(|e| e.to_string())?;
         rx.recv_timeout(Duration::from_secs(3)).map_err(|e| e.to_string())?
     }
     pub fn diagnostics(&self) -> Value {
@@ -182,7 +190,7 @@ impl Metrics {
     fn run(&self, app: AppHandle, rx: mpsc::Receiver<Request>) {
         unsafe {
             if let Err(e) = CoInitializeEx(None, COINIT_MULTITHREADED).ok() {
-                for c in ["cpu", "gpu", "memory", "disk", "volume", "audioOutputs"] {
+                for c in ["cpu", "gpu", "memory", "disk", "volume", "audioOutputs", "microphone", "audioInputs"] {
                     self.publish(&app, c, error(&e));
                 }
                 return;
@@ -200,58 +208,67 @@ impl Metrics {
                     eprintln!("Audio device notifications: {err}");
                 }
             }
-            let mut audio: Option<(IAudioEndpointVolume, IAudioEndpointVolumeCallback)> = None;
+            let mut audio: [Option<(IAudioEndpointVolume, IAudioEndpointVolumeCallback)>; 2] = [None, None];
             let mut cpu_collector = crate::cpu::CpuCollector::new(crate::cpu_windows::WindowsCpuSource::default());
             let mut gpu_collector = crate::gpu::GpuCollector::new(crate::gpu_windows::WindowsGpuSource::default());
             let mut disk_collector = crate::disk::DiskCollector::new(crate::disk_windows::WindowsDiskSource);
             let mut memory_collector = crate::memory::MemoryCollector::default();
             let mut next_tick = Instant::now();
             let mut ticks=0;
-            let mut outputs_active = false;
+            let mut devices_active = [false; 2];
+            let mut volume_active = [false; 2];
             loop {
                 let dirty = changed.swap(false, Ordering::AcqRel);
-                let active = self.active("audioOutputs");
-                if active && (dirty || !outputs_active) {
-                    match enumerator.as_ref().map_err(|e| e.clone()).and_then(|en| crate::audio_policy::outputs(en)) {
-                        Ok(v) => self.publish(&app, "audioOutputs", envelope("ready", v)),
-                        Err(e) => self.publish(&app, "audioOutputs", error(e)),
-                    }
-                }
-                outputs_active = active;
-                if self.active("volume")
-                    && (dirty || audio.is_none())
-                {
-                    if let Some((e, cb)) = audio.take() {
-                        let _ = e.UnregisterControlChangeNotify(&cb);
-                    }
-                    match enumerator
-                        .as_ref()
-                        .map_err(|e| e.clone())
-                        .and_then(|e| endpoint(e))
-                    {
-                        Ok(e) => {
-                            let cb: IAudioEndpointVolumeCallback = VolumeNotify {
-                                owner: self.clone(),
-                                app: app.clone(),
-                            }
-                            .into();
-                            match e.RegisterControlChangeNotify(&cb) {
-                                Ok(()) => {
-                                    match audio_read(&e) {
-                                        Ok(v) => self.publish(&app, "volume", envelope("ready", v)),
-                                        Err(err) => self.publish(&app, "volume", error(err)),
-                                    };
-                                    audio = Some((e, cb));
-                                }
-                                Err(err) => self.publish(&app, "volume", error(err)),
-                            }
+                for (index, flow, devices_channel, volume_channel) in [(0, eRender, "audioOutputs", "volume"), (1, eCapture, "audioInputs", "microphone")] {
+                    let active = self.active(devices_channel);
+                    if active && (dirty || !devices_active[index]) {
+                        match enumerator.as_ref().map_err(|e| e.clone()).and_then(|en| crate::audio_policy::endpoints(en, flow)) {
+                            Ok(v) => self.publish(&app, devices_channel, envelope("ready", v)),
+                            Err(e) => self.publish(&app, devices_channel, error(e)),
                         }
-                        Err(e) => self.publish(&app, "volume", error(e)),
                     }
-                } else if !self.active("volume") {
-                    if let Some((e, cb)) = audio.take() {
-                        let _ = e.UnregisterControlChangeNotify(&cb);
+                    devices_active[index] = active;
+                    let active_volume = self.active(volume_channel);
+                    if active_volume
+                        && (dirty || !volume_active[index])
+                    {
+                        if let Some((e, cb)) = audio[index].take() {
+                            let _ = e.UnregisterControlChangeNotify(&cb);
+                        }
+                        match enumerator
+                            .as_ref()
+                            .map_err(|e| e.clone())
+                            .and_then(|e| endpoint(e, flow))
+                        {
+                            Ok(e) => {
+                                let cb: IAudioEndpointVolumeCallback = VolumeNotify {
+                                    owner: self.clone(),
+                                    app: app.clone(),
+                                    channel: volume_channel,
+                                }
+                                .into();
+                                match e.RegisterControlChangeNotify(&cb) {
+                                    Ok(()) => {
+                                        match audio_read(&e) {
+                                            Ok(v) => self.publish(&app, volume_channel, envelope("ready", v)),
+                                            Err(err) => self.publish(&app, volume_channel, error(err)),
+                                        };
+                                        audio[index] = Some((e, cb));
+                                    }
+                                    Err(err) => self.publish(&app, volume_channel, error(err)),
+                                }
+                            }
+                            Err(e) => {
+                                let absent = enumerator.as_ref().ok().and_then(|en| crate::audio_policy::endpoints(en, flow).ok()).is_some_and(|v|v["defaultDeviceId"].is_null());
+                                self.publish(&app, volume_channel, if absent { envelope("unavailable", Value::Null) } else { error(e) });
+                            },
+                        }
+                    } else if !self.active(volume_channel) {
+                        if let Some((e, cb)) = audio[index].take() {
+                            let _ = e.UnregisterControlChangeNotify(&cb);
+                        }
                     }
+                    volume_active[index] = active_volume;
                 }
                 if Instant::now() >= next_tick {
                     if self.active("cpu") {
@@ -278,21 +295,23 @@ impl Metrics {
                 }
                 match rx.recv_timeout(next_tick.saturating_duration_since(Instant::now())) {
                     Ok(Request::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                    Ok(Request::Output(id, reply)) => {
-                        let result = enumerator.as_ref().map_err(|e| e.to_string()).and_then(|en| crate::audio_policy::select(en, &id));
+                    Ok(Request::Output(capture, id, reply)) => {
+                        let flow = if capture { eCapture } else { eRender };
+                        let channel = if capture { "audioInputs" } else { "audioOutputs" };
+                        let result = enumerator.as_ref().map_err(|e| e.to_string()).and_then(|en| crate::audio_policy::select_endpoint(en, &id, flow));
                         // Always reread after a partial failure too.
                         if let Ok(en) = &enumerator {
-                            match crate::audio_policy::outputs(en) {
-                                Ok(v) => self.publish(&app, "audioOutputs", envelope("ready", v)),
-                                Err(e) => self.publish(&app, "audioOutputs", error(e)),
+                            match crate::audio_policy::endpoints(en, flow) {
+                                Ok(v) => self.publish(&app, channel, envelope("ready", v)),
+                                Err(e) => self.publish(&app, channel, error(e)),
                             }
                         }
                         changed.store(true, Ordering::Release);
                         let _ = reply.send(result);
                     }
-                    Ok(Request::Volume(level, muted, reply)) => {
+                    Ok(Request::Volume(capture, level, muted, reply)) => {
                         let result = (|| -> windows::core::Result<Value> {
-                            let e = endpoint(enumerator.as_ref().map_err(|e| e.clone())?)?;
+                            let e = endpoint(enumerator.as_ref().map_err(|e| e.clone())?, if capture { eCapture } else { eRender })?;
                             if let Some(v) = level {
                                 e.SetMasterVolumeLevelScalar(v / 100., std::ptr::null())?;
                             }
@@ -301,14 +320,17 @@ impl Metrics {
                             }
                             audio_read(&e)
                         })();
+                        if let Ok(v) = &result { self.publish(&app, if capture { "microphone" } else { "volume" }, envelope("ready", v.clone())); }
                         let _ = reply.send(result.map_err(|e| e.to_string()));
                     }
-                    Ok(Request::Wake) => { outputs_active = false; },
+                    Ok(Request::Wake) => { devices_active = [false; 2]; volume_active = [false; 2]; },
                     _ => {}
                 }
             }
-            if let Some((e, cb)) = audio.take() {
-                let _ = e.UnregisterControlChangeNotify(&cb);
+            for slot in &mut audio {
+                if let Some((e, cb)) = slot.take() {
+                    let _ = e.UnregisterControlChangeNotify(&cb);
+                }
             }
             if let Ok(e) = enumerator {
                 let _ = e.UnregisterEndpointNotificationCallback(&device_notify);
@@ -323,13 +345,14 @@ impl Metrics {
 struct VolumeNotify {
     owner: Metrics,
     app: AppHandle,
+    channel: &'static str,
 }
 impl IAudioEndpointVolumeCallback_Impl for VolumeNotify_Impl {
     fn OnNotify(&self, p: *mut AUDIO_VOLUME_NOTIFICATION_DATA) -> windows::core::Result<()> {
         if let Some(v) = unsafe { p.as_ref() } {
             self.owner.publish(
                 &self.app,
-                "volume",
+                self.channel,
                 envelope(
                     "ready",
                     json!({"level":(v.fMasterVolume*100.).round(),"muted":v.bMuted.as_bool()}),
@@ -366,7 +389,7 @@ impl IMMNotificationClient_Impl for DeviceNotify_Impl {
         role: ERole,
         _: &PCWSTR,
     ) -> windows::core::Result<()> {
-        if flow == eRender && (role == eMultimedia || role == eConsole) {
+        if (flow == eRender || flow == eCapture) && (role == eMultimedia || role == eConsole || role == eCommunications) {
             self.changed.store(true, Ordering::Release);
             let _ = self.tx.send(Request::Wake);
         }
@@ -396,9 +419,9 @@ pub fn probe() -> Result<Value, String> {
             let disk = disk_collector.collect();
             let en: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
                 .map_err(|e| e.to_string())?;
-            let audio = endpoint(&en).and_then(|e| audio_read(&e));
+            let audio = endpoint(&en, eRender).and_then(|e| audio_read(&e));
             Ok(
-                json!({"cpu":cpu,"gpu":gpu,"memory":mem,"disk":disk,"volume":audio.map_err(|e|e.to_string()),"audioOutputs":crate::audio_policy::outputs(&en).map_err(|e|e.to_string()),"timestamp":timestamp()}),
+                json!({"cpu":cpu,"gpu":gpu,"memory":mem,"disk":disk,"volume":audio.map_err(|e|e.to_string()),"microphone":endpoint(&en, eCapture).and_then(|e|audio_read(&e)).map_err(|e|e.to_string()),"audioInputs":crate::audio_policy::endpoints(&en, eCapture).map_err(|e|e.to_string()),"audioOutputs":crate::audio_policy::outputs(&en).map_err(|e|e.to_string()),"timestamp":timestamp()}),
             )
         })();
         CoUninitialize();
@@ -460,5 +483,12 @@ mod lifecycle_tests {
         assert_eq!(m.diagnostics()["subscribers"], 0);
         assert!(m.volume(Some(f32::NAN), None).is_err());
         assert!(m.volume(Some(101.), None).is_err());
+        for level in [f32::NAN, f32::INFINITY, -1., 101.] {
+            assert!(m.audio_volume(true, Some(level), None).is_err());
+        }
+        for id in ["", "bad\0id"] { assert!(m.audio_device(true, id.into()).is_err()); }
+        m.subscribe("microphone".into(), "bar-one".into(), 2000).unwrap();
+        assert!(m.active("microphone"));
+        assert!(!m.active("volume"));
     }
 }

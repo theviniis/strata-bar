@@ -1,4 +1,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod agents;
+mod agent_alerts;
+mod agent_notifications;
+mod agent_notifications_windows;
+mod agents_contract;
+mod agents_windows;
+mod antigravity;
+mod antigravity_hooks;
+mod opencode;
+mod reminder_sound;
 mod google_calendar;
 mod media;
 mod media_contract;
@@ -32,7 +42,7 @@ use serde_json::{json, Value};
 use tauri::Manager;
 #[tauri::command]
 fn capabilities(komorebi: tauri::State<komorebi::Komorebi>) -> Value {
-    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"media":true,"appBar":true,"gpu":true,"disk":true,"network":false,"komorebi":komorebi.available()})
+    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"appBar":true,"gpu":true,"disk":true,"network":false,"komorebi":komorebi.available()})
 }
 #[tauri::command]
 fn subscribe(
@@ -87,6 +97,16 @@ async fn set_volume(
     tauri::async_runtime::spawn_blocking(move || owner.volume(level, muted))
         .await
         .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+async fn set_microphone(state: tauri::State<'_, metrics::Metrics>, level: Option<f32>, muted: Option<bool>) -> Result<Value, String> {
+    let owner = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || owner.audio_volume(true, level, muted)).await.map_err(|e|e.to_string())?
+}
+#[tauri::command]
+async fn set_audio_input(state: tauri::State<'_, metrics::Metrics>, device_id: String) -> Result<Value, String> {
+    let owner = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || owner.audio_device(true, device_id)).await.map_err(|e|e.to_string())?
 }
 #[tauri::command]
 async fn set_audio_output(
@@ -200,6 +220,9 @@ fn quit(app: tauri::AppHandle) {
     app.exit(0);
 }
 fn cleanup(app: &tauri::AppHandle) {
+    if let Some(agents) = app.try_state::<agents::Agents>() {
+        agents.stop();
+    }
     if let Some(scheduler) = app.try_state::<reminders::ReminderScheduler>() {
         scheduler.stop();
     }
@@ -260,6 +283,18 @@ mod instance_tests {
 }
 
 fn main() {
+    let arguments: Vec<_> = std::env::args().skip(1).collect();
+    if arguments.first().is_some_and(|argument| argument == "--antigravity-hook") {
+        antigravity_hooks::run_helper(&arguments[1..]);
+        return;
+    }
+    if std::env::args().any(|arg| arg == "--probe-agents") {
+        let result = agents::observe(0, agents_windows::process_names);
+        let text = serde_json::to_string_pretty(&result).unwrap();
+        std::fs::write(std::env::temp_dir().join("strata-agents-probe.json"), &text).unwrap();
+        println!("{text}");
+        return;
+    }
     if std::env::args().any(|arg| arg == "--probe-media") {
         println!("{}", media::probe());
         return;
@@ -292,7 +327,15 @@ fn main() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
+            agents::agents_snapshot,
+            agents::agents_dismiss_alerts,
+            agents::agents_set_opencode,
+            agents::agents_create_opencode,
+            agents::agents_reply_opencode,
+            agents::agents_decide_opencode,
+            agents::agents_set_antigravity,
             reminders::reminders_snapshot,
+            desktop::reminders_set_anchor,
             reminders::reminders_create,
             reminders::reminders_transition,
             reminders::reminders_calendar_sync,
@@ -308,6 +351,8 @@ fn main() {
             subscribe,
             unsubscribe,
             set_volume,
+            set_microphone,
+            set_audio_input,
             set_audio_output,
             komorebi_action,
             overlay_show,
@@ -324,6 +369,7 @@ fn main() {
                 app.path().app_data_dir()?.join("reminders.json"),
             ));
             app.manage(media::Media::start(app.handle().clone()));
+            app.manage(agents::Agents::start(app.handle().clone())?);
             app.manage(metrics::Metrics::start(app.handle().clone()));
             app.manage(komorebi::Komorebi::start(app.handle().clone()));
             desktop::reconcile(app.handle())?;

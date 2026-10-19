@@ -1,0 +1,11 @@
+{
+  "helperTransportVerified": true,
+  "syntheticHookEvents": true,
+  "attentionAndCompletionGenerated": true,
+  "duplicateAlertsSuppressed": true,
+  "uiConsumersPresent": false,
+  "providerEventsVerified": false,
+  "webviewInteractionVerified": false,
+  "windowsToastUsed": false,
+  "conversationContentRecorded": false
+}

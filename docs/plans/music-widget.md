@@ -12,12 +12,16 @@ device/session notifications discover new audio streams and update application
 volume. Callbacks and COM objects are released on session replacement, last
 unsubscribe and application exit. No native media failures fall back to demo data.
 
-The periodic tick only reads the cached native snapshot and schedules Spotify
-enrichment. It does not poll GSMTC or Core Audio. Unchanged snapshots are not
-emitted again. Blocking WinRT operations have a three-second deadline. A track
-change arrives as a burst of GSMTC notifications: the worker folds the burst into
-a single read and re-reads metadata until its revision stops moving, so the new
-track is published as soon as it settles instead of being discarded mid-read.
+The normal periodic tick reads the cached native snapshot and schedules Spotify
+enrichment. A missing/failed snapshot is retried. Metadata and artwork operations
+are kept pending between worker passes with a three-second deadline per operation;
+the worker checks them every 20 ms only while a read is pending and can receive
+commands immediately between passes. A metadata revision change supersedes the
+old operation. Commands still reject an unread track change rather than operating
+on a stale identity. Text and playback controls are published before artwork
+finishes loading. Pending operations are cancelled when their session is released.
+Unchanged snapshots are not emitted again. The explicit diagnostic probe waits for
+reads to settle; the interactive worker does not use that blocking path.
 Resolving the player window walks every process and top-level window, so it is
 sampled with metadata rather than on every timeline tick.
 
@@ -112,8 +116,9 @@ Scopes are `user-read-playback-state`, `user-read-currently-playing`,
 `user-library-read` and `user-library-modify`. Spotify app/account eligibility is
 subject to its [quota mode requirements](https://developer.spotify.com/documentation/web-api/concepts/quota-modes).
 
-While a Spotify-capable session has subscribers, playback is queried at most once
-every five seconds. Native source allowlisting includes Spotify desktop and
+While a Spotify-capable session has subscribers, playback is queried every five
+seconds for an unchanged track. A new track starts correlation immediately;
+service/authentication backoff still applies. Native source allowlisting includes Spotify desktop and
 spotatui; spotatui's other media sources are not assumed to be Spotify playback.
 GSMTC does not provide a track URI. Correlation therefore requires agreement on
 the native source, full title/artist/album, duration, playing state and timeline
@@ -122,11 +127,16 @@ searches for a track by title. The correlation is conservative, but cannot prove
 identity between indistinguishable editions or simultaneous matching playback on
 another Spotify device; this is an upstream metadata limitation.
 
-Favorite is read when the track changes and confirmed after each mutation, using
+Favorite is read when the track changes. Mutations complete on the successful
+Spotify write acknowledgement, using the native cache's correlated URI rather
+than fetching playback and favorite state again for each click. This uses
 the current library endpoints (`GET /me/library/contains`, `PUT /me/library`,
 `DELETE /me/library`). Requests target explicit track URIs. Rate limits respect
 `Retry-After`; network/service failures back off without stopping native playback.
 Old account/session results cannot repopulate a disconnected or replaced session.
+Lookup completion signals the media worker immediately, which enriches and
+publishes its cached snapshot without waiting for the normal one-second tick or
+another Windows metadata read. Skipped refreshes do not signal another update.
 
 ## Interface and validation
 

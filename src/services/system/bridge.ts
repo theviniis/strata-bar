@@ -22,6 +22,8 @@ export type Channel =
   | 'activeWindow'
   | 'komorebi'
   | 'audioOutputs'
+  | 'audioInputs'
+  | 'microphone'
   | 'media'
 
 export type WorkspaceStatus = 'active' | 'populated' | 'empty'
@@ -58,6 +60,8 @@ export interface ChannelData {
     devices: { id: string; name: string }[]
     defaultDeviceId: string | null
   }
+  audioInputs: ChannelData['audioOutputs']
+  microphone: ChannelData['volume']
   volume: { level: number; muted: boolean }
   activeWindow: string
   komorebi: KomorebiData
@@ -76,6 +80,8 @@ export interface DemoChannelData {
   gpu: number
   disk: DiskData
   network: number
+  audioInputs: null
+  microphone: number
   audioOutputs: null
   volume: number
   activeWindow: string
@@ -111,6 +117,10 @@ export interface AdapterBase {
   spotifyConnect?(clientId: string): Promise<void>
   spotifyDisconnect?(): Promise<void>
   spotifyOpenDashboard?(): Promise<void>
+  setMicrophone?(value: VolumeChange): Promise<unknown>
+  setAudioInput?(value: {
+    deviceId: string
+  }): Promise<ChannelData['audioInputs']>
   setVolume(value: VolumeChange): Promise<unknown>
   setAudioOutput?(value: {
     deviceId: string
@@ -173,6 +183,8 @@ export function createMockBridge(): DemoBridge {
       ]
     },
     network: 128,
+    microphone: 72,
+    audioInputs: null,
     volume: 64,
     audioOutputs: null,
     activeWindow: 'Visual Studio Code',
@@ -208,7 +220,7 @@ export function createMockBridge(): DemoBridge {
     ) {
       const emit = () => {
         const data = values[channel]
-        if (channel === 'audioOutputs') {
+        if (channel === 'audioOutputs' || channel === 'audioInputs') {
           listener({ status: 'unavailable', data: null, timestamp: Date.now() })
         } else {
           listener({ status: 'ready', data, timestamp: Date.now() })
@@ -391,6 +403,14 @@ export function createNativeBridge(): NativeBridge {
     async setVolume(value) {
       const { invoke } = await import('@tauri-apps/api/core')
       return invoke('set_volume', value)
+    },
+    async setMicrophone(value) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke('set_microphone', value)
+    },
+    async setAudioInput(value) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke('set_audio_input', value)
     },
     async setAudioOutput(value) {
       const { invoke } = await import('@tauri-apps/api/core')

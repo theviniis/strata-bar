@@ -1,7 +1,7 @@
-import { useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { snoozeOptions, type SnoozeOption } from '@/services/system/reminders'
 import { useReminders } from '@/stores/reminders'
+import { useId, useState } from 'react'
 
 export function ReminderAlertActions({
   id,
@@ -50,15 +50,20 @@ export function ReminderAlertActions({
         ))}
       </select>
       <div className="flex gap-2">
-        <Button disabled={pending} onClick={() => void act(false)}>
-          Dispensar
-        </Button>
         <Button
+          className="flex-1"
           variant="outline"
           disabled={pending}
           onClick={() => void act(true)}
         >
           Adiar
+        </Button>
+        <Button
+          className="flex-1"
+          disabled={pending}
+          onClick={() => void act(false)}
+        >
+          Dispensar
         </Button>
       </div>
       {error && (

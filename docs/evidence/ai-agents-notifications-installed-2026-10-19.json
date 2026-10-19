@@ -1,0 +1,20 @@
+{
+  "installerExitCode": 0,
+  "installedProtocolVersion": 8,
+  "startMenuShortcutPresent": true,
+  "status": "blocked",
+  "windowsSetting": 2,
+  "windowsSettingName": "DisabledForUser",
+  "attemptedSyntheticEvents": 2,
+  "submittedToWindows": 0,
+  "bannerVerified": false,
+  "providerEventsVerified": false,
+  "webviewInteractionVerified": false,
+  "systemPreferencesChanged": false,
+  "runningInstalledHost": true,
+  "monitorCount": 2,
+  "visibleBarCount": 2,
+  "allBarsTopmost": true,
+  "anyBarKomorebiEligible": false,
+  "overlayPresent": true
+}

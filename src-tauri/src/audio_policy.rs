@@ -13,7 +13,11 @@ unsafe fn device_id(device: &IMMDevice) -> windows::core::Result<String> {
 }
 
 pub unsafe fn outputs(en: &IMMDeviceEnumerator) -> windows::core::Result<Value> {
-    let collection = en.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE)?;
+    endpoints(en, eRender)
+}
+
+pub unsafe fn endpoints(en: &IMMDeviceEnumerator, flow: EDataFlow) -> windows::core::Result<Value> {
+    let collection = en.EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE)?;
     let mut devices = Vec::new();
     for index in 0..collection.GetCount()? {
         let device = collection.Item(index)?;
@@ -36,7 +40,7 @@ pub unsafe fn outputs(en: &IMMDeviceEnumerator) -> windows::core::Result<Value> 
         devices.push(json!({"id": id, "name": name}));
     }
     let default = en
-        .GetDefaultAudioEndpoint(eRender, eMultimedia)
+        .GetDefaultAudioEndpoint(flow, eMultimedia)
         .and_then(|d| device_id(&d))
         .ok();
     Ok(json!({"devices": devices, "defaultDeviceId": default}))
@@ -91,39 +95,210 @@ impl Policy {
     }
 }
 
-fn apply_roles(mut set: impl FnMut(ERole) -> Result<(), String>) -> Result<(), String> {
-    for role in [eConsole, eMultimedia] {
+fn apply_roles(
+    flow: EDataFlow,
+    mut set: impl FnMut(ERole) -> Result<(), String>,
+) -> Result<(), String> {
+    for role in roles(flow) {
         set(role)?;
     }
     Ok(())
 }
 
+#[cfg(test)]
 pub unsafe fn select(en: &IMMDeviceEnumerator, id: &str) -> Result<Value, String> {
-    let snapshot = outputs(en).map_err(|e| e.to_string())?;
+    select_endpoint(en, id, eRender)
+}
+
+fn roles(flow: EDataFlow) -> Vec<ERole> {
+    if flow == eCapture {
+        vec![eConsole, eMultimedia, eCommunications]
+    } else {
+        vec![eConsole, eMultimedia]
+    }
+}
+
+pub unsafe fn select_endpoint(
+    en: &IMMDeviceEnumerator,
+    id: &str,
+    flow: EDataFlow,
+) -> Result<Value, String> {
+    if id.is_empty() || id.contains('\0') || id.len() > 4096 {
+        return Err("Invalid endpoint ID".into());
+    }
+    let snapshot = endpoints(en, flow).map_err(|e| e.to_string())?;
     if !snapshot["devices"]
         .as_array()
         .unwrap()
         .iter()
         .any(|d| d["id"] == id)
     {
-        return Err("A saída selecionada não está mais disponível".into());
+        return Err("O dispositivo selecionado não está mais disponível".into());
     }
     let policy = Policy::create()?;
-    apply_roles(|role| policy.set(id, role))?;
-    let result = outputs(en).map_err(|e| e.to_string())?;
-    if result["defaultDeviceId"] != id {
-        return Err("O Windows não confirmou a nova saída".into());
+    apply_roles(flow, |role| policy.set(id, role))?;
+    for role in roles(flow) {
+        let actual = device_id(
+            &en.GetDefaultAudioEndpoint(flow, role)
+                .map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
+        if actual != id {
+            return Err("O Windows não confirmou o dispositivo padrão".into());
+        }
     }
-    Ok(result)
+    endpoints(en, flow).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
+    fn capture_roles_include_communications_and_render_preserves_it() {
+        assert_eq!(
+            roles(eCapture),
+            vec![eConsole, eMultimedia, eCommunications]
+        );
+        assert_eq!(roles(eRender), vec![eConsole, eMultimedia]);
+    }
+    #[test]
+    fn capture_enumeration_rejects_render_endpoints() {
+        unsafe {
+            CoInitializeEx(None, COINIT_MULTITHREADED).ok().unwrap();
+            {
+                let en: IMMDeviceEnumerator =
+                    CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).unwrap();
+                let capture = endpoints(&en, eCapture).unwrap();
+                assert!(capture["devices"].is_array());
+                let render = outputs(&en).unwrap();
+                for device in render["devices"].as_array().unwrap() {
+                    assert!(
+                        select_endpoint(&en, device["id"].as_str().unwrap(), eCapture).is_err()
+                    );
+                }
+                assert!(select_endpoint(&en, "invalid-capture-id", eCapture).is_err());
+            }
+            CoUninitialize();
+        }
+    }
+
+    #[test]
+    #[ignore = "Temporarily changes microphone defaults, volume and mute; restores original state"]
+    fn live_microphone_round_trip() {
+        unsafe {
+            use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
+            CoInitializeEx(None, COINIT_MULTITHREADED).ok().unwrap();
+            {
+                let en: IMMDeviceEnumerator =
+                    CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).unwrap();
+                let before = endpoints(&en, eCapture).unwrap();
+                let original: Vec<_> = roles(eCapture)
+                    .into_iter()
+                    .map(|role| {
+                        (
+                            role,
+                            device_id(&en.GetDefaultAudioEndpoint(eCapture, role).unwrap())
+                                .unwrap(),
+                        )
+                    })
+                    .collect();
+                let render_before: Vec<_> = roles(eCapture)
+                    .into_iter()
+                    .map(|role| {
+                        en.GetDefaultAudioEndpoint(eRender, role)
+                            .and_then(|d| device_id(&d))
+                            .ok()
+                    })
+                    .collect();
+                let current = before["defaultDeviceId"]
+                    .as_str()
+                    .expect("Requires an active microphone");
+                let target = before["devices"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|d| d["id"] != current)
+                    .map(|d| d["id"].as_str().unwrap())
+                    .unwrap_or(current);
+                let wide: Vec<u16> = target.encode_utf16().chain(Some(0)).collect();
+                let device = en.GetDevice(PCWSTR(wide.as_ptr())).unwrap();
+                let volume: IAudioEndpointVolume = device.Activate(CLSCTX_ALL, None).unwrap();
+                let level = volume.GetMasterVolumeLevelScalar().unwrap();
+                let muted = volume.GetMute().unwrap().as_bool();
+                struct Restore {
+                    policy: Policy,
+                    defaults: Vec<(ERole, String)>,
+                    volume: IAudioEndpointVolume,
+                    level: f32,
+                    muted: bool,
+                }
+                impl Drop for Restore {
+                    fn drop(&mut self) {
+                        unsafe {
+                            self.volume
+                                .SetMasterVolumeLevelScalar(self.level, core::ptr::null())
+                                .expect("restore microphone level");
+                            self.volume
+                                .SetMute(self.muted, core::ptr::null())
+                                .expect("restore microphone mute");
+                            for (role, id) in &self.defaults {
+                                self.policy
+                                    .set(id, *role)
+                                    .expect("restore microphone default");
+                            }
+                        }
+                    }
+                }
+                let restore = Restore {
+                    policy: Policy::create().unwrap(),
+                    defaults: original.clone(),
+                    volume: volume.clone(),
+                    level,
+                    muted,
+                };
+                let selected = select_endpoint(&en, target, eCapture).unwrap();
+                volume
+                    .SetMasterVolumeLevelScalar(
+                        if level > 0.5 { 0.4 } else { 0.6 },
+                        core::ptr::null(),
+                    )
+                    .unwrap();
+                volume.SetMute(!muted, core::ptr::null()).unwrap();
+                let changed_volume = crate::metrics::audio_read(&volume).unwrap();
+                assert_eq!(changed_volume["muted"], !muted);
+                assert!((volume.GetMasterVolumeLevelScalar().unwrap() - level).abs() > 0.01);
+                drop(restore);
+                for (role, id) in original {
+                    assert_eq!(
+                        device_id(&en.GetDefaultAudioEndpoint(eCapture, role).unwrap()).unwrap(),
+                        id
+                    );
+                }
+                assert!((volume.GetMasterVolumeLevelScalar().unwrap() - level).abs() < 0.01);
+                assert_eq!(volume.GetMute().unwrap().as_bool(), muted);
+                let render_after: Vec<_> = roles(eCapture)
+                    .into_iter()
+                    .map(|role| {
+                        en.GetDefaultAudioEndpoint(eRender, role)
+                            .and_then(|d| device_id(&d))
+                            .ok()
+                    })
+                    .collect();
+                assert_eq!(render_before, render_after);
+                let report = json!({"before":before,"selected":selected,"changedVolume":changed_volume,"restored":true,"outputPreserved":true,"alternateAvailable":target != current,"timestamp":crate::metrics::timestamp()});
+                std::fs::write(
+                    std::env::temp_dir().join("strata-microphone-check.json"),
+                    serde_json::to_string_pretty(&report).unwrap(),
+                )
+                .unwrap();
+            }
+            CoUninitialize();
+        }
+    }
+    #[test]
     fn switching_never_changes_communications() {
         let mut roles = Vec::new();
-        apply_roles(|role| {
+        apply_roles(eRender, |role| {
             roles.push(role);
             Ok(())
         })
@@ -132,7 +307,7 @@ mod tests {
     }
     #[test]
     fn partial_failure_is_reported() {
-        let result = apply_roles(|role| {
+        let result = apply_roles(eRender, |role| {
             if role == eMultimedia {
                 Err("failure".into())
             } else {

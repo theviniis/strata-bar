@@ -209,3 +209,17 @@ it('keeps the browser overlay adapter inert', async () => {
   await overlay.hide()
   expect(state.invoke).not.toHaveBeenCalled()
 })
+
+it('routes microphone controls through dedicated native commands', async () => {
+  state.invoke.mockReset().mockResolvedValue(undefined)
+  const bridge = createNativeBridge()
+  await bridge.setMicrophone!({ level: 42, muted: true })
+  expect(state.invoke).toHaveBeenCalledWith('set_microphone', {
+    level: 42,
+    muted: true
+  })
+  await bridge.setAudioInput!({ deviceId: 'capture-id' })
+  expect(state.invoke).toHaveBeenCalledWith('set_audio_input', {
+    deviceId: 'capture-id'
+  })
+})

@@ -1,6 +1,8 @@
 import { cn } from '@/lib/utils'
 import { Slottable } from '@radix-ui/react-slot'
-import { Button, type ButtonProps } from './button'
+import type { ComponentProps } from 'react'
+import { Button } from './button'
+type ButtonProps = ComponentProps<typeof Button>
 import { Spinner } from './spinner'
 
 export interface ButtonLoadingProps extends ButtonProps {

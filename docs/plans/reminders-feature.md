@@ -370,3 +370,86 @@ conteúdo formatado vazio, desabilitação durante envio e erro acessível. Tota
 focado: 37 testes aprovados.
 Google real não exercitado: exige credenciais Desktop e consentimento da conta.
 Conferência nativa e bloqueios globais de tipos permanecem registrados acima.
+
+### Correcao de entrega do alerta nativo
+
+- [x] Reproduzir fechamento prematuro do alerta quando o overlay ainda possui
+      o snapshot anterior a expiracao.
+- [x] Enviar a revisao minima com o popup e aguardar sua chegada antes de
+      renderizar acoes ou fechar por snooze/dispensa.
+- [x] Dar prioridade ao alerta sobre popups comuns, mantendo fila entre alertas
+      e adiamento visual enquanto ha aplicativo em tela cheia.
+- [x] Trocar MessageBeep por tom PCM proprio via PlaySoundW, independente do
+      esquema de sons do Windows, e tentar novamente se a API falhar.
+- [x] Cobrir snapshot atrasado, prioridade de popups, PCM valido e retry de som.
+
+Validacao: 23 testes frontend de lembretes aprovados; TypeScript, ESLint e
+Prettier aprovados. Suite Rust: 119 passaram, 9 ignorados; teste de audio Windows
+executado explicitamente e aprovado. Esse teste confirma a chamada de reproducao,
+nao confirma audicao fisica ou o roteamento/volume do dispositivo do usuario.
+A interacao visual nativa completa nao foi automatizada nesta etapa.
+
+### Fechamento explicito do alerta
+
+- [x] Ignorar perda de foco/clique externo no alerta nativo e impedir que outro
+      widget substitua um alerta aberto; preservar fechamento comum dos widgets.
+- [x] Adicionar X no alerta e impedir Escape de fecha-lo.
+- [x] Preservar Dispensar/Adiar e manter lembrete pendente quando fechado pelo X.
+- [x] Cobrir Escape, clique externo, X e politica de fechamento nativa.
+
+### Monitor principal e ancora do alerta
+
+- [x] Escolher apenas a AppBar no monitor marcado como principal pelo Win32,
+      independente do monitor da janela em foco.
+- [x] Medir o widget de lembretes na barra, reportar seu retangulo em CSS px e
+      revalidar contra GetWindowRect e escala reais no host.
+- [x] Exigir medicao atualizada para cada ocorrencia antes de abrir o alerta;
+      invalidar ancoras no reconcile de monitores/DPI.
+- [x] Reutilizar posicionamento/clamp/seta do overlay com a ancora real.
+- [x] Cobrir flag de monitor principal, limites da ancora, escala e medicao
+      frontend com limpeza de listeners.
+
+Validacao: 23 testes UI de lembretes e 2 testes de ancora aprovados; 19 testes
+Rust de geometria/politica aprovados; TypeScript e ESLint aprovados.
+Alinhamento visual nativo em multiplos monitores ainda exige verificacao manual.
+
+### Alerta sem ativacao e adiamento em fullscreen
+
+- [x] Abrir alerta com SW_SHOWNOACTIVATE, sem set_focus e sem autofocus React,
+      mantendo widgets comuns com seu comportamento de foco existente.
+- [x] Nao adicionar WS_EX_NOACTIVATE ao WebView2; interacao explicita continua
+      disponivel ao clicar nos controles do alerta.
+- [x] Conferir fullscreen pelo AppBar, estado de notificacao do Shell e
+      retangulo da janela em foco, incluindo fullscreen sem bordas.
+- [x] Revalidar fullscreen antes de revelar; recolocar na fila um alerta ocultado
+      pela entrada em tela cheia, sem repetir o som ja emitido.
+- [x] Testar preservacao do foco frontend e politica/geometria nativa.
+
+A supressao se aplica ao popup; o som continua sendo emitido na expiracao.
+Confirmacao pratica de foco/teclado/mouse em aplicativos nativos permanece manual.
+
+### Componente de lembretes ativos e Markdown
+
+- [x] Extrair Accordion, estado vazio, lista ordenada e acoes para
+      ActiveReminders.tsx, preservando estado fechado inicial e operacoes.
+- [x] Renderizar mensagens em ReminderMessage.tsx com o mesmo parser/schema
+      Markdown do editor, em modo somente leitura e sem novas dependencias.
+- [x] Cobrir formatacao, listas, citacoes, codigo, links, atualizacao do texto
+      e rejeicao de HTML executavel/links javascript.
+
+Validacao: 23 testes UI e 2 testes de renderizacao aprovados; TypeScript,
+ESLint e Prettier dos arquivos alterados aprovados.
+
+### Memoizacao da lista e Markdown
+
+- [x] Memoizar ActiveReminders para evitar renders por alteracoes do formulario
+      quando suas props e o snapshot permanecem iguais.
+- [x] Memoizar filtro e ordenacao por referencia do array de lembretes.
+- [x] Memoizar ReminderMessage por texto, evitando trabalho do editor somente
+      leitura quando status, horario ou outra mensagem mudam.
+
+### Markdown no alerta
+
+- [x] Reutilizar ReminderMessage no popup de alerta, preservando limite de altura
+      e rolagem, acoes, sincronizacao e abertura sem autofocus.
+- [x] Cobrir formatacao Markdown no alerta e preservacao do foco.

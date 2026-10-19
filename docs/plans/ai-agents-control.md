@@ -1,0 +1,752 @@
+# Controle de agentes de IA — Windows 11
+
+## Pasta opcional ao criar sessão
+
+- [x] Aceitar criação sem pasta no popup, com ou sem prompt, indicando uso do
+      local padrão administrado pelo OpenCode.
+- [x] Tornar a pasta opcional no bridge/comando nativo e omitir location no POST
+      quando ausente; continuar validando caminhos explicitamente informados.
+- [x] Validar UI, serviço nativo e criação vazia real sem pasta; limpar somente
+      a conversa de teste e registrar evidência sem dados privados.
+- [ ] Executar checks/builds, revisão e commit na branch atual.
+
+Ausência ou campo em branco envia directory null ao comando, que omite location
+na API do OpenCode. Caminhos preenchidos continuam locais, absolutos e existentes,
+com limite nativo de 4096 bytes. Demo usa um local demonstrativo identificado.
+Os testes do popup e do serviço falharam antes da mudança e passaram depois.
+29 testes frontend focados passaram; TypeScript e lint dos arquivos alterados
+passaram. A criação vazia real sem pasta passou, com seleção de local padrão
+válido e remoção da conversa, sem prompt, histórico ou execução de modelo.
+Evidência: `docs/evidence/ai-agents-optional-directory-2026-10-19.json`.
+
+## Validação de execução real — OpenCode
+
+Uma fatia de aceitação independente do bloqueio de notificações do Windows.
+
+- [x] Identificar o modelo informado pelo usuário no catálogo: DeepSeek V4.1
+      Flash Free, opencode/deepseek-v4.1-flash-free, ativo/habilitado.
+- [x] Repetir o ensaio selecionando esse modelo somente na conversa temporária;
+      não alterar padrão global, configurações ou conversas existentes.
+
+- [x] Criar uma conversa própria em pasta temporária vazia, com ferramentas
+      negadas somente nessa conversa, e enviar um prompt curto com resume:true.
+- [ ] Observar processamento e sucesso explícito pelo coletor público; conferir
+      um único alerta de conclusão no gerenciador nativo, sem consumidor de UI.
+- [x] Remover a conversa/pasta próprias e registrar evidência somente de estados,
+      sem histórico, resposta do modelo, títulos ou credenciais.
+- [x] Executar verificações aplicáveis, revisão e commit na branch atual.
+
+Não enviar decisões de ferramenta nem mudar a política de conversas existentes.
+Esse ensaio não valida emissão de perguntas, interação no WebView2 ou banner.
+
+Foram realizados dois ensaios próprios com resume:true: ambos admitiram o prompt
+e terminaram com outcome failed. A aceitação de conclusão bem-sucedida continua
+pendente; não atribuir o erro ao Strata ou a credenciais sem evidência adicional.
+As conversas foram removidas. A primeira pasta exigiu limpeza posterior porque
+o OpenCode ainda a mantinha em uso; o ensaio agora aguarda até três segundos pela
+liberação. Não há pastas próprias remanescentes.
+
+Diagnóstico sem histórico: modelo padrão big-pickle do provedor opencode marcado
+ativo/habilitado, com zero conexões registradas para sua integração. Duas
+gerações mínimas isoladas retornaram ServiceUnavailableError, service opencode.
+Esses sinais apontam para indisponibilidade do ambiente; a causa exata do erro
+do turno não foi estabelecida. Nenhuma configuração ou autenticação foi alterada.
+Instrumentação temporária removida; o teste de aceitação permanece ignorado pela
+suíte padrão e falha explicitamente nesse ambiente, sem anunciar conclusão.
+Evidência: `docs/evidence/ai-agents-opencode-real-turn-2026-10-19.json`.
+API pública consultada: [OpenCode v2](https://dev.opencode.ai/v2/docs/api).
+
+Suíte Rust padrão: 155 passaram, 19 ignorados. Formatação dos arquivos alterados
+passou. Revisões de padrões e especificação: nenhum achado acionável; a
+aceitação real permanece parcial. Mudanças de código somente em cfg(test), sem
+novo build de produção. Ensaio e evidência: `d99b5ae`. Foi solicitado ao usuário
+um provedor/modelo já funcional para o próximo ensaio, sem solicitar credenciais.
+
+Continuação com o modelo informado pelo usuário: a criação confirmou
+`model.id=deepseek-v4.1-flash-free` e `providerID=opencode` somente na conversa
+própria, com ferramentas negadas. O prompt foi admitido, mas o turno terminou
+com outcome failed. Conversa e pasta removidas; conclusão permanece não validada.
+O aplicativo Desktop em execução e o cliente consultado são da versão 2.0.32;
+isso não comprova que o contexto de execução do ensaio equivale ao da interface.
+Não inferir que o modelo esteja indisponível para o usuário nem que zero conexões
+explique um modelo gratuito; a causa do erro continua não estabelecida.
+
+O teste aceita a variável opcional, somente para testes,
+`STRATA_TEST_OPENCODE_MODEL=opencode/deepseek-v4.1-flash-free`. Confere uma única
+entrada ativa/habilitada no catálogo antes de criar recursos e confirma o modelo
+na sessão antes do prompt. Sem a variável, mantém o teste do modelo padrão.
+Não há alteração do modelo padrão global nem do transporte de produção.
+Evidência: `docs/evidence/ai-agents-opencode-deepseek-2026-10-19.json`.
+
+Continuação DeepSeek: 155 testes Rust padrão passaram, 19 ignorados; o teste
+explícito de aceitação permanece falhando no término do turno. Revisões de
+padrões e especificação sem achados acionáveis. Commit do ensaio: `bd1bafe`.
+
+## Validação instalada — Continuação do ticket 9
+
+- [x] Instalar o artefato NSIS atual no perfil do usuário e conferir identidade.
+- [x] Executar teste explícito com texto sintético, registrando envio ou bloqueio.
+- [x] Verificar o host atualizado e registrar o que foi comprovado, mantendo
+      apresentação visual e eventos reais de provedor distintos da submissão.
+- [ ] Validar apresentação de banners quando o usuário habilitar notificações.
+- [ ] Validar interação no popup do host instalado e eventos de provedor real.
+
+Esta continuação autoriza a instalação para aceitação; o transporte de produção
+continua sem criar atalhos ou alterar preferências de notificações.
+
+Instalador terminou com código 0; executável instalado em
+`%LOCALAPPDATA%/Strata/strata-bar.exe`, com protocolo 8. Atalho registrado no
+menu Iniciar. A consulta WinRT mudou de indisponível para bloqueado: código 2,
+DisabledForUser. Dois eventos sintéticos foram tentados pela interface pública,
+sem submissão ao Windows. Nenhuma preferência foi alterada.
+
+Host instalado em execução; probe encontrou duas barras visíveis para dois
+monitores, ambas topmost e nenhuma elegível para komorebi, além do overlay.
+O helper de automação não expôs as janelas AppBar/overlay como alvos; interação
+no popup não foi validada. Não confundir esse probe com confirmação visual do
+popup ou de banners.
+
+Validação: 155 testes Rust passaram, 18 ignorados. Os dois testes explícitos do
+módulo de notificações passaram no cenário bloqueado. Um filtro inicialmente
+amplo também executou sete testes nativos extras: a permissão sintética repetiu
+a falha conhecida de ID ausente; nenhum POST de decisão foi feito. Houve também
+solicitação de som no teste de lembrete. O filtro foi restringido ao módulo de
+notificações; não contabilizar a bateria ampla como integralmente aprovada.
+Evidência: `docs/evidence/ai-agents-notifications-installed-2026-10-19.json`.
+
+Revisões de padrões e especificação: nenhum achado acionável nesta continuação.
+O cenário habilitado continua pendente; somente o usuário pode liberar essa
+aceitação ao habilitar as notificações nas preferências do Windows. Nenhuma
+mudança de produção exigiu novo build; o acréscimo de código é restrito a testes.
+
+## Ticket 9 — Notificações nativas do Windows
+
+Segunda fatia da Subtask 4. Enviar toasts de atenção/conclusão somente para
+eventos novos da fila nativa, uma tentativa por evento, fora do lock do serviço.
+Usar a identidade `dev.strata.bar` do instalador e API WinRT diretamente, sem
+PowerShell, identidade de outro aplicativo, som ou botões de aprovação.
+
+- [x] Integrar transporte WinRT e estado disponível/bloqueado/indisponível/erro,
+      preservando os alertas visuais se o Windows não aceitar notificações.
+- [x] Encaminhar somente eventos novos para um worker compartilhado; não repetir
+      após falha, reconexão, dispensa ou atualização de outro monitor.
+- [x] Mostrar a disponibilidade no popup e validar os pontos públicos acordados.
+- [x] Executar checks/builds, revisão e commitar na branch atual.
+- [ ] Validar entrega real com identidade instalada e apresentação no Windows.
+
+Referência de revisão: `938341a`. O toast mostra apenas ferramenta e tipo de
+evento; títulos e conteúdo das sessões permanecem no popup. O Windows administra
+a central de notificações, que pode reter o texto genérico. Sem identidade
+registrada, informar que é necessário instalar o Strata. Sucesso da API significa
+submissão ao Windows, não comprova que um banner foi visto (Não incomodar e
+preferências do sistema continuam válidos). Não alterar essas preferências.
+
+Contrato versão 8. Worker com fila limitada a 32; descarte contabilizado e
+visível, sem repetir tentativas antigas. O estado é atualizado no próximo
+snapshot do serviço (até aproximadamente três segundos sem outra atualização).
+Atalhos reconhecidos: Strata.lnk ou Strata/Strata.lnk nos menus Iniciar do usuário
+ou de todos os usuários, com a propriedade AppUserModel.ID correta. Não criar
+atalhos nem alterar registro/instalação nesta fatia.
+
+Validação da implementação:
+
+- 27 testes frontend focados passaram e 155 testes Rust passaram, com 17
+  ignorados. O teste de encaminhamento falhou antes da implementação e passou
+  depois; há cobertura de falha sem retry e fila cheia com sistema lento.
+- TypeScript, lint e formatação dos arquivos alterados passaram.
+- Suíte frontend completa: 246 passaram e permaneceu a falha preexistente da
+  posição dos controles de áudio em `native-bar.test.tsx`.
+- Revisão de padrões: nenhuma violação documentada ou smell acionável.
+  Revisão de especificação: nenhum defeito ou escopo extra identificado;
+  aceitação nativa instalada permanece parcial.
+- Consulta WinRT real, somente leitura: indisponível, sem identidade do
+  instalador registrada nesta máquina. Nenhum toast submetido ou banner validado.
+- Build frontend e release passaram; instalador NSIS gerado em
+  `src-tauri/target/release/bundle/nsis/Strata_0.1.0_x64-setup.exe`.
+  O script gerado confirma Strata.lnk com AppUserModel.ID dev.strata.bar.
+  Não houve instalação nem interrupção da barra aberta. Implementação: `7246f2a`.
+
+Evidência: `docs/evidence/ai-agents-notifications-2026-10-19.json`.
+
+Aceitação restante: instalar o artefato NSIS com atalho do menu Iniciar,
+iniciar o host atualizado, conferir o estado no popup e produzir uma pergunta
+e uma conclusão próprias em um provedor conectado, com popup fechado.
+Confirmar um toast por evento, texto genérico sem título da conversa e ausência
+de reenvio ao abrir/fechar popup ou dispensar o alerta visual. Registrar submissão
+e apresentação separadamente, sem alterar Não incomodar para forçar o resultado.
+
+Referências:
+[identidade de aplicativos desktop](https://learn.microsoft.com/en-us/windows/win32/shell/enable-desktop-toast-with-appusermodelid)
+e [ToastNotificationManager](https://learn.microsoft.com/en-us/uwp/api/windows.ui.notifications.toastnotificationmanager).
+
+## Ticket 8 — Alertas visuais em segundo plano
+
+Primeira fatia da Subtask 4. Serviço nativo compartilhado produz alertas de
+atenção e conclusão, sem depender de assinantes ou do popup aberto. Entregar
+contador na barra, lista no popup e dispensa compartilhada entre monitores.
+Notificações nativas do Windows ficam em uma próxima fatia, não nesta entrega.
+
+- [x] Implementar fila nativa de alertas e deduplicação, com linha de base sem
+      alertas retroativos ao conectar/reconectar cada provedor.
+- [x] Emitir atenção por perguntas/permissões novas ou transição observada dos
+      hooks; concluir somente após execução observada e sucesso explícito.
+- [x] Exibir contador no widget e lista de alertas no popup, com dispensa
+      validada nativamente, sem apagar eventos novos por corrida entre monitores.
+- [x] Validar serviço e UI nos pontos já acordados, testar transporte nativo,
+      executar checks/builds/revisão e commitar na branch atual.
+- [ ] Validar alertas com provedores reais e interação no WebView2.
+- [ ] Integrar e validar notificações nativas do Windows em uma próxima fatia.
+
+Referência de revisão: `6d43162`. Não criar janelas, tocar som, enviar decisões ou
+tratar inatividade/erro como conclusão. Alertas retêm somente identificação de
+sessão, título, tipo e horário em memória. A amostragem pode perder execuções
+inteiramente ocorridas entre consultas; não inventar um identificador de turno.
+Uma conclusão exige que processamento/atenção tenham sido observados antes.
+No OpenCode, exige também outcome succeeded e time.idle posterior à última
+atividade observada, para não anunciar o sucesso retido do turno anterior.
+
+Contrato versão 7 e host atualizado. Fila mantém até 32 alertas recentes; o
+contador de descarte é explícito. Até 4096 chaves de eventos permanecem em memória,
+incluindo a linha de base. Ao atingir esse limite, novos alertas pausam até
+reiniciar o Strata; dispensar a lista não limpa as chaves. Alertas não guardam
+texto de perguntas, respostas, comandos ou caminhos de workspace.
+
+O serviço compõe alertas antes de publicar cada snapshot, sob o mesmo estado
+nativo compartilhado. O widget assina apenas contagem/pausa para atualizar a barra
+com popup fechado. A dispensa recebe os IDs da lista exibida, não um comando
+genérico de apagar tudo que possa eliminar um evento concorrente.
+
+Validação da implementação:
+
+- 26 testes frontend focados passaram; TypeScript, lint e formatação dos arquivos
+  alterados passaram. Build frontend passou.
+- Suíte Rust padrão: 152 passaram e 16 ignorados, incluindo seis testes novos
+  para linha de base, correlação de término, atenção, reconexão e limites.
+- Suíte frontend completa: 245 passaram e permaneceu a falha preexistente da
+  posição dos controles de áudio em `native-bar.test.tsx`.
+- Consulta nativa real do OpenCode passou com 22 sessões; a API forneceu marca
+  time.idle para os 18 resultados succeeded consultados. Somente contagens foram
+  observadas, sem registrar títulos ou conteúdo. Isso não prova um evento novo.
+- Incerteza temporária preserva a atividade observada para reconhecer um sucesso
+  explícito posterior; não produz conclusão por si só. O teste de regressão
+  falhou antes da correção e passou depois (`257da5a`).
+- Helper release executado no Windows com eventos sintéticos, sem consumidores
+  de UI: atenção e conclusão foram geradas uma vez cada. Transporte e composição
+  passaram; isso não valida emissão real do provedor nem interação no WebView2.
+  Evidência: `docs/evidence/ai-agents-alerts-2026-10-19.json`.
+- Revisão de padrões: nenhuma violação documentada ou recomendação adicional.
+  Revisão de especificação: nenhum defeito adicional na implementação desta
+  fatia; aceitação com provedores reais, WebView2 e toast permanece pendente.
+- Build release passou com o frontend atualizado. Commits de implementação:
+  `e77ca37` e `257da5a`. A barra aberta não foi interrompida.
+
+## Ticket 7 — Aprovar uma vez ou recusar ferramentas do OpenCode
+
+Quarta fatia da Subtask 3. A API pública v2 usa permissões pendentes separadas
+de formulários. O Strata oferecerá somente `once` e `reject`, nunca `always`.
+
+- [x] Conferir o contrato instalado de permissões e decisões.
+- [x] Projetar ação, recursos e contexto completo necessário à decisão no card,
+      com limites; bloquear ações se o contexto exceder a capacidade de exibição.
+- [x] Adicionar botões distintos de aprovar uma vez e recusar, sem decisão padrão
+      nem envio automático; desabilitar durante envio/desconexão.
+- [x] Revalidar sessão, ID e conteúdo atual antes do POST; preservar bloqueio de
+      tentativas incertas entre monitores e reconexões.
+- [x] Validar serviço e UI nos pontos já acordados, build frontend e revisão;
+      commitar na branch atual (`8ff145e`).
+- [x] Confirmar build release com o frontend atualizado.
+- [ ] Validar decisão na API real com solicitação própria consultável.
+- [ ] Validar a decisão em execução real e interação no WebView2.
+
+Referência de revisão: `7e97013`. Não executar comandos de ferramenta no Strata,
+alterar políticas persistentes, aprovar permissões existentes durante testes ou
+usar o input textual para decisões. Reter contexto pendente somente em memória.
+
+Contrato versão 6. Limites por permissão: 256 bytes para ação; até 32 recursos,
+4096 bytes por recurso e 16384 no conjunto; contexto adicional JSON completo de
+até 16384 bytes. Metadados/contexto não reconhecidos ou grandes demais tornam
+a permissão indisponível para decisão no Strata. Até 128 permissões pendentes
+são projetadas nas execuções ativas. Nenhuma política permanente é enviada.
+
+O ensaio real em conversa temporária com política própria ask retornou ask na
+criação sintética, mas o ID retornado não apareceu na lista de pendências. A
+decisão não foi enviada. A mesma situação ocorreu com ID explícito. A causa não
+foi estabelecida; não atribuir esse resultado a sessões ativas sem evidência.
+O teste explícito permanece falhando nesse pré-requisito e é ignorado pela suíte
+padrão. Não declarar aprovar/recusar validados na API real.
+Evidência: `docs/evidence/ai-agents-opencode-permission-2026-10-19.json`.
+
+Validação da implementação:
+
+- 24 testes frontend focados passaram; TypeScript, lint e formatação dos arquivos
+  alterados passaram. Build frontend passou.
+- Suíte Rust padrão: 146 passaram e 15 ignorados. O teste explícito da API real
+  falhou no pré-requisito descrito acima e não deve ser contado como aprovação
+  ou recusa reais validadas.
+- Suíte frontend completa: 242 passaram e dois falharam: a posição de áudio
+  preexistente e o cenário intermitente conhecido de mute no demo do microfone.
+- A suíte isolada de microfone passou com seus sete testes, sem alterações.
+- A evidência de limpeza consulta somente a página recente: não foram achadas
+  conversas temporárias próprias nessa página; não representa enumeração completa.
+- Revisão de padrões: nenhuma violação documentada. Uma recomendação de
+  manutenção identificou coordenação repetida entre respostas e decisões no
+  host; centralização pode ser tratada separadamente, sem bloquear esta fatia.
+- Revisão de especificação: implementação conforme a fatia, sem defeitos
+  comprovados ou escopo adicional. A aceitação do provedor permanece incompleta:
+  decisão real, continuação de ferramenta e interação WebView2 não validadas.
+- Build release passou; executável atualizado em
+  `src-tauri/target/release/strata-bar.exe`. A barra aberta não foi interrompida.
+
+## Ticket 6 — Responder perguntas textuais do OpenCode
+
+Terceira fatia da Subtask 3. O OpenCode v2 expõe formulários pendentes, com
+campos e IDs próprios; resposta usa `POST /api/session/{sessionID}/form/{formID}/reply`.
+
+- [x] Conferir schemas públicos de formulário pendente e resposta da instalação.
+- [x] Projetar perguntas/campos textuais simples no contrato gerado, somente em
+      memória, com limites e indicação explícita dos formatos não suportados.
+- [x] Exibir formulário no card da sessão e enviar resposta vinculada a sessão,
+      pergunta e versão; bloquear durante desconexão e envio.
+- [x] Revalidar pergunta pendente no provedor antes de enviar, impedir duplicação
+      entre monitores e não repetir respostas após falha ou reconexão.
+- [x] Validar testes, API real em conversa própria temporária, build frontend e
+      revisão; commitar na branch atual (`bcb3afa`).
+- [x] Confirmar build release com o frontend atualizado.
+- [ ] Validar interação real do formulário no WebView2.
+- [ ] Validar retomada de uma execução real do agente após a resposta.
+
+Referência de revisão: `55eb781`. Nesta fatia, aceitar campos string sem opções,
+condições, campos ocultos, formatos ou padrões. Formulários com outros controles
+exibem indisponibilidade explícita e devem ser respondidos no OpenCode. Aprovações
+de ferramentas permanecem separadas e indisponíveis. Nenhum histórico é lido.
+Pontos de teste acordados: serviço público e comportamento visível do popup.
+
+Contrato versão 5, com AgentMessage e AgentReplyRequest gerados de Rust. Até 128
+perguntas são projetadas em memória, com oito campos por formulário. Limites de
+envio: 4096 bytes UTF-8 por campo, 8192 por conjunto, além dos limites de caracteres
+da pergunta. Após 1024 tentativas na execução do Strata, novos envios são recusados;
+nenhum ID é descartado para liberar reenvio incerto. Desativar/reconectar não limpa
+o registro das tentativas; reiniciar o processo o descarta, sem disparar envios.
+
+O teste Windows criou uma conversa vazia temporária, adicionou um formulário pela
+API pública, enviou sua resposta e verificou que o formulário deixou de estar
+pendente. Uma segunda resposta foi recusada antes do POST. Somente essa conversa
+foi removida. Nenhum histórico foi lido. Evidência:
+`docs/evidence/ai-agents-opencode-reply-2026-10-19.json`.
+
+Validação da implementação:
+
+- 21 testes frontend focados passaram. TypeScript, lint e formatação dos arquivos
+  alterados passaram; build frontend passou.
+- Suíte Rust: 143 passaram e 14 ignorados. O teste de resposta da API real foi
+  executado separadamente e passou.
+- Suíte frontend completa: 240 passaram; permanece somente a falha preexistente
+  da posição dos controles de áudio em `native-bar.test.tsx`.
+- O teste real valida a resposta do formulário e a recusa após resolução. Não
+  valida retomada de uma execução do modelo nem interação do WebView2.
+- Revisão de padrões: nenhuma violação documentada ou problema acionável.
+- Revisão de especificação: sem problemas acionáveis de implementação ou escopo;
+  retomada de execução real e interação WebView2 continuam pendentes.
+- Build release passou; executável atualizado em
+  `src-tauri/target/release/strata-bar.exe`. A barra aberta não foi interrompida.
+
+## Ticket 5 — Prompt inicial ao criar conversa do OpenCode
+
+Segunda fatia da Subtask 3. A API v2 instalada admite o prompt por
+`POST /api/session/{sessionID}/prompt` com `text` e `resume: true`. A resposta
+confirma admissão na fila, não conclusão do trabalho. Pontos de teste já
+acordados: serviço público e comportamento visível do popup.
+
+- [x] Conferir o contrato OpenAPI instalado para envio e confirmação do prompt.
+- [x] Adicionar resultado tipado de criação/envio e validar o prompt antes de
+      criar a conversa; enviar uma única vez somente para o ID recém-criado.
+- [x] Adicionar prompt opcional ao formulário e preservar ID/resultado parcial
+      em falhas; bloquear envio durante desconexão e não repetir automaticamente.
+- [x] Validar testes, build frontend e revisão; commitar na branch atual
+      (`66bd872`).
+- [x] Confirmar build release com o frontend atualizado.
+- [x] Validar admissão do prompt no provedor real com resume:false, sem iniciar
+      execução do agente, e remover a conversa temporária.
+- [ ] Validar agendamento real com resume:true e interação no WebView2.
+
+Referência de revisão: `4075d08`. Não enviar prompts para sessões preexistentes,
+não alterar permissões e não reenviar após reconexão. Se a criação funcionar e
+o prompt falhar, mostrar a conversa criada e o resultado incerto do envio.
+
+O contrato agora exige snapshot versão 4 e host atualizado, pois o comando de
+criação retorna resultado estruturado em vez de apenas uma string. O texto fica
+somente no formulário e na requisição ao provedor, sem entrar nos snapshots ou
+ser persistido pelo Strata. Não ler histórico para conferir o envio.
+
+O teste Windows confirmou a admissão e correlação dos IDs usando resume:false.
+Isso valida transporte/contrato, não o agendamento com resume:true nem a execução
+do modelo. Evidência: `docs/evidence/ai-agents-opencode-prompt-2026-10-19.json`.
+
+Validação da implementação:
+
+- 18 testes frontend focados passaram. TypeScript, lint e formatação dos arquivos
+  alterados passaram. Build frontend passou.
+- Suíte Rust: 140 passaram e 13 ignorados; o teste Windows de admissão foi
+  executado separadamente e passou, removendo sua própria conversa de teste.
+- Suíte frontend completa: 237 passaram; a falha preexistente da posição dos
+  controles de áudio em `native-bar.test.tsx` permaneceu.
+- Revisão de padrões: nenhuma violação documentada ou problema acionável.
+- Revisão de especificação: sem problemas acionáveis de implementação ou escopo;
+  agendamento real com resume:true e interação WebView2 continuam pendentes.
+- Build release passou; executável atualizado em
+  `src-tauri/target/release/strata-bar.exe`. A barra aberta não foi interrompida.
+
+## Ticket 4 — Criar sessão vazia do OpenCode
+
+Primeira fatia da Subtask 3: a API v2 instalada permite criar uma conversa com
+`POST /api/session`, informando `location.directory`. Prompt inicial é uma
+operação separada e permanece para a próxima fatia; esta ação não inicia trabalho.
+
+- [x] Consultar o contrato OpenAPI público da instalação e a ajuda do CLI.
+- [x] Validar pasta local existente e conexão nativamente; enviar uma única
+      criação, sem repetição automática em falhas ou reconexões.
+- [x] Adicionar formulário no accordion, com bloqueio durante envio/desconexão e
+      confirmação por identificador da sessão criada.
+- [x] Testar serviço e comportamento visível, executar checks frontend, revisar e
+      commitar a implementação (`b455c09`).
+- [x] Confirmar build release com o frontend atualizado.
+- [ ] Validar formulário no WebView2 real (foco, inputs, fechamento e
+      posicionamento) para concluir aceitação nativa.
+
+Referência de revisão: `1b52d2b`. Não alterar permissões, iniciar prompt ou executar
+comandos de projeto ao criar a conversa. Falhas ambíguas devem orientar o usuário
+a conferir a lista antes de tentar novamente.
+
+Validação desta fatia:
+
+- 16 testes frontend focados passaram. TypeScript e lint dos arquivos alterados
+  passaram; build frontend passou.
+- Suíte Rust: 138 passaram e 12 ignorados. O teste explícito do OpenCode real
+  criou uma conversa vazia em pasta temporária e removeu somente essa conversa.
+  Nenhum prompt foi enviado. Evidência:
+  `docs/evidence/ai-agents-opencode-create-2026-10-19.json`.
+- A primeira execução desse teste identificou que DELETE retorna 204 sem corpo;
+  a conversa já havia sido removida. Após corrigir a interpretação da resposta,
+  o teste passou incluindo a limpeza.
+- Suíte frontend completa: 235 passaram; permanece a falha preexistente em
+  `native-bar.test.tsx` sobre posição dos controles de áudio.
+- Interação do formulário no WebView2 real ainda não exercitada. Teste do
+  provedor não substitui a validação visual nativa.
+- Revisão de padrões: nenhuma violação documentada ou problema acionável.
+- Revisão de especificação: sem problemas acionáveis nesta fatia; prompt inicial,
+  respostas e aceitação visual nativa continuam pendentes explicitamente.
+- Build release passou. O executável atualizado está em
+  `src-tauri/target/release/strata-bar.exe`; a barra aberta não foi interrompida.
+
+## Execução
+
+Trabalhar em uma subtask por vez. Marcar cada item somente após implementação e
+validação; reportar o progresso ao concluir cada subtask.
+
+Plano criado antes de alterações no código. Subtask 1 iniciada pelo levantamento
+da arquitetura existente. A entrevista de design solicitada com `grill-me` está
+em andamento; contratos e integrações dependem das decisões registradas abaixo.
+
+## Escopo solicitado
+
+- Windows 11 como ambiente de detecção, monitoramento e notificações.
+- Agentes: ChatGPT Desktop, OpenCode e Antigravity (Codex não incluído).
+- Sessões agrupadas por ferramenta, com status individual em tempo real.
+- Atenção para perguntas, confirmações e solicitações de ferramentas.
+- Iniciar sessões e responder pelo popup.
+- Notificar conclusão bem-sucedida de tarefas.
+- Reutilizar o Design System e a infraestrutura nativa do Strata.
+
+## Subtask 1: Arquitetura, tipos e comunicação com processos/APIs
+
+- [x] Definir os tipos TypeScript `AgentType`, `AgentSession`, `SessionStatus` e
+      `AgentMessage`, derivados de um contrato único.
+- [ ] Implementar a camada de integração/polling para detectar instâncias/sessões
+      ativas do ChatGPT, OpenCode e Antigravity no Windows 11.
+- [x] Criar o store/gerenciador de estado global dos agentes (descoberta de
+      aplicativos; sessões serão adicionadas com os conectores).
+
+Etapas de arquitetura e validação:
+
+- [x] Identificar as superfícies de cada produto incluídas no escopo.
+- [ ] Verificar fontes reais de sessões, status e perguntas por ferramenta.
+- [ ] Definir capacidades de detecção, criação e resposta por integração.
+- [ ] Definir identidade de sessão, transições, desconexão e reconexão.
+- [x] Definir limites de leitura e retenção de mensagens locais.
+- [ ] Confirmar o entendimento compartilhado após a entrevista de design.
+- [ ] Implementar e validar contratos, integração nativa e ciclo de vida do store.
+
+## Subtask 2: UI do popup — lista e separação por agente
+
+- [ ] Criar o layout do popup seguindo o Design System do projeto.
+- [ ] Implementar abas/seções separando sessões ativas do ChatGPT, OpenCode e
+      Antigravity.
+- [ ] Exibir indicadores visuais em tempo real: processando, aguardando resposta,
+      concluído e erro.
+
+## Subtask 3: Ações de interação — nova sessão e responder
+
+- [ ] Implementar o fluxo para iniciar nova sessão de agente a partir do popup.
+- [ ] Implementar input de resposta rápida no card da sessão afetada, sem
+      alternar de janela.
+
+## Subtask 4: Notificações — atenção exigida e conclusão
+
+- [ ] Implementar disparo de notificações para perguntas/prompts que exigem atenção.
+- [ ] Implementar disparo de notificações para tarefas concluídas.
+- [ ] Integrar notificações nativas do Windows 11 se aplicável/suportado.
+
+## Decisões confirmadas — rodada 1
+
+1. Escopo de ChatGPT: ChatGPT Desktop.
+2. Cobertura: descobrir também sessões abertas fora do Strata.
+3. Integrações parciais: apresentar capacidades indisponíveis explicitamente quando
+   uma ferramenta não oferecer um caminho de integração comprovado.
+
+## Levantamento inicial da arquitetura
+
+- Não há integração existente com os três agentes no repositório.
+- Reutilizar o framework de popups interativos existente, sem nova janela.
+- Usar o serviço de lembretes como referência para monitoramento independente do
+  popup, snapshots versionados, adapter nativo/demo e store Zustand.
+- Derivar os tipos TypeScript de contratos Rust via `ts-rs`, como no projeto atual.
+- Fontes candidatas a validar por versão instalada: servidor HTTP/eventos do
+  OpenCode e hooks do Antigravity. Não há fonte de sessões do ChatGPT Desktop
+  comprovada neste levantamento.
+
+## Decisões confirmadas — rodada 2
+
+1. Permitir uma etapa de configuração de conectores locais e hooks necessários,
+   mostrando as capacidades habilitadas por conexão.
+2. Coletar somente metadados e perguntas pendentes necessários ao popup; manter
+   esses dados apenas em memória, sem persistir histórico no Strata.
+3. Conclusão significa fim bem-sucedido de uma execução/turno por evento explícito,
+   mantendo a conversa disponível para novos pedidos.
+
+## Decisões confirmadas — rodada 3
+
+1. Perguntas textuais e aprovações de ferramentas devem ter controles distintos;
+   nenhuma aprovação automática.
+2. Perda de conexão deve produzir estado desconhecido/desconectado e desabilitar
+   respostas até reconciliar o estado da sessão.
+3. Notificações devem funcionar com o popup fechado, deduplicar eventos e evitar
+   anunciar eventos antigos como novos ao iniciar o Strata.
+4. Novas sessões devem solicitar os parâmetros exigidos pela integração (por
+   exemplo, projeto e prompt), sem executar comandos arbitrários.
+5. Preferir APIs/eventos/hooks; automação de interface e protocolos privados ficam
+   fora desta primeira implementação.
+
+Todas as cinco decisões foram aceitas pelo usuário. Não reenviar respostas
+automaticamente após desconexão. Solicitar projeto/pasta e prompt inicial conforme
+as exigências da integração.
+
+## Desenho consolidado para confirmação final
+
+- Serviço Rust compartilhado acompanha integrações mesmo com popup fechado.
+- Cada ferramenta expõe capacidades independentes: detectar aplicativo, listar
+  sessões, receber status/perguntas, criar sessão, responder e aprovar/recusar.
+- Detectar aplicativo aberto não implica capacidade de listar suas conversas.
+  Sessões externas são incluídas quando a integração permitir descobri-las.
+- Identidade de sessão usa ferramenta, conexão e identificador do provedor;
+  perguntas e execuções preservam seus identificadores para evitar duplicação.
+- Contrato distingue processamento, atenção, conclusão, erro, estado desconhecido
+  e desconexão; indisponibilidade de integração é independente do status da sessão.
+- Snapshot inicial estabelece a linha de base sem notificações retroativas;
+  reconexão reconcilia o estado sem reaplicar ações já enviadas.
+- Perguntas textuais e pedidos de aprovação têm ações distintas. Respostas são
+  vinculadas ao pedido pendente e validadas nativamente antes do envio.
+- Conteúdo necessário ao popup permanece em memória. O Strata não persiste o
+  histórico de conversas.
+- API/eventos locais do OpenCode e hooks do Antigravity são candidatos a validar;
+  não prometer controle das sessões do ChatGPT Desktop sem fonte comprovada.
+- Tipos gerados de Rust via `ts-rs`, adapter nativo/demo separado e store Zustand
+  com proteção contra snapshots antigos seguem os padrões existentes.
+- Subtask 1 entrega contratos, detecção/conectores comprovados e estado global;
+  layout, ações e notificações ficam nas respectivas subtasks seguintes.
+
+## Execução autorizada — ticket 1
+
+Após a síntese da spec e a proposta de tickets verticais, o usuário acionou
+`implement` e pediu para prosseguir com o primeiro ticket. Pontos de teste:
+contrato público do serviço e comportamento visível do popup, com validação real
+no Windows. Referência da revisão: commit `9e3bb9d`; commit na branch atual.
+
+- [x] Contrato Rust de descoberta com tipos TypeScript gerados.
+- [x] Enumeração Win32 de nomes de executáveis, compartilhada entre monitores,
+      a cada três segundos e independente da visibilidade do popup.
+- [x] Store com snapshots versionados, proteção contra respostas atrasadas e
+      liberação de listeners mesmo ao fechar durante a conexão.
+- [x] Widget nativo e preview com popup separado por ferramenta, estado de
+      detecção e controles indisponíveis explícitos; demo identificado.
+- [x] Probe nativo de descoberta sem abrir barras ou ler conversas.
+- [x] Revisão final do ticket e commit.
+
+Este ticket entrega descoberta de aplicativos, não descoberta de sessões. A
+Subtask 1 original permanece parcial: AgentSession e SessionStatus foram
+adicionados no ticket 2; AgentMessage foi adicionado ao contrato de perguntas e
+respostas no ticket 6.
+Subtasks 2–4 também não estão concluídas pelo popup inicial.
+
+## Validação do ticket 1
+
+Ajuste solicitado após a primeira entrega: popup único com accordion por
+ferramenta, inicialmente recolhido e com uma seção aberta por vez. O estado de
+detecção permanece visível no cabeçalho; detalhes e ações ficam na expansão.
+
+- Testes focados: 9 frontend; 3 nativos novos.
+- Testes Rust: 126 passaram e 9 foram ignorados.
+- TypeScript, build frontend, build Rust e lint dos arquivos alterados passaram.
+- Probe Win32 real: ChatGPT e OpenCode detectados; Antigravity não detectado,
+  consistente com a listagem independente de processos do Windows.
+- A suíte frontend completa encontrou uma falha no teste de posição dos controles
+  de áudio; reproduzida também com NativeBar do commit inicial `9e3bb9d`.
+- Última execução completa: 227 passaram e 2 falharam. Além da falha acima,
+  houve uma falha intermitente no preview do microfone; a suíte isolada de
+  microfone passou com seus 7 testes, sem alterações.
+- O gate agregado está limitado por formatação em cinco arquivos preexistentes e
+  quatro erros de classes Tailwind no componente code-block, fora desta entrega.
+- A interação do novo popup no WebView2 real ainda não foi exercitada; não
+  interrompemos a instância de Strata já aberta para substituí-la pelo novo build.
+- Revisão de padrões: corrigida a falha na qual o erro da leitura inicial
+  encerrava uma assinatura de eventos válida; teste de regressão passou e a
+  segunda revisão não encontrou pendências. Revisão de escopo: sem desvios do
+  ticket 1, com a limitação de validação WebView2 registrada acima.
+
+## Ticket 2 — OpenCode: conexão e sessões existentes
+
+Escopo autorizado: conectar o OpenCode local, listar sessões existentes no
+accordion único, exibir estados comprovados e reconciliar após falhas. Criar
+sessões, responder e aprovar ferramentas continuam nos tickets seguintes.
+
+Levantamento: a versão instalada é OpenCode 2.0.32. Seu contrato OpenAPI público
+usa `/api/session` e `/api/session/active`; os exemplos v1 da documentação geral
+não correspondem a essa versão. Usar o comando público `opencode api GET`, com
+rotas fixas, para aproveitar a autenticação já gerenciada pelo cliente local.
+Não ler arquivos de credenciais, histórico ou mensagens completas.
+
+- [x] Gerar contrato de sessões e conexão a partir de Rust.
+- [x] Implementar coletor de metadados v2 e validar identidade/estado/limites.
+- [x] Integrar conexão explícita, monitoramento em segundo plano e desconexão,
+      impedindo resultados antigos após desconectar/reconectar.
+- [x] Exibir sessões recentes e execuções ativas no accordion do OpenCode.
+- [x] Validar pelos contratos públicos e pelo popup, verificar a API real no
+      Windows, executar os gates apropriados, revisar e fazer commit.
+
+Referência da revisão deste ticket: `a952a316de5c0c0206774f4ca38d9a9cbdb5b2a9`.
+
+Comportamento entregue:
+
+- Conexão habilitada explicitamente; configuração e sessões apenas em memória.
+- Resolver somente o CLI v2 instalado pelo OpenCode Desktop. Nenhum caminho,
+  comando, endpoint ou argumento arbitrário é recebido da UI.
+- Consultar metadados a cada cinco segundos após a consulta anterior, mesmo com
+  o popup fechado. O monitor de processos continua independente a cada três
+  segundos. Cada consulta tem limite total de vinte segundos e pode ser cancelada.
+- Até cinquenta sessões recentes, incluindo execuções ativas fora dessa página;
+  histórico adicional sinalizado. Sessões arquivadas inativas não são exibidas.
+- Execuções ativas verificam formulários e aprovações pendentes; nenhuma resposta
+  ou aprovação é enviada. Inatividade não significa sucesso: conclusão e erro
+  dependem de `outcome` explícito da API, rotulados como resultado do último turno.
+- Falhas marcam sessões como desconectadas; reconexão substitui o snapshot.
+  Desconectar limpa metadados e invalida consultas em andamento.
+- Snapshot versão 2: falhas de enumeração Win32 não invalidam a conexão de sessões.
+  Reiniciar o host nativo é necessário para carregar o novo contrato e comando.
+
+Validação inicial:
+
+- Doze testes frontend focados passaram. Cinco testes novos Rust passaram; um
+  teste explícito da API real passou consultando metadados em memória e emitindo
+  somente contagens para a evidência.
+- Suíte Rust completa: 131 passaram e 10 ignorados, incluindo o teste live que foi
+  executado separadamente.
+- Build frontend, TypeScript e lint dos arquivos alterados passaram.
+- Suíte frontend final: 231 passaram; permanece a única falha preexistente da
+  posição dos controles de áudio. Gate agregado permanece limitado pela
+  formatação preexistente.
+- O caminho live validou OpenCode Desktop 2.0.32 neste Windows. CLI instalado
+  isoladamente, v1 e servidores remotos não estão cobertos por este conector.
+- A interação no novo popup em WebView2 ainda requer validação na instância com o
+  host atualizado; a consulta nativa real não substitui esse teste visual.
+- Revisões de padrões e de escopo do ticket 2 concluídas sem pendências.
+- O build nativo de desenvolvimento foi impedido pelo executável aberto; o build
+  release passou separadamente, sem interromper a barra atual.
+
+Não inferir processamento, atenção ou sucesso apenas pela presença de processo.
+Preservar validação nativa, CSP, escopo de capabilities e ausência de fallback
+demo em falhas nativas.
+
+## Ticket 3 — Antigravity: observar sessões por hooks públicos
+
+Referência da revisão: `7550b9c5764b9fac3289041ac06b6cc3758d7378`.
+
+O Antigravity App instalado é 2.23.1. Os hooks públicos recebem conversationId,
+workspacePaths e eventos do ciclo de execução. O CLI público agentapi consulta
+metadados de uma conversa conhecida, mas não lista todas as sessões. Portanto,
+esta integração observa apenas sessões que emitirem hooks após a conexão; não
+consulta logs, bancos privados, credenciais ou protocolos internos.
+
+- [x] Criar contrato e monitor de metadados dos hooks, com limites e isolamento
+      entre conexões e sessões.
+- [x] Implementar transporte local em memória e helper nativo de hooks com
+      respostas neutras que preservem as políticas do Antigravity.
+- [x] Instalar/remover somente a entrada de hooks do Strata mediante ação explícita
+      no popup, preservando configurações de terceiros.
+- [x] Integrar o monitor no serviço compartilhado e exibir sessões no accordion,
+      incluindo limitações de cobertura e estados desconhecido/desconectado.
+- [x] Validar contrato público, transporte Windows com eventos sintéticos, testes
+      de UI e builds; revisar a implementação e fazer commit.
+- [ ] Validar emissão pelo Antigravity real e interação no popup WebView2 para
+      concluir a aceitação nativa do ticket.
+
+Hooks candidatos: SessionStart, PreInvocation, PreToolUse/PostToolUse restritos a
+ask_question/ask_permission e Stop. PreToolUse delega à política padrão com allow
+(não auto_approve); Stop nunca força continuação. Sucesso requer model_stop com
+fullyIdle verdadeiro e ausência de erro. Outras aprovações não são inferidas.
+
+Fonte: [documentação oficial dos hooks](https://antigravity.google/docs/hooks).
+
+Entrega e limites:
+
+- O monitor fica desativado até a ação explícita no accordion. A instalação altera
+  somente a entrada `strata-ai-agents` em `~/.gemini/config/hooks.json`; conflitos
+  não reconhecidos são preservados e reportados. Entradas antigas reconhecidas do
+  Strata podem ser substituídas; remoção exige igualdade com a entrada instalada.
+- O helper roda antes de criar qualquer janela e envia metadados por loopback com
+  nonce próprio por conexão. Mensagens inválidas, antigas ou de outra conexão são
+  descartadas. Entrada limitada a 1 MiB; pacote sanitizado limitado a 16 KiB.
+- Receber um evento não lê transcriptPath nem transmite argumentos, perguntas,
+  mensagens ou erros textuais. A lista usa identificador resumido e primeiro
+  workspace, sem consultar nomes privados ou históricos.
+- Até 128 sessões observadas permanecem em memória. Processamento e atenção sem
+  novo evento por dois minutos passam a desconhecido. Processo encerrado marca
+  desconexão; um evento novo é necessário para restaurar estado observado.
+- Desativar limpa metadados e encerra o receptor mesmo se a remoção do arquivo de
+  hooks falhar; nesse caso, o popup informa a pendência de limpeza. Encerramento
+  normal também tenta remover apenas a entrada própria.
+- Snapshot versão 3; requer carregar o novo host nativo.
+
+Validação:
+
+- 14 testes frontend focados passaram; TypeScript e lint dos arquivos alterados
+  passaram. Build frontend e build release Rust passaram.
+- Seis testes nativos novos passaram: projeção de estados, conclusão explícita,
+  atenção/expiração, ordem de eventos, preservação de configurações e transporte.
+- Suíte Rust completa: 137 passaram e 11 ignorados.
+- O teste explícito Windows lançou o helper release pelo comando gerado para o
+  hook, conferiu stdout neutro e entrega de metadados ao monitor. Usou eventos
+  sintéticos e não abriu tarefa ou enviou mensagem no Antigravity.
+- A evidência do bridge informa explicitamente que a emissão pelo Antigravity
+  real ainda não foi verificada. Não equivale a um teste do provedor ponta a ponta.
+- Suíte frontend completa: 233 passaram e a falha preexistente da posição de áudio
+  permaneceu. Gate agregado limitado pela formatação preexistente.
+- A configuração global real de hooks não foi alterada durante os testes.
+- Revisão de padrões: nenhuma violação ou problema acionável encontrado.
+- Revisão de especificação: nenhum problema acionável de implementação ou escopo;
+  aceitação do provedor permanece parcial até a validação real descrita abaixo.
+- Implementação registrada no commit `42b916d`.
+
+Para validar com o provedor real: iniciar o novo Strata, ativar os hooks no
+accordion e reabrir o Antigravity. Uma sessão iniciada ou retomada normalmente
+pelo usuário deve então emitir os eventos. Conferir atenção, conclusão, desconexão
+e desativação sem alterar os hooks de terceiros. Esta etapa e o teste visual do
+WebView2 permanecem pendentes; não declarar aceitação nativa completa.

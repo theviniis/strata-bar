@@ -11,9 +11,11 @@ import { WidgetPopup } from '@/popups/WidgetPopup'
 import { nextReminder } from '@/services/system/reminders'
 import { useReminders } from '@/stores/reminders'
 
+import { useReminderAnchor } from './useReminderAnchor'
 import { formatCountdown } from './presentation'
 
 export function Reminders() {
+  const anchor = useReminderAnchor()
   const snapshot = useReminders((s) => s.snapshot)
   const error = useReminders((s) => s.error)
   const [now, setNow] = useState(Date.now)
@@ -39,7 +41,7 @@ export function Reminders() {
   return (
     <WidgetPopup.Root popup="reminders">
       <WidgetPopup.Anchor asChild>
-        <div>
+        <div ref={anchor}>
           <WidgetPopup.Trigger asChild>
             <WidgetItem
               type="button"

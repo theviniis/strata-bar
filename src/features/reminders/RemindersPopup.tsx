@@ -1,9 +1,3 @@
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger
-} from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import {
@@ -21,13 +15,6 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog'
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle
-} from '@/components/ui/empty'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -44,7 +31,7 @@ import { useConfig } from '@/stores/config'
 import { getRemindersStore, useReminders } from '@/stores/reminders'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, Ghost, Settings } from 'lucide-react'
+import { ChevronDown, Settings } from 'lucide-react'
 import {
   useCallback,
   useContext,
@@ -57,7 +44,7 @@ import { Controller, useForm, useWatch } from 'react-hook-form'
 import { CalendarSettings } from './CalendarSettings'
 import { reminderFormSchema, type ReminderFormValues } from './form'
 import { scheduledDateTime } from './presentation'
-import { ReminderAlertActions } from './ReminderAlertActions'
+import { ActiveReminders } from './ActiveReminders'
 import { ReminderEditor } from './ReminderEditor'
 
 export function RemindersPopup() {
@@ -68,8 +55,6 @@ export function RemindersPopup() {
   const snapshot = useReminders((s) => s.snapshot)
   const error = useReminders((s) => s.error)
   const create = useReminders((s) => s.create)
-  const dismiss = useReminders((s) => s.dismiss)
-  const sync = useReminders((s) => s.syncCalendar)
   const source = useReminders((s) => s.source)
   const queryClient = useQueryClient()
   const calendarStatus = useQuery({
@@ -191,8 +176,6 @@ export function RemindersPopup() {
     validationError ||
     (calendarStatus.error ? String(calendarStatus.error) : '') ||
     error
-  const active =
-    snapshot?.reminders.filter((r) => r.status !== 'dismissed') ?? []
   return (
     <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
       <div>
@@ -506,84 +489,11 @@ export function RemindersPopup() {
                 {success}
               </p>
             )}
-            <Accordion defaultValue={[]} aria-label="Lembretes ativos">
-              <AccordionItem value="active">
-                <AccordionTrigger>Ativos ({active.length})</AccordionTrigger>
-                <AccordionContent className="grid gap-2">
-                  {active.length === 0 && (
-                    <Empty>
-                      <EmptyHeader>
-                        <EmptyMedia>
-                          <Ghost />
-                        </EmptyMedia>
-                        <EmptyTitle>Nenhum lembrete ativo.</EmptyTitle>
-                        <EmptyDescription>
-                          Adicione novos lembretes para aparecer aqui.
-                        </EmptyDescription>
-                      </EmptyHeader>
-                    </Empty>
-                  )}
-                  {active
-                    .slice()
-                    .sort((a, b) => a.notifyAt - b.notifyAt)
-                    .map((r) => (
-                      // TODO: Refatorar esse componente
-                      <div
-                        key={r.id}
-                        className="grid gap-2 rounded border border-border p-3"
-                      >
-                        <p className="wrap-break-word text-sm">{r.message}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(r.notifyAt).toLocaleString()} ·{' '}
-                          {r.status === 'ringing'
-                            ? 'Aguardando confirmação'
-                            : 'Agendado'}
-                        </p>
-                        {r.googleEventId && (
-                          <p className="text-xs text-muted-foreground">
-                            Evento criado no Google Calendar
-                          </p>
-                        )}
-                        {r.calendarRequested && !r.googleEventId && (
-                          <>
-                            <p className="text-xs text-destructive">
-                              {r.calendarError ?? 'Sincronização pendente'}
-                            </p>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={pending || !connected}
-                              onClick={() => {
-                                setPending(true)
-                                void sync(r.id).finally(() => setPending(false))
-                              }}
-                            >
-                              Tentar sincronizar
-                            </Button>
-                          </>
-                        )}
-                        {r.status === 'ringing' ? (
-                          <ReminderAlertActions id={r.id} />
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={pending}
-                            onClick={() => {
-                              setPending(true)
-                              void dismiss(r.id).finally(() =>
-                                setPending(false)
-                              )
-                            }}
-                          >
-                            Dispensar
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+            <ActiveReminders
+              connected={connected}
+              pending={pending}
+              onPendingChange={setPending}
+            />
           </CardContent>
         </div>
         <DialogContent

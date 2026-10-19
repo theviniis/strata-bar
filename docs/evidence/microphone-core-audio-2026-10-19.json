@@ -1,0 +1,52 @@
+{
+  "alternateAvailable": true,
+  "before": {
+    "defaultDeviceId": "{0.0.1.00000000}.{3973453d-67ea-4d02-bff8-c8e4c6abbd80}",
+    "devices": [
+      {
+        "id": "{0.0.1.00000000}.{121e6fd8-67fd-4ccb-921a-83359994f69a}",
+        "name": "Spotify (VB-Audio Voicemeeter VAIO)"
+      },
+      {
+        "id": "{0.0.1.00000000}.{3973453d-67ea-4d02-bff8-c8e4c6abbd80}",
+        "name": "Microfone (VB-Audio Voicemeeter VAIO)"
+      },
+      {
+        "id": "{0.0.1.00000000}.{b6d15769-9d85-4095-be2f-e5a19e2ac1af}",
+        "name": "CABLE Output (VB-Audio Virtual Cable)"
+      },
+      {
+        "id": "{0.0.1.00000000}.{bec5eeb2-d6d0-48ea-8379-6e603a0a70de}",
+        "name": "Microfone (3- USB Audio CODEC )"
+      }
+    ]
+  },
+  "changedVolume": {
+    "level": 40.0,
+    "muted": false
+  },
+  "outputPreserved": true,
+  "restored": true,
+  "selected": {
+    "defaultDeviceId": "{0.0.1.00000000}.{121e6fd8-67fd-4ccb-921a-83359994f69a}",
+    "devices": [
+      {
+        "id": "{0.0.1.00000000}.{121e6fd8-67fd-4ccb-921a-83359994f69a}",
+        "name": "Spotify (VB-Audio Voicemeeter VAIO)"
+      },
+      {
+        "id": "{0.0.1.00000000}.{3973453d-67ea-4d02-bff8-c8e4c6abbd80}",
+        "name": "Microfone (VB-Audio Voicemeeter VAIO)"
+      },
+      {
+        "id": "{0.0.1.00000000}.{b6d15769-9d85-4095-be2f-e5a19e2ac1af}",
+        "name": "CABLE Output (VB-Audio Virtual Cable)"
+      },
+      {
+        "id": "{0.0.1.00000000}.{bec5eeb2-d6d0-48ea-8379-6e603a0a70de}",
+        "name": "Microfone (3- USB Audio CODEC )"
+      }
+    ]
+  },
+  "timestamp": 1792414190644
+}

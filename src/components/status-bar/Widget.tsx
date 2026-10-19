@@ -1,4 +1,5 @@
 import { DemoMusic } from '../../features/music/Music'
+import { Agents } from '../../features/agents/Agents'
 import { Reminders } from '../../features/reminders/Reminders'
 import {
   Tooltip,
@@ -16,7 +17,9 @@ import {
   MemoryStick,
   Music2,
   Volume2,
+  Mic,
   Bell,
+  Bot,
   type LucideIcon
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -59,11 +62,13 @@ const meta: Record<WidgetType, { icon: LucideIcon; label: string }> = {
   disk: { icon: HardDrive, label: 'HD' },
   network: { icon: ArrowDownUp, label: 'NET' },
   music: { icon: Music2, label: 'Música' },
+  microphone: { icon: Mic, label: 'Microfone' },
   volume: { icon: Volume2, label: 'Audio' },
   activeWindow: { icon: AppWindow, label: 'Active window' },
   komorebi: { icon: LayoutGrid, label: 'Workspaces' },
   clock: { icon: Clock3, label: 'Local time' },
-  reminders: { icon: Bell, label: 'Lembretes' }
+  reminders: { icon: Bell, label: 'Lembretes' },
+  agents: { icon: Bot, label: 'Agentes de IA' }
 }
 
 const formatters: Record<Channel, (value: PreviewValue) => string> = {
@@ -72,6 +77,8 @@ const formatters: Record<Channel, (value: PreviewValue) => string> = {
   gpu: (v) => `${v}%`,
   disk: () => '',
   network: (v) => `${v} KB/s`,
+  audioInputs: () => '',
+  microphone: (v) => `${v}%`,
   volume: (v) => `${v}%`,
   activeWindow: (v) => String(v),
   komorebi: () => '',
@@ -106,7 +113,13 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
   const sample = useMetrics((s) => s[widget.id])
   useEffect(() => {
     const type = widget.type
-    if (type === 'clock' || type === 'music' || type === 'reminders') return
+    if (
+      type === 'clock' ||
+      type === 'music' ||
+      type === 'reminders' ||
+      type === 'agents'
+    )
+      return
     return connect<DemoChannelData, Channel>(
       preview,
       type,
@@ -120,6 +133,7 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
   }, [widget.id, widget.type, widget.intervalMs])
   if (widget.type === 'music') return <DemoMusic />
   if (widget.type === 'reminders') return <Reminders />
+  if (widget.type === 'agents') return <Agents />
   if (widget.type === 'komorebi') {
     // The workspace strip is a row of controls, so it cannot nest inside the
     // popover trigger button; it renders as its own compact widget instead.
@@ -174,6 +188,7 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
             ? 'Error'
             : 'Unavailable'
   if (
+    widget.type === 'microphone' ||
     widget.type === 'volume' ||
     widget.type === 'memory' ||
     widget.type === 'cpu' ||
@@ -185,6 +200,7 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
         cpu: { id: 'cpu', label: 'Detalhes da CPU' },
         gpu: { id: 'gpu', label: 'Detalhes da GPU' },
         memory: { id: 'memory', label: 'Detalhes da memória' },
+        microphone: { id: 'audioInputs', label: 'Entrada de áudio' },
         volume: { id: 'audioOutputs', label: 'Saída de áudio' },
         disk: { id: 'disk', label: 'Detalhes dos discos' }
       }

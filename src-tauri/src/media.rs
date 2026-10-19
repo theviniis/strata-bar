@@ -10,6 +10,7 @@ use tauri::{AppHandle, Emitter};
 pub enum Request {
     Wake,
     Tick,
+    Enriched,
     Action(String, MediaRequest, mpsc::SyncSender<Result<(), String>>),
     Stop,
 }
@@ -40,17 +41,21 @@ pub fn allowed_window(label: &str) -> bool {
 /// costs one read. A wake also promotes the periodic tick, so an event that lands
 /// with the timeout is never lost. Actions and `Stop` are preserved.
 fn coalesce(request: Request, mut queued: impl FnMut() -> Option<Request>) -> Request {
-    if !matches!(request, Request::Wake | Request::Tick) {
+    if !matches!(request, Request::Wake | Request::Tick | Request::Enriched) {
         return request;
     }
     let mut current = request;
     while let Some(next) = queued() {
         match next {
             Request::Wake => {
+                current = Request::Wake;
+            }
+            Request::Enriched => {
                 if matches!(current, Request::Tick) {
-                    current = Request::Wake;
+                    current = Request::Enriched;
                 }
             }
+            Request::Tick => {}
             other => {
                 current = other;
                 break;
@@ -58,6 +63,10 @@ fn coalesce(request: Request, mut queued: impl FnMut() -> Option<Request>) -> Re
         }
     }
     current
+}
+fn reuse_snapshot(request: &Request, stale: bool, has_snapshot: bool) -> bool {
+    has_snapshot
+        && (matches!(request, Request::Enriched) || (matches!(request, Request::Tick) && !stale))
 }
 pub fn validate(request: &MediaRequest, data: &MediaData) -> Result<(), String> {
     if request.session_id != data.session_id || request.track_id != data.track_id {
@@ -99,10 +108,13 @@ pub fn validate(request: &MediaRequest, data: &MediaData) -> Result<(), String> 
 impl Media {
     pub fn start(app: AppHandle) -> Self {
         let (tx, rx) = mpsc::channel();
+        let notify = tx.clone();
         let this = Self {
             data: Default::default(),
             tx,
-            spotify: Spotify::start(),
+            spotify: Spotify::start(move || {
+                let _ = notify.send(Request::Enriched);
+            }),
         };
         let worker = this.clone();
         std::thread::spawn(move || worker.run(app, rx));
@@ -184,7 +196,15 @@ impl Media {
                 self.data.lock().unwrap().latest = None;
             }
             let mut request = if active {
-                match rx.recv_timeout(Duration::from_secs(1)) {
+                let pending = !stale
+                    && source
+                        .as_ref()
+                        .is_some_and(|source: &WindowsMedia| source.has_pending_read());
+                match rx.recv_timeout(if pending {
+                    Duration::from_millis(20)
+                } else {
+                    Duration::from_secs(1)
+                }) {
                     Ok(r) => r,
                     Err(mpsc::RecvTimeoutError::Timeout) => Request::Tick,
                     Err(_) => break,
@@ -210,14 +230,22 @@ impl Media {
                 initialized.as_ref().map_err(|e| e.to_string())?;
                 if source.is_none() {
                     source = Some(WindowsMedia::new(self.tx.clone()).map_err(|e| e.to_string())?);
-                } else if matches!(request, Request::Tick) && !stale {
+                } else if matches!(request, Request::Action(..)) {
+                    return source.as_ref().unwrap().action_snapshot().map(Some);
+                } else if reuse_snapshot(
+                    &request,
+                    stale || source.as_ref().unwrap().has_pending_read(),
+                    source.as_ref().unwrap().snapshot().is_some(),
+                ) {
                     return Ok(source.as_ref().unwrap().snapshot());
                 }
                 source.as_mut().unwrap().read().map_err(|e| e.to_string())
             })();
             match read {
                 Ok(Some(mut data)) => {
-                    stale = false;
+                    if !matches!(request, Request::Enriched | Request::Action(..)) {
+                        stale = false;
+                    }
                     self.spotify.enrich(&mut data);
                     if let Request::Action(window, request, reply) = request {
                         let owned = self
@@ -242,7 +270,9 @@ impl Media {
                                 // Web requests never block local transport controls or events.
                                 std::thread::spawn(move || {
                                     let _ = reply.send(spotify.favorite(&data, saved));
-                                    let _ = tx.send(Request::Wake);
+                                    // Only enrichment changed; publish it without
+                                    // waiting for another Windows metadata read.
+                                    let _ = tx.send(Request::Enriched);
                                 });
                             }
                             (validation, _) => {
@@ -260,6 +290,15 @@ impl Media {
                         crate::metrics::envelope("ready", serde_json::to_value(data).unwrap()),
                     );
                 }
+                Ok(None) if source.as_ref().is_some_and(WindowsMedia::has_pending_read) => {
+                    // Initial metadata is still loading, not a missing session.
+                    if self.data.lock().unwrap().latest.is_none() {
+                        self.publish(&app, crate::metrics::envelope("loading", Value::Null));
+                    }
+                    if let Request::Action(_, _, reply) = request {
+                        let _ = reply.send(Err("Media is still loading".into()));
+                    }
+                }
                 Ok(None) => {
                     stale = false;
                     if let Request::Action(_, _, reply) = request {
@@ -272,7 +311,9 @@ impl Media {
                     // A transient read failure (a timed-out WinRT call, a session
                     // caught mid-switch) must not blank the bar or rebuild the
                     // session. Keep the last good snapshot and retry on the tick.
-                    stale = true;
+                    if !matches!(request, Request::Action(..) | Request::Enriched) {
+                        stale = true;
+                    }
                     eprintln!("Media read failed, retrying: {error}");
                     if let Request::Action(_, _, reply) = request {
                         let _ = reply.send(Err("Media is temporarily unavailable".into()));
@@ -306,7 +347,7 @@ pub fn probe() -> Value {
         return json!({"status":"error","error":e.to_string()});
     }
     let (tx, _rx) = mpsc::channel();
-    let result = WindowsMedia::new(tx).and_then(|mut source| source.read());
+    let result = WindowsMedia::new(tx).and_then(|mut source| source.read_settled());
     let audio = result
         .as_ref()
         .ok()
@@ -329,6 +370,33 @@ pub fn probe() -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn retries_a_temporarily_missing_session_without_another_windows_event() {
+        assert!(!reuse_snapshot(&Request::Tick, false, false));
+        assert!(reuse_snapshot(&Request::Tick, false, true));
+        assert!(!reuse_snapshot(&Request::Tick, true, true));
+        assert!(!reuse_snapshot(&Request::Wake, false, true));
+        assert!(reuse_snapshot(&Request::Enriched, true, true));
+        assert!(!reuse_snapshot(&Request::Enriched, false, false));
+    }
+    #[test]
+    fn enrichment_preserves_pending_windows_refreshes_and_actions() {
+        let mut queued = vec![Request::Enriched].into_iter();
+        assert!(matches!(
+            coalesce(Request::Tick, || queued.next()),
+            Request::Enriched
+        ));
+        let mut queued = vec![Request::Wake, Request::Enriched].into_iter();
+        assert!(matches!(
+            coalesce(Request::Enriched, || queued.next()),
+            Request::Wake
+        ));
+        let mut queued = vec![Request::Enriched, action_request()].into_iter();
+        assert!(matches!(
+            coalesce(Request::Tick, || queued.next()),
+            Request::Action(..)
+        ));
+    }
     fn request(action: MediaAction) -> MediaRequest {
         MediaRequest {
             session_id: "session-1".into(),

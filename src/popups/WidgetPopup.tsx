@@ -12,13 +12,13 @@ import {
   type ReactNode
 } from 'react'
 import { useOverlayPopover } from '../hooks/useOverlayPopover'
-import { overlay } from '../services/system/overlay'
-import { overlayTextClasses } from '../overlay/typography'
-import { resolvePopup, type PopupId, type PopupParams } from './resolve'
-import { claimPopup, releasePopup } from './coordinator'
-import { PopupHost } from './PopupHost'
-import { POPUP_EXIT_MS, popupMotionEnabled } from './motion'
 import { cn } from '../lib/utils'
+import { overlayTextClasses } from '../overlay/typography'
+import { overlay } from '../services/system/overlay'
+import { claimPopup, releasePopup } from './coordinator'
+import { POPUP_EXIT_MS, popupMotionEnabled } from './motion'
+import { PopupHost } from './PopupHost'
+import { resolvePopup, type PopupId, type PopupParams } from './resolve'
 
 interface TriggerContextValue {
   native: boolean
@@ -142,7 +142,6 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
               <div
                 data-theme={theme}
                 className={`group z-50 ${overlayTextClasses}`}
-                style={{ width: 'max-content' }}
               >
                 <PreviewContent
                   closing={previewClosing}

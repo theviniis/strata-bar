@@ -1,20 +1,21 @@
 import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription
-} from '@/components/ui/dialog'
-import { SpotifySettings } from './SpotifySettings'
-import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog'
 import { ScrollingText } from '@/components/ui/scrolling-text'
+import { SpotifySettings } from './SpotifySettings'
 
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
@@ -48,7 +49,7 @@ import {
   Volume2,
   VolumeX
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { MediaClock } from './progress'
 
 export function MusicPopup() {
@@ -58,19 +59,19 @@ export function MusicPopup() {
 
 function NativeMusicPopup() {
   const event = useSystemChannel('media')
-  return (
-    <MusicPopupContent
-      event={event}
-      onAction={async (request) => {
-        if (!bridge.mediaAction) throw new Error('Contrôles indisponíveis')
-        await bridge.mediaAction(request)
-      }}
-    />
-  )
+  const onAction = useCallback(async (request: MediaRequest) => {
+    if (!bridge.mediaAction) throw new Error('Contrôles indisponíveis')
+    await bridge.mediaAction(request)
+  }, [])
+  return <MusicPopupContent event={event} onAction={onAction} />
 }
 
 function DemoMusicPopup() {
   const [adapter] = useState(createMockBridge)
+  const onAction = useCallback(
+    (request: MediaRequest) => adapter.mediaAction!(request),
+    [adapter]
+  )
   const [event, setEvent] = useState<SystemEvent<MediaData>>({
     status: 'loading'
   })
@@ -85,13 +86,7 @@ function DemoMusicPopup() {
       ),
     [adapter]
   )
-  return (
-    <MusicPopupContent
-      event={event}
-      demo
-      onAction={(request) => adapter.mediaAction!(request)}
-    />
-  )
+  return <MusicPopupContent event={event} demo onAction={onAction} />
 }
 
 export function MusicPopupContent({
@@ -103,12 +98,42 @@ export function MusicPopupContent({
   onAction(request: MediaRequest): Promise<unknown>
   demo?: boolean
 }) {
-  // Full typed media contract: metadata, artwork, progress, volume and capabilities.
   const [settingsOpen, setSettingsOpen] = useState(false)
   const media = event.status === 'ready' ? event.data : null
   return (
+    <MusicPopupCard
+      key={media ? `${media.sessionId}/${media.trackId}` : 'empty'}
+      event={event}
+      media={media}
+      onAction={onAction}
+      demo={demo}
+      settingsOpen={settingsOpen}
+      setSettingsOpen={setSettingsOpen}
+    />
+  )
+}
+
+function MusicPopupCard({
+  event,
+  media,
+  onAction,
+  demo,
+  settingsOpen,
+  setSettingsOpen
+}: {
+  event: SystemEvent<MediaData>
+  media: MediaData | null
+  onAction(request: MediaRequest): Promise<unknown>
+  demo: boolean
+  settingsOpen: boolean
+  setSettingsOpen(open: boolean): void
+}) {
+  const controls = useMusicPopupControls(media, onAction)
+  const { volumeReady, muteReady, level, muted, pending, act, setVolumeDraft } =
+    controls
+  return (
     <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-      <Card className="min-w-80">
+      <Card className="min-w-45">
         <div hidden={settingsOpen}>
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
@@ -131,11 +156,7 @@ export function MusicPopupContent({
           </CardHeader>
           <CardContent>
             {media ? (
-              <MusicPopupContentData
-                key={`${media.sessionId}/${media.trackId}`}
-                media={media}
-                onAction={onAction}
-              />
+              <MusicPopupContentData media={media} controls={controls} />
             ) : (
               <p role="status">
                 {event.status === 'loading'
@@ -160,10 +181,67 @@ export function MusicPopupContent({
           </DialogHeader>
           <SpotifySettings />
         </DialogContent>
+        {!settingsOpen && volumeReady && (
+          <MusicVolumeFooter
+            muteReady={muteReady}
+            level={level}
+            muted={muted}
+            pending={pending.volume}
+            act={act}
+            setVolumeDraft={setVolumeDraft}
+          />
+        )}
       </Card>
     </Dialog>
   )
 }
+
+// The progress clock ticks every 100 ms; volume only depends on these props.
+const MusicVolumeFooter = memo(function MusicVolumeFooter({
+  muteReady,
+  level,
+  muted,
+  pending,
+  act,
+  setVolumeDraft
+}: Pick<
+  ReturnType<typeof useMusicPopupControls>,
+  'muteReady' | 'level' | 'muted' | 'act' | 'setVolumeDraft'
+> & { pending: boolean }) {
+  return (
+    <CardFooter className="flex items-center gap-2">
+      {muteReady && (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={muted ? 'Ativar som do player' : 'Silenciar player'}
+          aria-pressed={muted}
+          title="Volume do player"
+          disabled={pending}
+          aria-busy={pending}
+          onClick={() => void act({ action: 'mute', muted: !muted })}
+        >
+          {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+        </Button>
+      )}
+      <Slider
+        aria-label="Volume do player"
+        min={0}
+        max={100}
+        step={1}
+        value={[level]}
+        disabled={pending}
+        onValueChange={([value]) => setVolumeDraft(value)}
+        onValueCommit={([value]) => {
+          setVolumeDraft(value)
+          void act({ action: 'volume', level: value }).finally(() =>
+            setVolumeDraft(null)
+          )
+        }}
+      />
+    </CardFooter>
+  )
+})
 
 function time(ms: number) {
   const seconds = Math.floor(ms / 1000)
@@ -192,13 +270,10 @@ function actionGroup(action: MediaAction): ActionGroup {
 const nextRepeatMode = (mode: RepeatMode): RepeatMode =>
   mode === 'none' ? 'list' : mode === 'list' ? 'track' : 'none'
 
-function MusicPopupContentData({
-  media,
-  onAction
-}: {
-  media: MediaData
-  onAction(request: MediaRequest): Promise<unknown>
-}) {
+function useMusicPopupControls(
+  media: MediaData | null,
+  onAction: (request: MediaRequest) => Promise<unknown>
+) {
   const [pending, setPending] = useState<Record<ActionGroup, boolean>>({
     playback: false,
     favorite: false,
@@ -220,34 +295,34 @@ function MusicPopupContentData({
   const [badArt, setBadArt] = useState<string | null>(null)
   const [volumeDraft, setVolumeDraft] = useState<number | null>(null)
   const progress =
-    media.progress.status === 'ready' ? media.progress.value : null
-  const artwork = media.artwork.status === 'ready' ? media.artwork.value : null
+    media?.progress.status === 'ready' ? media.progress.value : null
+  const artwork = media?.artwork.status === 'ready' ? media.artwork.value : null
   const favoriteValue =
-    media.favorite.status === 'ready' ? media.favorite.value : null
-  const volume = media.volume.status === 'ready' ? media.volume.value : null
+    media?.favorite.status === 'ready' ? media.favorite.value : null
+  const volume = media?.volume.status === 'ready' ? media.volume.value : null
   const level = volumeDraft ?? volume?.level ?? 0
   const muted = volume?.muted ?? false
-  const shuffle = media.shuffle.status === 'ready' ? media.shuffle.value : null
-  const repeat = media.repeat.status === 'ready' ? media.repeat.value : null
+  const shuffle = media?.shuffle.status === 'ready' ? media.shuffle.value : null
+  const repeat = media?.repeat.status === 'ready' ? media.repeat.value : null
   // A control only renders when the running player actually supports it; an
   // incompatible player hides it instead of showing a permanently dead button.
-  const volumeReady = volume !== null && media.capabilities.volume
-  const muteReady = volumeReady && media.capabilities.mute
+  const volumeReady = volume !== null && media?.capabilities.volume === true
+  const muteReady = volumeReady && media?.capabilities.mute === true
   // Favorites belong to the player, not to a single track: a connected Spotify
   // session renders the control at once, and a track that is still being
   // correlated shows a pending state instead of vanishing.
-  const favoriteSupported = media.capabilities.favorite
+  const favoriteSupported = media?.capabilities.favorite ?? false
   const favoritePending =
-    favoriteSupported && media.favorite.status === 'unavailable'
+    favoriteSupported && media?.favorite.status === 'unavailable'
   const favoriteDisabled =
-    pending.favorite || favoritePending || media.favorite.status === 'error'
+    pending.favorite || favoritePending || media?.favorite.status === 'error'
   const favoriteTitle =
-    media.favorite.status === 'ready'
+    media?.favorite.status === 'ready'
       ? 'Faixa salva na biblioteca do Spotify'
-      : (media.favorite.reason ?? 'Consultando o Spotify…')
-  const shuffleReady = shuffle !== null && media.capabilities.shuffle
-  const repeatReady = repeat !== null && media.capabilities.repeat
-  const playing = media.playback === 'playing'
+      : (media?.favorite.reason ?? 'Consultando o Spotify…')
+  const shuffleReady = shuffle !== null && media?.capabilities.shuffle === true
+  const repeatReady = repeat !== null && media?.capabilities.repeat === true
+  const playing = media?.playback === 'playing'
   useEffect(() => {
     clock.update(progress, playing)
     const publish = () => setPositionMs(clock.read())
@@ -257,35 +332,101 @@ function MusicPopupContentData({
     const timer = setInterval(() => setPositionMs(clock.read()), 100)
     return () => clearInterval(timer)
   }, [clock])
-  async function act(action: MediaAction) {
-    const group = actionGroup(action)
-    if (busy.current[group]) return false
-    busy.current[group] = true
-    setPending((value) => ({ ...value, [group]: true }))
-    setError('')
-    try {
-      await onAction({
-        sessionId: media.sessionId,
-        trackId: media.trackId,
-        action
-      })
-      if (action.action === 'seek') {
-        clock.seek(action.positionMs)
-        setPositionMs(clock.read())
+  const sessionId = media?.sessionId
+  const trackId = media?.trackId
+  const act = useCallback(
+    async (action: MediaAction) => {
+      if (sessionId === undefined || trackId === undefined) return false
+      const group = actionGroup(action)
+      if (busy.current[group]) return false
+      busy.current[group] = true
+      setPending((value) => ({ ...value, [group]: true }))
+      setError('')
+      try {
+        await onAction({
+          sessionId,
+          trackId,
+          action
+        })
+        if (action.action === 'seek') {
+          clock.seek(action.positionMs)
+          setPositionMs(clock.read())
+        }
+        return true
+      } catch (e) {
+        setError(String(e))
+        return false
+      } finally {
+        busy.current[group] = false
+        setPending((value) => ({ ...value, [group]: false }))
+        if (action.action === 'seek') setSeek(null)
       }
-      return true
-    } catch (e) {
-      setError(String(e))
-      return false
-    } finally {
-      busy.current[group] = false
-      setPending((value) => ({ ...value, [group]: false }))
-      if (action.action === 'seek') setSeek(null)
-    }
-  }
+    },
+    [sessionId, trackId, onAction, clock]
+  )
   const position = seek ?? (progress ? positionMs : 0)
   const PlayIcon = playing ? Pause : Play
   const busyAny = Object.values(pending).some(Boolean)
+  return {
+    pending,
+    error,
+    setSeek,
+    badArt,
+    setBadArt,
+    progress,
+    artwork,
+    favoriteValue,
+    shuffle,
+    repeat,
+    favoriteSupported,
+    favoritePending,
+    favoriteDisabled,
+    favoriteTitle,
+    shuffleReady,
+    repeatReady,
+    playing,
+    act,
+    position,
+    PlayIcon,
+    busyAny,
+    volumeReady,
+    muteReady,
+    level,
+    muted,
+    setVolumeDraft
+  }
+}
+
+function MusicPopupContentData({
+  media,
+  controls
+}: {
+  media: MediaData
+  controls: ReturnType<typeof useMusicPopupControls>
+}) {
+  const {
+    pending,
+    error,
+    setSeek,
+    badArt,
+    setBadArt,
+    progress,
+    artwork,
+    favoriteValue,
+    shuffle,
+    repeat,
+    favoriteSupported,
+    favoritePending,
+    favoriteDisabled,
+    favoriteTitle,
+    shuffleReady,
+    repeatReady,
+    playing,
+    act,
+    position,
+    PlayIcon,
+    busyAny
+  } = controls
   return (
     <div className="flex flex-col gap-4" aria-busy={busyAny}>
       <div className="relative grid grid-cols-[80px_minmax(0,1fr)] items-center gap-3">
@@ -440,45 +581,6 @@ function MusicPopupContentData({
           <span>{progress ? time(progress.durationMs) : '—'}</span>
         </div>
       </div>
-      {volumeReady && (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Volume do player</span>
-            <span className="tabular-nums">{Math.round(level)}%</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {muteReady && (
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={muted ? 'Ativar som do player' : 'Silenciar player'}
-                aria-pressed={muted}
-                title="Volume do player"
-                disabled={pending.volume}
-                aria-busy={pending.volume}
-                onClick={() => void act({ action: 'mute', muted: !muted })}
-              >
-                {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-              </Button>
-            )}
-            <Slider
-              aria-label="Volume do player"
-              min={0}
-              max={100}
-              step={1}
-              value={[level]}
-              disabled={pending.volume}
-              onValueChange={([value]) => setVolumeDraft(value)}
-              onValueCommit={([value]) => {
-                setVolumeDraft(value)
-                void act({ action: 'volume', level: value }).finally(() =>
-                  setVolumeDraft(null)
-                )
-              }}
-            />
-          </div>
-        </div>
-      )}
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}

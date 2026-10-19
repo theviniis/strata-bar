@@ -36,3 +36,16 @@ describe('configuration', () => {
     expect(localStorage.getItem('strata.config.v1')).toContain('bottom')
   })
 })
+
+it('adds microphone after volume only in new configurations', () => {
+  const right = defaultConfig.widgets.right
+  expect(right[right.findIndex((w) => w.type === 'volume') + 1]).toMatchObject({
+    type: 'microphone',
+    enabled: true
+  })
+  const legacy = structuredClone(defaultConfig)
+  legacy.widgets.right = legacy.widgets.right.filter(
+    (w) => w.type !== 'microphone'
+  )
+  expect(parseConfig(JSON.stringify(legacy))).toEqual(legacy)
+})

@@ -7,6 +7,7 @@ const emptyParams = z.object({}).strict().default({})
 type Definition<S extends z.ZodType> = {
   label: string
   Content: ComponentType
+  className?: string
   schema: S
 }
 

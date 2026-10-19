@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const types = [
   'clock',
   'reminders',
+  'agents',
   'cpu',
   'memory',
   'gpu',
@@ -10,6 +11,7 @@ export const types = [
   'network',
   'music',
   'volume',
+  'microphone',
   'activeWindow',
   'komorebi'
 ] as const
@@ -73,7 +75,9 @@ export const defaultConfig = configSchema.parse({
       'network',
       'music',
       'volume',
-      'reminders'
+      'microphone',
+      'reminders',
+      'agents'
     ].map((type) => ({
       id: type,
       type
