@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, HashSet};
 struct Observed {
     status: SessionStatus,
     updated_at: f64,
+    last_activity_at: Option<f64>,
 }
 
 #[derive(Default)]
@@ -53,12 +54,8 @@ impl Source {
                 self.sessions.insert(id, old.unwrap());
                 continue;
             }
-            let active_before = old.as_ref().is_some_and(|old| {
-                matches!(
-                    old.status,
-                    SessionStatus::Processing | SessionStatus::Attention
-                )
-            });
+            let last_activity_at = old.as_ref().and_then(|old| old.last_activity_at);
+            let active_before = last_activity_at.is_some();
             let completed_at = if hooks {
                 Some(session.updated_at)
             } else {
@@ -68,7 +65,7 @@ impl Source {
                 && active_before
                 && !baseline
                 && !hooks
-                && completed_at.is_none_or(|marker| marker <= old.as_ref().unwrap().updated_at)
+                && completed_at.is_none_or(|marker| marker <= last_activity_at.unwrap())
             {
                 // A retained prior outcome cannot disarm an observed execution.
                 self.sessions.insert(id, old.unwrap());
@@ -113,6 +110,13 @@ impl Source {
                 Observed {
                     status: session.status.clone(),
                     updated_at: session.updated_at,
+                    last_activity_at: match session.status {
+                        SessionStatus::Processing | SessionStatus::Attention => {
+                            Some(session.updated_at)
+                        }
+                        SessionStatus::Unknown => last_activity_at,
+                        _ => None,
+                    },
                 },
             );
         }
@@ -255,6 +259,21 @@ mod tests {
             completed_turns,
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn uncertainty_does_not_disarm_an_observed_run() {
+        let mut alerts = Alerts::default();
+        let absent = AntigravitySnapshot::default();
+        alerts.observe(&source(SessionStatus::Processing, 1000.0), &absent, 1000.0);
+        alerts.observe(&source(SessionStatus::Unknown, 130000.0), &absent, 130000.0);
+        assert!(alerts.snapshot().items.is_empty());
+        let mut completed = source(SessionStatus::Completed, 140000.0);
+        completed
+            .completed_turns
+            .insert("ses_test".into(), 135000.0);
+        alerts.observe(&completed, &absent, 140000.0);
+        assert_eq!(alerts.snapshot().items.len(), 1);
     }
 
     #[test]
