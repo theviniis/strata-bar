@@ -844,6 +844,135 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    #[test]
+    #[ignore = "Runs one short real model turn in its own temporary OpenCode conversation with tools denied, checks metadata-only completion alert, then deletes it"]
+    fn live_opencode_real_turn_generates_one_completion_alert() {
+        use crate::{
+            agent_alerts::Alerts,
+            agents_contract::{AgentAlertKind, AntigravitySnapshot},
+        };
+        let path = installed_cli().unwrap();
+        let folder = std::env::temp_dir().join(format!("strata-real-turn-{}", std::process::id()));
+        std::fs::create_dir(&folder).unwrap();
+        let rules = json!([{"action":"*","resource":"*","effect":"deny"}]);
+        let created = create_empty(folder.to_str().unwrap(), |mut body| {
+            body["permissions"] = rules.clone();
+            execute_cli(
+                &path,
+                &["api", "POST", "/api/session", "--data", &body.to_string()],
+                &|| false,
+            )
+        });
+        let id = match created {
+            Ok(id) => id,
+            Err(error) => {
+                let _ = std::fs::remove_dir(&folder);
+                panic!("Own conversation creation failed: {error}");
+            }
+        };
+        let result = (|| -> Result<(), String> {
+            let info = read_cli(&path, ReadRequest::Session(id.clone()), &|| false)?;
+            if info["data"]["permissions"] != rules {
+                return Err("Own conversation tool denial was not confirmed".into());
+            }
+            let deadline = Instant::now() + Duration::from_secs(60);
+            let observe = || -> Result<OpenCodeSnapshot, String> {
+                let mut snapshot = collect_live(|| Instant::now() >= deadline)?;
+                snapshot.sessions.retain(|session| session.id == id);
+                snapshot
+                    .questions
+                    .retain(|question| question.session_id == id);
+                snapshot
+                    .permissions
+                    .retain(|permission| permission.session_id == id);
+                snapshot
+                    .completed_turns
+                    .retain(|session_id, _| session_id == &id);
+                Ok(snapshot)
+            };
+            let mut alerts = Alerts::default();
+            let absent = AntigravitySnapshot::default();
+            let now = || {
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis() as f64
+            };
+            alerts.observe(&observe()?, &absent, now());
+            let prompt_path = path.clone();
+            let route = format!("/api/session/{id}/prompt");
+            let prompt = std::thread::spawn(move || {
+                execute_cli(&prompt_path, &["api", "POST", &route, "--data", &json!({"text":"Responda apenas OK. Não use ferramentas, não leia ou altere arquivos e não execute comandos.","resume":true}).to_string()], &|| Instant::now() >= deadline)
+            });
+            let observed = (|| -> Result<bool, String> {
+                let mut processing = false;
+                while Instant::now() < deadline {
+                    let snapshot = observe()?;
+                    let status = snapshot.sessions.first().map(|session| &session.status);
+                    processing |= status == Some(&SessionStatus::Processing);
+                    alerts.observe(&snapshot, &absent, now());
+                    if status == Some(&SessionStatus::Completed) {
+                        alerts.observe(&snapshot, &absent, now());
+                        return Ok(processing);
+                    }
+                    if status == Some(&SessionStatus::Error) {
+                        return Err("Own real model turn failed; no completion claimed".into());
+                    }
+                    if !snapshot.permissions.is_empty() {
+                        return Err(
+                            "Own turn requested a tool despite denial; no decision sent".into()
+                        );
+                    }
+                    std::thread::sleep(Duration::from_millis(150));
+                }
+                Err("No explicit completion observed within the bounded test".into())
+            })();
+            let admitted = prompt
+                .join()
+                .map_err(|_| "Prompt request worker failed")??;
+            if admitted["data"]["sessionID"].as_str() != Some(id.as_str()) {
+                return Err("Own prompt admission was not confirmed; not retrying".into());
+            }
+            if !observed? {
+                return Err("Processing was not observed; no completion acceptance claimed".into());
+            }
+            let emitted = alerts.snapshot().items;
+            if emitted.len() != 1 || emitted[0].kind != AgentAlertKind::Completed {
+                return Err("Real turn did not produce exactly one completion alert".into());
+            }
+            Ok(())
+        })();
+        let removed = execute_cli(
+            &path,
+            &["api", "DELETE", &format!("/api/session/{id}")],
+            &|| false,
+        )
+        .is_ok();
+        let cleanup_deadline = Instant::now() + Duration::from_secs(3);
+        let folder_removed = loop {
+            match std::fs::remove_dir(&folder) {
+                Ok(()) => break true,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => break true,
+                Err(_) if Instant::now() < cleanup_deadline => {
+                    std::thread::sleep(Duration::from_millis(100))
+                }
+                Err(_) => break false,
+            }
+        };
+        println!(
+            "OPENCODE_REAL_TURN {}",
+            json!({"providerExecutionVerified":result.is_ok(),"completionAlertVerified":result.is_ok(),"testConversationRemoved":removed,"temporaryFolderRemoved":folder_removed,"webviewInteractionVerified":false,"bannerVerified":false,"toolDecisionsSent":false,"conversationContentRecorded":false})
+        );
+        assert!(
+            result.is_ok(),
+            "Own real turn validation failed: {result:?}"
+        );
+        assert!(
+            removed && folder_removed,
+            "Own temporary resources were not fully removed"
+        );
+    }
+
     fn empty_snapshot() -> OpenCodeSnapshot {
         OpenCodeSnapshot {
             status: AgentConnectionStatus::Connected,

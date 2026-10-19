@@ -1,5 +1,37 @@
 # Controle de agentes de IA — Windows 11
 
+## Validação de execução real — OpenCode
+
+Uma fatia de aceitação independente do bloqueio de notificações do Windows.
+
+- [x] Criar uma conversa própria em pasta temporária vazia, com ferramentas
+      negadas somente nessa conversa, e enviar um prompt curto com resume:true.
+- [ ] Observar processamento e sucesso explícito pelo coletor público; conferir
+      um único alerta de conclusão no gerenciador nativo, sem consumidor de UI.
+- [x] Remover a conversa/pasta próprias e registrar evidência somente de estados,
+      sem histórico, resposta do modelo, títulos ou credenciais.
+- [ ] Executar verificações aplicáveis, revisão e commit na branch atual.
+
+Não enviar decisões de ferramenta nem mudar a política de conversas existentes.
+Esse ensaio não valida emissão de perguntas, interação no WebView2 ou banner.
+
+Foram realizados dois ensaios próprios com resume:true: ambos admitiram o prompt
+e terminaram com outcome failed. A aceitação de conclusão bem-sucedida continua
+pendente; não atribuir o erro ao Strata ou a credenciais sem evidência adicional.
+As conversas foram removidas. A primeira pasta exigiu limpeza posterior porque
+o OpenCode ainda a mantinha em uso; o ensaio agora aguarda até três segundos pela
+liberação. Não há pastas próprias remanescentes.
+
+Diagnóstico sem histórico: modelo padrão big-pickle do provedor opencode marcado
+ativo/habilitado, com zero conexões registradas para sua integração. Duas
+gerações mínimas isoladas retornaram ServiceUnavailableError, service opencode.
+Esses sinais apontam para indisponibilidade do ambiente; a causa exata do erro
+do turno não foi estabelecida. Nenhuma configuração ou autenticação foi alterada.
+Instrumentação temporária removida; o teste de aceitação permanece ignorado pela
+suíte padrão e falha explicitamente nesse ambiente, sem anunciar conclusão.
+Evidência: `docs/evidence/ai-agents-opencode-real-turn-2026-10-19.json`.
+API pública consultada: [OpenCode v2](https://dev.opencode.ai/v2/docs/api).
+
 ## Validação instalada — Continuação do ticket 9
 
 - [x] Instalar o artefato NSIS atual no perfil do usuário e conferir identidade.
