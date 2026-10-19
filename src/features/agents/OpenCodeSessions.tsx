@@ -3,12 +3,14 @@ import { Button } from '@/components/ui/button'
 import type {
   OpenCodeSnapshot,
   CreateAgentSessionResult,
-  AgentReplyRequest
+  AgentReplyRequest,
+  AgentPermissionRequest
 } from '@/services/system/agents'
 import { AgentSessionList } from './AgentSessionList'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { AgentQuestion } from './AgentQuestion'
+import { AgentPermissionCard } from './AgentPermissionCard'
 const connectionLabels = {
   disabled: 'Conexão desativada',
   connecting: 'Conectando…',
@@ -21,7 +23,8 @@ export function OpenCodeSessions({
   onConfigure,
   stale = false,
   onCreate,
-  onReply
+  onReply,
+  onDecision
 }: {
   connection: OpenCodeSnapshot
   onConfigure?: (enabled: boolean) => Promise<void>
@@ -31,6 +34,7 @@ export function OpenCodeSessions({
     prompt?: string
   ) => Promise<CreateAgentSessionResult>
   onReply?: (request: AgentReplyRequest) => Promise<void>
+  onDecision?: (request: AgentPermissionRequest) => Promise<void>
 }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -86,27 +90,48 @@ export function OpenCodeSessions({
         sessions={connection.sessions}
         label="Sessões do OpenCode"
         stale={stale}
-        renderActions={(session) =>
-          connection.questions
-            .filter((q) => q.sessionId === session.id)
-            .map((question) => (
-              <AgentQuestion
-                key={`${question.id}:${question.version}`}
-                question={question}
-                disabled={stale || connection.status !== 'connected'}
-                onReply={
-                  onReply
-                    ? async (request) => {
-                        await onReply(request)
-                        setReplyNotice(
-                          'Resposta enviada. Acompanhe o andamento no OpenCode.'
-                        )
-                      }
-                    : undefined
-                }
-              />
-            ))
-        }
+        renderActions={(session) => (
+          <>
+            {connection.permissions
+              .filter((p) => p.sessionId === session.id)
+              .map((permission) => (
+                <AgentPermissionCard
+                  key={`${permission.id}:${permission.version}`}
+                  permission={permission}
+                  disabled={stale || connection.status !== 'connected'}
+                  onDecision={
+                    onDecision
+                      ? async (request) => {
+                          await onDecision(request)
+                          setReplyNotice(
+                            'Decisão enviada. Acompanhe o andamento no OpenCode.'
+                          )
+                        }
+                      : undefined
+                  }
+                />
+              ))}
+            {connection.questions
+              .filter((q) => q.sessionId === session.id)
+              .map((question) => (
+                <AgentQuestion
+                  key={`${question.id}:${question.version}`}
+                  question={question}
+                  disabled={stale || connection.status !== 'connected'}
+                  onReply={
+                    onReply
+                      ? async (request) => {
+                          await onReply(request)
+                          setReplyNotice(
+                            'Resposta enviada. Acompanhe o andamento no OpenCode.'
+                          )
+                        }
+                      : undefined
+                  }
+                />
+              ))}
+          </>
+        )}
       />
       {connection.hasMore && (
         <p className="text-xs text-muted-foreground">
@@ -115,8 +140,8 @@ export function OpenCodeSessions({
         </p>
       )}
       <p className="text-xs text-muted-foreground">
-        Perguntas textuais simples podem ser respondidas nos cards. Outros
-        formulários e aprovações devem ser resolvidos no OpenCode.
+        Perguntas textuais simples e permissões podem ser resolvidas nos cards.
+        Formulários com outros controles devem ser respondidos no OpenCode.
       </p>
       <div className="flex gap-2">
         <Button

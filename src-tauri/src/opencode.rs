@@ -17,6 +17,9 @@ use std::{
 
 const MAX_RESPONSE: u64 = 2 * 1024 * 1024;
 
+#[path = "opencode_permissions.rs"]
+pub mod permissions;
+
 fn installed_cli() -> Result<PathBuf, String> {
     let root = std::env::var_os("APPDATA")
         .map(PathBuf::from)
@@ -274,7 +277,7 @@ pub struct Connection {
     generation: u64,
     enabled: bool,
     snapshot: OpenCodeSnapshot,
-    attempted_replies: HashSet<String>,
+    attempted_actions: HashSet<String>,
 }
 
 impl Connection {
@@ -322,7 +325,7 @@ impl Connection {
     ) -> Result<(), String> {
         self.pending_reply(request)?;
         let key = format!("{}:{}", request.session_id, request.question_id);
-        if self.attempted_replies.len() >= 1024 || !self.attempted_replies.insert(key) {
+        if self.attempted_actions.len() >= 1024 || !self.attempted_actions.insert(key) {
             return Err(
                 "Resposta já tentada ou limite de envios atingido; confira o OpenCode".into(),
             );
@@ -345,6 +348,57 @@ impl Connection {
                 .retain(|q| q.id != request.question_id || q.session_id != request.session_id);
         }
     }
+    pub fn pending_permission(
+        &self,
+        request: &crate::agents_contract::AgentPermissionRequest,
+    ) -> Result<crate::agents_contract::AgentPermission, String> {
+        if self.snapshot.status != AgentConnectionStatus::Connected {
+            return Err("OpenCode desconectado".into());
+        }
+        self.snapshot
+            .permissions
+            .iter()
+            .find(|p| {
+                p.id == request.permission_id
+                    && p.session_id == request.session_id
+                    && p.version == request.version
+                    && !p.reply_blocked
+                    && p.unsupported_reason.is_none()
+            })
+            .cloned()
+            .ok_or_else(|| "Permissão indisponível ou alterada; confira o OpenCode".into())
+    }
+    pub fn begin_permission(
+        &mut self,
+        request: &crate::agents_contract::AgentPermissionRequest,
+    ) -> Result<(), String> {
+        self.pending_permission(request)?;
+        let key = format!(
+            "permission:{}:{}",
+            request.session_id, request.permission_id
+        );
+        if self.attempted_actions.len() >= 1024 || !self.attempted_actions.insert(key) {
+            return Err("Decisão já tentada ou limite atingido; confira o OpenCode".into());
+        }
+        for permission in &mut self.snapshot.permissions {
+            if permission.id == request.permission_id && permission.session_id == request.session_id
+            {
+                permission.reply_blocked = true;
+            }
+        }
+        Ok(())
+    }
+    pub fn finish_permission(
+        &mut self,
+        generation: u64,
+        request: &crate::agents_contract::AgentPermissionRequest,
+    ) {
+        if self.request() == Some(generation) {
+            self.snapshot
+                .permissions
+                .retain(|p| p.id != request.permission_id || p.session_id != request.session_id);
+        }
+    }
     pub fn apply(&mut self, generation: u64, result: Result<OpenCodeSnapshot, String>) -> bool {
         if self.request() != Some(generation) {
             return false;
@@ -353,8 +407,14 @@ impl Connection {
             Ok(mut snapshot) => {
                 for question in &mut snapshot.questions {
                     question.reply_blocked = self
-                        .attempted_replies
+                        .attempted_actions
                         .contains(&format!("{}:{}", question.session_id, question.id));
+                }
+                for permission in &mut snapshot.permissions {
+                    permission.reply_blocked = self.attempted_actions.contains(&format!(
+                        "permission:{}:{}",
+                        permission.session_id, permission.id
+                    ));
                 }
                 self.snapshot = snapshot;
             }
@@ -411,12 +471,6 @@ struct Active {
 #[derive(Deserialize)]
 struct Data<T> {
     data: T,
-}
-#[derive(Deserialize)]
-struct PendingRequest {
-    id: String,
-    #[serde(rename = "sessionID")]
-    session_id: String,
 }
 
 fn invalid() -> String {
@@ -702,6 +756,7 @@ pub fn collect(
     }
     let mut attention = HashSet::new();
     let mut questions = Vec::new();
+    let mut permissions = Vec::new();
     for id in active.data.keys() {
         let forms = project_forms(read(ReadRequest::Forms(id.clone()))?, id)?;
         if !forms.is_empty() {
@@ -711,19 +766,13 @@ pub fn collect(
         if questions.len() > 128 {
             return Err("Limite de perguntas pendentes excedido".into());
         }
-        for request in [ReadRequest::Permissions(id.clone())] {
-            let pending: Data<Vec<PendingRequest>> =
-                serde_json::from_value(read(request)?).map_err(|_| invalid())?;
-            if pending.data.len() > 100
-                || pending.data.iter().any(|request| {
-                    request.id.is_empty() || request.id.len() > 128 || request.session_id != *id
-                })
-            {
-                return Err(invalid());
-            }
-            if !pending.data.is_empty() {
-                attention.insert(id.clone());
-            }
+        let pending = permissions::collect(read(ReadRequest::Permissions(id.clone()))?, id)?;
+        if !pending.is_empty() {
+            attention.insert(id.clone());
+        }
+        permissions.extend(pending);
+        if permissions.len() > 128 {
+            return Err("Limite de permissões pendentes excedido".into());
         }
     }
     let mut sessions = Vec::new();
@@ -774,6 +823,7 @@ pub fn collect(
         sessions,
         has_more: page.cursor.next.is_some(),
         questions,
+        permissions,
         error: None,
     })
 }
@@ -1013,7 +1063,7 @@ mod tests {
             ReadRequest::Sessions => json!({"data":[{"id":"ses_busy","location":{"directory":"D:\\project"},"time":{"updated":1000}}],"cursor":{}}),
             ReadRequest::Active => json!({"data":{"ses_busy":{"type":"running"}}}),
             ReadRequest::Forms(_) => json!({"data":[]}),
-            ReadRequest::Permissions(_) => json!({"data":[{"id":"per_1","sessionID":"ses_busy"}]}),
+            ReadRequest::Permissions(_) => json!({"data":[{"id":"per_1","sessionID":"ses_busy","action":"shell","resources":["echo Strata"]}]}),
             _ => panic!("Unexpected read"),
         })).unwrap();
         assert_eq!(snapshot.sessions[0].status, SessionStatus::Attention);

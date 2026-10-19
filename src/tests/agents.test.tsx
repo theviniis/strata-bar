@@ -6,6 +6,132 @@ import { OpenCodeSessions } from '@/features/agents/OpenCodeSessions'
 import type { CreateAgentSessionResult } from '@/services/system/agents'
 import type { AgentMessage } from '@/services/system/agents'
 import { AgentQuestion } from '@/features/agents/AgentQuestion'
+import { AgentPermissionCard } from '@/features/agents/AgentPermissionCard'
+import type {
+  AgentPermission,
+  OpenCodeSnapshot
+} from '@/services/system/agents'
+
+const pendingPermission: AgentPermission = {
+  id: 'per_test',
+  sessionId: 'ses_busy',
+  version: 'b'.repeat(64),
+  action: 'shell',
+  resources: ['echo Strata'],
+  details: '{"metadata":{"command":"echo Strata"}}',
+  unsupportedReason: null,
+  replyBlocked: false
+}
+const permissionConnection: OpenCodeSnapshot = {
+  status: 'connected',
+  error: null,
+  hasMore: false,
+  questions: [],
+  permissions: [pendingPermission],
+  sessions: [
+    {
+      id: 'ses_busy',
+      agent: 'opencode',
+      connectionId: 'opencode-local',
+      title: 'Projeto',
+      directory: 'D:\\project',
+      status: 'attention',
+      updatedAt: 1000
+    }
+  ]
+}
+
+it('blocks decisions on stale or incomplete context and does not replay an uncertain refusal', async () => {
+  const onDecision = vi.fn(async () => {
+    throw new Error('Decisão sem confirmação; confira o OpenCode')
+  })
+  const { rerender } = render(
+    <AgentPermissionCard
+      permission={pendingPermission}
+      disabled
+      onDecision={onDecision}
+    />
+  )
+  expect(screen.getByRole('button', { name: 'Aprovar uma vez' })).toBeDisabled()
+  rerender(
+    <AgentPermissionCard
+      permission={{
+        ...pendingPermission,
+        unsupportedReason: 'Contexto grande demais; decida no OpenCode.'
+      }}
+      disabled={false}
+      onDecision={onDecision}
+    />
+  )
+  expect(
+    screen.getByText('Contexto grande demais; decida no OpenCode.')
+  ).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Recusar' })).toBeDisabled()
+  rerender(
+    <AgentPermissionCard
+      permission={pendingPermission}
+      disabled={false}
+      onDecision={onDecision}
+    />
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Recusar' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Decisão sem confirmação'
+  )
+  rerender(
+    <AgentPermissionCard
+      permission={pendingPermission}
+      disabled
+      onDecision={onDecision}
+    />
+  )
+  rerender(
+    <AgentPermissionCard
+      permission={pendingPermission}
+      disabled={false}
+      onDecision={onDecision}
+    />
+  )
+  expect(screen.getByRole('button', { name: 'Aprovar uma vez' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Recusar' })).toBeDisabled()
+  expect(onDecision).toHaveBeenCalledTimes(1)
+})
+
+it.each([
+  ['approveOnce', 'Aprovar uma vez'],
+  ['reject', 'Recusar']
+] as const)(
+  'requires an explicit %s decision after showing the pending operation',
+  async (decision, label) => {
+    const onDecision = vi.fn(async () => {})
+    render(
+      <OpenCodeSessions
+        connection={permissionConnection}
+        onDecision={onDecision}
+      />
+    )
+    expect(screen.getByText('echo Strata')).toBeInTheDocument()
+    expect(screen.getByText(/"command":"echo Strata"/)).toBeInTheDocument()
+    expect(onDecision).not.toHaveBeenCalled()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: label }))
+    expect(
+      await screen.findByText(
+        'Decisão enviada. Acompanhe o andamento no OpenCode.'
+      )
+    ).toBeInTheDocument()
+    expect(onDecision).toHaveBeenCalledExactlyOnceWith({
+      sessionId: 'ses_busy',
+      permissionId: 'per_test',
+      version: 'b'.repeat(64),
+      decision
+    })
+    expect(
+      screen.getByRole('button', { name: 'Aprovar uma vez' })
+    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Recusar' })).toBeDisabled()
+  }
+)
 
 const pendingQuestion: AgentMessage = {
   id: 'frm_text',
@@ -35,6 +161,7 @@ it('answers a pending textual question in its session card and blocks a duplicat
         status: 'connected',
         error: null,
         hasMore: false,
+        permissions: [],
         questions: [pendingQuestion],
         sessions: [
           {
@@ -130,11 +257,12 @@ it('distinguishes detected applications from unavailable session control', () =>
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 5,
+        version: 6,
         antigravity: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
           sessions: [],
+          permissions: [],
           questions: [],
           hasMore: false,
           error: null
@@ -233,11 +361,12 @@ it('does not show stale process presence after discovery fails', () => {
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 5,
+        version: 6,
         antigravity: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
           sessions: [],
+          permissions: [],
           questions: [],
           hasMore: false,
           error: null
@@ -288,6 +417,7 @@ it('blocks creating while pending or disconnected and keeps ambiguous failures v
   const connection = {
     status: 'connected' as const,
     sessions: [],
+    permissions: [],
     questions: [],
     hasMore: false,
     error: null
@@ -370,6 +500,7 @@ it('keeps the created conversation visible when prompt admission is uncertain an
   const connection = {
     status: 'connected' as const,
     sessions: [],
+    permissions: [],
     questions: [],
     hasMore: false,
     error: null
@@ -403,6 +534,7 @@ it('shows attention and history limits, then marks sessions disconnected on a tr
   const connection = {
     status: 'connected' as const,
     error: null,
+    permissions: [],
     questions: [],
     hasMore: true,
     sessions: [

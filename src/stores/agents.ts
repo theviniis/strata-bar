@@ -6,12 +6,14 @@ import {
   type AgentsAdapter,
   type AgentsSnapshot,
   type CreateAgentSessionResult,
-  type AgentReplyRequest
+  type AgentReplyRequest,
+  type AgentPermissionRequest
 } from '@/services/system/agents'
 
 type AgentsState = {
   snapshot: AgentsSnapshot | null
   error: string | null
+  decideOpenCode(request: AgentPermissionRequest): Promise<void>
   replyOpenCode(request: AgentReplyRequest): Promise<void>
   connect(): () => void
   configureOpenCode(enabled: boolean): Promise<void>
@@ -40,6 +42,25 @@ export function createAgentsStore(adapter: AgentsAdapter) {
     return {
       snapshot: null,
       error: null,
+      async decideOpenCode(request) {
+        const snapshot = get().snapshot
+        if (
+          get().error ||
+          snapshot?.opencode.status !== 'connected' ||
+          !snapshot.opencode.permissions.some(
+            (p) =>
+              p.id === request.permissionId &&
+              p.sessionId === request.sessionId &&
+              p.version === request.version &&
+              !p.replyBlocked &&
+              !p.unsupportedReason
+          )
+        )
+          throw new Error(
+            'Permissão indisponível; aguarde reconexão ou atualização'
+          )
+        await adapter.decideOpenCode(request)
+      },
       async replyOpenCode(request) {
         const snapshot = get().snapshot
         if (

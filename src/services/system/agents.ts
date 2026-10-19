@@ -6,7 +6,9 @@ import type {
   AntigravitySnapshot,
   CreateAgentSessionResult,
   AgentMessage,
-  AgentReplyRequest
+  AgentReplyRequest,
+  AgentPermission,
+  AgentPermissionRequest
 } from './agents.generated'
 
 export type {
@@ -18,7 +20,10 @@ export type {
   AntigravitySnapshot,
   CreateAgentSessionResult,
   AgentMessage,
-  AgentReplyRequest
+  AgentReplyRequest,
+  AgentPermission,
+  AgentPermissionRequest,
+  AgentPermissionDecision
 } from './agents.generated'
 
 const session: z.ZodType<AgentSession> = z
@@ -83,12 +88,32 @@ const question: z.ZodType<AgentMessage> = z
   .strict()
   .refine((q) => new Set(q.fields.map((f) => f.key)).size === q.fields.length)
 
+const permission: z.ZodType<AgentPermission> = z
+  .object({
+    id: z
+      .string()
+      .regex(/^per[A-Za-z0-9_-]+$/)
+      .max(128),
+    sessionId: z
+      .string()
+      .regex(/^ses[A-Za-z0-9_-]*$/)
+      .max(128),
+    version: z.string().regex(/^[a-f0-9]{64}$/),
+    action: z.string().min(1).max(256),
+    resources: z.array(z.string().max(4096)).max(32),
+    details: z.string().max(16384),
+    unsupportedReason: z.string().nullable(),
+    replyBlocked: z.boolean()
+  })
+  .strict()
+
 const opencode: z.ZodType<OpenCodeSnapshot> = z
   .object({
     status: z.enum(['disabled', 'connecting', 'connected', 'disconnected']),
     sessions: z.array(session).max(178),
     hasMore: z.boolean(),
     questions: z.array(question).max(128),
+    permissions: z.array(permission).max(128),
     error: z.string().nullable()
   })
   .strict()
@@ -101,6 +126,11 @@ const opencode: z.ZodType<OpenCodeSnapshot> = z
         value.questions.length &&
       value.questions.every((q) =>
         value.sessions.some((s) => s.id === q.sessionId)
+      ) &&
+      new Set(value.permissions.map((p) => p.id)).size ===
+        value.permissions.length &&
+      value.permissions.every((p) =>
+        value.sessions.some((s) => s.id === p.sessionId)
       )
   )
 
@@ -120,7 +150,7 @@ const antigravity: z.ZodType<AntigravitySnapshot> = z
 
 const schema: z.ZodType<AgentsSnapshot> = z
   .object({
-    version: z.literal(5),
+    version: z.literal(6),
     revision: z.number().int().min(0).max(4_294_967_295),
     observedAt: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
     applications: z
@@ -159,6 +189,7 @@ const creationResult: z.ZodType<CreateAgentSessionResult> = z
 
 export interface AgentsAdapter {
   readonly kind: 'native' | 'demo'
+  decideOpenCode(request: AgentPermissionRequest): Promise<void>
   replyOpenCode(request: AgentReplyRequest): Promise<void>
   load(): Promise<AgentsSnapshot>
   setOpenCode(enabled: boolean): Promise<AgentsSnapshot>
@@ -176,6 +207,10 @@ export interface AgentsAdapter {
 export function createNativeAgentsAdapter(): AgentsAdapter {
   return {
     kind: 'native',
+    async decideOpenCode(request) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('agents_decide_opencode', { request })
+    },
     async replyOpenCode(request) {
       const { invoke } = await import('@tauri-apps/api/core')
       await invoke('agents_reply_opencode', { request })
@@ -221,7 +256,7 @@ export function createNativeAgentsAdapter(): AgentsAdapter {
 export function createDemoAgentsAdapter(): AgentsAdapter {
   const listeners = new Set<(snapshot: AgentsSnapshot) => void>()
   let snapshot: AgentsSnapshot = {
-    version: 5,
+    version: 6,
     revision: 0,
     observedAt: Date.now(),
     error: null,
@@ -233,6 +268,7 @@ export function createDemoAgentsAdapter(): AgentsAdapter {
     opencode: {
       status: 'disabled',
       sessions: [],
+      permissions: [],
       questions: [],
       hasMore: false,
       error: null
@@ -241,6 +277,31 @@ export function createDemoAgentsAdapter(): AgentsAdapter {
   }
   return {
     kind: 'demo',
+    async decideOpenCode(request) {
+      if (snapshot.opencode.status !== 'connected')
+        throw new Error('OpenCode desconectado')
+      const permission = snapshot.opencode.permissions.find(
+        (p) =>
+          p.id === request.permissionId &&
+          p.sessionId === request.sessionId &&
+          p.version === request.version &&
+          !p.replyBlocked &&
+          !p.unsupportedReason
+      )
+      if (!permission || !['approveOnce', 'reject'].includes(request.decision))
+        throw new Error('Permissão indisponível ou decisão inválida')
+      snapshot = {
+        ...snapshot,
+        revision: snapshot.revision + 1,
+        opencode: {
+          ...snapshot.opencode,
+          permissions: snapshot.opencode.permissions.filter(
+            (p) => p.id !== request.permissionId
+          )
+        }
+      }
+      for (const listener of listeners) listener(structuredClone(snapshot))
+    },
     async replyOpenCode(request) {
       if (snapshot.opencode.status !== 'connected')
         throw new Error('OpenCode desconectado')
@@ -306,6 +367,7 @@ export function createDemoAgentsAdapter(): AgentsAdapter {
           ? {
               status: 'connected',
               error: null,
+              permissions: [],
               questions: [
                 {
                   id: 'frm_demo',
@@ -343,6 +405,7 @@ export function createDemoAgentsAdapter(): AgentsAdapter {
           : {
               status: 'disabled',
               sessions: [],
+              permissions: [],
               questions: [],
               hasMore: false,
               error: null

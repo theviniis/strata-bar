@@ -1,5 +1,52 @@
 # Controle de agentes de IA — Windows 11
 
+## Ticket 7 — Aprovar uma vez ou recusar ferramentas do OpenCode
+
+Quarta fatia da Subtask 3. A API pública v2 usa permissões pendentes separadas
+de formulários. O Strata oferecerá somente `once` e `reject`, nunca `always`.
+
+- [x] Conferir o contrato instalado de permissões e decisões.
+- [x] Projetar ação, recursos e contexto completo necessário à decisão no card,
+      com limites; bloquear ações se o contexto exceder a capacidade de exibição.
+- [x] Adicionar botões distintos de aprovar uma vez e recusar, sem decisão padrão
+      nem envio automático; desabilitar durante envio/desconexão.
+- [x] Revalidar sessão, ID e conteúdo atual antes do POST; preservar bloqueio de
+      tentativas incertas entre monitores e reconexões.
+- [ ] Validar serviço e UI nos pontos já acordados, builds e revisão; commitar
+      na branch atual.
+- [ ] Validar decisão na API real com solicitação própria consultável.
+- [ ] Validar a decisão em execução real e interação no WebView2.
+
+Referência de revisão: `7e97013`. Não executar comandos de ferramenta no Strata,
+alterar políticas persistentes, aprovar permissões existentes durante testes ou
+usar o input textual para decisões. Reter contexto pendente somente em memória.
+
+Contrato versão 6. Limites por permissão: 256 bytes para ação; até 32 recursos,
+4096 bytes por recurso e 16384 no conjunto; contexto adicional JSON completo de
+até 16384 bytes. Metadados/contexto não reconhecidos ou grandes demais tornam
+a permissão indisponível para decisão no Strata. Até 128 permissões pendentes
+são projetadas nas execuções ativas. Nenhuma política permanente é enviada.
+
+O ensaio real em conversa temporária com política própria ask retornou ask na
+criação sintética, mas o ID retornado não apareceu na lista de pendências. A
+decisão não foi enviada. A mesma situação ocorreu com ID explícito. A causa não
+foi estabelecida; não atribuir esse resultado a sessões ativas sem evidência.
+O teste explícito permanece falhando nesse pré-requisito e é ignorado pela suíte
+padrão. Não declarar aprovar/recusar validados na API real.
+Evidência: `docs/evidence/ai-agents-opencode-permission-2026-10-19.json`.
+
+Validação da implementação:
+
+- 24 testes frontend focados passaram; TypeScript, lint e formatação dos arquivos
+  alterados passaram. Build frontend passou.
+- Suíte Rust padrão: 146 passaram e 15 ignorados. O teste explícito da API real
+  falhou no pré-requisito descrito acima e não deve ser contado como aprovação
+  ou recusa reais validadas.
+- Suíte frontend completa: 242 passaram e dois falharam: a posição de áudio
+  preexistente e o cenário intermitente conhecido de mute no demo do microfone.
+- A evidência de limpeza consulta somente a página recente: não foram achadas
+  conversas temporárias próprias nessa página; não representa enumeração completa.
+
 ## Ticket 6 — Responder perguntas textuais do OpenCode
 
 Terceira fatia da Subtask 3. O OpenCode v2 expõe formulários pendentes, com

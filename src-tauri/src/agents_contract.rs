@@ -102,11 +102,41 @@ pub struct AgentReplyRequest {
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+pub struct AgentPermission {
+    pub id: String,
+    pub session_id: String,
+    pub version: String,
+    pub action: String,
+    pub resources: Vec<String>,
+    pub details: String,
+    pub unsupported_reason: Option<String>,
+    pub reply_blocked: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum AgentPermissionDecision {
+    ApproveOnce,
+    Reject,
+}
+
+#[derive(Clone, Debug, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AgentPermissionRequest {
+    pub session_id: String,
+    pub permission_id: String,
+    pub version: String,
+    pub decision: AgentPermissionDecision,
+}
+
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
 pub struct OpenCodeSnapshot {
     pub status: AgentConnectionStatus,
     pub sessions: Vec<AgentSession>,
     pub has_more: bool,
     pub questions: Vec<AgentMessage>,
+    pub permissions: Vec<AgentPermission>,
     pub error: Option<String>,
 }
 
@@ -117,6 +147,7 @@ impl Default for OpenCodeSnapshot {
             sessions: Vec::new(),
             has_more: false,
             questions: Vec::new(),
+            permissions: Vec::new(),
             error: None,
         }
     }

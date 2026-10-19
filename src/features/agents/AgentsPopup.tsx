@@ -14,7 +14,8 @@ import {
 import type {
   AgentsSnapshot,
   CreateAgentSessionResult,
-  AgentReplyRequest
+  AgentReplyRequest,
+  AgentPermissionRequest
 } from '@/services/system/agents.generated'
 import { createDemoAgentsAdapter } from '@/services/system/agents'
 import { createAgentsStore, getAgentsStore } from '@/stores/agents'
@@ -40,6 +41,7 @@ function ConnectedAgentsPopup({ mode }: { mode: 'native' | 'demo' }) {
   const configureAntigravity = useStore((state) => state.configureAntigravity)
   const createOpenCode = useStore((state) => state.createOpenCode)
   const replyOpenCode = useStore((state) => state.replyOpenCode)
+  const decideOpenCode = useStore((state) => state.decideOpenCode)
   useEffect(() => useStore.getState().connect(), [useStore])
   return (
     <AgentsPopupContent
@@ -50,6 +52,7 @@ function ConnectedAgentsPopup({ mode }: { mode: 'native' | 'demo' }) {
       onConfigureAntigravity={configureAntigravity}
       onCreateOpenCode={createOpenCode}
       onReplyOpenCode={replyOpenCode}
+      onDecideOpenCode={decideOpenCode}
     />
   )
 }
@@ -67,7 +70,8 @@ export function AgentsPopupContent({
   onConfigureOpenCode,
   onConfigureAntigravity,
   onCreateOpenCode,
-  onReplyOpenCode
+  onReplyOpenCode,
+  onDecideOpenCode
 }: {
   snapshot: AgentsSnapshot | null
   error: string | null
@@ -79,6 +83,7 @@ export function AgentsPopupContent({
     prompt?: string
   ) => Promise<CreateAgentSessionResult>
   onReplyOpenCode?: (request: AgentReplyRequest) => Promise<void>
+  onDecideOpenCode?: (request: AgentPermissionRequest) => Promise<void>
 }) {
   const discoveryError = error ?? snapshot?.error
   return (
@@ -122,6 +127,7 @@ export function AgentsPopupContent({
                     stale={!!error}
                     onCreate={onCreateOpenCode}
                     onReply={onReplyOpenCode}
+                    onDecision={onDecideOpenCode}
                   />
                 ) : application.agent === 'antigravity' ? (
                   <AntigravitySessions
