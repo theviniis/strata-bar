@@ -12,9 +12,11 @@ campos e IDs próprios; resposta usa `POST /api/session/{sessionID}/form/{formID
       pergunta e versão; bloquear durante desconexão e envio.
 - [x] Revalidar pergunta pendente no provedor antes de enviar, impedir duplicação
       entre monitores e não repetir respostas após falha ou reconexão.
-- [ ] Validar testes, API real em conversa própria temporária, builds e revisão;
-      commitar na branch atual.
+- [x] Validar testes, API real em conversa própria temporária, build frontend e
+      revisão; commitar na branch atual (`bcb3afa`).
+- [x] Confirmar build release com o frontend atualizado.
 - [ ] Validar interação real do formulário no WebView2.
+- [ ] Validar retomada de uma execução real do agente após a resposta.
 
 Referência de revisão: `55eb781`. Nesta fatia, aceitar campos string sem opções,
 condições, campos ocultos, formatos ou padrões. Formulários com outros controles
@@ -45,6 +47,11 @@ Validação da implementação:
   da posição dos controles de áudio em `native-bar.test.tsx`.
 - O teste real valida a resposta do formulário e a recusa após resolução. Não
   valida retomada de uma execução do modelo nem interação do WebView2.
+- Revisão de padrões: nenhuma violação documentada ou problema acionável.
+- Revisão de especificação: sem problemas acionáveis de implementação ou escopo;
+  retomada de execução real e interação WebView2 continuam pendentes.
+- Build release passou; executável atualizado em
+  `src-tauri/target/release/strata-bar.exe`. A barra aberta não foi interrompida.
 
 ## Ticket 5 — Prompt inicial ao criar conversa do OpenCode
 
@@ -279,8 +286,8 @@ no Windows. Referência da revisão: commit `9e3bb9d`; commit na branch atual.
 
 Este ticket entrega descoberta de aplicativos, não descoberta de sessões. A
 Subtask 1 original permanece parcial: AgentSession e SessionStatus foram
-adicionados no ticket 2; AgentMessage permanece reservado para o contrato de
-perguntas/respostas dos próximos tickets.
+adicionados no ticket 2; AgentMessage foi adicionado ao contrato de perguntas e
+respostas no ticket 6.
 Subtasks 2–4 também não estão concluídas pelo popup inicial.
 
 ## Validação do ticket 1
