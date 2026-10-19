@@ -141,8 +141,8 @@ limitações das integrações.
 - Estabelecer linha de base inicial sem notificações retroativas. Deduplicar eventos
   de atenção e conclusão entre atualizações e consumidores.
 - Notificar com o popup fechado. Integrar notificações nativas do Windows 11 quando
-  suportadas; o mecanismo exato ainda deve ser validado, pois não existe toast na
-  infraestrutura identificada. O alerta no popup faz parte do escopo.
+  suportadas. O alerta no popup faz parte do escopo; submissão e apresentação
+  nativas exigem validação distinta no ambiente instalado.
 - A segunda entrega usa a API WinRT de toast com a identidade dev.strata.bar
   registrada pelo atalho do instalador NSIS no menu Iniciar. Sem esse registro,
   informar instalação necessária; não registrar identidade de outro aplicativo.

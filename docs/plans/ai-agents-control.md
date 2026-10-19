@@ -12,7 +12,7 @@ PowerShell, identidade de outro aplicativo, som ou botões de aprovação.
 - [x] Encaminhar somente eventos novos para um worker compartilhado; não repetir
       após falha, reconexão, dispensa ou atualização de outro monitor.
 - [x] Mostrar a disponibilidade no popup e validar os pontos públicos acordados.
-- [ ] Executar checks/builds, revisão e commitar na branch atual.
+- [x] Executar checks/builds, revisão e commitar na branch atual.
 - [ ] Validar entrega real com identidade instalada e apresentação no Windows.
 
 Referência de revisão: `938341a`. O toast mostra apenas ferramenta e tipo de
@@ -29,11 +29,32 @@ Atalhos reconhecidos: Strata.lnk ou Strata/Strata.lnk nos menus Iniciar do usuá
 ou de todos os usuários, com a propriedade AppUserModel.ID correta. Não criar
 atalhos nem alterar registro/instalação nesta fatia.
 
-Validação parcial: 27 testes frontend focados passaram e 155 testes Rust
-passaram, com 17 ignorados. A consulta WinRT real, somente leitura, retornou
-indisponível: não existe identidade do instalador registrada nesta máquina.
-Nenhum toast foi submetido e nenhum banner foi validado.
+Validação da implementação:
+
+- 27 testes frontend focados passaram e 155 testes Rust passaram, com 17
+  ignorados. O teste de encaminhamento falhou antes da implementação e passou
+  depois; há cobertura de falha sem retry e fila cheia com sistema lento.
+- TypeScript, lint e formatação dos arquivos alterados passaram.
+- Suíte frontend completa: 246 passaram e permaneceu a falha preexistente da
+  posição dos controles de áudio em `native-bar.test.tsx`.
+- Revisão de padrões: nenhuma violação documentada ou smell acionável.
+  Revisão de especificação: nenhum defeito ou escopo extra identificado;
+  aceitação nativa instalada permanece parcial.
+- Consulta WinRT real, somente leitura: indisponível, sem identidade do
+  instalador registrada nesta máquina. Nenhum toast submetido ou banner validado.
+- Build frontend e release passaram; instalador NSIS gerado em
+  `src-tauri/target/release/bundle/nsis/Strata_0.1.0_x64-setup.exe`.
+  O script gerado confirma Strata.lnk com AppUserModel.ID dev.strata.bar.
+  Não houve instalação nem interrupção da barra aberta. Implementação: `7246f2a`.
+
 Evidência: `docs/evidence/ai-agents-notifications-2026-10-19.json`.
+
+Aceitação restante: instalar o artefato NSIS com atalho do menu Iniciar,
+iniciar o host atualizado, conferir o estado no popup e produzir uma pergunta
+e uma conclusão próprias em um provedor conectado, com popup fechado.
+Confirmar um toast por evento, texto genérico sem título da conversa e ausência
+de reenvio ao abrir/fechar popup ou dispensar o alerta visual. Registrar submissão
+e apresentação separadamente, sem alterar Não incomodar para forçar o resultado.
 
 Referências:
 [identidade de aplicativos desktop](https://learn.microsoft.com/en-us/windows/win32/shell/enable-desktop-toast-with-appusermodelid)
