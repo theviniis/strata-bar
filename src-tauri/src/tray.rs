@@ -1,7 +1,6 @@
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem},
     tray::TrayIconBuilder,
-    Manager,
 };
 use tauri_plugin_autostart::ManagerExt;
 use windows::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK};
@@ -9,7 +8,12 @@ use windows::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK};
 fn show_error(message: &str) {
     let message = windows::core::HSTRING::from(message);
     unsafe {
-        let _ = MessageBoxW(None, &message, windows::core::w!("Strata"), MB_OK | MB_ICONERROR);
+        let _ = MessageBoxW(
+            None,
+            &message,
+            windows::core::w!("Strata"),
+            MB_OK | MB_ICONERROR,
+        );
     }
 }
 
@@ -19,7 +23,9 @@ pub fn setup(app: &tauri::AppHandle) -> tauri::Result<()> {
     let startup_available = !cfg!(debug_assertions) && startup.is_ok();
     if !cfg!(debug_assertions) {
         if let Err(error) = &startup {
-            show_error(&format!("Não foi possível consultar a inicialização com o Windows: {error}"));
+            show_error(&format!(
+                "Não foi possível consultar a inicialização com o Windows: {error}"
+            ));
         }
     }
     let autostart = CheckMenuItem::with_id(
@@ -33,9 +39,9 @@ pub fn setup(app: &tauri::AppHandle) -> tauri::Result<()> {
     let restart = MenuItem::with_id(app, "tray-restart", "Reiniciar", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "tray-quit", "Sair", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&settings, &autostart, &restart, &quit])?;
-    let icon = app.default_window_icon().ok_or_else(|| {
-        tauri::Error::AssetNotFound("application tray icon".into())
-    })?;
+    let icon = app
+        .default_window_icon()
+        .ok_or_else(|| tauri::Error::AssetNotFound("application tray icon".into()))?;
     TrayIconBuilder::with_id("strata")
         .icon(icon.clone())
         .tooltip("Strata")
@@ -46,33 +52,38 @@ pub fn setup(app: &tauri::AppHandle) -> tauri::Result<()> {
                 // Native check items toggle before this callback. Read the actual
                 // registration instead of using that optimistic UI state.
                 let manager = app.autolaunch();
-                let result = manager.is_enabled().and_then(|previous| {
-                    let changed = if previous { manager.disable() } else { manager.enable() };
-                    match changed.and_then(|()| manager.is_enabled()) {
-                        Ok(actual) if actual != previous => {
-                            let _ = autostart.set_checked(actual);
-                            Ok(())
-                        }
-                        other => {
-                            let _ = autostart.set_checked(previous);
-                            match other {
-                                Err(error) => Err(error),
-                                Ok(_) => {
-                                    show_error("O Windows não confirmou a alteração da inicialização automática.");
-                                    Ok(())
-                                }
+                let previous = manager.is_enabled();
+                let result = match previous {
+                    Ok(previous) => {
+                        let changed = if previous {
+                            manager.disable()
+                        } else {
+                            manager.enable()
+                        };
+                        match changed.and_then(|()| manager.is_enabled()) {
+                            Ok(actual) if actual != previous => autostart
+                                .set_checked(actual)
+                                .map_err(|error| error.to_string()),
+                            result => {
+                                let _ = autostart.set_checked(previous);
+                                Err(match result {
+                                    Err(error) => error.to_string(),
+                                    Ok(_) => "O Windows não confirmou a alteração.".into(),
+                                })
                             }
                         }
                     }
-                });
-                if let Err(error) = result {
-                    // If the initial read failed, undo the menu's automatic toggle.
-                    if let Ok(actual) = manager.is_enabled() {
-                        let _ = autostart.set_checked(actual);
-                    } else if let Ok(checked) = autostart.is_checked() {
-                        let _ = autostart.set_checked(!checked);
+                    Err(error) => {
+                        if let Ok(checked) = autostart.is_checked() {
+                            let _ = autostart.set_checked(!checked);
+                        }
+                        Err(error.to_string())
                     }
-                    show_error(&format!("Não foi possível alterar a inicialização com o Windows: {error}"));
+                };
+                if let Err(error) = result {
+                    show_error(&format!(
+                        "Não foi possível alterar a inicialização com o Windows: {error}"
+                    ));
                 }
             }
             "tray-restart" => app.request_restart(),

@@ -54,11 +54,11 @@ import {
   useState
 } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
-import { ReminderEditor } from './ReminderEditor'
 import { CalendarSettings } from './CalendarSettings'
 import { reminderFormSchema, type ReminderFormValues } from './form'
 import { scheduledDateTime } from './presentation'
 import { ReminderAlertActions } from './ReminderAlertActions'
+import { ReminderEditor } from './ReminderEditor'
 
 export function RemindersPopup() {
   const id = useId()
@@ -527,6 +527,7 @@ export function RemindersPopup() {
                     .slice()
                     .sort((a, b) => a.notifyAt - b.notifyAt)
                     .map((r) => (
+                      // TODO: Refatorar esse componente
                       <div
                         key={r.id}
                         className="grid gap-2 rounded border border-border p-3"

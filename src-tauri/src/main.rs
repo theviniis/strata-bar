@@ -1,12 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-mod tray;
+mod google_calendar;
 mod media;
 mod media_contract;
 mod media_windows;
-mod spotify;
 mod reminders;
 mod reminders_contract;
-mod google_calendar;
+mod spotify;
+mod tray;
 
 mod afterburner;
 mod audio_policy;
@@ -220,12 +220,43 @@ struct InstanceGuard(Option<windows::Win32::Foundation::HANDLE>);
 impl InstanceGuard {
     fn close(&mut self) {
         if let Some(handle) = self.0.take() {
-            unsafe { let _ = windows::Win32::Foundation::CloseHandle(handle); }
+            unsafe {
+                let _ = windows::Win32::Foundation::CloseHandle(handle);
+            }
         }
     }
 }
 impl Drop for InstanceGuard {
-    fn drop(&mut self) { self.close(); }
+    fn drop(&mut self) {
+        self.close();
+    }
+}
+
+#[cfg(test)]
+mod instance_tests {
+    use super::InstanceGuard;
+    use windows::Win32::{
+        Foundation::{GetLastError, ERROR_ALREADY_EXISTS},
+        System::Threading::CreateMutexW,
+    };
+
+    #[test]
+    fn closing_instance_guard_releases_name_for_restart_and_is_idempotent() {
+        let name = windows::core::HSTRING::from(format!(
+            "Local\\StrataInstanceTest-{}-{}",
+            std::process::id(),
+            rand::random::<u64>()
+        ));
+        let mut guard = InstanceGuard(Some(unsafe { CreateMutexW(None, false, &name).unwrap() }));
+        let duplicate = InstanceGuard(Some(unsafe { CreateMutexW(None, false, &name).unwrap() }));
+        assert_eq!(unsafe { GetLastError() }, ERROR_ALREADY_EXISTS);
+        drop(duplicate);
+        guard.close();
+        guard.close();
+        let _replacement =
+            InstanceGuard(Some(unsafe { CreateMutexW(None, false, &name).unwrap() }));
+        assert_ne!(unsafe { GetLastError() }, ERROR_ALREADY_EXISTS);
+    }
 }
 
 fn main() {
