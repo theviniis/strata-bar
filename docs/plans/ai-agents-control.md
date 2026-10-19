@@ -11,7 +11,11 @@ operação separada e permanece para a próxima fatia; esta ação não inicia t
       criação, sem repetição automática em falhas ou reconexões.
 - [x] Adicionar formulário no accordion, com bloqueio durante envio/desconexão e
       confirmação por identificador da sessão criada.
-- [ ] Testar serviço e comportamento visível, executar checks, revisar e commitar.
+- [x] Testar serviço e comportamento visível, executar checks frontend, revisar e
+      commitar a implementação (`b455c09`).
+- [x] Confirmar build release com o frontend atualizado.
+- [ ] Validar formulário no WebView2 real (foco, inputs, fechamento e
+      posicionamento) para concluir aceitação nativa.
 
 Referência de revisão: `1b52d2b`. Não alterar permissões, iniciar prompt ou executar
 comandos de projeto ao criar a conversa. Falhas ambíguas devem orientar o usuário
@@ -32,6 +36,11 @@ Validação desta fatia:
   `native-bar.test.tsx` sobre posição dos controles de áudio.
 - Interação do formulário no WebView2 real ainda não exercitada. Teste do
   provedor não substitui a validação visual nativa.
+- Revisão de padrões: nenhuma violação documentada ou problema acionável.
+- Revisão de especificação: sem problemas acionáveis nesta fatia; prompt inicial,
+  respostas e aceitação visual nativa continuam pendentes explicitamente.
+- Build release passou. O executável atualizado está em
+  `src-tauri/target/release/strata-bar.exe`; a barra aberta não foi interrompida.
 
 ## Execução
 
