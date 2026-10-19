@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import type { AgentAlertsSnapshot } from '@/services/system/agents'
+import type {
+  AgentAlertsSnapshot,
+  AgentNotificationsSnapshot
+} from '@/services/system/agents'
 
 const labels = {
   opencode: 'OpenCode',
@@ -8,11 +11,26 @@ const labels = {
   chatgpt: 'ChatGPT Desktop'
 } as const
 
+const notificationLabels = {
+  checking: 'Verificando notificações do Windows…',
+  ready:
+    'Notificações do Windows disponíveis. A apresentação depende das preferências do sistema, incluindo Não incomodar.',
+  blocked:
+    'O Windows bloqueou as notificações. Os alertas continuam na barra e neste popup.',
+  unavailable:
+    'Instale o Strata pelo instalador para habilitar notificações do Windows. Os alertas visuais continuam disponíveis.',
+  error:
+    'Falha ao enviar ou verificar notificações do Windows. Os alertas continuam na barra e neste popup; eventos antigos não serão reenviados.',
+  demo: 'Demonstração: nenhuma notificação será enviada ao Windows.'
+} as const
+
 export function AgentAlerts({
   alerts,
+  notifications,
   onDismiss
 }: {
   alerts: AgentAlertsSnapshot
+  notifications?: AgentNotificationsSnapshot
   onDismiss?: (ids: string[]) => Promise<void>
 }) {
   const [pending, setPending] = useState(false)
@@ -38,6 +56,17 @@ export function AgentAlerts({
       <p className="text-xs text-muted-foreground">
         Alertas visuais na barra e neste popup.
       </p>
+      {notifications && (
+        <p className="text-xs text-muted-foreground" role="status">
+          {notificationLabels[notifications.status]}
+        </p>
+      )}
+      {notifications && notifications.skipped > 0 && (
+        <p className="text-xs text-destructive">
+          {notifications.skipped} notificações não foram enviadas por limite da
+          fila ou indisponibilidade do serviço. Confira os alertas visuais.
+        </p>
+      )}
       {alerts.items.length === 0 ? (
         <p className="text-xs">Sem novos alertas.</p>
       ) : (

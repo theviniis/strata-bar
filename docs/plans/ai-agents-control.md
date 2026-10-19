@@ -1,5 +1,44 @@
 # Controle de agentes de IA — Windows 11
 
+## Ticket 9 — Notificações nativas do Windows
+
+Segunda fatia da Subtask 4. Enviar toasts de atenção/conclusão somente para
+eventos novos da fila nativa, uma tentativa por evento, fora do lock do serviço.
+Usar a identidade `dev.strata.bar` do instalador e API WinRT diretamente, sem
+PowerShell, identidade de outro aplicativo, som ou botões de aprovação.
+
+- [x] Integrar transporte WinRT e estado disponível/bloqueado/indisponível/erro,
+      preservando os alertas visuais se o Windows não aceitar notificações.
+- [x] Encaminhar somente eventos novos para um worker compartilhado; não repetir
+      após falha, reconexão, dispensa ou atualização de outro monitor.
+- [x] Mostrar a disponibilidade no popup e validar os pontos públicos acordados.
+- [ ] Executar checks/builds, revisão e commitar na branch atual.
+- [ ] Validar entrega real com identidade instalada e apresentação no Windows.
+
+Referência de revisão: `938341a`. O toast mostra apenas ferramenta e tipo de
+evento; títulos e conteúdo das sessões permanecem no popup. O Windows administra
+a central de notificações, que pode reter o texto genérico. Sem identidade
+registrada, informar que é necessário instalar o Strata. Sucesso da API significa
+submissão ao Windows, não comprova que um banner foi visto (Não incomodar e
+preferências do sistema continuam válidos). Não alterar essas preferências.
+
+Contrato versão 8. Worker com fila limitada a 32; descarte contabilizado e
+visível, sem repetir tentativas antigas. O estado é atualizado no próximo
+snapshot do serviço (até aproximadamente três segundos sem outra atualização).
+Atalhos reconhecidos: Strata.lnk ou Strata/Strata.lnk nos menus Iniciar do usuário
+ou de todos os usuários, com a propriedade AppUserModel.ID correta. Não criar
+atalhos nem alterar registro/instalação nesta fatia.
+
+Validação parcial: 27 testes frontend focados passaram e 155 testes Rust
+passaram, com 17 ignorados. A consulta WinRT real, somente leitura, retornou
+indisponível: não existe identidade do instalador registrada nesta máquina.
+Nenhum toast foi submetido e nenhum banner foi validado.
+Evidência: `docs/evidence/ai-agents-notifications-2026-10-19.json`.
+
+Referências:
+[identidade de aplicativos desktop](https://learn.microsoft.com/en-us/windows/win32/shell/enable-desktop-toast-with-appusermodelid)
+e [ToastNotificationManager](https://learn.microsoft.com/en-us/uwp/api/windows.ui.notifications.toastnotificationmanager).
+
 ## Ticket 8 — Alertas visuais em segundo plano
 
 Primeira fatia da Subtask 4. Serviço nativo compartilhado produz alertas de

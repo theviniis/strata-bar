@@ -7,7 +7,8 @@ import {
 import type { AgentsSnapshot } from '@/services/system/agents.generated'
 
 const snapshot = (revision: number): AgentsSnapshot => ({
-  version: 7,
+  version: 8,
+  notifications: { status: 'demo', skipped: 0 },
   alerts: { items: [], overflowCount: 0, paused: false },
   antigravity: { status: 'disabled', sessions: [], error: null },
   revision,

@@ -143,6 +143,16 @@ limitações das integrações.
 - Notificar com o popup fechado. Integrar notificações nativas do Windows 11 quando
   suportadas; o mecanismo exato ainda deve ser validado, pois não existe toast na
   infraestrutura identificada. O alerta no popup faz parte do escopo.
+- A segunda entrega usa a API WinRT de toast com a identidade dev.strata.bar
+  registrada pelo atalho do instalador NSIS no menu Iniciar. Sem esse registro,
+  informar instalação necessária; não registrar identidade de outro aplicativo.
+  Um worker compartilhado recebe somente eventos novos, com fila de até 32 itens
+  e tentativa única, sem replay após falha ou reconexão. Descartes por capacidade
+  ficam explícitos. O popup informa disponibilidade, bloqueio do Windows ou erro.
+  Toasts silenciosos mostram somente ferramenta e tipo; títulos e conteúdos das
+  sessões não saem para a central de notificações. Não oferecer ações, respostas
+  ou aprovações no toast. Preferências do sistema podem impedir apresentação;
+  submissão bem-sucedida não comprova que o usuário viu um banner.
 - A primeira entrega de alertas usa fila visual nativa compartilhada, contador
   na barra e lista no popup; não toca som nem abre janelas. Notificações nativas
   do Windows permanecem separadas. A linha de base inicial de cada conexão não

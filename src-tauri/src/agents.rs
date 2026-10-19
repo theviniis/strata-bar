@@ -35,7 +35,7 @@ pub fn observe(
     })
     .collect();
     AgentsSnapshot {
-        version: 7,
+        version: 8,
         revision,
         observed_at: SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -46,6 +46,7 @@ pub fn observe(
         opencode: Default::default(),
         antigravity: Default::default(),
         alerts: Default::default(),
+        notifications: Default::default(),
     }
 }
 
@@ -64,6 +65,7 @@ struct Shared {
     antigravity: crate::antigravity::Monitor,
     hook_bridge: Option<crate::antigravity_hooks::Bridge>,
     alerts: crate::agent_alerts::Alerts,
+    notifications: crate::agent_notifications::Queue,
 }
 
 impl Shared {
@@ -71,9 +73,12 @@ impl Shared {
         self.snapshot.revision = self.snapshot.revision.saturating_add(1);
         self.snapshot.opencode = self.connection.snapshot();
         self.snapshot.antigravity = self.antigravity.snapshot();
-        self.alerts
-            .observe(&self.snapshot.opencode, &self.snapshot.antigravity, now());
+        let emitted =
+            self.alerts
+                .observe(&self.snapshot.opencode, &self.snapshot.antigravity, now());
+        self.notifications.enqueue(emitted);
         self.snapshot.alerts = self.alerts.snapshot();
+        self.snapshot.notifications = self.notifications.snapshot();
         self.snapshot.clone()
     }
 }
@@ -98,16 +103,19 @@ pub struct Agents {
     workers: Mutex<Vec<(mpsc::Sender<Wake>, JoinHandle<()>)>>,
     opencode_wake: mpsc::Sender<Wake>,
     creation: Arc<Mutex<()>>,
+    notifications: crate::agent_notifications::Notifications,
 }
 
 impl Agents {
     pub fn start(app: tauri::AppHandle) -> std::io::Result<Self> {
+        let notifications = crate::agent_notifications::Notifications::start()?;
         let shared = Arc::new(Mutex::new(Shared {
             snapshot: observe(0, crate::agents_windows::process_names),
             connection: Default::default(),
             antigravity: Default::default(),
             hook_bridge: None,
             alerts: Default::default(),
+            notifications: notifications.queue.clone(),
         }));
         let (stop, receiver) = mpsc::channel();
         let (opencode_wake, opencode_receiver) = mpsc::channel();
@@ -116,6 +124,7 @@ impl Agents {
             workers: Mutex::new(Vec::new()),
             opencode_wake,
             creation: Arc::new(Mutex::new(())),
+            notifications,
         };
         let application = app.clone();
         let hook_app = app.clone();
@@ -245,6 +254,7 @@ impl Agents {
                 let _ = handle.join();
             }
         }
+        self.notifications.stop();
     }
 
     fn configure_opencode(&self, enabled: bool) -> Result<AgentsSnapshot, String> {

@@ -1,6 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod agents;
 mod agent_alerts;
+mod agent_notifications;
+mod agent_notifications_windows;
 mod agents_contract;
 mod agents_windows;
 mod antigravity;

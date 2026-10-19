@@ -173,7 +173,7 @@ impl Default for AntigravitySnapshot {
     }
 }
 
-/// Application discovery and independently configured session connections.
+/// Metadata-only visual and native attention/completion events.
 #[derive(Clone, Debug, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum AgentAlertKind {
@@ -200,6 +200,26 @@ pub struct AgentAlertsSnapshot {
     pub paused: bool,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum AgentNotificationStatus {
+    #[default]
+    Checking,
+    Ready,
+    Blocked,
+    Unavailable,
+    Error,
+    Demo,
+}
+
+#[derive(Clone, Debug, Default, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentNotificationsSnapshot {
+    pub status: AgentNotificationStatus,
+    pub skipped: u32,
+}
+
+/// Application discovery and independently configured session connections.
 #[derive(Clone, Debug, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentsSnapshot {
@@ -211,4 +231,5 @@ pub struct AgentsSnapshot {
     pub opencode: OpenCodeSnapshot,
     pub antigravity: AntigravitySnapshot,
     pub alerts: AgentAlertsSnapshot,
+    pub notifications: AgentNotificationsSnapshot,
 }

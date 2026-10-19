@@ -30,6 +30,8 @@ fn main() {
         agents_contract::AgentAlertKind::decl(),
         agents_contract::AgentAlert::decl(),
         agents_contract::AgentAlertsSnapshot::decl(),
+        agents_contract::AgentNotificationStatus::decl(),
+        agents_contract::AgentNotificationsSnapshot::decl(),
         agents_contract::AgentTextField::decl(),
         agents_contract::AgentMessage::decl(),
         agents_contract::AgentReplyRequest::decl(),

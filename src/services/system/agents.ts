@@ -26,6 +26,7 @@ export type {
   AgentPermissionRequest,
   AgentPermissionDecision,
   AgentAlert,
+  AgentNotificationsSnapshot,
   AgentAlertsSnapshot
 } from './agents.generated'
 
@@ -186,7 +187,20 @@ const alerts: z.ZodType<AgentAlertsSnapshot> = z
 
 const schema: z.ZodType<AgentsSnapshot> = z
   .object({
-    version: z.literal(7),
+    version: z.literal(8),
+    notifications: z
+      .object({
+        status: z.enum([
+          'checking',
+          'ready',
+          'blocked',
+          'unavailable',
+          'error',
+          'demo'
+        ]),
+        skipped: z.number().int().min(0).max(4_294_967_295)
+      })
+      .strict(),
     alerts,
     revision: z.number().int().min(0).max(4_294_967_295),
     observedAt: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
@@ -298,7 +312,8 @@ export function createNativeAgentsAdapter(): AgentsAdapter {
 export function createDemoAgentsAdapter(): AgentsAdapter {
   const listeners = new Set<(snapshot: AgentsSnapshot) => void>()
   let snapshot: AgentsSnapshot = {
-    version: 7,
+    version: 8,
+    notifications: { status: 'demo', skipped: 0 },
     alerts: { items: [], overflowCount: 0, paused: false },
     revision: 0,
     observedAt: Date.now(),

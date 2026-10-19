@@ -110,7 +110,11 @@ export function AgentsPopupContent({
         )}
         {!snapshot && !error && <p role="status">Detectando aplicativos…</p>}
         {snapshot && (
-          <AgentAlerts alerts={snapshot.alerts} onDismiss={onDismissAlerts} />
+          <AgentAlerts
+            alerts={snapshot.alerts}
+            notifications={snapshot.notifications}
+            onDismiss={onDismissAlerts}
+          />
         )}
         <Accordion multiple={false}>
           {snapshot?.applications.map((application) => (

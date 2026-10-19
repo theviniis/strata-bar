@@ -313,7 +313,8 @@ it('distinguishes detected applications from unavailable session control', () =>
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 7,
+        version: 8,
+        notifications: { status: 'demo', skipped: 0 },
         alerts: { items: [], overflowCount: 0, paused: false },
         antigravity: { status: 'disabled', sessions: [], error: null },
         opencode: {
@@ -419,7 +420,8 @@ it('does not show stale process presence after discovery fails', () => {
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 7,
+        version: 8,
+        notifications: { status: 'demo', skipped: 0 },
         alerts: { items: [], overflowCount: 0, paused: false },
         antigravity: { status: 'disabled', sessions: [], error: null },
         opencode: {
@@ -618,4 +620,19 @@ it('shows attention and history limits, then marks sessions disconnected on a tr
   view.rerender(<OpenCodeSessions connection={connection} stale />)
   expect(screen.getByText('Desconectada')).toBeInTheDocument()
   expect(screen.queryByText('Atenção necessária')).not.toBeInTheDocument()
+})
+it('explains blocked native toasts while preserving the visual alert list', () => {
+  render(
+    <AgentAlerts
+      alerts={{ items: [], overflowCount: 0, paused: false }}
+      notifications={{ status: 'blocked', skipped: 1 }}
+    />
+  )
+  expect(
+    screen.getByText(/Windows bloqueou as notificações/)
+  ).toBeInTheDocument()
+  expect(
+    screen.getByText(/1 notificações não foram enviadas/)
+  ).toBeInTheDocument()
+  expect(screen.getByText('Sem novos alertas.')).toBeInTheDocument()
 })

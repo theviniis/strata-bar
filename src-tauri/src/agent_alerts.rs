@@ -143,10 +143,11 @@ impl Alerts {
         opencode: &OpenCodeSnapshot,
         antigravity: &AntigravitySnapshot,
         at: f64,
-    ) {
+    ) -> Vec<AgentAlert> {
         if !at.is_finite() || !(0.0..=8_640_000_000_000_000.0).contains(&at) {
-            return;
+            return Vec::new();
         }
+        let mut emitted = Vec::new();
         let mut pending: BTreeMap<String, Vec<String>> = BTreeMap::new();
         for question in &opencode.questions {
             pending
@@ -200,15 +201,18 @@ impl Alerts {
                 self.snapshot.items.remove(0);
                 self.snapshot.overflow_count = self.snapshot.overflow_count.saturating_add(1);
             }
-            self.snapshot.items.push(AgentAlert {
+            let alert = AgentAlert {
                 id: format!("agent-alert-{}", self.next_id),
                 agent: candidate.session.agent,
                 session_id: candidate.session.id,
                 session_title: candidate.session.title,
                 kind: candidate.kind,
                 created_at: at,
-            });
+            };
+            self.snapshot.items.push(alert.clone());
+            emitted.push(alert);
         }
+        emitted
     }
 
     pub fn dismiss(&mut self, ids: &[String]) -> Result<(), String> {
@@ -259,6 +263,19 @@ mod tests {
             completed_turns,
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn only_new_alerts_are_forwarded_to_the_native_notification_transport() {
+        let mut alerts = Alerts::default();
+        let absent = AntigravitySnapshot::default();
+        let baseline = alerts.observe(&source(SessionStatus::Processing, 1000.0), &absent, 1000.0);
+        assert!(baseline.is_empty());
+        let next = alerts.observe(&source(SessionStatus::Completed, 2000.0), &absent, 2000.0);
+        assert_eq!(next.len(), 1);
+        alerts.dismiss(&[next[0].id.clone()]).unwrap();
+        let duplicate = alerts.observe(&source(SessionStatus::Completed, 2000.0), &absent, 3000.0);
+        assert!(duplicate.is_empty());
     }
 
     #[test]
