@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 export const types = [
   'clock',
+  'reminders',
   'cpu',
   'memory',
   'gpu',
@@ -64,12 +65,19 @@ export const defaultConfig = configSchema.parse({
       { id: 'active', type: 'activeWindow' }
     ],
     center: [{ id: 'time', type: 'clock' }],
-    right: ['cpu', 'memory', 'gpu', 'disk', 'network', 'music', 'volume'].map(
-      (type) => ({
-        id: type,
-        type
-      })
-    )
+    right: [
+      'cpu',
+      'memory',
+      'gpu',
+      'disk',
+      'network',
+      'music',
+      'volume',
+      'reminders'
+    ].map((type) => ({
+      id: type,
+      type
+    }))
   }
 })
 

@@ -3,6 +3,9 @@ mod media;
 mod media_contract;
 mod media_windows;
 mod spotify;
+mod reminders;
+mod reminders_contract;
+mod google_calendar;
 
 mod afterburner;
 mod audio_policy;
@@ -226,6 +229,13 @@ fn main() {
     }
     let app = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
+            reminders::reminders_snapshot,
+            reminders::reminders_create,
+            reminders::reminders_transition,
+            reminders::reminders_calendar_sync,
+            google_calendar::calendar_status,
+            google_calendar::calendar_connect,
+            google_calendar::calendar_disconnect,
             media_action,
             spotify_status,
             spotify_connect,
@@ -245,12 +255,17 @@ fn main() {
             quit
         ])
         .setup(|app| {
+            app.manage(google_calendar::GoogleCalendar::start());
+            app.manage(reminders::Reminders::open(
+                app.path().app_data_dir()?.join("reminders.json"),
+            ));
             app.manage(media::Media::start(app.handle().clone()));
             app.manage(metrics::Metrics::start(app.handle().clone()));
             app.manage(komorebi::Komorebi::start(app.handle().clone()));
             desktop::reconcile(app.handle())?;
             // One warm surface for every tooltip and, later, widget popup.
             desktop::ensure_overlay(app.handle())?;
+            app.manage(reminders::ReminderScheduler::start(app.handle().clone()));
             #[cfg(debug_assertions)]
             if std::env::args().any(|arg| arg == "--check-popups") {
                 popup_check::start(app.handle().clone());
@@ -274,6 +289,7 @@ fn main() {
         .expect("Strata failed to initialize");
     app.run(|app, event| {
         if matches!(event, tauri::RunEvent::Exit) {
+            if let Some(scheduler) = app.try_state::<reminders::ReminderScheduler>() { scheduler.stop(); }
             desktop::release_all(app);
             if let Some(media) = app.try_state::<media::Media>() {
                 media.stop();

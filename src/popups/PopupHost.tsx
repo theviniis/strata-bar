@@ -65,7 +65,13 @@ export function PopupHost({
       )}
       {resolved && Content ? (
         <PopupContext.Provider
-          value={{ id: resolved.id, params: resolved.params, mode, close }}
+          value={{
+            id: resolved.id,
+            params: resolved.params,
+            mode,
+            side: placement.side ?? 'bottom',
+            close
+          }}
         >
           <ContentBoundary close={close}>
             <Content />

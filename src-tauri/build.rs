@@ -15,9 +15,34 @@ mod media_contract;
 mod memory_contract;
 #[path = "build_support/popups.rs"]
 mod popups;
+#[path = "src/reminders_contract.rs"]
+#[allow(dead_code)]
+mod reminders_contract;
 
 fn main() {
     use ts_rs::TS;
+    println!("cargo:rerun-if-changed=src/reminders_contract.rs");
+    let declarations = [
+        reminders_contract::ReminderMode::decl(),
+        reminders_contract::ReminderStatus::decl(),
+        reminders_contract::SnoozeOption::decl(),
+        reminders_contract::Reminder::decl(),
+        reminders_contract::CreateReminder::decl(),
+        reminders_contract::ReminderSnapshot::decl(),
+        reminders_contract::CalendarStatus::decl(),
+    ];
+    let generated = format!(
+        "// Generated from Rust reminders_contract.rs by cargo build. Do not edit.\n{}\n",
+        declarations
+            .iter()
+            .map(|d| format!("export {d}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+    let target = std::path::Path::new("../src/services/system/reminders.generated.ts");
+    if std::fs::read_to_string(target).ok().as_deref() != Some(&generated) {
+        std::fs::write(target, generated).expect("Generate reminders contract");
+    }
     println!("cargo:rerun-if-changed=src/media_contract.rs");
     let media = [
         media_contract::MediaAvailability::decl(),

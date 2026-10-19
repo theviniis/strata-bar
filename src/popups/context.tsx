@@ -4,6 +4,7 @@ import type { PopupId, PopupValues } from './resolve'
 export interface PopupContextValue {
   id: PopupId
   mode: 'native' | 'demo'
+  side?: 'top' | 'bottom'
   params: unknown
   close(): void
 }

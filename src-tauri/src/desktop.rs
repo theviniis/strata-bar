@@ -22,6 +22,7 @@ const OVERLAY_SUBCLASS: usize = 0x5354524F;
 pub const OVERLAY: &str = "overlay";
 const OVERLAY_TITLE: &str = "Strata overlay";
 static RECONCILE_PENDING: AtomicBool = AtomicBool::new(false);
+static FULLSCREEN_APP: AtomicBool = AtomicBool::new(false);
 static COUNTS: [AtomicU64;4]=[const {AtomicU64::new(0)};4];
 /// Overlay shows, positions and hides, surface failures in `diagnostics`.
 static OVERLAY_COUNTS: [AtomicU64; 3] = [const { AtomicU64::new(0) }; 3];
@@ -182,6 +183,7 @@ unsafe extern "system" fn procedure(
             position(hwnd, state);
         }
         if wp.0 as u32 == ABN_FULLSCREENAPP {
+            FULLSCREEN_APP.store(lp.0 != 0, Ordering::Relaxed);
             // A fullscreen app owns the screen: never float a stale tooltip over it.
             overlay_hide(&state.app);
             let top = if lp.0 != 0 {
@@ -816,6 +818,68 @@ pub fn overlay_show(
     if !interactive { OVERLAY_COUNTS[0].fetch_add(1, Ordering::Relaxed); }
     OVERLAY_COUNTS[1].fetch_add(1, Ordering::Relaxed);
     Ok(())
+}
+
+/// A native-only scheduler entrypoint. Reuses the shared popup surface and
+/// reads the selected AppBar's actual Win32 rectangle for its anchor.
+pub fn show_reminder_alert(app: &AppHandle, id: &str, notify_at: f64) -> Result<bool, String> {
+    if FULLSCREEN_APP.load(Ordering::Relaxed) || POPUP.lock().unwrap().is_some() {
+        return Ok(false);
+    }
+    let mut bars: Vec<_> = app
+        .webview_windows()
+        .into_iter()
+        .filter(|(name, _)| name.starts_with("bar-"))
+        .collect();
+    bars.sort_by(|a, b| a.0.cmp(&b.0));
+    let foreground = unsafe { MonitorFromWindow(GetForegroundWindow(), MONITOR_DEFAULTTOPRIMARY) };
+    let selected = bars
+        .iter()
+        .find(|(_, window)| {
+            window.hwnd().ok().is_some_and(|hwnd| unsafe {
+                MonitorFromWindow(HWND(hwnd.0), MONITOR_DEFAULTTOPRIMARY) == foreground
+            })
+        })
+        .or_else(|| bars.first());
+    let Some((_, source)) = selected else {
+        return Ok(false);
+    };
+    let mut bar = RECT::default();
+    unsafe {
+        GetWindowRect(HWND(source.hwnd().map_err(|e| e.to_string())?.0), &mut bar)
+            .map_err(|e| e.to_string())?;
+    }
+    let scale = source.scale_factor().map_err(|e| e.to_string())?;
+    overlay_show(
+        app,
+        source,
+        &OverlayRequest {
+            v: 1,
+            source: Some(source.label().into()),
+            kind: "popover".into(),
+            component: Some("reminderAlert".into()),
+            params: Some(serde_json::json!({"id": id})),
+            session: Some(format!("reminder-{id}-{notify_at:.0}")),
+            text: "Lembrete".into(),
+            anchor: OverlayAnchor {
+                x: ((bar.right - bar.left) as f64 / scale - 24.0).max(0.0),
+                y: 0.0,
+                width: 24.0,
+                height: (bar.bottom - bar.top) as f64 / scale,
+            },
+            size: OverlaySize {
+                width: 1.0,
+                height: 1.0,
+            },
+            side: "bottom".into(),
+        },
+    )?;
+    Ok(true)
+}
+
+/// Independent of overlay availability and WebView autoplay permission.
+pub fn play_reminder_sound() -> windows::core::Result<()> {
+    unsafe { windows::Win32::System::Diagnostics::Debug::MessageBeep(MB_ICONEXCLAMATION) }
 }
 
 unsafe extern "system" fn overlay_procedure(

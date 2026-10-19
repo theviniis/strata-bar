@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { QueryProvider } from '@/components/QueryProvider'
 import type { OverlayRender, OverlaySnapshot } from '../services/system/overlay'
 import { PopupHost } from '../popups/PopupHost'
 import { overlay } from '../services/system/overlay'
@@ -73,31 +74,33 @@ export default function Overlay() {
   return (
     // Same typography/colour context as the native bar, so future popovers and
     // tooltip content inherit the bar's text instead of the bare document.
-    <div
-      aria-hidden={render.kind === 'tooltip' ? true : undefined}
-      className={overlayTextClasses}
-    >
-      {render.kind === 'tooltip' ? (
-        <TooltipSurface
-          text={render.text}
-          side={render.side}
-          arrowX={render.arrowX}
-        />
-      ) : render.kind === 'popover' ? (
-        <PopupHost
-          id={render.component}
-          params={render.params}
-          mode="native"
-          closing={closing !== null && closing === render.popup_session}
-          close={() => {
-            void overlay.hide(render.popup_session).catch(console.error)
-          }}
-          key={render.session}
-          session={render.popup_session}
-          side={render.side}
-          arrowX={render.arrowX}
-        />
-      ) : null}
-    </div>
+    <QueryProvider>
+      <div
+        aria-hidden={render.kind === 'tooltip' ? true : undefined}
+        className={overlayTextClasses}
+      >
+        {render.kind === 'tooltip' ? (
+          <TooltipSurface
+            text={render.text}
+            side={render.side}
+            arrowX={render.arrowX}
+          />
+        ) : render.kind === 'popover' ? (
+          <PopupHost
+            id={render.component}
+            params={render.params}
+            mode="native"
+            closing={closing !== null && closing === render.popup_session}
+            close={() => {
+              void overlay.hide(render.popup_session).catch(console.error)
+            }}
+            key={render.session}
+            session={render.popup_session}
+            side={render.side}
+            arrowX={render.arrowX}
+          />
+        ) : null}
+      </div>
+    </QueryProvider>
   )
 }

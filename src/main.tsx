@@ -5,6 +5,7 @@ import './app/styles.css'
 import NativeBar from './components/status-bar/NativeBar'
 import Overlay from './overlay/Overlay'
 import { PopupCheckBar } from './popups/PopupCheckBar'
+import { getRemindersStore } from './stores/reminders'
 
 // `?view=` is set by the native host: `bar` for AppBar strips, `overlay` for
 // the shared floating surface. The browser studio arrives without a view and
@@ -12,6 +13,22 @@ import { PopupCheckBar } from './popups/PopupCheckBar'
 const native = Boolean(window.__TAURI_INTERNALS__)
 const view = new URLSearchParams(window.location.search).get('view')
 document.documentElement.dataset.view = view ?? (native ? 'bar' : 'studio')
+
+const remindersConnection = getRemindersStore()
+  .getState()
+  .connect()
+  .then((dispose) => {
+    const stop = getRemindersStore().getState().startDemoScheduler()
+    return () => {
+      stop()
+      dispose()
+    }
+  })
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    void remindersConnection.then((dispose) => dispose())
+  })
+}
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

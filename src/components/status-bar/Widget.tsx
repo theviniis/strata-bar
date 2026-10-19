@@ -1,4 +1,5 @@
 import { DemoMusic } from '../../features/music/Music'
+import { Reminders } from '../../features/reminders/Reminders'
 import {
   Tooltip,
   TooltipContent,
@@ -15,6 +16,7 @@ import {
   MemoryStick,
   Music2,
   Volume2,
+  Bell,
   type LucideIcon
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -60,7 +62,8 @@ const meta: Record<WidgetType, { icon: LucideIcon; label: string }> = {
   volume: { icon: Volume2, label: 'Audio' },
   activeWindow: { icon: AppWindow, label: 'Active window' },
   komorebi: { icon: LayoutGrid, label: 'Workspaces' },
-  clock: { icon: Clock3, label: 'Local time' }
+  clock: { icon: Clock3, label: 'Local time' },
+  reminders: { icon: Bell, label: 'Lembretes' }
 }
 
 const formatters: Record<Channel, (value: PreviewValue) => string> = {
@@ -103,7 +106,7 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
   const sample = useMetrics((s) => s[widget.id])
   useEffect(() => {
     const type = widget.type
-    if (type === 'clock' || type === 'music') return
+    if (type === 'clock' || type === 'music' || type === 'reminders') return
     return connect<DemoChannelData, Channel>(
       preview,
       type,
@@ -116,6 +119,7 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
     )
   }, [widget.id, widget.type, widget.intervalMs])
   if (widget.type === 'music') return <DemoMusic />
+  if (widget.type === 'reminders') return <Reminders />
   if (widget.type === 'komorebi') {
     // The workspace strip is a row of controls, so it cannot nest inside the
     // popover trigger button; it renders as its own compact widget instead.

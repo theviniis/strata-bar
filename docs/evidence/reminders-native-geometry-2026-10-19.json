@@ -1,0 +1,51 @@
+{
+  "capturedAt": "2026-10-19T03:09:51.549614+00:00",
+  "kind": "liveGeometry",
+  "bars": [
+    {
+      "client": [1920, 36],
+      "komorebiEligible": false,
+      "rect": [724, -1080, 2644, -1044],
+      "title": "Strata · \\\\.\\DISPLAY2",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "client": [3440, 36],
+      "komorebiEligible": false,
+      "rect": [0, 0, 3440, 36],
+      "title": "Strata · \\\\.\\DISPLAY1",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    }
+  ],
+  "overlay": {
+    "counters": {
+      "hides": 0,
+      "positions": 0,
+      "shows": 0
+    },
+    "present": true,
+    "window": {
+      "clickThrough": true,
+      "komorebiEligible": false,
+      "rect": [52, 88, 188, 127],
+      "toolWindow": true,
+      "topmost": true,
+      "visible": false
+    }
+  },
+  "monitors": [
+    {
+      "monitor": [0, 0, 3440, 1440],
+      "workArea": [0, 36, 3440, 1440]
+    },
+    {
+      "monitor": [724, -1080, 2644, 0],
+      "workArea": [724, -1044, 2644, 0]
+    }
+  ],
+  "limits": "Geometry of running native windows only; does not verify reminder UI interaction, audible sound or Google OAuth."
+}
