@@ -1,3 +1,6 @@
-import { definePopup } from '@/popups/definition'
-import { GpuPopup } from './GpuPopup'
-export default definePopup({ label: 'GPU', Content: GpuPopup })
+import { definePopup, lazyContent } from '@/popups/definition'
+
+export default definePopup({
+  label: 'GPU',
+  Content: lazyContent(() => import('./GpuPopup'), 'GpuPopup')
+})

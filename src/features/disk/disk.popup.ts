@@ -1,3 +1,6 @@
-import { definePopup } from '@/popups/definition'
-import { DiskPopup } from './DiskPopup'
-export default definePopup({ label: 'Discos', Content: DiskPopup })
+import { definePopup, lazyContent } from '@/popups/definition'
+
+export default definePopup({
+  label: 'Discos',
+  Content: lazyContent(() => import('./DiskPopup'), 'DiskPopup')
+})

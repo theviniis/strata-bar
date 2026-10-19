@@ -1,4 +1,6 @@
-import { definePopup } from '@/popups/definition'
-import { ClockPopup } from './ClockPopup'
+import { definePopup, lazyContent } from '@/popups/definition'
 
-export default definePopup({ label: 'Calendário', Content: ClockPopup })
+export default definePopup({
+  label: 'Calendário',
+  Content: lazyContent(() => import('./ClockPopup'), 'ClockPopup')
+})

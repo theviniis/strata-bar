@@ -1,4 +1,6 @@
-import { definePopup } from '@/popups/definition'
-import { MusicPopup } from './MusicPopup'
+import { definePopup, lazyContent } from '@/popups/definition'
 
-export default definePopup({ label: 'Player de musica', Content: MusicPopup })
+export default definePopup({
+  label: 'Player de musica',
+  Content: lazyContent(() => import('./MusicPopup'), 'MusicPopup')
+})

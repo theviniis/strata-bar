@@ -1,4 +1,6 @@
-import { definePopup } from '@/popups/definition'
-import { RemindersPopup } from './RemindersPopup'
+import { definePopup, lazyContent } from '@/popups/definition'
 
-export default definePopup({ label: 'Lembretes', Content: RemindersPopup })
+export default definePopup({
+  label: 'Lembretes',
+  Content: lazyContent(() => import('./RemindersPopup'), 'RemindersPopup')
+})
