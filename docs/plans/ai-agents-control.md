@@ -141,7 +141,7 @@ no Windows. Referência da revisão: commit `9e3bb9d`; commit na branch atual.
 - [x] Widget nativo e preview com popup separado por ferramenta, estado de
       detecção e controles indisponíveis explícitos; demo identificado.
 - [x] Probe nativo de descoberta sem abrir barras ou ler conversas.
-- [ ] Revisão final do ticket e commit.
+- [x] Revisão final do ticket e commit.
 
 Este ticket entrega descoberta de aplicativos, não descoberta de sessões. A
 Subtask 1 original permanece parcial: AgentSession, SessionStatus e AgentMessage
@@ -150,17 +150,24 @@ Subtasks 2–4 também não estão concluídas pelo popup inicial.
 
 ## Validação do ticket 1
 
-- Testes focados: 8 frontend; 3 nativos novos.
+- Testes focados: 9 frontend; 3 nativos novos.
 - Testes Rust: 126 passaram e 9 foram ignorados.
 - TypeScript, build frontend, build Rust e lint dos arquivos alterados passaram.
 - Probe Win32 real: ChatGPT e OpenCode detectados; Antigravity não detectado,
   consistente com a listagem independente de processos do Windows.
 - A suíte frontend completa encontrou uma falha no teste de posição dos controles
   de áudio; reproduzida também com NativeBar do commit inicial `9e3bb9d`.
+- Última execução completa: 227 passaram e 2 falharam. Além da falha acima,
+  houve uma falha intermitente no preview do microfone; a suíte isolada de
+  microfone passou com seus 7 testes, sem alterações.
 - O gate agregado está limitado por formatação em cinco arquivos preexistentes e
   quatro erros de classes Tailwind no componente code-block, fora desta entrega.
 - A interação do novo popup no WebView2 real ainda não foi exercitada; não
   interrompemos a instância de Strata já aberta para substituí-la pelo novo build.
+- Revisão de padrões: corrigida a falha na qual o erro da leitura inicial
+  encerrava uma assinatura de eventos válida; teste de regressão passou e a
+  segunda revisão não encontrou pendências. Revisão de escopo: sem desvios do
+  ticket 1, com a limitação de validação WebView2 registrada acima.
 
 Não inferir processamento, atenção ou sucesso apenas pela presença de processo.
 Preservar validação nativa, CSP, escopo de capabilities e ausência de fallback

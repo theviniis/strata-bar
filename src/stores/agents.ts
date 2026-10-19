@@ -60,8 +60,13 @@ export function createAgentsStore(adapter: AgentsAdapter) {
                 stop()
                 return
               }
-              const snapshot = await adapter.load()
-              if (active) accept(snapshot)
+              try {
+                const snapshot = await adapter.load()
+                if (active) accept(snapshot)
+              } catch (error) {
+                // An initial request failure must not silence a working stream.
+                if (active && get().snapshot === null) fail(error)
+              }
             } catch (error) {
               stop?.()
               if (active) fail(error)

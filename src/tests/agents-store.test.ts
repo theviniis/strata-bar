@@ -99,3 +99,29 @@ it('keeps a live observation when the initial snapshot arrives late', async () =
   disconnect()
   expect(stop).toHaveBeenCalledOnce()
 })
+
+it('keeps live discovery working when the initial snapshot request fails', async () => {
+  let publish: (value: AgentsSnapshot) => void = () => {}
+  const stop = vi.fn()
+  const load = vi.fn(async () => {
+    throw new Error('Snapshot request failed')
+  })
+  const store = createAgentsStore({
+    kind: 'native',
+    async listen(listener) {
+      publish = listener
+      listener(snapshot(2))
+      return stop
+    },
+    load
+  })
+  const disconnect = store.getState().connect()
+  await vi.waitFor(() => expect(load).toHaveBeenCalledOnce())
+  expect(store.getState().snapshot?.revision).toBe(2)
+  expect(store.getState().error).toBeNull()
+  expect(stop).not.toHaveBeenCalled()
+  publish(snapshot(3))
+  expect(store.getState().snapshot?.revision).toBe(3)
+  disconnect()
+  expect(stop).toHaveBeenCalledOnce()
+})
