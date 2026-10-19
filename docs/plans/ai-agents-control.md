@@ -4,6 +4,11 @@
 
 Uma fatia de aceitação independente do bloqueio de notificações do Windows.
 
+- [x] Identificar o modelo informado pelo usuário no catálogo: DeepSeek V4.1
+      Flash Free, opencode/deepseek-v4.1-flash-free, ativo/habilitado.
+- [x] Repetir o ensaio selecionando esse modelo somente na conversa temporária;
+      não alterar padrão global, configurações ou conversas existentes.
+
 - [x] Criar uma conversa própria em pasta temporária vazia, com ferramentas
       negadas somente nessa conversa, e enviar um prompt curto com resume:true.
 - [ ] Observar processamento e sucesso explícito pelo coletor público; conferir
@@ -37,6 +42,22 @@ passou. Revisões de padrões e especificação: nenhum achado acionável; a
 aceitação real permanece parcial. Mudanças de código somente em cfg(test), sem
 novo build de produção. Ensaio e evidência: `d99b5ae`. Foi solicitado ao usuário
 um provedor/modelo já funcional para o próximo ensaio, sem solicitar credenciais.
+
+Continuação com o modelo informado pelo usuário: a criação confirmou
+`model.id=deepseek-v4.1-flash-free` e `providerID=opencode` somente na conversa
+própria, com ferramentas negadas. O prompt foi admitido, mas o turno terminou
+com outcome failed. Conversa e pasta removidas; conclusão permanece não validada.
+O aplicativo Desktop em execução e o cliente consultado são da versão 2.0.32;
+isso não comprova que o contexto de execução do ensaio equivale ao da interface.
+Não inferir que o modelo esteja indisponível para o usuário nem que zero conexões
+explique um modelo gratuito; a causa do erro continua não estabelecida.
+
+O teste aceita a variável opcional, somente para testes,
+`STRATA_TEST_OPENCODE_MODEL=opencode/deepseek-v4.1-flash-free`. Confere uma única
+entrada ativa/habilitada no catálogo antes de criar recursos e confirma o modelo
+na sessão antes do prompt. Sem a variável, mantém o teste do modelo padrão.
+Não há alteração do modelo padrão global nem do transporte de produção.
+Evidência: `docs/evidence/ai-agents-opencode-deepseek-2026-10-19.json`.
 
 ## Validação instalada — Continuação do ticket 9
 

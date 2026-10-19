@@ -852,11 +852,39 @@ mod tests {
             agents_contract::{AgentAlertKind, AntigravitySnapshot},
         };
         let path = installed_cli().unwrap();
+        let selected_model = std::env::var("STRATA_TEST_OPENCODE_MODEL")
+            .ok()
+            .map(|selection| {
+                let (provider, id) = selection
+                    .split_once('/')
+                    .expect("Use provider/model for STRATA_TEST_OPENCODE_MODEL");
+                let catalog = execute_cli(&path, &["api", "GET", "/api/model"], &|| false)
+                    .expect("Model catalog unavailable");
+                let matching = catalog["data"]
+                    .as_array()
+                    .expect("Invalid model catalog")
+                    .iter()
+                    .filter(|model| {
+                        model["providerID"].as_str() == Some(provider)
+                            && model["id"].as_str() == Some(id)
+                            && model["enabled"] == true
+                            && model["status"] == "active"
+                    })
+                    .count();
+                assert_eq!(
+                    matching, 1,
+                    "Selected test model must be uniquely active and enabled"
+                );
+                json!({"id":id,"providerID":provider})
+            });
         let folder = std::env::temp_dir().join(format!("strata-real-turn-{}", std::process::id()));
         std::fs::create_dir(&folder).unwrap();
         let rules = json!([{"action":"*","resource":"*","effect":"deny"}]);
         let created = create_empty(folder.to_str().unwrap(), |mut body| {
             body["permissions"] = rules.clone();
+            if let Some(model) = &selected_model {
+                body["model"] = model.clone();
+            }
             execute_cli(
                 &path,
                 &["api", "POST", "/api/session", "--data", &body.to_string()],
@@ -874,6 +902,13 @@ mod tests {
             let info = read_cli(&path, ReadRequest::Session(id.clone()), &|| false)?;
             if info["data"]["permissions"] != rules {
                 return Err("Own conversation tool denial was not confirmed".into());
+            }
+            if let Some(model) = &selected_model {
+                if info["data"]["model"]["id"] != model["id"]
+                    || info["data"]["model"]["providerID"] != model["providerID"]
+                {
+                    return Err("Own conversation model selection was not confirmed".into());
+                }
             }
             let deadline = Instant::now() + Duration::from_secs(60);
             let observe = || -> Result<OpenCodeSnapshot, String> {
@@ -961,7 +996,7 @@ mod tests {
         };
         println!(
             "OPENCODE_REAL_TURN {}",
-            json!({"providerExecutionVerified":result.is_ok(),"completionAlertVerified":result.is_ok(),"testConversationRemoved":removed,"temporaryFolderRemoved":folder_removed,"webviewInteractionVerified":false,"bannerVerified":false,"toolDecisionsSent":false,"conversationContentRecorded":false})
+            json!({"providerExecutionVerified":result.is_ok(),"completionAlertVerified":result.is_ok(),"testConversationRemoved":removed,"temporaryFolderRemoved":folder_removed,"model":selected_model,"webviewInteractionVerified":false,"bannerVerified":false,"toolDecisionsSent":false,"conversationContentRecorded":false})
         );
         assert!(
             result.is_ok(),
