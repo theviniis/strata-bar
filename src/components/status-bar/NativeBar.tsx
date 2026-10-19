@@ -25,7 +25,7 @@ export default function NativeBar() {
             <Komorebi />
           </div>
 
-          <div className="flex justify-self-center items-center gap-0.5">
+          <div className="flex justify-self-center items-center">
             <Cpu />
             <BarVerticalSeparator />
             <Gpu />
@@ -35,7 +35,7 @@ export default function NativeBar() {
             <Disk />
           </div>
 
-          <div className="flex shrink-0 items-center gap-0.5 ml-auto">
+          <div className="flex shrink-0 items-center ml-auto">
             <Music />
             <BarVerticalSeparator />
             <Volume />
