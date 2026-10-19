@@ -118,7 +118,18 @@ limitações das integrações.
   da conversa e distingue sem prompt, aceito, não enviado e envio incerto.
   Não repetir criação ou envio após falha ou reconexão. Falha parcial fecha o
   formulário e informa a conversa existente para conferência no OpenCode.
-  Respostas a perguntas e aprovações permanecem nas fatias posteriores.
+  Aprovações permanecem nas fatias posteriores.
+- Perguntas do OpenCode vêm apenas dos formulários pendentes das execuções
+  ativas. O popup suporta até oito campos textuais simples por formulário,
+  respeitando obrigatoriedade e limites de caracteres, 4096 bytes UTF-8 por
+  resposta e 8192 bytes por conjunto. Opções, condições, formatos, padrões e
+  campos ocultos exigem resposta no OpenCode, sem controles genéricos substitutos.
+- Cada resposta identifica sessão, formulário e hash do conteúdo/campos. Antes
+  de enviar, reler a lista pública de pendências e recusar pergunta resolvida ou
+  alterada. Validar campos e destinatário nativamente e serializar ações entre
+  barras. Registrar somente IDs das tentativas em memória (até 1024), sem guardar
+  respostas, e bloquear nova tentativa dessa pergunta após envio mesmo incerto,
+  inclusive após reconexão. Aprovações de ferramentas permanecem separadas.
 - Ao desconectar, desabilitar respostas e reconciliar estado antes de reabilitá-las;
   não reenviar ações automaticamente.
 - Estabelecer linha de base inicial sem notificações retroativas. Deduplicar eventos

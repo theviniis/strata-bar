@@ -327,6 +327,7 @@ fn main() {
             agents::agents_snapshot,
             agents::agents_set_opencode,
             agents::agents_create_opencode,
+            agents::agents_reply_opencode,
             agents::agents_set_antigravity,
             reminders::reminders_snapshot,
             desktop::reminders_set_anchor,

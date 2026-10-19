@@ -1,4 +1,5 @@
 import type { AgentSession, SessionStatus } from '@/services/system/agents'
+import type { ReactNode } from 'react'
 
 const statuses: Record<SessionStatus, string> = {
   processing: 'Em execução',
@@ -13,11 +14,13 @@ const statuses: Record<SessionStatus, string> = {
 export function AgentSessionList({
   sessions,
   label,
-  stale = false
+  stale = false,
+  renderActions
 }: {
   sessions: AgentSession[]
   label: string
   stale?: boolean
+  renderActions?: (session: AgentSession) => ReactNode
 }) {
   if (sessions.length === 0) return null
   return (
@@ -37,6 +40,7 @@ export function AgentSessionList({
           <p className="text-xs text-muted-foreground wrap-anywhere">
             {session.directory}
           </p>
+          {renderActions?.(session)}
         </li>
       ))}
     </ul>

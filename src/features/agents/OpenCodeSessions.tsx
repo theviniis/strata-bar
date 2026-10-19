@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type {
   OpenCodeSnapshot,
-  CreateAgentSessionResult
+  CreateAgentSessionResult,
+  AgentReplyRequest
 } from '@/services/system/agents'
 import { AgentSessionList } from './AgentSessionList'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { AgentQuestion } from './AgentQuestion'
 const connectionLabels = {
   disabled: 'Conexão desativada',
   connecting: 'Conectando…',
@@ -18,7 +20,8 @@ export function OpenCodeSessions({
   connection,
   onConfigure,
   stale = false,
-  onCreate
+  onCreate,
+  onReply
 }: {
   connection: OpenCodeSnapshot
   onConfigure?: (enabled: boolean) => Promise<void>
@@ -27,6 +30,7 @@ export function OpenCodeSessions({
     directory: string,
     prompt?: string
   ) => Promise<CreateAgentSessionResult>
+  onReply?: (request: AgentReplyRequest) => Promise<void>
 }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -34,6 +38,7 @@ export function OpenCodeSessions({
   const [directory, setDirectory] = useState('')
   const [created, setCreated] = useState<CreateAgentSessionResult | null>(null)
   const [prompt, setPrompt] = useState('')
+  const [replyNotice, setReplyNotice] = useState<string | null>(null)
   const promptTooLong = new TextEncoder().encode(prompt).length > 4096
   const canCreate = !stale && connection.status === 'connected' && !!onCreate
   const enabled = connection.status !== 'disabled'
@@ -81,6 +86,27 @@ export function OpenCodeSessions({
         sessions={connection.sessions}
         label="Sessões do OpenCode"
         stale={stale}
+        renderActions={(session) =>
+          connection.questions
+            .filter((q) => q.sessionId === session.id)
+            .map((question) => (
+              <AgentQuestion
+                key={`${question.id}:${question.version}`}
+                question={question}
+                disabled={stale || connection.status !== 'connected'}
+                onReply={
+                  onReply
+                    ? async (request) => {
+                        await onReply(request)
+                        setReplyNotice(
+                          'Resposta enviada. Acompanhe o andamento no OpenCode.'
+                        )
+                      }
+                    : undefined
+                }
+              />
+            ))
+        }
       />
       {connection.hasMore && (
         <p className="text-xs text-muted-foreground">
@@ -89,8 +115,8 @@ export function OpenCodeSessions({
         </p>
       )}
       <p className="text-xs text-muted-foreground">
-        Perguntas e aprovações são verificadas nas execuções ativas. Respostas
-        ainda indisponíveis.
+        Perguntas textuais simples podem ser respondidas nos cards. Outros
+        formulários e aprovações devem ser resolvidos no OpenCode.
       </p>
       <div className="flex gap-2">
         <Button
@@ -103,10 +129,12 @@ export function OpenCodeSessions({
         >
           Nova sessão
         </Button>
-        <Button size="sm" variant="outline" disabled>
-          Responder
-        </Button>
       </div>
+      {replyNotice && (
+        <p role="status" className="text-xs">
+          {replyNotice}
+        </p>
+      )}
       {creating && (
         <form
           className="space-y-2"

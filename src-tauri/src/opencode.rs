@@ -1,8 +1,10 @@
 use crate::agents_contract::{
     AgentConnectionStatus, AgentSession, AgentType, OpenCodeSnapshot, SessionStatus,
 };
+use crate::agents_contract::{AgentMessage, AgentTextField};
 use serde::Deserialize;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashSet};
 use std::{
     io::Read,
@@ -272,6 +274,7 @@ pub struct Connection {
     generation: u64,
     enabled: bool,
     snapshot: OpenCodeSnapshot,
+    attempted_replies: HashSet<String>,
 }
 
 impl Connection {
@@ -293,12 +296,68 @@ impl Connection {
     pub fn snapshot(&self) -> OpenCodeSnapshot {
         self.snapshot.clone()
     }
+    pub fn pending_reply(
+        &self,
+        request: &crate::agents_contract::AgentReplyRequest,
+    ) -> Result<AgentMessage, String> {
+        if self.snapshot.status != AgentConnectionStatus::Connected {
+            return Err("OpenCode desconectado".into());
+        }
+        self.snapshot
+            .questions
+            .iter()
+            .find(|q| {
+                q.session_id == request.session_id
+                    && q.id == request.question_id
+                    && q.version == request.version
+                    && !q.reply_blocked
+                    && q.unsupported_reason.is_none()
+            })
+            .cloned()
+            .ok_or_else(|| "Pergunta indisponível ou alterada; confira o OpenCode".into())
+    }
+    pub fn begin_reply(
+        &mut self,
+        request: &crate::agents_contract::AgentReplyRequest,
+    ) -> Result<(), String> {
+        self.pending_reply(request)?;
+        let key = format!("{}:{}", request.session_id, request.question_id);
+        if self.attempted_replies.len() >= 1024 || !self.attempted_replies.insert(key) {
+            return Err(
+                "Resposta já tentada ou limite de envios atingido; confira o OpenCode".into(),
+            );
+        }
+        for question in &mut self.snapshot.questions {
+            if question.id == request.question_id && question.session_id == request.session_id {
+                question.reply_blocked = true;
+            }
+        }
+        Ok(())
+    }
+    pub fn finish_reply(
+        &mut self,
+        generation: u64,
+        request: &crate::agents_contract::AgentReplyRequest,
+    ) {
+        if self.request() == Some(generation) {
+            self.snapshot
+                .questions
+                .retain(|q| q.id != request.question_id || q.session_id != request.session_id);
+        }
+    }
     pub fn apply(&mut self, generation: u64, result: Result<OpenCodeSnapshot, String>) -> bool {
         if self.request() != Some(generation) {
             return false;
         }
         match result {
-            Ok(snapshot) => self.snapshot = snapshot,
+            Ok(mut snapshot) => {
+                for question in &mut snapshot.questions {
+                    question.reply_blocked = self
+                        .attempted_replies
+                        .contains(&format!("{}:{}", question.session_id, question.id));
+                }
+                self.snapshot = snapshot;
+            }
             Err(error) => {
                 self.snapshot.status = AgentConnectionStatus::Disconnected;
                 self.snapshot.error = Some(error);
@@ -371,6 +430,242 @@ fn valid_id(id: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || c == b'_' || c == b'-')
 }
 
+fn valid_form_id(id: &str) -> bool {
+    id.starts_with("frm_")
+        && id.len() > 4
+        && id.len() <= 128
+        && id
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'-'))
+}
+
+fn project_form(value: &Value, session_id: &str) -> Result<AgentMessage, String> {
+    let text = |key: &str, limit: usize| {
+        value[key]
+            .as_str()
+            .filter(|s| !s.is_empty() && s.len() <= limit)
+            .map(str::to_string)
+            .ok_or_else(invalid)
+    };
+    let id = text("id", 128)?;
+    if !valid_form_id(&id) || value["sessionID"].as_str() != Some(session_id) {
+        return Err(invalid());
+    }
+    let title = text("title", 1024)?;
+    let raw = value["fields"].as_array().ok_or_else(invalid)?;
+    let mut fields = Vec::new();
+    let mut unsupported = raw.is_empty() || raw.len() > 8;
+    let mut keys = HashSet::new();
+    if !unsupported {
+        for field in raw {
+            let key = field["key"]
+                .as_str()
+                .filter(|s| !s.is_empty() && s.len() <= 128)
+                .ok_or_else(invalid)?;
+            if !keys.insert(key) {
+                return Err(invalid());
+            }
+            if field["type"].as_str() != Some("string")
+                || field["hidden"].as_bool() == Some(true)
+                || ["when", "format", "pattern", "options", "custom"]
+                    .iter()
+                    .any(|key| field.get(key).is_some())
+            {
+                unsupported = true;
+                break;
+            }
+            let bound = |name: &str| -> Result<Option<u32>, String> {
+                field
+                    .get(name)
+                    .map(|v| {
+                        v.as_u64()
+                            .filter(|v| *v <= u32::MAX as u64)
+                            .map(|v| v as u32)
+                            .ok_or_else(invalid)
+                    })
+                    .transpose()
+            };
+            let min_length = bound("minLength")?;
+            let max_length = bound("maxLength")?;
+            if min_length.unwrap_or(0) > max_length.unwrap_or(u32::MAX) {
+                return Err(invalid());
+            }
+            if min_length.is_some_and(|min| min > 4096) {
+                unsupported = true;
+                break;
+            }
+            let max_length = max_length.map(|max| max.min(4096));
+            let field_title = field
+                .get("title")
+                .map(|v| {
+                    v.as_str()
+                        .filter(|s| s.len() <= 1024)
+                        .map(str::to_string)
+                        .ok_or_else(invalid)
+                })
+                .transpose()?
+                .unwrap_or_else(|| key.into());
+            let description = field
+                .get("description")
+                .map(|v| {
+                    v.as_str()
+                        .filter(|s| s.len() <= 2048)
+                        .map(str::to_string)
+                        .ok_or_else(invalid)
+                })
+                .transpose()?;
+            let required = field
+                .get("required")
+                .map(|v| v.as_bool().ok_or_else(invalid))
+                .transpose()?
+                .unwrap_or(false);
+            fields.push(AgentTextField {
+                key: key.into(),
+                title: field_title,
+                description,
+                required,
+                min_length,
+                max_length,
+            });
+        }
+    }
+    if unsupported {
+        fields.clear();
+    }
+    let fingerprint =
+        serde_json::json!({"id":id,"sessionID":session_id,"title":title,"fields":raw});
+    let version = format!(
+        "{:x}",
+        Sha256::digest(serde_json::to_vec(&fingerprint).map_err(|_| invalid())?)
+    );
+    Ok(AgentMessage {
+        id,
+        session_id: session_id.into(),
+        connection_id: "opencode-local".into(),
+        version,
+        title,
+        fields,
+        unsupported_reason: unsupported.then(|| {
+            "Este formulário exige controles não suportados. Responda no OpenCode.".into()
+        }),
+        reply_blocked: false,
+    })
+}
+
+fn project_forms(value: Value, session_id: &str) -> Result<Vec<AgentMessage>, String> {
+    let data = value["data"]
+        .as_array()
+        .filter(|v| v.len() <= 100)
+        .ok_or_else(invalid)?;
+    let questions: Vec<_> = data
+        .iter()
+        .map(|v| project_form(v, session_id))
+        .collect::<Result<_, _>>()?;
+    let mut ids = HashSet::new();
+    if questions.iter().any(|q| !ids.insert(&q.id)) {
+        return Err(invalid());
+    }
+    Ok(questions)
+}
+
+pub enum ReplyOperation {
+    List,
+    Send(Value),
+}
+
+pub fn reply_question(
+    expected: &AgentMessage,
+    request: &crate::agents_contract::AgentReplyRequest,
+    mut api: impl FnMut(ReplyOperation) -> Result<Value, String>,
+    before_send: impl FnOnce() -> Result<(), String>,
+) -> Result<(), String> {
+    if !valid_id(&request.session_id)
+        || !valid_form_id(&request.question_id)
+        || request.session_id != expected.session_id
+        || request.question_id != expected.id
+        || request.version != expected.version
+        || expected.unsupported_reason.is_some()
+        || expected.reply_blocked
+        || request.answers.len() > 8
+        || request.answers.values().map(String::len).sum::<usize>() > 8192
+    {
+        return Err("Resposta ou destinatário inválido".into());
+    }
+    if request
+        .answers
+        .keys()
+        .any(|key| !expected.fields.iter().any(|field| field.key == *key))
+    {
+        return Err("Resposta contém campos desconhecidos".into());
+    }
+    for field in &expected.fields {
+        let value = request.answers.get(&field.key);
+        if field.required && value.is_none_or(|v| v.trim().is_empty()) {
+            return Err("Preencha os campos obrigatórios".into());
+        }
+        if let Some(value) = value {
+            let length = value.chars().count();
+            if value.len() > 4096
+                || length < field.min_length.unwrap_or(0) as usize
+                || length > field.max_length.unwrap_or(4096) as usize
+                || value
+                    .chars()
+                    .any(|c| c.is_control() && !matches!(c, '\n' | '\r' | '\t'))
+            {
+                return Err("Resposta fora dos limites do campo".into());
+            }
+        }
+    }
+    let latest = project_forms(api(ReplyOperation::List)?, &request.session_id)?;
+    if !latest.iter().any(|q| {
+        q.id == expected.id && q.version == expected.version && q.unsupported_reason.is_none()
+    }) {
+        return Err("A pergunta já foi resolvida ou mudou. Atualize antes de responder.".into());
+    }
+    before_send()?;
+    match api(ReplyOperation::Send(
+        serde_json::json!({"answer":request.answers}),
+    )) {
+        Ok(Value::Null) => Ok(()),
+        _ => Err("Envio sem confirmação. Não reenvie: confira a resposta no OpenCode.".into()),
+    }
+}
+
+pub fn reply_live(
+    expected: &AgentMessage,
+    request: &crate::agents_contract::AgentReplyRequest,
+    cancelled: impl Fn() -> bool,
+    before_send: impl FnOnce() -> Result<(), String>,
+) -> Result<(), String> {
+    let path = installed_cli()?;
+    reply_question(
+        expected,
+        request,
+        |operation| match operation {
+            ReplyOperation::List => read_cli(
+                &path,
+                ReadRequest::Forms(request.session_id.clone()),
+                &cancelled,
+            ),
+            ReplyOperation::Send(body) => execute_cli(
+                &path,
+                &[
+                    "api",
+                    "POST",
+                    &format!(
+                        "/api/session/{}/form/{}/reply",
+                        request.session_id, request.question_id
+                    ),
+                    "--data",
+                    &body.to_string(),
+                ],
+                &cancelled,
+            ),
+        },
+        before_send,
+    )
+}
+
 /// Read session metadata only through the provider's public API boundary.
 pub fn collect(
     mut read: impl FnMut(ReadRequest) -> Result<Value, String>,
@@ -406,11 +701,17 @@ pub fn collect(
         }
     }
     let mut attention = HashSet::new();
+    let mut questions = Vec::new();
     for id in active.data.keys() {
-        for request in [
-            ReadRequest::Forms(id.clone()),
-            ReadRequest::Permissions(id.clone()),
-        ] {
+        let forms = project_forms(read(ReadRequest::Forms(id.clone()))?, id)?;
+        if !forms.is_empty() {
+            attention.insert(id.clone());
+        }
+        questions.extend(forms);
+        if questions.len() > 128 {
+            return Err("Limite de perguntas pendentes excedido".into());
+        }
+        for request in [ReadRequest::Permissions(id.clone())] {
             let pending: Data<Vec<PendingRequest>> =
                 serde_json::from_value(read(request)?).map_err(|_| invalid())?;
             if pending.data.len() > 100
@@ -472,6 +773,7 @@ pub fn collect(
         status: AgentConnectionStatus::Connected,
         sessions,
         has_more: page.cursor.next.is_some(),
+        questions,
         error: None,
     })
 }
@@ -486,6 +788,153 @@ mod tests {
             status: AgentConnectionStatus::Connected,
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn attempted_replies_stay_blocked_after_reconciliation_and_reconnect_without_retaining_answers()
+    {
+        let question = project_form(&json!({"id":"frm_text","sessionID":"ses_busy","title":"Nome?","fields":[{"key":"name","type":"string"}]}), "ses_busy").unwrap();
+        let request = crate::agents_contract::AgentReplyRequest {
+            session_id: "ses_busy".into(),
+            question_id: "frm_text".into(),
+            version: question.version.clone(),
+            answers: BTreeMap::from([("name".into(), "Ana".into())]),
+        };
+        let mut source = empty_snapshot();
+        source.questions.push(question);
+        let mut connection = Connection::default();
+        connection.configure(true);
+        connection.apply(connection.request().unwrap(), Ok(source.clone()));
+        connection.begin_reply(&request).unwrap();
+        assert!(connection.snapshot().questions[0].reply_blocked);
+        assert!(connection.begin_reply(&request).is_err());
+        connection.configure(false);
+        connection.configure(true);
+        connection.apply(connection.request().unwrap(), Ok(source));
+        assert!(connection.pending_reply(&request).is_err());
+        assert!(connection.snapshot().questions[0].reply_blocked);
+    }
+
+    #[test]
+    #[ignore = "Requires OpenCode v2; creates, answers and removes its own form in a temporary conversation without model execution"]
+    fn live_windows_answers_its_own_pending_text_form_without_reading_history() {
+        let path = installed_cli().unwrap();
+        let folder = std::env::temp_dir().join(format!("strata-form-reply-{}", std::process::id()));
+        std::fs::create_dir(&folder).unwrap();
+        let id = create_empty_live(folder.to_str().unwrap(), || false).unwrap();
+        let result = (|| -> Result<(), String> {
+            let response = execute_cli(&path, &["api", "POST", &format!("/api/session/{id}/form"), "--data", &json!({"title":"Pergunta de validação do Strata","fields":[{"key":"name","type":"string","title":"Nome","required":true}]}).to_string()], &|| false)?;
+            let question = project_form(&response["data"], &id)?;
+            let request = crate::agents_contract::AgentReplyRequest {
+                session_id: id.clone(),
+                question_id: question.id.clone(),
+                version: question.version.clone(),
+                answers: BTreeMap::from([("name".into(), "Strata".into())]),
+            };
+            reply_live(&question, &request, || false, || Ok(()))?;
+            let pending = project_forms(
+                read_cli(&path, ReadRequest::Forms(id.clone()), &|| false)?,
+                &id,
+            )?;
+            if pending.iter().any(|q| q.id == question.id) {
+                return Err("Own form still pending".into());
+            }
+            if reply_live(&question, &request, || false, || Ok(())).is_ok() {
+                return Err("Settled form allowed another reply".into());
+            }
+            Ok(())
+        })();
+        let cleanup = execute_cli(
+            &path,
+            &["api", "DELETE", &format!("/api/session/{id}")],
+            &|| false,
+        )
+        .is_ok();
+        let _ = std::fs::remove_dir(&folder);
+        assert!(result.is_ok(), "Own form validation failed: {result:?}");
+        assert!(cleanup, "Could not remove own temporary conversation");
+        println!("OPENCODE_REPLY {{\"textFormReplyVerified\":true,\"settledFormBlocked\":true,\"modelExecutionStarted\":false,\"historyRead\":false,\"testConversationRemoved\":true,\"conversationContentRecorded\":false}}");
+    }
+
+    #[test]
+    fn answering_revalidates_the_pending_question_and_never_sends_to_a_resolved_or_changed_form() {
+        let raw = json!({"id":"frm_text","sessionID":"ses_busy","title":"Qual nome?","fields":[{"key":"name","type":"string","required":true}]});
+        let question = project_form(&raw, "ses_busy").unwrap();
+        let request = crate::agents_contract::AgentReplyRequest {
+            session_id: "ses_busy".into(),
+            question_id: "frm_text".into(),
+            version: question.version.clone(),
+            answers: BTreeMap::from([("name".into(), "Ana".into())]),
+        };
+        let mut sent = false;
+        reply_question(
+            &question,
+            &request,
+            |operation| match operation {
+                ReplyOperation::List => Ok(json!({"data":[raw.clone()]})),
+                ReplyOperation::Send(body) => {
+                    assert_eq!(body, json!({"answer":{"name":"Ana"}}));
+                    sent = true;
+                    Ok(Value::Null)
+                }
+            },
+            || Ok(()),
+        )
+        .unwrap();
+        assert!(sent);
+        for answers in [
+            BTreeMap::new(),
+            BTreeMap::from([("unknown".into(), "Ana".into())]),
+            BTreeMap::from([("name".into(), "x".repeat(4097))]),
+        ] {
+            let invalid_request = crate::agents_contract::AgentReplyRequest {
+                answers,
+                ..request.clone()
+            };
+            assert!(reply_question(
+                &question,
+                &invalid_request,
+                |_| panic!("Invalid answers must not reach the API"),
+                || Ok(())
+            )
+            .is_err());
+        }
+        for pending in [
+            json!({"data":[]}),
+            json!({"data":[{"id":"frm_text","sessionID":"ses_busy","title":"Outra pergunta","fields":[{"key":"name","type":"string"}]}]}),
+        ] {
+            assert!(reply_question(
+                &question,
+                &request,
+                |operation| match operation {
+                    ReplyOperation::List => Ok(pending.clone()),
+                    ReplyOperation::Send(_) => panic!("Must not send stale replies"),
+                },
+                || Ok(())
+            )
+            .is_err());
+        }
+    }
+
+    #[test]
+    fn pending_text_questions_are_projected_without_history_or_unsupported_controls() {
+        let snapshot = collect(|request| Ok(match request {
+            ReadRequest::Sessions => json!({"data":[{"id":"ses_busy","location":{"directory":"D:\\project"},"time":{"updated":1000}}],"cursor":{}}),
+            ReadRequest::Active => json!({"data":{"ses_busy":{"type":"running"}}}),
+            ReadRequest::Forms(_) => json!({"data":[
+                {"id":"frm_text","sessionID":"ses_busy","title":"Qual nome?","fields":[{"key":"name","type":"string","title":"Nome","required":true,"maxLength":100}]},
+                {"id":"frm_choice","sessionID":"ses_busy","title":"Escolha","fields":[{"key":"choice","type":"boolean"}]}
+            ]}),
+            ReadRequest::Permissions(_) => json!({"data":[]}),
+            _ => panic!("No history reads")
+        })).unwrap();
+        assert_eq!(snapshot.questions.len(), 2);
+        let text = &snapshot.questions[0];
+        assert_eq!(text.title, "Qual nome?");
+        assert_eq!(text.fields[0].key, "name");
+        assert_eq!(text.version.len(), 64);
+        assert!(text.unsupported_reason.is_none());
+        assert!(snapshot.questions[1].unsupported_reason.is_some());
     }
 
     #[test]

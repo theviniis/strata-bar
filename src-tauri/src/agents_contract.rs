@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 #[derive(Clone, Debug, PartialEq, Serialize, TS)]
@@ -69,10 +69,44 @@ pub enum AgentConnectionStatus {
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+pub struct AgentTextField {
+    pub key: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub required: bool,
+    pub min_length: Option<u32>,
+    pub max_length: Option<u32>,
+}
+
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentMessage {
+    pub id: String,
+    pub session_id: String,
+    pub connection_id: String,
+    pub version: String,
+    pub title: String,
+    pub fields: Vec<AgentTextField>,
+    pub unsupported_reason: Option<String>,
+    pub reply_blocked: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AgentReplyRequest {
+    pub session_id: String,
+    pub question_id: String,
+    pub version: String,
+    pub answers: std::collections::BTreeMap<String, String>,
+}
+
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
 pub struct OpenCodeSnapshot {
     pub status: AgentConnectionStatus,
     pub sessions: Vec<AgentSession>,
     pub has_more: bool,
+    pub questions: Vec<AgentMessage>,
     pub error: Option<String>,
 }
 
@@ -82,6 +116,7 @@ impl Default for OpenCodeSnapshot {
             status: AgentConnectionStatus::Disabled,
             sessions: Vec::new(),
             has_more: false,
+            questions: Vec::new(),
             error: None,
         }
     }

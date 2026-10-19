@@ -4,16 +4,138 @@ import { AgentsPopup, AgentsPopupContent } from '@/features/agents/AgentsPopup'
 import { PopupContext } from '@/popups/context'
 import { OpenCodeSessions } from '@/features/agents/OpenCodeSessions'
 import type { CreateAgentSessionResult } from '@/services/system/agents'
+import type { AgentMessage } from '@/services/system/agents'
+import { AgentQuestion } from '@/features/agents/AgentQuestion'
+
+const pendingQuestion: AgentMessage = {
+  id: 'frm_text',
+  sessionId: 'ses_busy',
+  connectionId: 'opencode-local',
+  version: 'a'.repeat(64),
+  title: 'Qual nome usar?',
+  fields: [
+    {
+      key: 'name',
+      title: 'Nome',
+      description: 'Nome do projeto',
+      required: true,
+      minLength: 1,
+      maxLength: 100
+    }
+  ],
+  unsupportedReason: null,
+  replyBlocked: false
+}
+
+it('answers a pending textual question in its session card and blocks a duplicate submission', async () => {
+  const onReply = vi.fn(async () => {})
+  render(
+    <OpenCodeSessions
+      connection={{
+        status: 'connected',
+        error: null,
+        hasMore: false,
+        questions: [pendingQuestion],
+        sessions: [
+          {
+            id: 'ses_busy',
+            agent: 'opencode',
+            connectionId: 'opencode-local',
+            title: 'Projeto',
+            directory: 'D:\\project',
+            status: 'attention',
+            updatedAt: 1000
+          }
+        ]
+      }}
+      onReply={onReply}
+    />
+  )
+  expect(screen.getByText('Qual nome usar?')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Enviar resposta' })).toBeDisabled()
+  fireEvent.change(screen.getByLabelText('Nome'), {
+    target: { value: 'Strata' }
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Enviar resposta' }))
+  expect(
+    await screen.findByText(
+      'Resposta enviada. Acompanhe o andamento no OpenCode.'
+    )
+  ).toBeInTheDocument()
+  expect(onReply).toHaveBeenCalledExactlyOnceWith({
+    sessionId: 'ses_busy',
+    questionId: 'frm_text',
+    version: 'a'.repeat(64),
+    answers: { name: 'Strata' }
+  })
+  expect(screen.getByRole('button', { name: 'Enviar resposta' })).toBeDisabled()
+})
+
+it('disables stale questions and retains an uncertain submission without replay on reconnect', async () => {
+  const onReply = vi.fn(async () => {
+    throw new Error('Envio sem confirmação. Confira o OpenCode.')
+  })
+  const { rerender } = render(
+    <AgentQuestion question={pendingQuestion} disabled onReply={onReply} />
+  )
+  expect(screen.getByLabelText('Nome')).toBeDisabled()
+  rerender(
+    <AgentQuestion
+      question={pendingQuestion}
+      disabled={false}
+      onReply={onReply}
+    />
+  )
+  fireEvent.change(screen.getByLabelText('Nome'), {
+    target: { value: 'Strata' }
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Enviar resposta' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Envio sem confirmação'
+  )
+  rerender(
+    <AgentQuestion question={pendingQuestion} disabled onReply={onReply} />
+  )
+  rerender(
+    <AgentQuestion
+      question={pendingQuestion}
+      disabled={false}
+      onReply={onReply}
+    />
+  )
+  expect(screen.getByRole('button', { name: 'Enviar resposta' })).toBeDisabled()
+  expect(onReply).toHaveBeenCalledTimes(1)
+})
+
+it('identifies unsupported questions without presenting a generic answer or approval', () => {
+  render(
+    <AgentQuestion
+      question={{
+        ...pendingQuestion,
+        fields: [],
+        unsupportedReason: 'Responda este formulário no OpenCode.'
+      }}
+      disabled={false}
+      onReply={vi.fn()}
+    />
+  )
+  expect(
+    screen.getByText('Responda este formulário no OpenCode.')
+  ).toBeInTheDocument()
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button')).not.toBeInTheDocument()
+})
 
 it('distinguishes detected applications from unavailable session control', () => {
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 4,
+        version: 5,
         antigravity: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
           sessions: [],
+          questions: [],
           hasMore: false,
           error: null
         },
@@ -111,11 +233,12 @@ it('does not show stale process presence after discovery fails', () => {
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 4,
+        version: 5,
         antigravity: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
           sessions: [],
+          questions: [],
           hasMore: false,
           error: null
         },
@@ -147,7 +270,7 @@ it('connects and disconnects OpenCode inside its accordion', async () => {
   fireEvent.click(await screen.findByRole('button', { name: /^OpenCode/ }))
   fireEvent.click(screen.getByRole('button', { name: 'Conectar OpenCode' }))
   expect(await screen.findByText('Exemplo de sessão')).toBeInTheDocument()
-  expect(screen.getByText('Em execução')).toBeInTheDocument()
+  expect(screen.getByText('Atenção necessária')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Nova sessão' })).toBeEnabled()
   fireEvent.click(screen.getByRole('button', { name: 'Desconectar OpenCode' }))
   await screen.findByRole('button', { name: 'Conectar OpenCode' })
@@ -165,6 +288,7 @@ it('blocks creating while pending or disconnected and keeps ambiguous failures v
   const connection = {
     status: 'connected' as const,
     sessions: [],
+    questions: [],
     hasMore: false,
     error: null
   }
@@ -246,6 +370,7 @@ it('keeps the created conversation visible when prompt admission is uncertain an
   const connection = {
     status: 'connected' as const,
     sessions: [],
+    questions: [],
     hasMore: false,
     error: null
   }
@@ -278,6 +403,7 @@ it('shows attention and history limits, then marks sessions disconnected on a tr
   const connection = {
     status: 'connected' as const,
     error: null,
+    questions: [],
     hasMore: true,
     sessions: [
       {

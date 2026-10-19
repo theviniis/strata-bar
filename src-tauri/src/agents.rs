@@ -35,7 +35,7 @@ pub fn observe(
     })
     .collect();
     AgentsSnapshot {
-        version: 4,
+        version: 5,
         revision,
         observed_at: SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -349,6 +349,70 @@ pub async fn agents_create_opencode(
     .await
     .map_err(|_| {
         "Falha na criação. Confira a lista no OpenCode antes de tentar novamente.".to_string()
+    })?
+}
+
+#[tauri::command]
+pub async fn agents_reply_opencode(
+    window: tauri::WebviewWindow,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Agents>,
+    request: crate::agents_contract::AgentReplyRequest,
+) -> Result<(), String> {
+    if !allowed_window(window.label()) {
+        return Err("OpenCode reply requires a bar or overlay".into());
+    }
+    let shared = state.shared.clone();
+    let action = state.creation.clone();
+    let wake = state.opencode_wake.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = action
+            .try_lock()
+            .map_err(|_| "Já existe uma ação em andamento")?;
+        let (generation, question) = {
+            let current = shared.lock().map_err(|_| "OpenCode indisponível")?;
+            (
+                current
+                    .connection
+                    .request()
+                    .ok_or("OpenCode desconectado")?,
+                current.connection.pending_reply(&request)?,
+            )
+        };
+        let cancelled = || {
+            shared
+                .lock()
+                .map(|current| {
+                    current.connection.request() != Some(generation)
+                        || current.connection.snapshot().status
+                            != crate::agents_contract::AgentConnectionStatus::Connected
+                })
+                .unwrap_or(true)
+        };
+        let result = crate::opencode::reply_live(&question, &request, cancelled, || {
+            let mut current = shared.lock().map_err(|_| "OpenCode indisponível")?;
+            if current.connection.request() != Some(generation) {
+                return Err("Conexão alterada; atualize antes de responder".into());
+            }
+            current.connection.begin_reply(&request)?;
+            let snapshot = current.updated();
+            drop(current);
+            publish(&app, &snapshot);
+            Ok(())
+        });
+        if result.is_ok() {
+            let mut current = shared.lock().map_err(|_| "OpenCode indisponível")?;
+            current.connection.finish_reply(generation, &request);
+            let snapshot = current.updated();
+            drop(current);
+            publish(&app, &snapshot);
+        }
+        let _ = wake.send(Wake::Refresh);
+        result
+    })
+    .await
+    .map_err(|_| {
+        "Envio sem confirmação; confira o OpenCode antes de tentar novamente".to_string()
     })?
 }
 

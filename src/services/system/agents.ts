@@ -4,7 +4,9 @@ import type {
   AgentSession,
   OpenCodeSnapshot,
   AntigravitySnapshot,
-  CreateAgentSessionResult
+  CreateAgentSessionResult,
+  AgentMessage,
+  AgentReplyRequest
 } from './agents.generated'
 
 export type {
@@ -14,7 +16,9 @@ export type {
   AgentsSnapshot,
   OpenCodeSnapshot,
   AntigravitySnapshot,
-  CreateAgentSessionResult
+  CreateAgentSessionResult,
+  AgentMessage,
+  AgentReplyRequest
 } from './agents.generated'
 
 const session: z.ZodType<AgentSession> = z
@@ -46,11 +50,45 @@ const session: z.ZodType<AgentSession> = z
         )
   )
 
+const question: z.ZodType<AgentMessage> = z
+  .object({
+    id: z
+      .string()
+      .regex(/^frm_[A-Za-z0-9_-]+$/)
+      .max(128),
+    sessionId: z
+      .string()
+      .regex(/^ses[A-Za-z0-9_-]*$/)
+      .max(128),
+    connectionId: z.literal('opencode-local'),
+    version: z.string().regex(/^[a-f0-9]{64}$/),
+    title: z.string().min(1).max(1024),
+    fields: z
+      .array(
+        z
+          .object({
+            key: z.string().min(1).max(128),
+            title: z.string().max(1024),
+            description: z.string().max(2048).nullable(),
+            required: z.boolean(),
+            minLength: z.number().int().min(0).max(4096).nullable(),
+            maxLength: z.number().int().min(0).max(4096).nullable()
+          })
+          .strict()
+      )
+      .max(8),
+    unsupportedReason: z.string().nullable(),
+    replyBlocked: z.boolean()
+  })
+  .strict()
+  .refine((q) => new Set(q.fields.map((f) => f.key)).size === q.fields.length)
+
 const opencode: z.ZodType<OpenCodeSnapshot> = z
   .object({
     status: z.enum(['disabled', 'connecting', 'connected', 'disconnected']),
     sessions: z.array(session).max(178),
     hasMore: z.boolean(),
+    questions: z.array(question).max(128),
     error: z.string().nullable()
   })
   .strict()
@@ -58,7 +96,12 @@ const opencode: z.ZodType<OpenCodeSnapshot> = z
     (value) =>
       new Set(value.sessions.map((session) => session.id)).size ===
         value.sessions.length &&
-      value.sessions.every((session) => session.agent === 'opencode')
+      value.sessions.every((session) => session.agent === 'opencode') &&
+      new Set(value.questions.map((q) => q.id)).size ===
+        value.questions.length &&
+      value.questions.every((q) =>
+        value.sessions.some((s) => s.id === q.sessionId)
+      )
   )
 
 const antigravity: z.ZodType<AntigravitySnapshot> = z
@@ -77,7 +120,7 @@ const antigravity: z.ZodType<AntigravitySnapshot> = z
 
 const schema: z.ZodType<AgentsSnapshot> = z
   .object({
-    version: z.literal(4),
+    version: z.literal(5),
     revision: z.number().int().min(0).max(4_294_967_295),
     observedAt: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
     applications: z
@@ -116,6 +159,7 @@ const creationResult: z.ZodType<CreateAgentSessionResult> = z
 
 export interface AgentsAdapter {
   readonly kind: 'native' | 'demo'
+  replyOpenCode(request: AgentReplyRequest): Promise<void>
   load(): Promise<AgentsSnapshot>
   setOpenCode(enabled: boolean): Promise<AgentsSnapshot>
   setAntigravity(enabled: boolean): Promise<AgentsSnapshot>
@@ -132,6 +176,10 @@ export interface AgentsAdapter {
 export function createNativeAgentsAdapter(): AgentsAdapter {
   return {
     kind: 'native',
+    async replyOpenCode(request) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('agents_reply_opencode', { request })
+    },
     async createOpenCode(directory, prompt) {
       const { invoke } = await import('@tauri-apps/api/core')
       return creationResult.parse(
@@ -173,7 +221,7 @@ export function createNativeAgentsAdapter(): AgentsAdapter {
 export function createDemoAgentsAdapter(): AgentsAdapter {
   const listeners = new Set<(snapshot: AgentsSnapshot) => void>()
   let snapshot: AgentsSnapshot = {
-    version: 4,
+    version: 5,
     revision: 0,
     observedAt: Date.now(),
     error: null,
@@ -182,11 +230,41 @@ export function createDemoAgentsAdapter(): AgentsAdapter {
       { agent: 'opencode', running: true },
       { agent: 'antigravity', running: true }
     ],
-    opencode: { status: 'disabled', sessions: [], hasMore: false, error: null },
+    opencode: {
+      status: 'disabled',
+      sessions: [],
+      questions: [],
+      hasMore: false,
+      error: null
+    },
     antigravity: { status: 'disabled', sessions: [], error: null }
   }
   return {
     kind: 'demo',
+    async replyOpenCode(request) {
+      if (snapshot.opencode.status !== 'connected')
+        throw new Error('OpenCode desconectado')
+      const q = snapshot.opencode.questions.find(
+        (q) =>
+          q.id === request.questionId &&
+          q.sessionId === request.sessionId &&
+          q.version === request.version &&
+          !q.replyBlocked &&
+          !q.unsupportedReason
+      )
+      if (!q) throw new Error('Pergunta indisponível ou alterada')
+      snapshot = {
+        ...snapshot,
+        revision: snapshot.revision + 1,
+        opencode: {
+          ...snapshot.opencode,
+          questions: snapshot.opencode.questions.filter(
+            (q) => q.id !== request.questionId
+          )
+        }
+      }
+      for (const listener of listeners) listener(structuredClone(snapshot))
+    },
     async createOpenCode(directory, prompt) {
       if (snapshot.opencode.status !== 'connected')
         throw new Error('OpenCode desconectado')
@@ -228,6 +306,27 @@ export function createDemoAgentsAdapter(): AgentsAdapter {
           ? {
               status: 'connected',
               error: null,
+              questions: [
+                {
+                  id: 'frm_demo',
+                  sessionId: 'ses_demo',
+                  connectionId: 'opencode-local',
+                  version: 'd'.repeat(64),
+                  title: 'Como deseja continuar?',
+                  fields: [
+                    {
+                      key: 'direction',
+                      title: 'Orientação',
+                      description: null,
+                      required: true,
+                      minLength: 1,
+                      maxLength: 4096
+                    }
+                  ],
+                  unsupportedReason: null,
+                  replyBlocked: false
+                }
+              ],
               hasMore: false,
               sessions: [
                 {
@@ -236,12 +335,18 @@ export function createDemoAgentsAdapter(): AgentsAdapter {
                   connectionId: 'opencode-local',
                   title: 'Exemplo de sessão',
                   directory: 'C:\\Projetos\\demo',
-                  status: 'processing',
+                  status: 'attention',
                   updatedAt: Date.now()
                 }
               ]
             }
-          : { status: 'disabled', sessions: [], hasMore: false, error: null }
+          : {
+              status: 'disabled',
+              sessions: [],
+              questions: [],
+              hasMore: false,
+              error: null
+            }
       }
       for (const listener of listeners) listener(structuredClone(snapshot))
       return structuredClone(snapshot)

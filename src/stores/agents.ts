@@ -5,12 +5,14 @@ import {
   parseAgentsSnapshot,
   type AgentsAdapter,
   type AgentsSnapshot,
-  type CreateAgentSessionResult
+  type CreateAgentSessionResult,
+  type AgentReplyRequest
 } from '@/services/system/agents'
 
 type AgentsState = {
   snapshot: AgentsSnapshot | null
   error: string | null
+  replyOpenCode(request: AgentReplyRequest): Promise<void>
   connect(): () => void
   configureOpenCode(enabled: boolean): Promise<void>
   configureAntigravity(enabled: boolean): Promise<void>
@@ -38,6 +40,26 @@ export function createAgentsStore(adapter: AgentsAdapter) {
     return {
       snapshot: null,
       error: null,
+      async replyOpenCode(request) {
+        const snapshot = get().snapshot
+        if (
+          get().error ||
+          snapshot?.opencode.status !== 'connected' ||
+          !snapshot.opencode.questions.some(
+            (q) =>
+              q.id === request.questionId &&
+              q.sessionId === request.sessionId &&
+              q.version === request.version &&
+              !q.replyBlocked &&
+              !q.unsupportedReason
+          )
+        ) {
+          throw new Error(
+            'Pergunta indisponível; aguarde reconexão ou atualização'
+          )
+        }
+        await adapter.replyOpenCode(request)
+      },
       async createOpenCode(directory, prompt) {
         if (get().error || get().snapshot?.opencode.status !== 'connected') {
           throw new Error('Conecte o OpenCode antes de criar uma conversa')

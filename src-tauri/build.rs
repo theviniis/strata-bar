@@ -27,6 +27,9 @@ fn main() {
     println!("cargo:rerun-if-changed=src/agents_contract.rs");
     let declarations = [
         agents_contract::AgentType::decl(),
+        agents_contract::AgentTextField::decl(),
+        agents_contract::AgentMessage::decl(),
+        agents_contract::AgentReplyRequest::decl(),
         agents_contract::InitialPromptStatus::decl(),
         agents_contract::CreateAgentSessionResult::decl(),
         agents_contract::AgentApplication::decl(),

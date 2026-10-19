@@ -1,5 +1,51 @@
 # Controle de agentes de IA — Windows 11
 
+## Ticket 6 — Responder perguntas textuais do OpenCode
+
+Terceira fatia da Subtask 3. O OpenCode v2 expõe formulários pendentes, com
+campos e IDs próprios; resposta usa `POST /api/session/{sessionID}/form/{formID}/reply`.
+
+- [x] Conferir schemas públicos de formulário pendente e resposta da instalação.
+- [x] Projetar perguntas/campos textuais simples no contrato gerado, somente em
+      memória, com limites e indicação explícita dos formatos não suportados.
+- [x] Exibir formulário no card da sessão e enviar resposta vinculada a sessão,
+      pergunta e versão; bloquear durante desconexão e envio.
+- [x] Revalidar pergunta pendente no provedor antes de enviar, impedir duplicação
+      entre monitores e não repetir respostas após falha ou reconexão.
+- [ ] Validar testes, API real em conversa própria temporária, builds e revisão;
+      commitar na branch atual.
+- [ ] Validar interação real do formulário no WebView2.
+
+Referência de revisão: `55eb781`. Nesta fatia, aceitar campos string sem opções,
+condições, campos ocultos, formatos ou padrões. Formulários com outros controles
+exibem indisponibilidade explícita e devem ser respondidos no OpenCode. Aprovações
+de ferramentas permanecem separadas e indisponíveis. Nenhum histórico é lido.
+Pontos de teste acordados: serviço público e comportamento visível do popup.
+
+Contrato versão 5, com AgentMessage e AgentReplyRequest gerados de Rust. Até 128
+perguntas são projetadas em memória, com oito campos por formulário. Limites de
+envio: 4096 bytes UTF-8 por campo, 8192 por conjunto, além dos limites de caracteres
+da pergunta. Após 1024 tentativas na execução do Strata, novos envios são recusados;
+nenhum ID é descartado para liberar reenvio incerto. Desativar/reconectar não limpa
+o registro das tentativas; reiniciar o processo o descarta, sem disparar envios.
+
+O teste Windows criou uma conversa vazia temporária, adicionou um formulário pela
+API pública, enviou sua resposta e verificou que o formulário deixou de estar
+pendente. Uma segunda resposta foi recusada antes do POST. Somente essa conversa
+foi removida. Nenhum histórico foi lido. Evidência:
+`docs/evidence/ai-agents-opencode-reply-2026-10-19.json`.
+
+Validação da implementação:
+
+- 21 testes frontend focados passaram. TypeScript, lint e formatação dos arquivos
+  alterados passaram; build frontend passou.
+- Suíte Rust: 143 passaram e 14 ignorados. O teste de resposta da API real foi
+  executado separadamente e passou.
+- Suíte frontend completa: 240 passaram; permanece somente a falha preexistente
+  da posição dos controles de áudio em `native-bar.test.tsx`.
+- O teste real valida a resposta do formulário e a recusa após resolução. Não
+  valida retomada de uma execução do modelo nem interação do WebView2.
+
 ## Ticket 5 — Prompt inicial ao criar conversa do OpenCode
 
 Segunda fatia da Subtask 3. A API v2 instalada admite o prompt por
@@ -109,7 +155,7 @@ em andamento; contratos e integrações dependem das decisões registradas abaix
 
 ## Subtask 1: Arquitetura, tipos e comunicação com processos/APIs
 
-- [ ] Definir os tipos TypeScript `AgentType`, `AgentSession`, `SessionStatus` e
+- [x] Definir os tipos TypeScript `AgentType`, `AgentSession`, `SessionStatus` e
       `AgentMessage`, derivados de um contrato único.
 - [ ] Implementar a camada de integração/polling para detectar instâncias/sessões
       ativas do ChatGPT, OpenCode e Antigravity no Windows 11.
