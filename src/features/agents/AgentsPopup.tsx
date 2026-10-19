@@ -1,29 +1,29 @@
-import { Button } from '@/components/ui/button'
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion'
+import { Button } from '@/components/ui/button'
 import {
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
-import type {
-  AgentsSnapshot,
-  CreateAgentSessionResult,
-  AgentReplyRequest,
-  AgentPermissionRequest
-} from '@/services/system/agents.generated'
-import { createDemoAgentsAdapter } from '@/services/system/agents'
-import { createAgentsStore, getAgentsStore } from '@/stores/agents'
 import { usePopupContext } from '@/popups/context'
+import { createDemoAgentsAdapter } from '@/services/system/agents'
+import type {
+  AgentPermissionRequest,
+  AgentReplyRequest,
+  AgentsSnapshot,
+  CreateAgentSessionResult
+} from '@/services/system/agents.generated'
+import { createAgentsStore, getAgentsStore } from '@/stores/agents'
 import { useEffect, useState } from 'react'
-import { OpenCodeSessions } from './OpenCodeSessions'
-import { AntigravitySessions } from './AntigravitySessions'
 import { AgentAlerts } from './AgentAlerts'
+import { AntigravitySessions } from './AntigravitySessions'
+import { OpenCodeSessions } from './OpenCodeSessions'
 
 export function AgentsPopup() {
   const { mode } = usePopupContext('agents')
@@ -92,7 +92,7 @@ export function AgentsPopupContent({
 }) {
   const discoveryError = error ?? snapshot?.error
   return (
-    <section className="w-80" aria-label="Controle de agentes">
+    <section className="w-150" aria-label="Controle de agentes">
       <CardHeader>
         <CardTitle>Agentes de IA</CardTitle>
         <CardDescription>Aplicativos neste Windows</CardDescription>
