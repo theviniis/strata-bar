@@ -13,7 +13,7 @@ Notificações nativas do Windows ficam em uma próxima fatia, não nesta entreg
       hooks; concluir somente após execução observada e sucesso explícito.
 - [x] Exibir contador no widget e lista de alertas no popup, com dispensa
       validada nativamente, sem apagar eventos novos por corrida entre monitores.
-- [ ] Validar serviço e UI nos pontos já acordados, testar transporte nativo,
+- [x] Validar serviço e UI nos pontos já acordados, testar transporte nativo,
       executar checks/builds/revisão e commitar na branch atual.
 - [ ] Validar alertas com provedores reais e interação no WebView2.
 - [ ] Integrar e validar notificações nativas do Windows em uma próxima fatia.
@@ -41,13 +41,25 @@ Validação da implementação:
 
 - 26 testes frontend focados passaram; TypeScript, lint e formatação dos arquivos
   alterados passaram. Build frontend passou.
-- Suíte Rust padrão: 151 passaram e 16 ignorados, incluindo cinco testes novos
+- Suíte Rust padrão: 152 passaram e 16 ignorados, incluindo seis testes novos
   para linha de base, correlação de término, atenção, reconexão e limites.
 - Suíte frontend completa: 245 passaram e permaneceu a falha preexistente da
   posição dos controles de áudio em `native-bar.test.tsx`.
 - Consulta nativa real do OpenCode passou com 22 sessões; a API forneceu marca
   time.idle para os 18 resultados succeeded consultados. Somente contagens foram
   observadas, sem registrar títulos ou conteúdo. Isso não prova um evento novo.
+- Incerteza temporária preserva a atividade observada para reconhecer um sucesso
+  explícito posterior; não produz conclusão por si só. O teste de regressão
+  falhou antes da correção e passou depois (`257da5a`).
+- Helper release executado no Windows com eventos sintéticos, sem consumidores
+  de UI: atenção e conclusão foram geradas uma vez cada. Transporte e composição
+  passaram; isso não valida emissão real do provedor nem interação no WebView2.
+  Evidência: `docs/evidence/ai-agents-alerts-2026-10-19.json`.
+- Revisão de padrões: nenhuma violação documentada ou recomendação adicional.
+  Revisão de especificação: nenhum defeito adicional na implementação desta
+  fatia; aceitação com provedores reais, WebView2 e toast permanece pendente.
+- Build release passou com o frontend atualizado. Commits de implementação:
+  `e77ca37` e `257da5a`. A barra aberta não foi interrompida.
 
 ## Ticket 7 — Aprovar uma vez ou recusar ferramentas do OpenCode
 
