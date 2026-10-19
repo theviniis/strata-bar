@@ -18,6 +18,7 @@ import { ScrollingText } from '@/components/ui/scrolling-text'
 
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
+import { Toggle } from '@/components/ui/toggle'
 import { useSystemChannel } from '@/hooks/useSystemChannel'
 import { usePopupContext } from '@/popups/context'
 import {
@@ -30,16 +31,22 @@ import {
 import type {
   MediaAction,
   MediaData,
-  MediaRequest
+  MediaRequest,
+  RepeatMode
 } from '@/services/system/media.generated'
 import {
   Heart,
   Music2,
   Pause,
   Play,
+  Repeat,
+  Repeat1,
   Settings,
+  Shuffle,
   SkipBack,
-  SkipForward
+  SkipForward,
+  Volume2,
+  VolumeX
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { MediaClock } from './progress'
@@ -163,6 +170,28 @@ function time(ms: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 }
 
+type ActionGroup = 'playback' | 'favorite' | 'volume' | 'shuffle' | 'repeat'
+
+/** Independent busy groups so one pending control never locks the rest. */
+function actionGroup(action: MediaAction): ActionGroup {
+  switch (action.action) {
+    case 'favorite':
+      return 'favorite'
+    case 'volume':
+    case 'mute':
+      return 'volume'
+    case 'shuffle':
+      return 'shuffle'
+    case 'repeat':
+      return 'repeat'
+    default:
+      return 'playback'
+  }
+}
+
+const nextRepeatMode = (mode: RepeatMode): RepeatMode =>
+  mode === 'none' ? 'list' : mode === 'list' ? 'track' : 'none'
+
 function MusicPopupContentData({
   media,
   onAction
@@ -170,20 +199,54 @@ function MusicPopupContentData({
   media: MediaData
   onAction(request: MediaRequest): Promise<unknown>
 }) {
-  const [pending, setPending] = useState(false)
-  const busy = useRef(false)
-  const [favoritePending, setFavoritePending] = useState(false)
-  const favoriteBusy = useRef(false)
+  const [pending, setPending] = useState<Record<ActionGroup, boolean>>({
+    playback: false,
+    favorite: false,
+    volume: false,
+    shuffle: false,
+    repeat: false
+  })
+  const busy = useRef<Record<ActionGroup, boolean>>({
+    playback: false,
+    favorite: false,
+    volume: false,
+    shuffle: false,
+    repeat: false
+  })
   const [error, setError] = useState('')
   const [positionMs, setPositionMs] = useState(0)
   const [clock] = useState(() => new MediaClock())
   const [seek, setSeek] = useState<number | null>(null)
   const [badArt, setBadArt] = useState<string | null>(null)
+  const [volumeDraft, setVolumeDraft] = useState<number | null>(null)
   const progress =
     media.progress.status === 'ready' ? media.progress.value : null
   const artwork = media.artwork.status === 'ready' ? media.artwork.value : null
-  const favoriteKnown =
-    media.favorite.status === 'ready' && media.favorite.value !== null
+  const favoriteValue =
+    media.favorite.status === 'ready' ? media.favorite.value : null
+  const volume = media.volume.status === 'ready' ? media.volume.value : null
+  const level = volumeDraft ?? volume?.level ?? 0
+  const muted = volume?.muted ?? false
+  const shuffle = media.shuffle.status === 'ready' ? media.shuffle.value : null
+  const repeat = media.repeat.status === 'ready' ? media.repeat.value : null
+  // A control only renders when the running player actually supports it; an
+  // incompatible player hides it instead of showing a permanently dead button.
+  const volumeReady = volume !== null && media.capabilities.volume
+  const muteReady = volumeReady && media.capabilities.mute
+  // Favorites belong to the player, not to a single track: a connected Spotify
+  // session renders the control at once, and a track that is still being
+  // correlated shows a pending state instead of vanishing.
+  const favoriteSupported = media.capabilities.favorite
+  const favoritePending =
+    favoriteSupported && media.favorite.status === 'unavailable'
+  const favoriteDisabled =
+    pending.favorite || favoritePending || media.favorite.status === 'error'
+  const favoriteTitle =
+    media.favorite.status === 'ready'
+      ? 'Faixa salva na biblioteca do Spotify'
+      : (media.favorite.reason ?? 'Consultando o Spotify…')
+  const shuffleReady = shuffle !== null && media.capabilities.shuffle
+  const repeatReady = repeat !== null && media.capabilities.repeat
   const playing = media.playback === 'playing'
   useEffect(() => {
     clock.update(progress, playing)
@@ -195,12 +258,10 @@ function MusicPopupContentData({
     return () => clearInterval(timer)
   }, [clock])
   async function act(action: MediaAction) {
-    const isFavorite = action.action === 'favorite'
-    const actionBusy = isFavorite ? favoriteBusy : busy
-    const setActionPending = isFavorite ? setFavoritePending : setPending
-    if (actionBusy.current) return
-    actionBusy.current = true
-    setActionPending(true)
+    const group = actionGroup(action)
+    if (busy.current[group]) return false
+    busy.current[group] = true
+    setPending((value) => ({ ...value, [group]: true }))
     setError('')
     try {
       await onAction({
@@ -212,23 +273,26 @@ function MusicPopupContentData({
         clock.seek(action.positionMs)
         setPositionMs(clock.read())
       }
+      return true
     } catch (e) {
       setError(String(e))
+      return false
     } finally {
-      actionBusy.current = false
-      setActionPending(false)
+      busy.current[group] = false
+      setPending((value) => ({ ...value, [group]: false }))
       if (action.action === 'seek') setSeek(null)
     }
   }
   const position = seek ?? (progress ? positionMs : 0)
   const PlayIcon = playing ? Pause : Play
+  const busyAny = Object.values(pending).some(Boolean)
   return (
-    <div className="flex flex-col gap-4" aria-busy={pending}>
+    <div className="flex flex-col gap-4" aria-busy={busyAny}>
       <div className="relative grid grid-cols-[80px_minmax(0,1fr)] items-center gap-3">
         <button
           type="button"
           aria-label={`Abrir ${media.playerName || 'player de música'}`}
-          disabled={pending || !media.capabilities.openPlayer}
+          disabled={pending.playback || !media.capabilities.openPlayer}
           onClick={() => void act({ action: 'openPlayer' })}
           className="absolute inset-0 z-10 cursor-pointer rounded focus-visible:outline-accent disabled:cursor-default"
         />
@@ -259,12 +323,26 @@ function MusicPopupContentData({
           </p>
         </div>
       </div>
-      <div className="flex items-center justify-center gap-2">
+      <div className="flex items-center justify-center gap-1">
+        {shuffleReady && (
+          <Toggle
+            aria-label="Aleatório"
+            title="Aleatório"
+            pressed={shuffle === true}
+            disabled={pending.shuffle}
+            aria-busy={pending.shuffle}
+            onPressedChange={(active) =>
+              void act({ action: 'shuffle', active })
+            }
+          >
+            <Shuffle size={18} />
+          </Toggle>
+        )}
         <Button
           variant="ghost"
           size="icon"
           aria-label="Faixa anterior"
-          disabled={pending || !media.capabilities.previous}
+          disabled={pending.playback || !media.capabilities.previous}
           onClick={() => void act({ action: 'previous' })}
         >
           <SkipBack size={18} />
@@ -273,7 +351,7 @@ function MusicPopupContentData({
           variant="ghost"
           size="icon"
           aria-label={playing ? 'Pausar' : 'Reproduzir'}
-          disabled={pending || !media.capabilities.playPause}
+          disabled={pending.playback || !media.capabilities.playPause}
           onClick={() => void act({ action: 'playPause' })}
         >
           <PlayIcon size={18} />
@@ -282,42 +360,54 @@ function MusicPopupContentData({
           variant="ghost"
           size="icon"
           aria-label="Próxima faixa"
-          disabled={pending || !media.capabilities.next}
+          disabled={pending.playback || !media.capabilities.next}
           onClick={() => void act({ action: 'next' })}
         >
           <SkipForward size={18} />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={
-            favoriteKnown
-              ? media.favorite.value
+        {repeatReady && (
+          <Toggle
+            aria-label="Repetição"
+            title={
+              repeat === 'track'
+                ? 'Repetir uma faixa'
+                : repeat === 'list'
+                  ? 'Repetir tudo'
+                  : 'Repetição desativada'
+            }
+            pressed={repeat === 'track' || repeat === 'list'}
+            disabled={pending.repeat}
+            aria-busy={pending.repeat}
+            onPressedChange={() =>
+              void act({
+                action: 'repeat',
+                mode: nextRepeatMode(repeat ?? 'none')
+              })
+            }
+          >
+            {repeat === 'track' ? <Repeat1 size={18} /> : <Repeat size={18} />}
+          </Toggle>
+        )}
+        {favoriteSupported && (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={
+              favoriteValue
                 ? 'Remover dos favoritos'
                 : 'Adicionar aos favoritos'
-              : 'Favorito indisponível'
-          }
-          aria-pressed={
-            favoriteKnown ? Boolean(media.favorite.value) : undefined
-          }
-          title={
-            media.favorite.reason ?? 'Faixa salva na biblioteca do Spotify'
-          }
-          disabled={
-            favoritePending || !favoriteKnown || !media.capabilities.favorite
-          }
-          aria-busy={favoritePending}
-          onClick={() =>
-            void act({ action: 'favorite', saved: !media.favorite.value })
-          }
-        >
-          <Heart
-            size={18}
-            fill={
-              favoriteKnown && media.favorite.value ? 'currentColor' : 'none'
             }
-          />
-        </Button>
+            aria-pressed={Boolean(favoriteValue)}
+            title={favoriteTitle}
+            disabled={favoriteDisabled}
+            aria-busy={pending.favorite || favoritePending}
+            onClick={() =>
+              void act({ action: 'favorite', saved: !favoriteValue })
+            }
+          >
+            <Heart size={18} fill={favoriteValue ? 'currentColor' : 'none'} />
+          </Button>
+        )}
       </div>
       <div className="flex flex-col gap-2">
         <Slider
@@ -334,7 +424,7 @@ function MusicPopupContentData({
               : 0
           ]}
           disabled={
-            pending ||
+            pending.playback ||
             !progress ||
             !media.capabilities.seek ||
             progress.maxSeekMs <= progress.minSeekMs
@@ -350,6 +440,45 @@ function MusicPopupContentData({
           <span>{progress ? time(progress.durationMs) : '—'}</span>
         </div>
       </div>
+      {volumeReady && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Volume do player</span>
+            <span className="tabular-nums">{Math.round(level)}%</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {muteReady && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={muted ? 'Ativar som do player' : 'Silenciar player'}
+                aria-pressed={muted}
+                title="Volume do player"
+                disabled={pending.volume}
+                aria-busy={pending.volume}
+                onClick={() => void act({ action: 'mute', muted: !muted })}
+              >
+                {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+              </Button>
+            )}
+            <Slider
+              aria-label="Volume do player"
+              min={0}
+              max={100}
+              step={1}
+              value={[level]}
+              disabled={pending.volume}
+              onValueChange={([value]) => setVolumeDraft(value)}
+              onValueCommit={([value]) => {
+                setVolumeDraft(value)
+                void act({ action: 'volume', level: value }).finally(() =>
+                  setVolumeDraft(null)
+                )
+              }}
+            />
+          </div>
+        </div>
+      )}
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}

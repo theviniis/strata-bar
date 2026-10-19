@@ -14,8 +14,12 @@ unsubscribe and application exit. No native media failures fall back to demo dat
 
 The periodic tick only reads the cached native snapshot and schedules Spotify
 enrichment. It does not poll GSMTC or Core Audio. Unchanged snapshots are not
-emitted again. Blocking WinRT operations have a three-second deadline, and
-metadata results are discarded if their session or revision changes during a read.
+emitted again. Blocking WinRT operations have a three-second deadline. A track
+change arrives as a burst of GSMTC notifications: the worker folds the burst into
+a single read and re-reads metadata until its revision stops moving, so the new
+track is published as soon as it settles instead of being discarded mid-read.
+Resolving the player window walks every process and top-level window, so it is
+sampled with metadata rather than on every timeline tick.
 
 Volume never uses `IAudioEndpointVolume`: it controls `ISimpleAudioVolume` for an
 exact executable-name or application-ID match. A unique active session wins over
@@ -23,6 +27,18 @@ inactive remnants. While paused, the previously matched session can be retained;
 otherwise an ambiguous match is unavailable. Multiple active matches are refused.
 For browser players, this is the application's shared audio session, not per-tab
 volume. Lack of a reliable identity match disables the resource and its actions.
+The matched session is reused across reads: only a Core Audio device, endpoint or
+session notification, an expired session, a lost match or a different player
+forces a fresh device/session enumeration.
+
+Shuffle and repeat are optional GSMTC playback properties. A player that reports
+no state keeps the capability off and the popup omits the control; no value is
+invented from the absence. Current spotatui builds report neither property, and
+Spotify desktop is unlikely to expose them through SMTC. Repeat, shuffle, player
+volume/mute and favorite are therefore rendered only for a compatible player and
+never appear as permanently dead buttons. Favorite is a property of the connected
+Spotify account rather than of one track, so its control stays visible while a new
+track is still being correlated, and only its value is pending.
 
 ## Public contract
 
@@ -38,13 +54,16 @@ from `media_contract.rs`; `media.ts` validates native payloads before delivery.
 | `playback`                 | Playing, paused, stopped or unknown                             |
 | `progress`                 | Position, duration, seek bounds, rate and measurement timestamp |
 | `volume`                   | Application volume 0–100, mute and `applicationSession` origin  |
+| `shuffle`                  | Whether the player reports shuffle on                           |
+| `repeat`                   | Playback repeat mode: `none`, `track` or `list`                 |
 | `favorite`                 | Whether the correlated Spotify track is saved in the library    |
 | `spotifyUri`               | Correlated Spotify track URI, or null                           |
 | `capabilities`             | Availability of each individual action                          |
 
 Resources carry `status`, `value` and `reason`. Status distinguishes `ready`,
-`unsupported`, `unauthenticated`, `unavailable` and `error`. Unknown favorite is
-null, never false. Timestamps and timeline values are milliseconds; use
+`unsupported`, `unauthenticated`, `unavailable` and `error`; `ready` always
+carries a value and every other status leaves it null. Unknown favorite is null,
+never false. Timestamps and timeline values are milliseconds; use
 `mediaPosition(progress, now)` to interpolate progress without additional IPC.
 Seek positions are relative to the timeline start and must lie within its seek
 bounds. Progress interpolation clamps to the duration.
@@ -58,7 +77,8 @@ await bridge.mediaAction?.({
 ```
 
 Other actions are `previous`, `playPause`, `next`, `volume` with `level`, `mute`
-with `muted`, and `favorite` with an explicit `saved` boolean. The native command
+with `muted`, `shuffle` with `active`, `repeat` with `mode` (`none`, `track` or
+`list`), and `favorite` with an explicit `saved` boolean. The native command
 is `media_action({ request })`; it validates window ownership, identities,
 capabilities and numeric bounds. Track replacement rejects queued commands.
 Favorite requests run separately from local playback events and controls.
@@ -111,9 +131,18 @@ Old account/session results cannot repopulate a disconnected or replaced session
 ## Interface and validation
 
 The native widget sits directly before audio output. It uses existing widget
-buttons, Lucide icons, hover and tooltip surfaces, and theme tokens. It has no
-music popup. Album, progress/seek, application volume and favorite are API-only.
-The account settings appear within the existing audio panel.
+buttons, Lucide icons, hover and tooltip surfaces, and theme tokens. Opening it
+reveals the music popup: metadata and artwork, independent playback controls,
+shuffle and repeat toggles, progress/seek, and an application-volume slider with
+mute. The volume slider and mute button invoke only `mediaAction` on the player's
+application audio session; they never call `setVolume`, which controls the default
+output endpoint. Each of the repeat, shuffle, volume/mute and favorite controls
+is rendered only when the running player's capability is available; an
+incompatible player omits them instead of showing a disabled control. A favorite
+whose track is still being correlated renders as a pending control instead of
+disappearing. A pending control never blocks the others. Repeat cycles `none → list → track →
+none` and shows `Repeat`/`Repeat1`; shuffle is a pressed toggle. The account
+settings appear within the existing audio panel.
 
 The widget preserves paused sessions, truncates within 240 CSS pixels, and animates
 width, opacity and spacing for 180 ms. Exiting content is inert and hidden from
@@ -125,13 +154,17 @@ Run `pnpm check` and `cargo test --manifest-path src-tauri/Cargo.toml`.
 `strata-bar.exe --probe-media` reads real Windows media without opening bars or
 changing playback/volume. Its audio diagnostics explain source association.
 
-Automated tests cover contracts, identity rejection, controls, progress,
+Automated tests cover contracts, identity rejection, controls, shuffle/repeat
+cycling and capability gating, player volume/mute actions, progress,
 animation interruption, reduced motion, demo disposal, native bridge commands,
 account settings, OAuth callback/PKCE, credential deletion, refresh token rotation,
 401/403/429 handling and stale-account responses. Tests never contact Spotify or
 modify the user's real credential store.
 
-The live authenticated login/favorite flow and playback/seek/volume command
-round-trips require an authorized Spotify app/account and remain manual acceptance
-checks. Probe and studio evidence do not replace multi-monitor native interaction
-or direct Win32 geometry validation.
+The live authenticated login/favorite flow and playback/seek/volume/shuffle/repeat
+command round-trips require an authorized Spotify app/account or a player that
+exposes the relevant GSMTC properties, and remain manual acceptance checks. Move
+the popup volume slider and confirm in the Windows Volume Mixer that only the
+player's entry changes while the master output is untouched. Probe and studio
+evidence do not replace multi-monitor native interaction or direct Win32 geometry
+validation.

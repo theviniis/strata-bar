@@ -49,6 +49,7 @@ fn main() {
         media_contract::MediaValue::<String>::decl(),
         media_contract::MediaProgress::decl(),
         media_contract::PlayerVolume::decl(),
+        media_contract::RepeatMode::decl(),
         media_contract::MediaCapabilities::decl(),
         media_contract::MediaData::decl(),
         media_contract::MediaAction::decl(),

@@ -131,6 +131,16 @@ it('validates artwork and resource availability, retaining unknown favorite sepa
   ).toBe('error')
 })
 
+it('rejects a ready resource without a value and names the offending field', () => {
+  // A stale Spotify correlation used to report the favorite as ready-with-no-value,
+  // which invalidated the whole payload and blanked the widget to "Mídia indisponível".
+  const data = demoMedia()
+  data.favorite = { status: 'ready', value: null, reason: null }
+  const parsed = parseMediaEvent({ status: 'ready', data })
+  expect(parsed.status).toBe('error')
+  if (parsed.status === 'error') expect(parsed.error).toContain('favorite')
+})
+
 it('interpolates progress while clamping at the duration and remaining stationary on pause', () => {
   const progress = demoMedia().progress.value!
   expect(mediaPosition(progress, progress.measuredAt + 1000)).toBe(33000)
@@ -415,4 +425,277 @@ it('continues advancing when frequent events repeat the same timeline position',
         .getAttribute('aria-valuenow')
     )
   ).toBeGreaterThanOrEqual(33750)
+})
+
+it('drives the player volume and mute through media actions, never the output endpoint', async () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  const data = demoMedia()
+  const onAction = vi.fn(async () => {})
+  render(
+    <MusicPopupContent event={{ status: 'ready', data }} onAction={onAction} />
+  )
+  const slider = screen.getByRole('slider', { name: 'Volume do player' })
+  expect(slider).toHaveAttribute('aria-valuenow', '64')
+  await act(async () => fireEvent.keyDown(slider, { key: 'ArrowRight' }))
+  expect(onAction).toHaveBeenLastCalledWith({
+    sessionId: data.sessionId,
+    trackId: data.trackId,
+    action: { action: 'volume', level: 65 }
+  })
+  await act(async () =>
+    fireEvent.click(screen.getByRole('button', { name: 'Silenciar player' }))
+  )
+  expect(onAction).toHaveBeenLastCalledWith({
+    sessionId: data.sessionId,
+    trackId: data.trackId,
+    action: { action: 'mute', muted: true }
+  })
+})
+
+it('hides the player volume when the application audio session is ambiguous', () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  const data = demoMedia()
+  data.volume = {
+    status: 'unavailable',
+    value: null,
+    reason: 'No unambiguous application audio session'
+  }
+  data.capabilities.volume = false
+  data.capabilities.mute = false
+  render(
+    <MusicPopupContent event={{ status: 'ready', data }} onAction={vi.fn()} />
+  )
+  expect(screen.queryByRole('slider', { name: 'Volume do player' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Silenciar player' })).toBeNull()
+  expect(screen.queryByText('Volume do player')).toBeNull()
+})
+
+it('renders the favorite control while the Spotify correlation is pending', () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  const data = demoMedia()
+  data.favorite = {
+    status: 'unavailable',
+    value: null,
+    reason: 'Spotify track has not been securely correlated'
+  }
+  data.capabilities.favorite = true
+  render(
+    <MusicPopupContent event={{ status: 'ready', data }} onAction={vi.fn()} />
+  )
+  const favorite = screen.getByRole('button', {
+    name: 'Adicionar aos favoritos'
+  })
+  expect(favorite).toBeDisabled()
+  expect(favorite).toHaveAttribute('aria-busy', 'true')
+  expect(favorite).toHaveAttribute(
+    'title',
+    'Spotify track has not been securely correlated'
+  )
+})
+
+it('hides repeat, shuffle, volume and favorite when the running player is incompatible', () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  const data = demoMedia()
+  data.shuffle = {
+    status: 'unsupported',
+    value: null,
+    reason: 'Player does not expose shuffle'
+  }
+  data.repeat = {
+    status: 'unsupported',
+    value: null,
+    reason: 'Player does not expose repeat'
+  }
+  data.volume = {
+    status: 'unavailable',
+    value: null,
+    reason: 'No unambiguous application audio session'
+  }
+  data.favorite = {
+    status: 'unavailable',
+    value: null,
+    reason: 'Player has no Spotify library'
+  }
+  data.capabilities = {
+    ...data.capabilities,
+    shuffle: false,
+    repeat: false,
+    volume: false,
+    mute: false,
+    favorite: false
+  }
+  render(
+    <MusicPopupContent event={{ status: 'ready', data }} onAction={vi.fn()} />
+  )
+  for (const name of [
+    'Aleatório',
+    'Repetição',
+    'Silenciar player',
+    'Ativar som do player',
+    'Adicionar aos favoritos',
+    'Remover dos favoritos'
+  ])
+    expect(screen.queryByRole('button', { name })).toBeNull()
+  expect(screen.queryByRole('slider', { name: 'Volume do player' })).toBeNull()
+  expect(screen.queryByText('Volume do player')).toBeNull()
+  // Playback controls the player does support stay available.
+  for (const name of ['Faixa anterior', 'Pausar', 'Próxima faixa'])
+    expect(screen.getByRole('button', { name })).toBeEnabled()
+})
+
+it('keeps the player volume visible without a mute button when the session exposes no mute', () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  const data = demoMedia()
+  data.capabilities.mute = false
+  render(
+    <MusicPopupContent event={{ status: 'ready', data }} onAction={vi.fn()} />
+  )
+  expect(
+    screen.getByRole('slider', { name: 'Volume do player' })
+  ).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Silenciar player' })).toBeNull()
+  expect(
+    screen.queryByRole('button', { name: 'Ativar som do player' })
+  ).toBeNull()
+})
+
+it('toggles shuffle and cycles repeat modes with capability gating', async () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  const data = demoMedia()
+  const onAction = vi.fn(async () => {})
+  const { rerender } = render(
+    <MusicPopupContent event={{ status: 'ready', data }} onAction={onAction} />
+  )
+  const shuffle = screen.getByRole('button', { name: 'Aleatório' })
+  const repeat = screen.getByRole('button', { name: 'Repetição' })
+  expect(shuffle).toHaveAttribute('aria-pressed', 'false')
+  await act(async () => fireEvent.click(shuffle))
+  expect(onAction).toHaveBeenLastCalledWith({
+    sessionId: data.sessionId,
+    trackId: data.trackId,
+    action: { action: 'shuffle', active: true }
+  })
+  for (const [mode, next] of [
+    ['none', 'list'],
+    ['list', 'track'],
+    ['track', 'none']
+  ] as const) {
+    rerender(
+      <MusicPopupContent
+        event={{
+          status: 'ready',
+          data: {
+            ...data,
+            repeat: { status: 'ready', value: mode, reason: null }
+          }
+        }}
+        onAction={onAction}
+      />
+    )
+    await act(async () => fireEvent.click(repeat))
+    expect(onAction).toHaveBeenLastCalledWith({
+      sessionId: data.sessionId,
+      trackId: data.trackId,
+      action: { action: 'repeat', mode: next }
+    })
+  }
+  const unsupported = {
+    ...data,
+    shuffle: {
+      status: 'unsupported' as const,
+      value: null,
+      reason: 'Player does not expose shuffle'
+    },
+    repeat: {
+      status: 'unsupported' as const,
+      value: null,
+      reason: 'Player does not expose repeat'
+    },
+    capabilities: { ...data.capabilities, shuffle: false, repeat: false }
+  }
+  rerender(
+    <MusicPopupContent
+      event={{ status: 'ready', data: unsupported }}
+      onAction={onAction}
+    />
+  )
+  expect(screen.queryByRole('button', { name: 'Aleatório' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Repetição' })).toBeNull()
+})
+
+it('applies shuffle and repeat only to demo subscribers', async () => {
+  const adapter = createMockBridge()
+  const receive = vi.fn()
+  const dispose = await adapter.subscribe('media', receive)
+  const data = receive.mock.lastCall![0].data
+  await adapter.mediaAction!({
+    sessionId: data.sessionId,
+    trackId: data.trackId,
+    action: { action: 'shuffle', active: true }
+  })
+  expect(receive.mock.lastCall![0].data.shuffle.value).toBe(true)
+  await adapter.mediaAction!({
+    sessionId: data.sessionId,
+    trackId: data.trackId,
+    action: { action: 'repeat', mode: 'track' }
+  })
+  expect(receive.mock.lastCall![0].data.repeat.value).toBe('track')
+  dispose()
+})
+
+it('rejects payloads missing the playback mode resources', () => {
+  expect(
+    parseMediaEvent({
+      status: 'ready',
+      data: { ...demoMedia(), shuffle: undefined }
+    }).status
+  ).toBe('error')
+  expect(
+    parseMediaEvent({
+      status: 'ready',
+      data: { ...demoMedia(), repeat: undefined }
+    }).status
+  ).toBe('error')
 })

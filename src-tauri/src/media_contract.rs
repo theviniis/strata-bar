@@ -26,6 +26,13 @@ impl<T: TS> MediaValue<T> {
         }
     }
     pub fn absent(status: MediaAvailability, reason: &str) -> Self {
+        // The TypeScript contract reads `ready` as "value is present"; an absent
+        // value with a ready status invalidates the whole payload.
+        debug_assert_ne!(
+            status,
+            MediaAvailability::Ready,
+            "a ready value cannot be absent"
+        );
         Self {
             status,
             value: None,
@@ -50,6 +57,15 @@ pub struct PlayerVolume {
     pub muted: bool,
     pub source: String,
 }
+/// Playback repeat mode as reported by the player, mirroring the GSMTC
+/// `MediaPlaybackAutoRepeatMode` values without inventing intermediate states.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, TS, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum RepeatMode {
+    None,
+    Track,
+    List,
+}
 #[derive(Clone, Debug, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct MediaCapabilities {
@@ -59,6 +75,8 @@ pub struct MediaCapabilities {
     pub seek: bool,
     pub volume: bool,
     pub mute: bool,
+    pub shuffle: bool,
+    pub repeat: bool,
     pub favorite: bool,
     pub open_player: bool,
 }
@@ -76,6 +94,8 @@ pub struct MediaData {
     pub playback: String,
     pub progress: MediaValue<MediaProgress>,
     pub volume: MediaValue<PlayerVolume>,
+    pub shuffle: MediaValue<bool>,
+    pub repeat: MediaValue<RepeatMode>,
     pub favorite: MediaValue<bool>,
     pub spotify_uri: Option<String>,
     pub capabilities: MediaCapabilities,
@@ -96,6 +116,12 @@ pub enum MediaAction {
     },
     Mute {
         muted: bool,
+    },
+    Shuffle {
+        active: bool,
+    },
+    Repeat {
+        mode: RepeatMode,
     },
     Favorite {
         saved: bool,
@@ -141,6 +167,8 @@ pub fn fixture() -> MediaData {
             muted: false,
             source: "applicationSession".into(),
         }),
+        shuffle: MediaValue::ready(false),
+        repeat: MediaValue::ready(RepeatMode::None),
         favorite: MediaValue::absent(MediaAvailability::Unauthenticated, "Connect Spotify"),
         spotify_uri: None,
         capabilities: MediaCapabilities {
@@ -150,6 +178,8 @@ pub fn fixture() -> MediaData {
             seek: true,
             volume: true,
             mute: true,
+            shuffle: true,
+            repeat: true,
             favorite: false,
             open_player: false,
         },

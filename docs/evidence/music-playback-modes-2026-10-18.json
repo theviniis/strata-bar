@@ -1,0 +1,108 @@
+{
+  "date": "2026-10-18",
+  "command": "strata-bar.exe --probe-media",
+  "build": "debug",
+  "readOnly": true,
+  "note": "Playback-mode probe. It opens no windows and changes neither playback nor any volume.",
+  "nativeRead": {
+    "data": {
+      "album": "",
+      "artist": "",
+      "artwork": {
+        "status": "ready",
+        "mime": "image/png",
+        "sourceBytes": 16673,
+        "sha256": "13fd0b9dd91dfadb672ae56ac69a398d6d637e50030965ce278a76c9c0a2d5cd",
+        "reason": null
+      },
+      "capabilities": {
+        "favorite": false,
+        "mute": false,
+        "next": true,
+        "openPlayer": false,
+        "playPause": true,
+        "previous": true,
+        "repeat": false,
+        "seek": true,
+        "shuffle": false,
+        "volume": false
+      },
+      "favorite": {
+        "reason": "Spotify account enrichment is separate from native media reads",
+        "status": "unsupported",
+        "value": null
+      },
+      "playback": "paused",
+      "playerId": "Chrome",
+      "playerName": "Chrome",
+      "progress": {
+        "reason": null,
+        "status": "ready",
+        "value": {
+          "durationMs": 705271.233,
+          "maxSeekMs": 705271.233,
+          "measuredAt": 1792375208390.3672,
+          "minSeekMs": 0,
+          "positionMs": 208406,
+          "rate": 0
+        }
+      },
+      "repeat": {
+        "reason": "Player does not expose repeat",
+        "status": "unsupported",
+        "value": null
+      },
+      "sessionId": "session-1",
+      "shuffle": {
+        "reason": "Player does not expose shuffle",
+        "status": "unsupported",
+        "value": null
+      },
+      "spotifyUri": null,
+      "title": "O Incrível Mundo de Gumball",
+      "trackId": "track-1-2",
+      "volume": {
+        "reason": "No unambiguous application audio session",
+        "status": "unavailable",
+        "value": null
+      }
+    },
+    "status": "ready",
+    "timestamp": 1792376436814,
+    "sourceAudioSessions": [
+      {
+        "matchesSource": false,
+        "active": false
+      },
+      {
+        "matchesSource": false,
+        "active": false
+      },
+      {
+        "matchesSource": false,
+        "active": true
+      },
+      {
+        "matchesSource": false,
+        "active": false
+      },
+      {
+        "matchesSource": false,
+        "active": false
+      },
+      {
+        "matchesSource": false,
+        "active": false
+      },
+      {
+        "matchesSource": false,
+        "active": false
+      }
+    ]
+  },
+  "manualChecksNotPerformed": [
+    "shuffle and repeat mutation round-trips (the observed player exposes neither GSMTC property)",
+    "player application-volume and mute mutation round-trips",
+    "multi-monitor native widget interaction and Win32 geometry regression"
+  ]
+}

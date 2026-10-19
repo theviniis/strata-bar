@@ -4,7 +4,7 @@ use crate::media_contract::*;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use std::{
     sync::{
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         mpsc::Sender,
         Arc,
     },
@@ -13,8 +13,8 @@ use std::{
 use windows::{
     core::{implement, Interface, BOOL, GUID, HSTRING, PCWSTR, PWSTR},
     ApplicationModel::AppInfo,
-    Foundation::TypedEventHandler,
-    Media::Control::*,
+    Foundation::{IReference, TypedEventHandler},
+    Media::{Control::*, MediaPlaybackAutoRepeatMode},
     Storage::Streams::DataReader,
     Win32::{
         Foundation::{CloseHandle, HWND, LPARAM},
@@ -48,6 +48,9 @@ macro_rules! complete {
         wait(&operation.cast::<IAsyncInfo>()?, || operation.GetResults())
     }};
 }
+/// GSMTC reports one track change as several property notifications; re-read
+/// until the revision stops moving so the burst resolves in one settled read.
+const METADATA_ATTEMPTS: usize = 8;
 
 pub struct WindowsMedia {
     manager: GlobalSystemMediaTransportControlsSessionManager,
@@ -60,6 +63,8 @@ pub struct WindowsMedia {
     cached: Option<MediaData>,
     tx: Sender<crate::media::Request>,
     audio: Option<PlayerAudio>,
+    audio_source: String,
+    audio_dirty: Arc<AtomicBool>,
     discovery: Option<AudioDiscovery>,
 }
 static SESSION_SERIAL: AtomicU64 = AtomicU64::new(0);
@@ -77,6 +82,8 @@ impl WindowsMedia {
             cached: None,
             tx,
             audio: None,
+            audio_source: String::new(),
+            audio_dirty: Arc::new(AtomicBool::new(true)),
             discovery: None,
         };
         let tx = this.tx.clone();
@@ -147,21 +154,43 @@ impl WindowsMedia {
         self.cached.clone()
     }
     pub fn read(&mut self) -> windows::core::Result<Option<MediaData>> {
+        let audio_changed = self.audio_dirty.swap(false, Ordering::SeqCst);
         if self.discovery.is_none() {
-            self.discovery = unsafe { AudioDiscovery::new(self.tx.clone()).ok() };
-        }
-        if let Some(discovery) = &mut self.discovery {
-            // Only native events trigger this path; the periodic Spotify tick
-            // reuses snapshots without enumerating devices or polling GSMTC.
-            let _ = unsafe { discovery.reconcile() };
+            self.discovery =
+                unsafe { AudioDiscovery::new(self.tx.clone(), self.audio_dirty.clone()).ok() };
+        } else if audio_changed {
+            if let Some(discovery) = &mut self.discovery {
+                // A device or session notification changes the endpoint set; a
+                // metadata, playback or timeline read reuses the registrations.
+                let _ = unsafe { discovery.reconcile() };
+            }
         }
         self.reconcile()?;
         let Some(session) = self.session.as_ref() else {
             return Ok(None);
         };
-        let revision = self.revision.load(Ordering::SeqCst);
-        if self.cached.is_none() || revision != self.seen {
-            let properties = complete!(session.TryGetMediaPropertiesAsync())?;
+        if self.cached.is_none() || self.revision.load(Ordering::SeqCst) != self.seen {
+            // Metadata for one track arrives as a burst of property notifications,
+            // so a single async read races the next one. Re-read until the
+            // revision holds still instead of discarding the result and rebuilding
+            // the whole session; only a genuinely thrashing source stays retryable.
+            let mut settled = None;
+            for _ in 0..METADATA_ATTEMPTS {
+                let revision = self.revision.load(Ordering::SeqCst);
+                let properties = complete!(session.TryGetMediaPropertiesAsync())?;
+                if revision == self.revision.load(Ordering::SeqCst)
+                    && self.manager.GetCurrentSession().ok().as_ref() == Some(session)
+                {
+                    settled = Some((revision, properties));
+                    break;
+                }
+            }
+            let Some((revision, properties)) = settled else {
+                return Err(windows::core::Error::new(
+                    windows::core::HRESULT(0x8000000Au32 as i32),
+                    "Media changed during read",
+                ));
+            };
             let player_id = session.SourceAppUserModelId()?.to_string();
             let player_name = AppInfo::GetFromAppUserModelId(&HSTRING::from(&player_id))
                 .and_then(|a| a.DisplayInfo())
@@ -169,15 +198,10 @@ impl WindowsMedia {
                 .map(|n| n.to_string())
                 .unwrap_or_else(|_| player_id.trim_end_matches(".exe").to_string());
             let artwork = artwork(&properties);
-            // A session/metadata event during an async read invalidates the whole result.
-            if revision != self.revision.load(Ordering::SeqCst)
-                || self.manager.GetCurrentSession().ok().as_ref() != Some(session)
-            {
-                return Err(windows::core::Error::new(
-                    windows::core::HRESULT(0x8000000Au32 as i32),
-                    "Media changed during read",
-                ));
-            }
+            // Resolving the player window walks every process and top-level
+            // window, so sample it once per metadata read instead of on every
+            // timeline tick that only refreshes playing state.
+            let open_player = player_window(&player_id).is_some();
             self.cached = Some(MediaData {
                 session_id: format!("session-{}", self.serial),
                 track_id: format!("track-{}-{revision}", self.serial),
@@ -193,6 +217,14 @@ impl WindowsMedia {
                     MediaAvailability::Unavailable,
                     "No unambiguous application audio session",
                 ),
+                shuffle: MediaValue::absent(
+                    MediaAvailability::Unavailable,
+                    "No playback mode information yet",
+                ),
+                repeat: MediaValue::absent(
+                    MediaAvailability::Unavailable,
+                    "No playback mode information yet",
+                ),
                 favorite: MediaValue::absent(
                     MediaAvailability::Unsupported,
                     "Favorites require a Spotify session",
@@ -205,14 +237,15 @@ impl WindowsMedia {
                     seek: false,
                     volume: false,
                     mute: false,
+                    shuffle: false,
+                    repeat: false,
                     favorite: false,
-                    open_player: false,
+                    open_player,
                 },
             });
             self.seen = revision;
         }
         let data = self.cached.as_mut().unwrap();
-        data.capabilities.open_player = player_window(&data.player_id).is_some();
         let playback = session.GetPlaybackInfo()?;
         let status = playback.PlaybackStatus()?;
         if status == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Closed {
@@ -234,6 +267,13 @@ impl WindowsMedia {
         } else {
             controls.IsPlayEnabled().unwrap_or(false)
         };
+        // Shuffle and repeat are optional GSMTC playback properties. A player
+        // that reports no state keeps the capability off and the UI disables
+        // the control instead of inventing a value.
+        data.shuffle = playback_flag(playback.IsShuffleActive(), "Player does not expose shuffle");
+        data.repeat = playback_repeat(playback.AutoRepeatMode(), "Player does not expose repeat");
+        data.capabilities.shuffle = data.shuffle.status == MediaAvailability::Ready;
+        data.capabilities.repeat = data.repeat.status == MediaAvailability::Ready;
         data.progress = match session.GetTimelineProperties() {
             Ok(t) => timeline(&t, &playback),
             Err(_) => MediaValue::absent(MediaAvailability::Error, "Cannot read media timeline"),
@@ -244,25 +284,39 @@ impl WindowsMedia {
                 .value
                 .as_ref()
                 .is_some_and(|p| p.max_seek_ms > p.min_seek_ms);
-        // Resolve across active render endpoints. Ambiguity always disables volume.
-        let next = unsafe {
-            find_audio(
-                &data.player_id,
-                self.audio.as_ref().map(|a| a.id.as_str()),
-                self.tx.clone(),
-            )
-        };
+        // Resolving a session enumerates every render endpoint and process, so
+        // reuse the matched session until Core Audio reports a change. Ambiguity
+        // still disables volume: a new session sets the dirty flag and forces a
+        // fresh resolution.
+        let expired = self.audio.as_ref().is_some_and(|audio| unsafe {
+            audio
+                .control
+                .GetState()
+                .map_or(true, |state| state == AudioSessionStateExpired)
+        });
         let mut audio_error = None;
-        match next {
-            Ok(Some(audio)) => {
-                if self.audio.as_ref().is_none_or(|old| old.id != audio.id) {
-                    self.audio = Some(audio);
+        if audio_resolution_needed(
+            self.audio.is_some(),
+            audio_changed,
+            expired,
+            self.audio_source != data.player_id,
+        ) {
+            self.audio_source = data.player_id.clone();
+            let next = unsafe {
+                find_audio(
+                    &data.player_id,
+                    self.audio.as_ref().map(|a| a.id.as_str()),
+                    self.tx.clone(),
+                    self.audio_dirty.clone(),
+                )
+            };
+            match next {
+                Ok(Some(audio)) => self.audio = Some(audio),
+                Ok(None) => self.audio = None,
+                Err(error) => {
+                    self.audio = None;
+                    audio_error = Some(error.to_string());
                 }
-            }
-            Ok(None) => self.audio = None,
-            Err(error) => {
-                self.audio = None;
-                audio_error = Some(error.to_string());
             }
         }
         data.volume = if let Some(error) = audio_error {
@@ -355,6 +409,12 @@ impl WindowsMedia {
                     }
                     true
                 }
+                MediaAction::Shuffle { active } => {
+                    complete!(session.TryChangeShuffleActiveAsync(*active))?
+                }
+                MediaAction::Repeat { mode } => {
+                    complete!(session.TryChangeAutoRepeatModeAsync(auto_repeat(*mode)))?
+                }
                 MediaAction::Favorite { .. } => false,
             })
         })();
@@ -378,6 +438,44 @@ impl Drop for WindowsMedia {
     }
 }
 
+/// A missing GSMTC `IReference` means the player never reports that property.
+fn playback_flag(value: windows::core::Result<IReference<bool>>, reason: &str) -> MediaValue<bool> {
+    match value.and_then(|flag| flag.Value()) {
+        Ok(value) => MediaValue::ready(value),
+        Err(_) => MediaValue::absent(MediaAvailability::Unsupported, reason),
+    }
+}
+fn playback_repeat(
+    value: windows::core::Result<IReference<MediaPlaybackAutoRepeatMode>>,
+    reason: &str,
+) -> MediaValue<RepeatMode> {
+    match value
+        .and_then(|mode| mode.Value())
+        .ok()
+        .and_then(repeat_mode)
+    {
+        Some(mode) => MediaValue::ready(mode),
+        None => MediaValue::absent(MediaAvailability::Unsupported, reason),
+    }
+}
+fn repeat_mode(value: MediaPlaybackAutoRepeatMode) -> Option<RepeatMode> {
+    if value == MediaPlaybackAutoRepeatMode::None {
+        Some(RepeatMode::None)
+    } else if value == MediaPlaybackAutoRepeatMode::Track {
+        Some(RepeatMode::Track)
+    } else if value == MediaPlaybackAutoRepeatMode::List {
+        Some(RepeatMode::List)
+    } else {
+        None
+    }
+}
+fn auto_repeat(mode: RepeatMode) -> MediaPlaybackAutoRepeatMode {
+    match mode {
+        RepeatMode::None => MediaPlaybackAutoRepeatMode::None,
+        RepeatMode::Track => MediaPlaybackAutoRepeatMode::Track,
+        RepeatMode::List => MediaPlaybackAutoRepeatMode::List,
+    }
+}
 fn timeline(
     t: &GlobalSystemMediaTransportControlsSessionTimelineProperties,
     playback: &GlobalSystemMediaTransportControlsSessionPlaybackInfo,
@@ -469,18 +567,27 @@ struct AudioDiscovery {
     device_events: IMMNotificationClient,
     sessions: Vec<(String, IAudioSessionManager2, IAudioSessionNotification)>,
     tx: Sender<crate::media::Request>,
+    dirty: Arc<AtomicBool>,
 }
 impl AudioDiscovery {
-    unsafe fn new(tx: Sender<crate::media::Request>) -> windows::core::Result<Self> {
+    unsafe fn new(
+        tx: Sender<crate::media::Request>,
+        dirty: Arc<AtomicBool>,
+    ) -> windows::core::Result<Self> {
         let enumerator: IMMDeviceEnumerator =
             CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)?;
-        let device_events: IMMNotificationClient = DeviceEvents { tx: tx.clone() }.into();
+        let device_events: IMMNotificationClient = DeviceEvents {
+            tx: tx.clone(),
+            dirty: dirty.clone(),
+        }
+        .into();
         enumerator.RegisterEndpointNotificationCallback(&device_events)?;
         let mut this = Self {
             enumerator,
             device_events,
             sessions: vec![],
             tx,
+            dirty,
         };
         this.reconcile()?;
         Ok(this)
@@ -505,6 +612,7 @@ impl AudioDiscovery {
             let _ = manager.GetSessionEnumerator()?.GetCount()?;
             let events: IAudioSessionNotification = SessionEvents {
                 tx: self.tx.clone(),
+                dirty: self.dirty.clone(),
             }
             .into();
             manager.RegisterSessionNotification(&events)?;
@@ -536,12 +644,14 @@ impl Drop for AudioDiscovery {
 #[implement(IAudioSessionNotification)]
 struct SessionEvents {
     tx: Sender<crate::media::Request>,
+    dirty: Arc<AtomicBool>,
 }
 impl IAudioSessionNotification_Impl for SessionEvents_Impl {
     fn OnSessionCreated(
         &self,
         _: windows::core::Ref<IAudioSessionControl>,
     ) -> windows::core::Result<()> {
+        self.dirty.store(true, Ordering::SeqCst);
         let _ = self.tx.send(crate::media::Request::Wake);
         Ok(())
     }
@@ -549,9 +659,11 @@ impl IAudioSessionNotification_Impl for SessionEvents_Impl {
 #[implement(IMMNotificationClient)]
 struct DeviceEvents {
     tx: Sender<crate::media::Request>,
+    dirty: Arc<AtomicBool>,
 }
 impl DeviceEvents_Impl {
     fn wake(&self) -> windows::core::Result<()> {
+        self.dirty.store(true, Ordering::SeqCst);
         let _ = self.tx.send(crate::media::Request::Wake);
         Ok(())
     }
@@ -637,6 +749,7 @@ unsafe fn find_audio(
     source: &str,
     preferred: Option<&str>,
     tx: Sender<crate::media::Request>,
+    dirty: Arc<AtomicBool>,
 ) -> windows::core::Result<Option<PlayerAudio>> {
     let enumerator: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)?;
     let devices = enumerator.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE)?;
@@ -675,7 +788,7 @@ unsafe fn find_audio(
         return Ok(None);
     };
     let (id, _, control, volume) = matches.swap_remove(index);
-    let events: IAudioSessionEvents = AudioEvents { tx }.into();
+    let events: IAudioSessionEvents = AudioEvents { tx, dirty }.into();
     control.RegisterAudioSessionNotification(&events)?;
     Ok(Some(PlayerAudio {
         id,
@@ -703,6 +816,20 @@ fn select_audio(active: &[bool], preferred: Option<usize>) -> Option<usize> {
         _ => None,
     }
 }
+/// A matched application session is reused across reads. Only a Core Audio
+/// notification, an expired session, a lost match or a different player forces
+/// a fresh resolution.
+fn audio_resolution_needed(
+    has_match: bool,
+    dirty: bool,
+    expired: bool,
+    source_changed: bool,
+) -> bool {
+    if !has_match {
+        return true;
+    }
+    dirty || expired || source_changed
+}
 #[cfg(test)]
 mod audio_tests {
     use super::*;
@@ -715,6 +842,25 @@ mod audio_tests {
         assert_eq!(select_audio(&[false], None), Some(0));
         assert_eq!(select_audio(&[], None), None);
         assert_eq!(select_audio(&[false, false], Some(8)), None);
+    }
+    #[test]
+    fn reuses_a_healthy_match_and_resolves_only_on_change() {
+        assert!(!audio_resolution_needed(true, false, false, false));
+        assert!(audio_resolution_needed(true, true, false, false));
+        assert!(audio_resolution_needed(true, false, true, false));
+        assert!(audio_resolution_needed(true, false, false, true));
+        assert!(audio_resolution_needed(false, false, false, false));
+    }
+}
+#[cfg(test)]
+mod playback_tests {
+    use super::*;
+    #[test]
+    fn maps_repeat_modes_without_inventing_values() {
+        for mode in [RepeatMode::None, RepeatMode::Track, RepeatMode::List] {
+            assert_eq!(repeat_mode(auto_repeat(mode)), Some(mode));
+        }
+        assert_eq!(repeat_mode(MediaPlaybackAutoRepeatMode(9)), None);
     }
 }
 pub fn audio_diagnostics(source: &str) -> serde_json::Value {
@@ -745,9 +891,11 @@ pub fn audio_diagnostics(source: &str) -> serde_json::Value {
 #[implement(IAudioSessionEvents)]
 struct AudioEvents {
     tx: Sender<crate::media::Request>,
+    dirty: Arc<AtomicBool>,
 }
 impl AudioEvents_Impl {
     fn wake(&self) -> windows::core::Result<()> {
+        self.dirty.store(true, Ordering::SeqCst);
         let _ = self.tx.send(crate::media::Request::Wake);
         Ok(())
     }

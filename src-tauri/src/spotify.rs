@@ -639,6 +639,10 @@ impl Spotify {
             return;
         }
         let i = self.inner.lock().unwrap();
+        // Favorites belong to the player, not to a single track: a connected
+        // Spotify session keeps the control available while a new track is still
+        // being correlated, and only the value stays unknown until it is cached.
+        data.capabilities.favorite = i.credentials.is_some();
         if let Some((_, _, uri, saved)) = i
             .cache
             .as_ref()
@@ -646,11 +650,16 @@ impl Spotify {
         {
             data.spotify_uri = Some(uri.clone());
             data.favorite = MediaValue::ready(*saved);
-            data.capabilities.favorite = true;
         } else {
+            // `Ready` describes the cached track, never the service. After a track
+            // change the previous correlation is still cached, so the service stays
+            // `Ready` while it names another track; the favorite for this one is
+            // merely unknown. `Ready` with no value is not a valid payload.
             data.favorite = MediaValue::absent(
                 if i.credentials.is_none() {
                     MediaAvailability::Unauthenticated
+                } else if i.availability == MediaAvailability::Ready {
+                    MediaAvailability::Unavailable
                 } else {
                     i.availability.clone()
                 },
@@ -923,6 +932,45 @@ mod tests {
         assert!(is_spotify("spotatui.exe"));
         assert!(!is_spotify("fake-spotify.exe"));
         assert!(!is_spotify("chrome.exe"));
+    }
+    #[test]
+    fn favorite_is_never_ready_without_a_cached_track() {
+        let store = Arc::new(MemoryStore::default());
+        store
+            .write(&Credentials {
+                client_id: "test-client".into(),
+                access_token: "private-access".into(),
+                refresh_token: "private-refresh".into(),
+                expires_at: now() + 3600,
+            })
+            .unwrap();
+        let spotify = Spotify::with_store(store);
+        // A correlation that succeeded for the previous track leaves the service
+        // Ready while the cache still names that track.
+        {
+            let mut inner = spotify.inner.lock().unwrap();
+            inner.availability = MediaAvailability::Ready;
+            inner.cache = None;
+        }
+        let mut data = fixture();
+        spotify.enrich(&mut data);
+        // A connected session keeps the control available for every track…
+        assert!(data.capabilities.favorite);
+        // …while a track that is not correlated yet stays unknown, never ready
+        // with no value (which would invalidate the whole payload).
+        assert_eq!(data.favorite.status, MediaAvailability::Unavailable);
+        assert!(data.favorite.value.is_none());
+        spotify.stop();
+    }
+    #[test]
+    fn favorite_capability_requires_a_connected_account() {
+        let spotify = Spotify::with_store(Arc::new(MemoryStore::default()));
+        let mut data = fixture();
+        spotify.enrich(&mut data);
+        assert!(!data.capabilities.favorite);
+        assert_eq!(data.favorite.status, MediaAvailability::Unauthenticated);
+        assert!(data.favorite.value.is_none());
+        spotify.stop();
     }
     fn playback() -> Value {
         serde_json::json!({"is_playing":true,"progress_ms":32000,"item":{"name":"Dragonaut","artists":[{"name":"Sleep"}],"album":{"name":"Holy Mountain"},"duration_ms":343000,"uri":"spotify:track:0123456789012345678901"}})
