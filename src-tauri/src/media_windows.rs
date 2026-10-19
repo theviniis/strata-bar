@@ -1,4 +1,4 @@
-use windows_future::{AsyncStatus, IAsyncInfo};
+use windows_future::{AsyncStatus, IAsyncInfo, IAsyncOperation};
 // WinRT media sessions and per-application Core Audio. All handles stay native.
 use crate::media_contract::*;
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -15,7 +15,7 @@ use windows::{
     ApplicationModel::AppInfo,
     Foundation::{IReference, TypedEventHandler},
     Media::{Control::*, MediaPlaybackAutoRepeatMode},
-    Storage::Streams::DataReader,
+    Storage::Streams::{DataReader, IRandomAccessStreamWithContentType},
     Win32::{
         Foundation::{CloseHandle, HWND, LPARAM},
         Media::Audio::*,
@@ -48,9 +48,51 @@ macro_rules! complete {
         wait(&operation.cast::<IAsyncInfo>()?, || operation.GetResults())
     }};
 }
-/// GSMTC reports one track change as several property notifications; re-read
-/// until the revision stops moving so the burst resolves in one settled read.
-const METADATA_ATTEMPTS: usize = 8;
+fn poll_result<T>(
+    info: &IAsyncInfo,
+    result: impl FnOnce() -> windows::core::Result<T>,
+    deadline: Instant,
+) -> windows::core::Result<Option<T>> {
+    if info.Status()? == AsyncStatus::Started {
+        if Instant::now() >= deadline {
+            let _ = info.Cancel();
+            return Err(windows::core::Error::new(
+                windows::core::HRESULT(0x800705B4u32 as i32),
+                "Media operation timed out",
+            ));
+        }
+        return Ok(None);
+    }
+    result().map(Some)
+}
+struct Pending<T: windows::core::RuntimeType + 'static> {
+    operation: IAsyncOperation<T>,
+    info: IAsyncInfo,
+    deadline: Instant,
+}
+impl<T: windows::core::RuntimeType + 'static> Pending<T> {
+    fn new(operation: IAsyncOperation<T>) -> windows::core::Result<Self> {
+        Ok(Self {
+            info: operation.cast()?,
+            operation,
+            deadline: Instant::now() + Duration::from_secs(3),
+        })
+    }
+    fn poll(&self) -> windows::core::Result<Option<T>> {
+        poll_result(&self.info, || self.operation.GetResults(), self.deadline)
+    }
+}
+impl<T: windows::core::RuntimeType + 'static> Drop for Pending<T> {
+    fn drop(&mut self) {
+        if self
+            .info
+            .Status()
+            .is_ok_and(|status| status == AsyncStatus::Started)
+        {
+            let _ = self.info.Cancel();
+        }
+    }
+}
 
 pub struct WindowsMedia {
     manager: GlobalSystemMediaTransportControlsSessionManager,
@@ -61,6 +103,11 @@ pub struct WindowsMedia {
     seen: u64,
     serial: u64,
     cached: Option<MediaData>,
+    metadata: Option<(
+        u64,
+        Pending<GlobalSystemMediaTransportControlsSessionMediaProperties>,
+    )>,
+    artwork: Option<ArtworkRead>,
     tx: Sender<crate::media::Request>,
     audio: Option<PlayerAudio>,
     audio_source: String,
@@ -80,6 +127,8 @@ impl WindowsMedia {
             seen: 0,
             serial: 0,
             cached: None,
+            metadata: None,
+            artwork: None,
             tx,
             audio: None,
             audio_source: String::new(),
@@ -105,6 +154,8 @@ impl WindowsMedia {
         Ok(this)
     }
     fn clear_session(&mut self) {
+        self.metadata = None;
+        self.artwork = None;
         self.audio = None;
         if let Some(session) = self.session.take() {
             for (kind, token) in self.session_tokens.drain(..) {
@@ -153,6 +204,28 @@ impl WindowsMedia {
     pub fn snapshot(&self) -> Option<MediaData> {
         self.cached.clone()
     }
+    pub fn has_pending_read(&self) -> bool {
+        self.metadata.is_some()
+            || self.artwork.is_some()
+            || (self.session.is_some() && self.revision.load(Ordering::SeqCst) != self.seen)
+    }
+    /// Blocking diagnostics only. The interactive worker always uses `read`.
+    pub fn read_settled(&mut self) -> windows::core::Result<Option<MediaData>> {
+        let deadline = Instant::now() + Duration::from_secs(9);
+        loop {
+            let data = self.read()?;
+            if !self.has_pending_read() {
+                return Ok(data);
+            }
+            if Instant::now() >= deadline {
+                return Err(windows::core::Error::new(
+                    windows::core::HRESULT(0x800705B4u32 as i32),
+                    "Media did not settle",
+                ));
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
     pub fn action_snapshot(&self) -> Result<MediaData, String> {
         let session = self.session.as_ref().ok_or("Media session closed")?;
         if self.manager.GetCurrentSession().ok().as_ref() != Some(session)
@@ -165,50 +238,53 @@ impl WindowsMedia {
             .ok_or("No current media snapshot".into())
     }
     pub fn read(&mut self) -> windows::core::Result<Option<MediaData>> {
-        let audio_changed = self.audio_dirty.swap(false, Ordering::SeqCst);
-        if self.discovery.is_none() {
-            self.discovery =
-                unsafe { AudioDiscovery::new(self.tx.clone(), self.audio_dirty.clone()).ok() };
-        } else if audio_changed {
-            if let Some(discovery) = &mut self.discovery {
-                // A device or session notification changes the endpoint set; a
-                // metadata, playback or timeline read reuses the registrations.
-                let _ = unsafe { discovery.reconcile() };
-            }
-        }
         self.reconcile()?;
         let Some(session) = self.session.as_ref() else {
             return Ok(None);
         };
         if self.cached.is_none() || self.revision.load(Ordering::SeqCst) != self.seen {
-            // Metadata for one track arrives as a burst of property notifications,
-            // so a single async read races the next one. Re-read until the
-            // revision holds still instead of discarding the result and rebuilding
-            // the whole session; only a genuinely thrashing source stays retryable.
-            let mut settled = None;
-            for _ in 0..METADATA_ATTEMPTS {
-                let revision = self.revision.load(Ordering::SeqCst);
-                let properties = complete!(session.TryGetMediaPropertiesAsync())?;
-                if revision == self.revision.load(Ordering::SeqCst)
-                    && self.manager.GetCurrentSession().ok().as_ref() == Some(session)
-                {
-                    settled = Some((revision, properties));
-                    break;
-                }
+            self.artwork = None;
+            if self
+                .metadata
+                .as_ref()
+                .is_some_and(|(revision, _)| *revision != self.revision.load(Ordering::SeqCst))
+            {
+                self.metadata = None;
             }
-            let Some((revision, properties)) = settled else {
-                return Err(windows::core::Error::new(
-                    windows::core::HRESULT(0x8000000Au32 as i32),
-                    "Media changed during read",
+            if self.metadata.is_none() {
+                self.metadata = Some((
+                    self.revision.load(Ordering::SeqCst),
+                    Pending::new(session.TryGetMediaPropertiesAsync()?)?,
                 ));
+            }
+            let pending = self.metadata.as_ref().unwrap();
+            let revision = pending.0;
+            let polled = pending.1.poll();
+            let properties = match polled {
+                Ok(Some(properties)) => {
+                    self.metadata = None;
+                    properties
+                }
+                Ok(None) => return Ok(self.cached.clone()),
+                Err(error) => {
+                    self.metadata = None;
+                    return Err(error);
+                }
             };
+            // A burst can supersede an in-flight read. Discard it, then start
+            // the newest revision on the next pass; never spin here.
+            if revision != self.revision.load(Ordering::SeqCst)
+                || self.manager.GetCurrentSession().ok().as_ref() != Some(session)
+            {
+                return Ok(self.cached.clone());
+            }
             let player_id = session.SourceAppUserModelId()?.to_string();
             let player_name = AppInfo::GetFromAppUserModelId(&HSTRING::from(&player_id))
                 .and_then(|a| a.DisplayInfo())
                 .and_then(|d| d.DisplayName())
                 .map(|n| n.to_string())
                 .unwrap_or_else(|_| player_id.trim_end_matches(".exe").to_string());
-            let artwork = artwork(&properties);
+            self.artwork = ArtworkRead::new(&properties).ok();
             let title = properties.Title()?.to_string();
             let artist = properties.Artist()?.to_string();
             let album = properties.AlbumTitle()?.to_string();
@@ -230,6 +306,12 @@ impl WindowsMedia {
             // window, so sample it once per metadata read instead of on every
             // timeline tick that only refreshes playing state.
             let open_player = player_window(&player_id).is_some();
+            let artwork = self
+                .cached
+                .as_ref()
+                .filter(|old| old.track_id == track_id)
+                .map(|old| old.artwork.clone())
+                .unwrap_or_else(missing_artwork);
             self.cached = Some(MediaData {
                 session_id: format!("session-{}", self.serial),
                 track_id,
@@ -273,10 +355,36 @@ impl WindowsMedia {
             });
             self.seen = revision;
         }
+        // Consume audio notifications only once this pass can resolve audio.
+        // A pending metadata read must not swallow a device/session change.
+        let audio_changed = self.audio_dirty.swap(false, Ordering::SeqCst);
+        if self.discovery.is_none() {
+            self.discovery =
+                unsafe { AudioDiscovery::new(self.tx.clone(), self.audio_dirty.clone()).ok() };
+        } else if audio_changed {
+            if let Some(discovery) = &mut self.discovery {
+                let _ = unsafe { discovery.reconcile() };
+            }
+        }
+        if let Some(artwork) = self.artwork.as_mut() {
+            match artwork.poll() {
+                Ok(Some(value)) => {
+                    self.cached.as_mut().unwrap().artwork = value;
+                    self.artwork = None;
+                }
+                Ok(None) => {}
+                Err(_) => {
+                    self.artwork = None;
+                }
+            }
+        }
         let data = self.cached.as_mut().unwrap();
         let playback = session.GetPlaybackInfo()?;
         let status = playback.PlaybackStatus()?;
         if status == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Closed {
+            self.metadata = None;
+            self.artwork = None;
+            self.seen = self.revision.load(Ordering::SeqCst);
             self.cached = None;
             return Ok(None);
         }
@@ -532,41 +640,66 @@ fn timeline(
         ),
     }
 }
-fn artwork(p: &GlobalSystemMediaTransportControlsSessionMediaProperties) -> MediaValue<String> {
-    let result = (|| -> windows::core::Result<Option<String>> {
-        let stream = complete!(p.Thumbnail()?.OpenReadAsync())?;
-        let size = stream.Size()?;
-        if size == 0 || size > 5 * 1024 * 1024 {
-            return Ok(None);
-        }
-        let input = stream.GetInputStreamAt(0)?;
-        let reader = DataReader::CreateDataReader(&input)?;
-        let loaded = complete!(reader.LoadAsync(size as u32))?;
-        let mut bytes = vec![0; loaded as usize];
-        reader.ReadBytes(&mut bytes)?;
-        let mime = if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
-            "image/png"
-        } else if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
-            "image/jpeg"
-        } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
-            "image/gif"
-        } else if bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP") {
-            "image/webp"
-        } else {
-            return Ok(None);
-        };
-        Ok(Some(format!(
-            "data:{mime};base64,{}",
-            STANDARD.encode(bytes)
-        )))
-    })();
-    match result {
-        Ok(Some(value)) => MediaValue::ready(value),
-        _ => MediaValue::absent(
-            MediaAvailability::Unavailable,
-            "Artwork missing, invalid or larger than 5 MiB",
-        ),
+enum ArtworkRead {
+    Opening(Pending<IRandomAccessStreamWithContentType>),
+    Loading {
+        reader: DataReader,
+        pending: Pending<u32>,
+    },
+}
+impl ArtworkRead {
+    fn new(
+        properties: &GlobalSystemMediaTransportControlsSessionMediaProperties,
+    ) -> windows::core::Result<Self> {
+        Ok(Self::Opening(Pending::new(
+            properties.Thumbnail()?.OpenReadAsync()?,
+        )?))
     }
+    fn poll(&mut self) -> windows::core::Result<Option<MediaValue<String>>> {
+        match self {
+            Self::Opening(pending) => {
+                let Some(stream) = pending.poll()? else {
+                    return Ok(None);
+                };
+                let size = stream.Size()?;
+                if size == 0 || size > 5 * 1024 * 1024 {
+                    return Ok(Some(missing_artwork()));
+                }
+                let reader = DataReader::CreateDataReader(&stream.GetInputStreamAt(0)?)?;
+                let pending = Pending::new(reader.LoadAsync(size as u32)?)?;
+                *self = Self::Loading { reader, pending };
+                Ok(None)
+            }
+            Self::Loading { reader, pending } => {
+                let Some(loaded) = pending.poll()? else {
+                    return Ok(None);
+                };
+                let mut bytes = vec![0; loaded as usize];
+                reader.ReadBytes(&mut bytes)?;
+                Ok(Some(decode_artwork(&bytes)))
+            }
+        }
+    }
+}
+fn decode_artwork(bytes: &[u8]) -> MediaValue<String> {
+    let mime = if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        "image/png"
+    } else if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
+        "image/jpeg"
+    } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+        "image/gif"
+    } else if bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP") {
+        "image/webp"
+    } else {
+        return missing_artwork();
+    };
+    MediaValue::ready(format!("data:{mime};base64,{}", STANDARD.encode(bytes)))
+}
+fn missing_artwork() -> MediaValue<String> {
+    MediaValue::absent(
+        MediaAvailability::Unavailable,
+        "Artwork missing, invalid or larger than 5 MiB",
+    )
 }
 
 struct PlayerAudio {
@@ -870,6 +1003,137 @@ mod audio_tests {
 mod playback_tests {
     use super::*;
     #[test]
+    fn pending_reads_complete_or_time_out_without_waiting() {
+        let ready = Pending::new(IAsyncOperation::<u32>::ready(Ok(7))).unwrap();
+        assert_eq!(ready.poll().unwrap(), Some(7));
+        let (release, gate) = std::sync::mpsc::channel();
+        let mut pending = Pending::new(IAsyncOperation::<u32>::spawn(move || {
+            let _ = gate.recv_timeout(Duration::from_secs(1));
+            Ok(7)
+        }))
+        .unwrap();
+        assert_eq!(pending.poll().unwrap(), None);
+        pending.deadline = Instant::now();
+        let timed_out = pending.poll();
+        let _ = release.send(());
+        assert_eq!(timed_out.unwrap_err().code().0 as u32, 0x800705B4);
+    }
+    #[test]
+    #[ignore = "Requires a running player; toggles playback while a gated artwork operation remains pending, then restores it"]
+    fn live_controls_respond_while_artwork_is_pending() {
+        unsafe {
+            windows::Win32::System::WinRT::RoInitialize(
+                windows::Win32::System::WinRT::RO_INIT_MULTITHREADED,
+            )
+            .unwrap();
+        }
+        let (tx, _rx) = std::sync::mpsc::channel();
+        let mut source = WindowsMedia::new(tx).unwrap();
+        let original = source.read_settled().unwrap().expect("session");
+        let session = source.session.as_ref().unwrap();
+        let properties_operation = session.TryGetMediaPropertiesAsync().unwrap();
+        let properties = wait(&properties_operation.cast().unwrap(), || {
+            properties_operation.GetResults()
+        })
+        .unwrap();
+        let (release_metadata, metadata_gate) = std::sync::mpsc::channel();
+        let revision = source.revision.fetch_add(1, Ordering::SeqCst) + 1;
+        source.metadata = Some((
+            revision,
+            Pending::new(IAsyncOperation::spawn(move || {
+                let _ = metadata_gate.recv_timeout(Duration::from_secs(5));
+                Ok(properties)
+            }))
+            .unwrap(),
+        ));
+        source.audio_dirty.store(true, Ordering::SeqCst);
+        let started = Instant::now();
+        assert!(source.read().unwrap().is_some());
+        assert!(source.metadata.is_some());
+        assert!(
+            source.audio_dirty.load(Ordering::SeqCst),
+            "pending metadata must preserve audio notifications"
+        );
+        assert!(
+            source.action_snapshot().is_err(),
+            "unread track changes must still reject stale controls immediately"
+        );
+        let metadata_read_ms = started.elapsed().as_millis();
+        let _ = release_metadata.send(());
+        assert!(
+            metadata_read_ms < 100,
+            "pending metadata blocked the command queue"
+        );
+        source.read_settled().unwrap().expect("session");
+        let (release, gate) = std::sync::mpsc::channel();
+        source.artwork = Some(ArtworkRead::Opening(
+            Pending::new(IAsyncOperation::spawn(move || {
+                let _ = gate.recv_timeout(Duration::from_secs(5));
+                Err(windows::core::Error::new(
+                    windows::core::HRESULT(0x80004004u32 as i32),
+                    "test artwork unavailable",
+                ))
+            }))
+            .unwrap(),
+        ));
+        let mut read_and_action_ms = vec![];
+        for _ in 0..2 {
+            let started = Instant::now();
+            let current = source.read().unwrap().expect("session");
+            assert!(source.artwork.is_some(), "artwork must still be loading");
+            source.act(&MediaAction::PlayPause, &current).unwrap();
+            read_and_action_ms.push(started.elapsed().as_millis());
+            let deadline = Instant::now() + Duration::from_secs(2);
+            loop {
+                let next = source.read().unwrap().expect("session");
+                if next.playback != current.playback {
+                    break;
+                }
+                assert!(Instant::now() < deadline, "player did not confirm playback");
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        }
+        let _ = release.send(());
+        assert_eq!(source.snapshot().unwrap().playback, original.playback);
+        eprintln!("pending_metadata_read_ms={metadata_read_ms} pending_artwork_read_and_action_ms={read_and_action_ms:?}");
+        assert!(read_and_action_ms.iter().all(|ms| *ms < 100));
+        source.clear_session();
+        assert!(!source.has_pending_read());
+    }
+    #[test]
+    fn pending_metadata_or_artwork_yields_to_commands() {
+        let (release, gate) = std::sync::mpsc::channel();
+        let operation = windows_future::IAsyncOperation::<u32>::spawn(move || {
+            gate.recv_timeout(Duration::from_secs(1)).map_err(|_| {
+                windows::core::Error::new(
+                    windows::core::HRESULT(0x800705B4u32 as i32),
+                    "test dependency still loading",
+                )
+            })?;
+            Ok(7)
+        });
+        let started = Instant::now();
+        let pending = poll_result(
+            &operation.cast().unwrap(),
+            || operation.GetResults(),
+            Instant::now() + Duration::from_secs(3),
+        );
+        let elapsed = started.elapsed();
+        let _ = release.send(());
+        assert!(
+            matches!(pending, Ok(None)),
+            "the worker must remain available while metadata/artwork is loading: {pending:?}"
+        );
+        assert!(
+            elapsed < Duration::from_millis(50),
+            "a pending read blocked commands for {elapsed:?}"
+        );
+        assert_eq!(
+            wait(&operation.cast().unwrap(), || operation.GetResults()).unwrap(),
+            7
+        );
+    }
+    #[test]
     #[ignore = "Requires a live media player; toggles playback twice and measures native latency"]
     fn live_transport_latency() {
         unsafe {
@@ -881,7 +1145,10 @@ mod playback_tests {
         let (tx, _rx) = std::sync::mpsc::channel();
         let mut source = WindowsMedia::new(tx).unwrap();
         let started = Instant::now();
-        let data = source.read().unwrap().expect("running media session");
+        let data = source
+            .read_settled()
+            .unwrap()
+            .expect("running media session");
         eprintln!("initial_read_ms={}", started.elapsed().as_millis());
         let mut elapsed = vec![];
         for _ in 0..2 {
@@ -901,7 +1168,7 @@ mod playback_tests {
             elapsed.push(read + action);
             let until = Instant::now() + Duration::from_secs(5);
             loop {
-                let next = source.read().unwrap().expect("session");
+                let next = source.read_settled().unwrap().expect("session");
                 if next.playback != data.playback {
                     break;
                 }
@@ -940,9 +1207,9 @@ mod playback_tests {
         }
         let (tx, _rx) = std::sync::mpsc::channel();
         let mut source = WindowsMedia::new(tx).unwrap();
-        let before = source.read().unwrap().expect("session");
+        let before = source.read_settled().unwrap().expect("session");
         source.revision.fetch_add(1, Ordering::SeqCst);
-        let after = source.read().unwrap().expect("session");
+        let after = source.read_settled().unwrap().expect("session");
         assert_eq!(before.title, after.title, "fixture changed during test");
         assert_eq!(
             before.track_id, after.track_id,
@@ -962,7 +1229,7 @@ mod playback_tests {
         let mut source = WindowsMedia::new(tx).unwrap();
         let mut slow_commands = false;
         for _ in 0..5 {
-            let data = source.read().unwrap().expect("session");
+            let data = source.read_settled().unwrap().expect("session");
             let started = Instant::now();
             source.act(&MediaAction::Next, &data).unwrap();
             let action_ms = started.elapsed().as_millis();

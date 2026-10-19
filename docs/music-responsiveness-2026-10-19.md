@@ -77,3 +77,38 @@ The running bar at the end of validation was an executable from the separate
 `startup-analyze` worktree. It was not terminated or replaced. The updated
 standalone executable is `src-tauri/target/release/strata-bar.exe` in this checkout;
 restart the bar using that executable to apply these changes.
+
+## Follow-up: immediate lookup publication and nonblocking reads
+
+Applied the two requested follow-up optimizations:
+
+- Spotify lookup completion now sends a dedicated enrichment notification to the
+  media worker. Its cached snapshot is enriched and published immediately. This
+  removes the dependency on the next one-second tick. Refreshes skipped because
+  of backoff/cache state do not trigger a notification loop.
+- Metadata fetch, artwork stream opening and artwork byte loading retain their
+  WinRT operations between passes. Pending operations return control to the
+  request queue; a 20 ms timer advances them only while needed. Text/playback are
+  published before artwork finishes. New metadata revisions supersede pending
+  reads, native stale-track rejection remains enforced, and Core Audio dirty
+  notifications remain intact while metadata is pending. Session teardown cancels
+  pending operations. The settled/blocking read remains diagnostic-only.
+
+The lookup regression used a local HTTP server and the actual Spotify worker:
+the result was already cached, but notification failed before the change; it now
+arrives before the test's 250 ms deadline without a media tick. A real WinRT async
+operation held behind a channel gate previously blocked the read until the
+one-second test dependency deadline; it now returns pending within 50 ms. Tests
+also cover completion, timeout, enrichment/Windows-event coalescing and retaining
+native refresh requirements.
+
+Follow-up validation: 114 native tests passed (eight opt-in tests ignored),
+203 frontend tests passed, and `pnpm exec tauri build --no-bundle` succeeded.
+The updated release probe returned a valid `unavailable` event, consistent with
+the absence of a player. The explicit live test
+`live_controls_respond_while_artwork_is_pending` could not run to its assertions:
+there was no running music player/current GSMTC session. The previous release's
+probe independently also returned `unavailable`. No new real-player latency
+measurement is claimed for this follow-up. The opt-in test covers gated metadata,
+audio notifications and real playback controls while artwork is gated, restoring
+the original playback state afterward.

@@ -65,6 +65,7 @@ pub struct Spotify {
     tx: mpsc::SyncSender<MediaData>,
     client: Client,
     api_base: String,
+    notify: Arc<dyn Fn() + Send + Sync>,
     api_lock: Arc<Mutex<()>>,
     store: Arc<dyn CredentialStore>,
 }
@@ -217,10 +218,22 @@ fn tokens(
     })
 }
 impl Spotify {
-    pub fn start() -> Self {
-        Self::with_store(Arc::new(WindowsCredentials))
+    pub fn start(notify: impl Fn() + Send + Sync + 'static) -> Self {
+        Self::with_options(
+            Arc::new(WindowsCredentials),
+            "https://api.spotify.com/v1".into(),
+            Arc::new(notify),
+        )
     }
+    #[cfg(test)]
     fn with_store(store: Arc<dyn CredentialStore>) -> Self {
+        Self::with_options(store, "https://api.spotify.com/v1".into(), Arc::new(|| {}))
+    }
+    fn with_options(
+        store: Arc<dyn CredentialStore>,
+        api_base: String,
+        notify: Arc<dyn Fn() + Send + Sync>,
+    ) -> Self {
         let credentials = store.read();
         let availability = if credentials.is_some() {
             MediaAvailability::Unavailable
@@ -255,7 +268,8 @@ impl Spotify {
             tx,
             api_lock: Arc::new(Mutex::new(())),
             client: http_client(),
-            api_base: "https://api.spotify.com/v1".into(),
+            api_base,
+            notify,
             store,
         };
         let worker = this.clone();
@@ -264,7 +278,11 @@ impl Spotify {
                 break;
             }
             match rx.recv_timeout(Duration::from_secs(1)) {
-                Ok(data) => worker.refresh(&data),
+                Ok(data) => {
+                    if worker.refresh(&data) {
+                        (worker.notify)();
+                    }
+                }
                 Err(mpsc::RecvTimeoutError::Timeout) => {}
                 Err(_) => break,
             }
@@ -569,7 +587,7 @@ impl Spotify {
         }
         let _ = self.tx.try_send(data.clone());
     }
-    fn refresh(&self, data: &MediaData) {
+    fn refresh(&self, data: &MediaData) -> bool {
         let _api = self.api_lock.lock().unwrap();
         let generation = self.inner.lock().unwrap().generation;
         {
@@ -579,7 +597,7 @@ impl Spotify {
                 || i.credentials.is_none()
                 || Instant::now() < i.retry_at
             {
-                return;
+                return false;
             }
             i.retry_at = Instant::now() + Duration::from_secs(5);
         }
@@ -625,7 +643,7 @@ impl Spotify {
             if i.generation != generation
                 || i.active.as_ref() != Some(&(data.session_id.clone(), data.track_id.clone()))
             {
-                return;
+                return false;
             }
             i.cache = None;
             i.failures = (i.failures + 1).min(6);
@@ -634,7 +652,7 @@ impl Spotify {
                 i.failures = 0;
                 i.retry_at = Instant::now() + Duration::from_secs(5);
                 i.status.error = None;
-                return;
+                return true;
             } else if i.availability != MediaAvailability::Unauthenticated {
                 i.availability = MediaAvailability::Error;
             }
@@ -642,6 +660,7 @@ impl Spotify {
             i.retry_at = i.retry_at.max(Instant::now() + delay);
             i.status.error = Some(error);
         }
+        true
     }
     pub fn enrich(&self, data: &mut MediaData) {
         if !is_spotify(&data.player_id) {
@@ -779,6 +798,68 @@ fn correlate(data: &MediaData, playback: &Value) -> Option<String> {
 mod tests {
     use super::*;
     #[test]
+    fn favorite_lookup_notifies_without_waiting_for_the_media_tick() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = std::thread::spawn(move || {
+            for body in [playback().to_string(), "[false]".to_string()] {
+                let (mut stream, _) = listener.accept().unwrap();
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(2)))
+                    .unwrap();
+                let mut bytes = vec![];
+                while !bytes.ends_with(b"\r\n\r\n") {
+                    let mut byte = [0];
+                    assert_eq!(stream.read(&mut byte).unwrap(), 1);
+                    bytes.push(byte[0]);
+                }
+                write!(
+                    stream,
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                )
+                .unwrap();
+            }
+        });
+        let store = Arc::new(MemoryStore::default());
+        store
+            .write(&Credentials {
+                client_id: "test".into(),
+                access_token: "test".into(),
+                refresh_token: "test".into(),
+                expires_at: now() + 3600,
+            })
+            .unwrap();
+        let (tx, rx) = mpsc::channel();
+        let spotify = Spotify::with_options(
+            store,
+            format!("http://{address}"),
+            Arc::new(move || {
+                let _ = tx.send(());
+            }),
+        );
+        let mut data = fixture();
+        spotify.enqueue(&data);
+        server.join().unwrap();
+        let notification = rx.recv_timeout(Duration::from_millis(250));
+        spotify.enrich(&mut data);
+        assert!(
+            !spotify.refresh(&data),
+            "cached ticks must not start another request or notification loop"
+        );
+        assert!(matches!(rx.try_recv(), Err(mpsc::TryRecvError::Empty)));
+        spotify.stop();
+        assert_eq!(
+            data.favorite.value,
+            Some(false),
+            "the HTTP result is already available"
+        );
+        assert!(
+            notification.is_ok(),
+            "a completed lookup must wake the media worker before its one-second tick"
+        );
+    }
+    #[test]
     #[ignore = "Requires a running Spotify player and a connected Strata account; toggles favorite and restores it"]
     fn live_favorite_lookup_and_roundtrip_latency() {
         unsafe {
@@ -789,8 +870,11 @@ mod tests {
         }
         let (tx, _rx) = mpsc::channel();
         let mut source = crate::media_windows::WindowsMedia::new(tx).unwrap();
-        let mut data = source.read().unwrap().expect("running media session");
-        let spotify = Spotify::start();
+        let mut data = source
+            .read_settled()
+            .unwrap()
+            .expect("running media session");
+        let spotify = Spotify::start(|| {});
         assert_eq!(
             spotify.status().state,
             "connected",
@@ -844,6 +928,9 @@ mod tests {
                     }
                     Err(error) => panic!("{error}"),
                 };
+                // Accepted sockets can inherit the listener's nonblocking mode
+                // on Windows. Header reads use their own bounded timeout.
+                stream.set_nonblocking(false).unwrap();
                 stream
                     .set_read_timeout(Some(Duration::from_secs(2)))
                     .unwrap();
