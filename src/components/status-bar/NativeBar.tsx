@@ -41,8 +41,8 @@ export default function NativeBar() {
             <Volume />
             <Microphone />
             <BarVerticalSeparator />
-            <Reminders />
             <Agents />
+            <Reminders />
             <Clock showDate />
           </div>
         </nav>
