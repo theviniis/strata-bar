@@ -144,8 +144,9 @@ no Windows. Referência da revisão: commit `9e3bb9d`; commit na branch atual.
 - [x] Revisão final do ticket e commit.
 
 Este ticket entrega descoberta de aplicativos, não descoberta de sessões. A
-Subtask 1 original permanece parcial: AgentSession, SessionStatus e AgentMessage
-serão definidos com o contrato de sessões comprovado pelo primeiro conector.
+Subtask 1 original permanece parcial: AgentSession e SessionStatus foram
+adicionados no ticket 2; AgentMessage permanece reservado para o contrato de
+perguntas/respostas dos próximos tickets.
 Subtasks 2–4 também não estão concluídas pelo popup inicial.
 
 ## Validação do ticket 1
@@ -190,7 +191,7 @@ Não ler arquivos de credenciais, histórico ou mensagens completas.
 - [x] Integrar conexão explícita, monitoramento em segundo plano e desconexão,
       impedindo resultados antigos após desconectar/reconectar.
 - [x] Exibir sessões recentes e execuções ativas no accordion do OpenCode.
-- [ ] Validar pelos contratos públicos e pelo popup, verificar a API real no
+- [x] Validar pelos contratos públicos e pelo popup, verificar a API real no
       Windows, executar os gates apropriados, revisar e fazer commit.
 
 Referência da revisão deste ticket: `a952a316de5c0c0206774f4ca38d9a9cbdb5b2a9`.
@@ -221,12 +222,16 @@ Validação inicial:
 - Suíte Rust completa: 131 passaram e 10 ignorados, incluindo o teste live que foi
   executado separadamente.
 - Build frontend, TypeScript e lint dos arquivos alterados passaram.
-- Suíte frontend: permanece a falha preexistente da posição dos controles de
-  áudio. Gate agregado permanece limitado pela formatação preexistente.
+- Suíte frontend final: 231 passaram; permanece a única falha preexistente da
+  posição dos controles de áudio. Gate agregado permanece limitado pela
+  formatação preexistente.
 - O caminho live validou OpenCode Desktop 2.0.32 neste Windows. CLI instalado
   isoladamente, v1 e servidores remotos não estão cobertos por este conector.
 - A interação no novo popup em WebView2 ainda requer validação na instância com o
   host atualizado; a consulta nativa real não substitui esse teste visual.
+- Revisões de padrões e de escopo do ticket 2 concluídas sem pendências.
+- O build nativo de desenvolvimento foi impedido pelo executável aberto; o build
+  release passou separadamente, sem interromper a barra atual.
 
 Não inferir processamento, atenção ou sucesso apenas pela presença de processo.
 Preservar validação nativa, CSP, escopo de capabilities e ausência de fallback
