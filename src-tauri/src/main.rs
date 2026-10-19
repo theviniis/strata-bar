@@ -1,4 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod agents;
+mod agents_contract;
+mod agents_windows;
 mod reminder_sound;
 mod google_calendar;
 mod media;
@@ -211,6 +214,9 @@ fn quit(app: tauri::AppHandle) {
     app.exit(0);
 }
 fn cleanup(app: &tauri::AppHandle) {
+    if let Some(agents) = app.try_state::<agents::Agents>() {
+        agents.stop();
+    }
     if let Some(scheduler) = app.try_state::<reminders::ReminderScheduler>() {
         scheduler.stop();
     }
@@ -271,6 +277,13 @@ mod instance_tests {
 }
 
 fn main() {
+    if std::env::args().any(|arg| arg == "--probe-agents") {
+        let result = agents::observe(0, agents_windows::process_names);
+        let text = serde_json::to_string_pretty(&result).unwrap();
+        std::fs::write(std::env::temp_dir().join("strata-agents-probe.json"), &text).unwrap();
+        println!("{text}");
+        return;
+    }
     if std::env::args().any(|arg| arg == "--probe-media") {
         println!("{}", media::probe());
         return;
@@ -303,6 +316,7 @@ fn main() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
+            agents::agents_snapshot,
             reminders::reminders_snapshot,
             desktop::reminders_set_anchor,
             reminders::reminders_create,
@@ -338,6 +352,7 @@ fn main() {
                 app.path().app_data_dir()?.join("reminders.json"),
             ));
             app.manage(media::Media::start(app.handle().clone()));
+            app.manage(agents::Agents::start(app.handle().clone())?);
             app.manage(metrics::Metrics::start(app.handle().clone()));
             app.manage(komorebi::Komorebi::start(app.handle().clone()));
             desktop::reconcile(app.handle())?;

@@ -1,4 +1,5 @@
 import { Clock } from '../../features/clock/Clock'
+import { Agents } from '../../features/agents/Agents'
 import { Cpu } from '../../features/cpu/Cpu'
 import { Disk } from '../../features/disk/Disk'
 import { Gpu } from '../../features/gpu/Gpu'
@@ -44,6 +45,7 @@ export default function NativeBar() {
             </ButtonGroup>
             <BarVerticalSeparator />
             <Reminders />
+            <Agents />
             <Clock showDate />
           </div>
         </nav>

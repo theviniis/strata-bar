@@ -1,3 +1,6 @@
+#[path = "src/agents_contract.rs"]
+#[allow(dead_code)]
+mod agents_contract;
 #[path = "src/cpu_contract.rs"]
 #[allow(dead_code)]
 mod cpu_contract;
@@ -21,6 +24,24 @@ mod reminders_contract;
 
 fn main() {
     use ts_rs::TS;
+    println!("cargo:rerun-if-changed=src/agents_contract.rs");
+    let declarations = [
+        agents_contract::AgentType::decl(),
+        agents_contract::AgentApplication::decl(),
+        agents_contract::AgentsSnapshot::decl(),
+    ];
+    let generated = format!(
+        "// Generated from Rust agents_contract.rs by cargo build. Do not edit.\n{}\n",
+        declarations
+            .iter()
+            .map(|d| format!("export {d}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+    let target = std::path::Path::new("../src/services/system/agents.generated.ts");
+    if std::fs::read_to_string(target).ok().as_deref() != Some(&generated) {
+        std::fs::write(target, generated).expect("Generate agents contract");
+    }
     println!("cargo:rerun-if-changed=src/reminders_contract.rs");
     let declarations = [
         reminders_contract::ReminderMode::decl(),
