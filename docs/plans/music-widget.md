@@ -112,8 +112,9 @@ Scopes are `user-read-playback-state`, `user-read-currently-playing`,
 `user-library-read` and `user-library-modify`. Spotify app/account eligibility is
 subject to its [quota mode requirements](https://developer.spotify.com/documentation/web-api/concepts/quota-modes).
 
-While a Spotify-capable session has subscribers, playback is queried at most once
-every five seconds. Native source allowlisting includes Spotify desktop and
+While a Spotify-capable session has subscribers, playback is queried every five
+seconds for an unchanged track. A new track starts correlation immediately;
+service/authentication backoff still applies. Native source allowlisting includes Spotify desktop and
 spotatui; spotatui's other media sources are not assumed to be Spotify playback.
 GSMTC does not provide a track URI. Correlation therefore requires agreement on
 the native source, full title/artist/album, duration, playing state and timeline
@@ -122,7 +123,9 @@ searches for a track by title. The correlation is conservative, but cannot prove
 identity between indistinguishable editions or simultaneous matching playback on
 another Spotify device; this is an upstream metadata limitation.
 
-Favorite is read when the track changes and confirmed after each mutation, using
+Favorite is read when the track changes. Mutations complete on the successful
+Spotify write acknowledgement, using the native cache's correlated URI rather
+than fetching playback and favorite state again for each click. This uses
 the current library endpoints (`GET /me/library/contains`, `PUT /me/library`,
 `DELETE /me/library`). Requests target explicit track URIs. Rate limits respect
 `Retry-After`; network/service failures back off without stopping native playback.

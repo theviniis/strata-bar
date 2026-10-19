@@ -59,6 +59,9 @@ fn coalesce(request: Request, mut queued: impl FnMut() -> Option<Request>) -> Re
     }
     current
 }
+fn reuse_snapshot(request: &Request, stale: bool, has_snapshot: bool) -> bool {
+    matches!(request, Request::Tick) && !stale && has_snapshot
+}
 pub fn validate(request: &MediaRequest, data: &MediaData) -> Result<(), String> {
     if request.session_id != data.session_id || request.track_id != data.track_id {
         return Err("Media session or track changed".into());
@@ -210,7 +213,13 @@ impl Media {
                 initialized.as_ref().map_err(|e| e.to_string())?;
                 if source.is_none() {
                     source = Some(WindowsMedia::new(self.tx.clone()).map_err(|e| e.to_string())?);
-                } else if matches!(request, Request::Tick) && !stale {
+                } else if matches!(request, Request::Action(..)) {
+                    return source.as_ref().unwrap().action_snapshot().map(Some);
+                } else if reuse_snapshot(
+                    &request,
+                    stale,
+                    source.as_ref().unwrap().snapshot().is_some(),
+                ) {
                     return Ok(source.as_ref().unwrap().snapshot());
                 }
                 source.as_mut().unwrap().read().map_err(|e| e.to_string())
@@ -242,7 +251,9 @@ impl Media {
                                 // Web requests never block local transport controls or events.
                                 std::thread::spawn(move || {
                                     let _ = reply.send(spotify.favorite(&data, saved));
-                                    let _ = tx.send(Request::Wake);
+                                    // Only enrichment changed; publish it without
+                                    // waiting for another Windows metadata read.
+                                    let _ = tx.send(Request::Tick);
                                 });
                             }
                             (validation, _) => {
@@ -329,6 +340,13 @@ pub fn probe() -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn retries_a_temporarily_missing_session_without_another_windows_event() {
+        assert!(!reuse_snapshot(&Request::Tick, false, false));
+        assert!(reuse_snapshot(&Request::Tick, false, true));
+        assert!(!reuse_snapshot(&Request::Tick, true, true));
+        assert!(!reuse_snapshot(&Request::Wake, false, true));
+    }
     fn request(action: MediaAction) -> MediaRequest {
         MediaRequest {
             session_id: "session-1".into(),

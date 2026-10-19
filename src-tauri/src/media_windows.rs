@@ -153,6 +153,17 @@ impl WindowsMedia {
     pub fn snapshot(&self) -> Option<MediaData> {
         self.cached.clone()
     }
+    pub fn action_snapshot(&self) -> Result<MediaData, String> {
+        let session = self.session.as_ref().ok_or("Media session closed")?;
+        if self.manager.GetCurrentSession().ok().as_ref() != Some(session)
+            || self.revision.load(Ordering::SeqCst) != self.seen
+        {
+            return Err("Media session or track changed".into());
+        }
+        self.cached
+            .clone()
+            .ok_or("No current media snapshot".into())
+    }
     pub fn read(&mut self) -> windows::core::Result<Option<MediaData>> {
         let audio_changed = self.audio_dirty.swap(false, Ordering::SeqCst);
         if self.discovery.is_none() {
@@ -198,18 +209,35 @@ impl WindowsMedia {
                 .map(|n| n.to_string())
                 .unwrap_or_else(|_| player_id.trim_end_matches(".exe").to_string());
             let artwork = artwork(&properties);
+            let title = properties.Title()?.to_string();
+            let artist = properties.Artist()?.to_string();
+            let album = properties.AlbumTitle()?.to_string();
+            // A metadata notification can update artwork or repeat the same
+            // fields. Its revision guards read races, but is not a new track.
+            // Preserve identity so the UI and Spotify correlation stay intact.
+            let track_id = self
+                .cached
+                .as_ref()
+                .filter(|old| {
+                    old.player_id == player_id
+                        && old.title == title
+                        && old.artist == artist
+                        && old.album == album
+                })
+                .map(|old| old.track_id.clone())
+                .unwrap_or_else(|| format!("track-{}-{revision}", self.serial));
             // Resolving the player window walks every process and top-level
             // window, so sample it once per metadata read instead of on every
             // timeline tick that only refreshes playing state.
             let open_player = player_window(&player_id).is_some();
             self.cached = Some(MediaData {
                 session_id: format!("session-{}", self.serial),
-                track_id: format!("track-{}-{revision}", self.serial),
+                track_id,
                 player_id,
                 player_name,
-                title: properties.Title()?.to_string(),
-                artist: properties.Artist()?.to_string(),
-                album: properties.AlbumTitle()?.to_string(),
+                title,
+                artist,
+                album,
                 artwork,
                 playback: "unknown".into(),
                 progress: MediaValue::absent(MediaAvailability::Unavailable, "No timeline"),
@@ -348,27 +376,13 @@ impl WindowsMedia {
         Ok(Some(data.clone()))
     }
     pub fn act(&mut self, action: &MediaAction, data: &MediaData) -> Result<(), String> {
-        let session = self.session.as_ref().ok_or("Media session closed")?;
-        if self.manager.GetCurrentSession().ok().as_ref() != Some(session)
-            || self.revision.load(Ordering::SeqCst) != self.seen
-        {
-            return Err("Media session or track changed".into());
-        }
-        let properties =
-            (|| -> windows::core::Result<_> { complete!(session.TryGetMediaPropertiesAsync()) })()
-                .map_err(|e| e.to_string())?;
-        if self.manager.GetCurrentSession().ok().as_ref() != Some(session)
-            || self.revision.load(Ordering::SeqCst) != self.seen
-            || properties.Title().map_err(|e| e.to_string())?.to_string() != data.title
-            || properties.Artist().map_err(|e| e.to_string())?.to_string() != data.artist
-            || properties
-                .AlbumTitle()
-                .map_err(|e| e.to_string())?
-                .to_string()
-                != data.album
-        {
+        // Validate against the native event revision and cached identity. A
+        // control must not wait for another async metadata/artwork round-trip.
+        let current = self.action_snapshot()?;
+        if current.session_id != data.session_id || current.track_id != data.track_id {
             return Err("Media track changed".into());
         }
+        let session = self.session.as_ref().ok_or("Media session closed")?;
         let result = (|| -> windows::core::Result<bool> {
             Ok(match action {
                 MediaAction::OpenPlayer => {
@@ -855,6 +869,137 @@ mod audio_tests {
 #[cfg(test)]
 mod playback_tests {
     use super::*;
+    #[test]
+    #[ignore = "Requires a live media player; toggles playback twice and measures native latency"]
+    fn live_transport_latency() {
+        unsafe {
+            windows::Win32::System::WinRT::RoInitialize(
+                windows::Win32::System::WinRT::RO_INIT_MULTITHREADED,
+            )
+            .unwrap();
+        }
+        let (tx, _rx) = std::sync::mpsc::channel();
+        let mut source = WindowsMedia::new(tx).unwrap();
+        let started = Instant::now();
+        let data = source.read().unwrap().expect("running media session");
+        eprintln!("initial_read_ms={}", started.elapsed().as_millis());
+        let mut elapsed = vec![];
+        for _ in 0..2 {
+            let started = Instant::now();
+            let data = source.action_snapshot().unwrap();
+            let read = started.elapsed();
+            let started = Instant::now();
+            let result = source.act(&MediaAction::PlayPause, &data);
+            let action = started.elapsed();
+            eprintln!(
+                "read_ms={} action_ms={} success={}",
+                read.as_millis(),
+                action.as_millis(),
+                result.is_ok()
+            );
+            result.unwrap();
+            elapsed.push(read + action);
+            let until = Instant::now() + Duration::from_secs(5);
+            loop {
+                let next = source.read().unwrap().expect("session");
+                if next.playback != data.playback {
+                    break;
+                }
+                assert!(
+                    Instant::now() < until,
+                    "player did not confirm playback change"
+                );
+                std::thread::sleep(Duration::from_millis(20));
+            }
+        }
+        assert!(
+            elapsed
+                .iter()
+                .all(|duration| *duration < Duration::from_millis(500)),
+            "transport latency exceeds 500ms: {elapsed:?}"
+        );
+        assert_eq!(
+            source.snapshot().unwrap().playback,
+            data.playback,
+            "restore original playback state"
+        );
+        source.revision.fetch_add(1, Ordering::SeqCst);
+        assert!(
+            source.action_snapshot().is_err(),
+            "commands must reject unread track changes"
+        );
+    }
+    #[test]
+    #[ignore = "Requires a running player; simulates a duplicate metadata notification"]
+    fn live_duplicate_metadata_preserves_track_identity() {
+        unsafe {
+            windows::Win32::System::WinRT::RoInitialize(
+                windows::Win32::System::WinRT::RO_INIT_MULTITHREADED,
+            )
+            .unwrap();
+        }
+        let (tx, _rx) = std::sync::mpsc::channel();
+        let mut source = WindowsMedia::new(tx).unwrap();
+        let before = source.read().unwrap().expect("session");
+        source.revision.fetch_add(1, Ordering::SeqCst);
+        let after = source.read().unwrap().expect("session");
+        assert_eq!(before.title, after.title, "fixture changed during test");
+        assert_eq!(
+            before.track_id, after.track_id,
+            "a duplicate notification must not reset the heart or remount playback controls"
+        );
+    }
+    #[test]
+    #[ignore = "Requires a live media player; skips five tracks to measure transitions"]
+    fn live_track_transitions() {
+        unsafe {
+            windows::Win32::System::WinRT::RoInitialize(
+                windows::Win32::System::WinRT::RO_INIT_MULTITHREADED,
+            )
+            .unwrap();
+        }
+        let (tx, _rx) = std::sync::mpsc::channel();
+        let mut source = WindowsMedia::new(tx).unwrap();
+        let mut slow_commands = false;
+        for _ in 0..5 {
+            let data = source.read().unwrap().expect("session");
+            let started = Instant::now();
+            source.act(&MediaAction::Next, &data).unwrap();
+            let action_ms = started.elapsed().as_millis();
+            let until = Instant::now() + Duration::from_secs(8);
+            let mut unavailable = 0;
+            loop {
+                match source.read() {
+                    Ok(Some(next)) => {
+                        let changed = next.title != data.title;
+                        if changed {
+                            break;
+                        }
+                    }
+                    _ => unavailable += 1,
+                }
+                if Instant::now() >= until {
+                    panic!("track did not update");
+                }
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            eprintln!(
+                "next_action_ms={action_ms} transition_ms={} unavailable_reads={unavailable}",
+                started.elapsed().as_millis()
+            );
+            slow_commands |= action_ms >= 500;
+            assert_eq!(
+                unavailable, 0,
+                "track switches must preserve a usable session"
+            );
+        }
+        // GSMTC metadata delivery follows the external player's loading time.
+        // The command acknowledgement must remain fast while that happens.
+        assert!(
+            !slow_commands,
+            "native command acknowledgement exceeded 500ms"
+        );
+    }
     #[test]
     fn maps_repeat_modes_without_inventing_values() {
         for mode in [RepeatMode::None, RepeatMode::Track, RepeatMode::List] {
