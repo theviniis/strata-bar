@@ -1,0 +1,8 @@
+{
+  "api": "OpenCode v2",
+  "conversationContentRecorded": false,
+  "hasMore": true,
+  "sessionCount": 22,
+  "status": "connected",
+  "statuses": { "completed": 17, "error": 1, "idle": 4 }
+}

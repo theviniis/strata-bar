@@ -7,7 +7,7 @@ import {
 import type { AgentsSnapshot } from '@/services/system/agents.generated'
 
 const snapshot = (revision: number): AgentsSnapshot => ({
-  version: 1,
+  version: 2,
   revision,
   observedAt: revision * 1000,
   applications: [
@@ -15,7 +15,8 @@ const snapshot = (revision: number): AgentsSnapshot => ({
     { agent: 'opencode', running: false },
     { agent: 'antigravity', running: false }
   ],
-  error: null
+  error: null,
+  opencode: { status: 'disabled', sessions: [], hasMore: false, error: null }
 })
 
 it('releases a listener that finishes connecting after its consumer closes', async () => {
@@ -24,6 +25,7 @@ it('releases a listener that finishes connecting after its consumer closes', asy
   const load = vi.fn(async () => snapshot(1))
   const store = createAgentsStore({
     kind: 'native',
+    setOpenCode: async () => snapshot(3),
     listen: () =>
       new Promise((resolve) => {
         finish = resolve
@@ -41,6 +43,7 @@ it('releases a listener that finishes connecting after its consumer closes', asy
 it('reports a native connection failure without populating demo applications', async () => {
   const store = createAgentsStore({
     kind: 'native',
+    setOpenCode: async () => snapshot(3),
     async listen() {
       throw new Error('Access denied')
     },
@@ -54,6 +57,27 @@ it('reports a native connection failure without populating demo applications', a
   disconnect()
 })
 
+it('keeps a process enumeration failure separate from the session transport', async () => {
+  const value = snapshot(1)
+  value.error = 'Process enumeration unavailable'
+  value.applications = value.applications.map((application) => ({
+    ...application,
+    running: null
+  }))
+  value.opencode.status = 'connected'
+  const store = createAgentsStore({
+    kind: 'native',
+    setOpenCode: async () => value,
+    listen: async () => () => {},
+    load: async () => value
+  })
+  const disconnect = store.getState().connect()
+  await vi.waitFor(() => expect(store.getState().snapshot?.revision).toBe(1))
+  expect(store.getState().error).toBeNull()
+  expect(store.getState().snapshot?.opencode.status).toBe('connected')
+  disconnect()
+})
+
 it('rejects snapshots that omit a tool or duplicate its application entry', () => {
   const value = snapshot(1)
   value.applications[1] = { agent: 'chatgpt', running: false }
@@ -64,6 +88,7 @@ it('rechecks discovery when reopening instead of retaining a previous transport 
   let reportError: (error: unknown) => void = () => {}
   const store = createAgentsStore({
     kind: 'native',
+    setOpenCode: async () => snapshot(3),
     async listen(_listener, onError) {
       reportError = onError
       return () => {}
@@ -85,6 +110,7 @@ it('keeps a live observation when the initial snapshot arrives late', async () =
   const stop = vi.fn()
   const adapter: AgentsAdapter = {
     kind: 'native',
+    setOpenCode: async () => snapshot(3),
     async listen(listener) {
       listener(snapshot(2))
       return stop
@@ -108,6 +134,7 @@ it('keeps live discovery working when the initial snapshot request fails', async
   })
   const store = createAgentsStore({
     kind: 'native',
+    setOpenCode: async () => snapshot(3),
     async listen(listener) {
       publish = listener
       listener(snapshot(2))

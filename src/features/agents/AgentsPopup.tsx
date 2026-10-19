@@ -16,6 +16,7 @@ import { createDemoAgentsAdapter } from '@/services/system/agents'
 import { createAgentsStore, getAgentsStore } from '@/stores/agents'
 import { usePopupContext } from '@/popups/context'
 import { useEffect, useState } from 'react'
+import { OpenCodeSessions } from './OpenCodeSessions'
 
 export function AgentsPopup() {
   const { mode } = usePopupContext('agents')
@@ -30,12 +31,14 @@ function ConnectedAgentsPopup({ mode }: { mode: 'native' | 'demo' }) {
   )
   const snapshot = useStore((state) => state.snapshot)
   const error = useStore((state) => state.error)
+  const configureOpenCode = useStore((state) => state.configureOpenCode)
   useEffect(() => useStore.getState().connect(), [useStore])
   return (
     <AgentsPopupContent
       snapshot={snapshot}
       error={error}
       demo={mode === 'demo'}
+      onConfigureOpenCode={configureOpenCode}
     />
   )
 }
@@ -49,12 +52,15 @@ const labels = {
 export function AgentsPopupContent({
   snapshot,
   error,
-  demo = false
+  demo = false,
+  onConfigureOpenCode
 }: {
   snapshot: AgentsSnapshot | null
   error: string | null
   demo?: boolean
+  onConfigureOpenCode?: (enabled: boolean) => Promise<void>
 }) {
+  const discoveryError = error ?? snapshot?.error
   return (
     <section className="w-80" aria-label="Controle de agentes">
       <CardHeader>
@@ -67,9 +73,9 @@ export function AgentsPopupContent({
         )}
       </CardHeader>
       <CardContent className="space-y-3">
-        {error && (
+        {discoveryError && (
           <p role="alert" className="text-sm text-destructive">
-            Detecção indisponível: {error}
+            Detecção indisponível: {discoveryError}
           </p>
         )}
         {!snapshot && !error && <p role="status">Detectando aplicativos…</p>}
@@ -80,7 +86,7 @@ export function AgentsPopupContent({
                 <span className="flex flex-col gap-1">
                   <span>{labels[application.agent]}</span>
                   <span className="text-xs font-normal text-muted-foreground">
-                    {error || application.running === null
+                    {discoveryError || application.running === null
                       ? 'Detecção indisponível'
                       : application.running
                         ? 'Processo detectado'
@@ -89,19 +95,29 @@ export function AgentsPopupContent({
                 </span>
               </AccordionTrigger>
               <AccordionContent className="space-y-2">
-                <p className="text-xs">Sessões indisponíveis</p>
-                <p className="text-xs text-muted-foreground">
-                  Controle de sessões ainda não integrado. Um processo aberto
-                  não informa o estado das conversas.
-                </p>
-                <div className="flex gap-2">
-                  <Button size="sm" disabled>
-                    Nova sessão
-                  </Button>
-                  <Button size="sm" variant="outline" disabled>
-                    Responder
-                  </Button>
-                </div>
+                {application.agent === 'opencode' ? (
+                  <OpenCodeSessions
+                    connection={snapshot.opencode}
+                    onConfigure={onConfigureOpenCode}
+                    stale={!!error}
+                  />
+                ) : (
+                  <>
+                    <p className="text-xs">Sessões indisponíveis</p>
+                    <p className="text-xs text-muted-foreground">
+                      Controle de sessões ainda não integrado. Um processo
+                      aberto não informa o estado das conversas.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button size="sm" disabled>
+                        Nova sessão
+                      </Button>
+                      <Button size="sm" variant="outline" disabled>
+                        Responder
+                      </Button>
+                    </div>
+                  </>
+                )}
               </AccordionContent>
             </AccordionItem>
           ))}

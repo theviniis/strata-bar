@@ -28,6 +28,10 @@ fn main() {
     let declarations = [
         agents_contract::AgentType::decl(),
         agents_contract::AgentApplication::decl(),
+        agents_contract::SessionStatus::decl(),
+        agents_contract::AgentSession::decl(),
+        agents_contract::AgentConnectionStatus::decl(),
+        agents_contract::OpenCodeSnapshot::decl(),
         agents_contract::AgentsSnapshot::decl(),
     ];
     let generated = format!(

@@ -11,6 +11,7 @@ type AgentsState = {
   snapshot: AgentsSnapshot | null
   error: string | null
   connect(): () => void
+  configureOpenCode(enabled: boolean): Promise<void>
 }
 
 export function createAgentsStore(adapter: AgentsAdapter) {
@@ -23,7 +24,7 @@ export function createAgentsStore(adapter: AgentsAdapter) {
         get().snapshot === null ||
         snapshot.revision > get().snapshot!.revision
       ) {
-        set({ snapshot, error: snapshot.error })
+        set({ snapshot, error: null })
       }
     }
     let consumers = 0
@@ -31,6 +32,9 @@ export function createAgentsStore(adapter: AgentsAdapter) {
     return {
       snapshot: null,
       error: null,
+      async configureOpenCode(enabled) {
+        accept(await adapter.setOpenCode(enabled))
+      },
       connect() {
         consumers++
         if (consumers === 1) {

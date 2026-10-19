@@ -2,6 +2,7 @@
 mod agents;
 mod agents_contract;
 mod agents_windows;
+mod opencode;
 mod reminder_sound;
 mod google_calendar;
 mod media;
@@ -317,6 +318,7 @@ fn main() {
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             agents::agents_snapshot,
+            agents::agents_set_opencode,
             reminders::reminders_snapshot,
             desktop::reminders_set_anchor,
             reminders::reminders_create,

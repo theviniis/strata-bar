@@ -88,6 +88,14 @@ limitações das integrações.
 - Presença de processo não comprova sessão, processamento, pergunta ou conclusão.
 - Validar APIs/eventos locais do OpenCode e hooks do Antigravity como fontes
   candidatas. Não há fonte de sessões do ChatGPT Desktop comprovada no levantamento.
+- O primeiro conector usa a API v2 publicada pelo OpenCode Desktop instalado,
+  acessada pelo comando público do cliente com leituras fixas. A conexão é
+  explícita e usa a autenticação já administrada pelo OpenCode, sem copiar
+  credenciais para o Strata. Versões e instalações não verificadas ficam
+  explicitamente indisponíveis.
+- Listar até cinquenta sessões recentes e incluir execuções ativas fora da página,
+  sinalizando histórico adicional. Exibir resultados explícitos do último turno;
+  consultar pendências das execuções ativas sem enviar ações.
 - Incluir sessões externas somente quando descobertas por uma integração comprovada;
   mostrar limitações quando apenas a presença do aplicativo puder ser detectada.
 - Permitir configuração de conectores locais e hooks necessários, explicando as

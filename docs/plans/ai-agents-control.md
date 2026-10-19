@@ -173,6 +173,61 @@ detecção permanece visível no cabeçalho; detalhes e ações ficam na expans�
   segunda revisão não encontrou pendências. Revisão de escopo: sem desvios do
   ticket 1, com a limitação de validação WebView2 registrada acima.
 
+## Ticket 2 — OpenCode: conexão e sessões existentes
+
+Escopo autorizado: conectar o OpenCode local, listar sessões existentes no
+accordion único, exibir estados comprovados e reconciliar após falhas. Criar
+sessões, responder e aprovar ferramentas continuam nos tickets seguintes.
+
+Levantamento: a versão instalada é OpenCode 2.0.32. Seu contrato OpenAPI público
+usa `/api/session` e `/api/session/active`; os exemplos v1 da documentação geral
+não correspondem a essa versão. Usar o comando público `opencode api GET`, com
+rotas fixas, para aproveitar a autenticação já gerenciada pelo cliente local.
+Não ler arquivos de credenciais, histórico ou mensagens completas.
+
+- [x] Gerar contrato de sessões e conexão a partir de Rust.
+- [x] Implementar coletor de metadados v2 e validar identidade/estado/limites.
+- [x] Integrar conexão explícita, monitoramento em segundo plano e desconexão,
+      impedindo resultados antigos após desconectar/reconectar.
+- [x] Exibir sessões recentes e execuções ativas no accordion do OpenCode.
+- [ ] Validar pelos contratos públicos e pelo popup, verificar a API real no
+      Windows, executar os gates apropriados, revisar e fazer commit.
+
+Referência da revisão deste ticket: `a952a316de5c0c0206774f4ca38d9a9cbdb5b2a9`.
+
+Comportamento entregue:
+
+- Conexão habilitada explicitamente; configuração e sessões apenas em memória.
+- Resolver somente o CLI v2 instalado pelo OpenCode Desktop. Nenhum caminho,
+  comando, endpoint ou argumento arbitrário é recebido da UI.
+- Consultar metadados a cada cinco segundos após a consulta anterior, mesmo com
+  o popup fechado. O monitor de processos continua independente a cada três
+  segundos. Cada consulta tem limite total de vinte segundos e pode ser cancelada.
+- Até cinquenta sessões recentes, incluindo execuções ativas fora dessa página;
+  histórico adicional sinalizado. Sessões arquivadas inativas não são exibidas.
+- Execuções ativas verificam formulários e aprovações pendentes; nenhuma resposta
+  ou aprovação é enviada. Inatividade não significa sucesso: conclusão e erro
+  dependem de `outcome` explícito da API, rotulados como resultado do último turno.
+- Falhas marcam sessões como desconectadas; reconexão substitui o snapshot.
+  Desconectar limpa metadados e invalida consultas em andamento.
+- Snapshot versão 2: falhas de enumeração Win32 não invalidam a conexão de sessões.
+  Reiniciar o host nativo é necessário para carregar o novo contrato e comando.
+
+Validação inicial:
+
+- Doze testes frontend focados passaram. Cinco testes novos Rust passaram; um
+  teste explícito da API real passou consultando metadados em memória e emitindo
+  somente contagens para a evidência.
+- Suíte Rust completa: 131 passaram e 10 ignorados, incluindo o teste live que foi
+  executado separadamente.
+- Build frontend, TypeScript e lint dos arquivos alterados passaram.
+- Suíte frontend: permanece a falha preexistente da posição dos controles de
+  áudio. Gate agregado permanece limitado pela formatação preexistente.
+- O caminho live validou OpenCode Desktop 2.0.32 neste Windows. CLI instalado
+  isoladamente, v1 e servidores remotos não estão cobertos por este conector.
+- A interação no novo popup em WebView2 ainda requer validação na instância com o
+  host atualizado; a consulta nativa real não substitui esse teste visual.
+
 Não inferir processamento, atenção ou sucesso apenas pela presença de processo.
 Preservar validação nativa, CSP, escopo de capabilities e ausência de fallback
 demo em falhas nativas.
