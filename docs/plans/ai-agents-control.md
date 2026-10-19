@@ -1,5 +1,37 @@
 # Controle de agentes de IA — Windows 11
 
+## Validação instalada — Continuação do ticket 9
+
+- [x] Instalar o artefato NSIS atual no perfil do usuário e conferir identidade.
+- [x] Executar teste explícito com texto sintético, registrando envio ou bloqueio.
+- [x] Verificar o host atualizado e registrar o que foi comprovado, mantendo
+      apresentação visual e eventos reais de provedor distintos da submissão.
+- [ ] Validar apresentação de banners quando o usuário habilitar notificações.
+- [ ] Validar interação no popup do host instalado e eventos de provedor real.
+
+Esta continuação autoriza a instalação para aceitação; o transporte de produção
+continua sem criar atalhos ou alterar preferências de notificações.
+
+Instalador terminou com código 0; executável instalado em
+`%LOCALAPPDATA%/Strata/strata-bar.exe`, com protocolo 8. Atalho registrado no
+menu Iniciar. A consulta WinRT mudou de indisponível para bloqueado: código 2,
+DisabledForUser. Dois eventos sintéticos foram tentados pela interface pública,
+sem submissão ao Windows. Nenhuma preferência foi alterada.
+
+Host instalado em execução; probe encontrou duas barras visíveis para dois
+monitores, ambas topmost e nenhuma elegível para komorebi, além do overlay.
+O helper de automação não expôs as janelas AppBar/overlay como alvos; interação
+no popup não foi validada. Não confundir esse probe com confirmação visual do
+popup ou de banners.
+
+Validação: 155 testes Rust passaram, 18 ignorados. Os dois testes explícitos do
+módulo de notificações passaram no cenário bloqueado. Um filtro inicialmente
+amplo também executou oito testes nativos extras: a permissão sintética repetiu
+a falha conhecida de ID ausente; nenhum POST de decisão foi feito. Houve também
+solicitação de som no teste de lembrete. O filtro foi restringido ao módulo de
+notificações; não contabilizar a bateria ampla como integralmente aprovada.
+Evidência: `docs/evidence/ai-agents-notifications-installed-2026-10-19.json`.
+
 ## Ticket 9 — Notificações nativas do Windows
 
 Segunda fatia da Subtask 4. Enviar toasts de atenção/conclusão somente para

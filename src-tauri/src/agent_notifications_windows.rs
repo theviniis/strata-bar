@@ -117,9 +117,53 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore = "Requires installed identity; submits two generic synthetic toasts only if Windows notifications are enabled"]
+    fn live_windows_installed_delivery_respects_user_policy() {
+        let expected = submit(None);
+        assert!(
+            matches!(
+                expected,
+                AgentNotificationStatus::Ready | AgentNotificationStatus::Blocked
+            ),
+            "Install Strata before running this test"
+        );
+        let mut submitted = 0;
+        for (index, kind) in [AgentAlertKind::Attention, AgentAlertKind::Completed]
+            .into_iter()
+            .enumerate()
+        {
+            let status = submit(Some(&AgentAlert {
+                id: format!("agent-alert-{}", index + 1),
+                agent: AgentType::Opencode,
+                session_id: "synthetic-notification-acceptance".into(),
+                session_title: "Synthetic title must remain private".into(),
+                kind,
+                created_at: 1000.0,
+            }));
+            assert_eq!(status, expected);
+            if status == AgentNotificationStatus::Ready {
+                submitted += 1;
+            }
+        }
+        println!(
+            "AGENT_NOTIFICATION_DELIVERY {}",
+            serde_json::json!({"status": expected, "attemptedEvents": 2, "submittedToWindows": submitted, "syntheticEvents": true, "bannerVerified": false, "providerEventsVerified": false, "systemPreferencesChanged": false})
+        );
+    }
+
+    #[test]
     #[ignore = "Read-only check of installed identity and Windows notification policy; does not show a toast"]
     fn live_windows_native_notification_availability() {
         let status = submit(None);
+        let setting = unsafe { RoInitialize(RO_INIT_MULTITHREADED) }
+            .ok()
+            .and_then(|_| {
+                let _apartment = Apartment;
+                ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(APP_ID))
+                    .and_then(|notifier| notifier.Setting())
+                    .map(|setting| setting.0)
+                    .ok()
+            });
         assert!(matches!(
             status,
             AgentNotificationStatus::Ready
@@ -128,7 +172,7 @@ mod tests {
         ));
         println!(
             "AGENT_NOTIFICATIONS {}",
-            serde_json::json!({"status": status, "toastSubmitted": false, "bannerVerified": false, "providerEventsVerified": false, "systemPreferencesChanged": false})
+            serde_json::json!({"status": status, "windowsSetting": setting, "toastSubmitted": false, "bannerVerified": false, "providerEventsVerified": false, "systemPreferencesChanged": false})
         );
     }
 }
