@@ -59,6 +59,10 @@ na sessão antes do prompt. Sem a variável, mantém o teste do modelo padrão.
 Não há alteração do modelo padrão global nem do transporte de produção.
 Evidência: `docs/evidence/ai-agents-opencode-deepseek-2026-10-19.json`.
 
+Continuação DeepSeek: 155 testes Rust padrão passaram, 19 ignorados; o teste
+explícito de aceitação permanece falhando no término do turno. Revisões de
+padrões e especificação sem achados acionáveis. Commit do ensaio: `bd1bafe`.
+
 ## Validação instalada — Continuação do ticket 9
 
 - [x] Instalar o artefato NSIS atual no perfil do usuário e conferir identidade.
