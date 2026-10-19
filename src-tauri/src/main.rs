@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod tray;
 mod media;
 mod media_contract;
 mod media_windows;
@@ -198,6 +199,35 @@ fn spotify_open_dashboard(window: tauri::WebviewWindow) -> Result<(), String> {
 fn quit(app: tauri::AppHandle) {
     app.exit(0);
 }
+fn cleanup(app: &tauri::AppHandle) {
+    if let Some(scheduler) = app.try_state::<reminders::ReminderScheduler>() {
+        scheduler.stop();
+    }
+    desktop::release_all(app);
+    if let Some(media) = app.try_state::<media::Media>() {
+        media.stop();
+    }
+    if let Some(metrics) = app.try_state::<metrics::Metrics>() {
+        metrics.stop();
+    }
+    if let Some(komorebi) = app.try_state::<komorebi::Komorebi>() {
+        komorebi.stop();
+    }
+}
+
+// Dropped on startup failure; explicitly released after shutdown on exit/restart.
+struct InstanceGuard(Option<windows::Win32::Foundation::HANDLE>);
+impl InstanceGuard {
+    fn close(&mut self) {
+        if let Some(handle) = self.0.take() {
+            unsafe { let _ = windows::Win32::Foundation::CloseHandle(handle); }
+        }
+    }
+}
+impl Drop for InstanceGuard {
+    fn drop(&mut self) { self.close(); }
+}
+
 fn main() {
     if std::env::args().any(|arg| arg == "--probe-media") {
         println!("{}", media::probe());
@@ -227,7 +257,9 @@ fn main() {
         }
         return;
     }
+    let mut instance = InstanceGuard(Some(instance));
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             reminders::reminders_snapshot,
             reminders::reminders_create,
@@ -255,6 +287,7 @@ fn main() {
             quit
         ])
         .setup(|app| {
+            tray::setup(app.handle())?;
             app.manage(google_calendar::GoogleCalendar::start());
             app.manage(reminders::Reminders::open(
                 app.path().app_data_dir()?.join("reminders.json"),
@@ -287,22 +320,11 @@ fn main() {
         })
         .build(tauri::generate_context!())
         .expect("Strata failed to initialize");
-    app.run(|app, event| {
+    app.run(move |app, event| {
         if matches!(event, tauri::RunEvent::Exit) {
-            if let Some(scheduler) = app.try_state::<reminders::ReminderScheduler>() { scheduler.stop(); }
-            desktop::release_all(app);
-            if let Some(media) = app.try_state::<media::Media>() {
-                media.stop();
-            }
-            if let Some(m) = app.try_state::<metrics::Metrics>() {
-                m.stop();
-            }
-            if let Some(k) = app.try_state::<komorebi::Komorebi>() {
-                k.stop();
-            }
+            cleanup(app);
+            // Tauri spawns the replacement immediately after this callback.
+            instance.close();
         }
     });
-    unsafe {
-        let _ = windows::Win32::Foundation::CloseHandle(instance);
-    }
 }

@@ -315,3 +315,58 @@ Validacao: 22 testes UI aprovados; ESLint e Prettier aprovados.
 - [x] Verificar recolhimento/reabertura e preservacao dos lembretes no teste UI.
 
 Referencia: https://ui.shadcn.com/docs/components/base/accordion
+
+## Subtask 5: Editor, barra flutuante e código
+
+- [x] Instalar Tiptap React, StarterKit, Markdown e BubbleMenu.
+- [x] Integrar editor ao formulário com acessibilidade, draft e validação.
+- [x] Converter atalhos ##, -, *, 1. e três crases seguidos de espaço.
+- [x] Implementar BubbleMenu: negrito, itálico, tachado, código, links e títulos.
+- [x] Estilizar bloco de código editável com Tailwind.
+- [x] Enter edita; Ctrl+Enter salva, respeitando IME.
+- [x] Persistir Markdown raw, rejeitar vazio e limitar a 2000 caracteres.
+- [x] Validar testes e interação no studio; registrar limites.
+- [ ] Conferir interação na superfície nativa com esta versão.
+
+## Subtask 6: Markdown raw no Google Calendar
+
+- [x] Testar round-trip de títulos, listas, marcas, links e código.
+- [x] Enviar message como description raw no payload Google.
+- [x] Preservar summary, horários, duração e idempotência.
+- [x] Validar payload com testes Rust e registrar limites da conta real.
+
+### Entrega da Subtask 5
+
+Tiptap 3.32 integra o formulário, persistindo Markdown raw sem alterar tipos.
+BubbleMenu permanece na mesma superfície e ajusta posição por colisão. Enter
+edita; Ctrl+Enter envia. Blocos de código usam a extensão nativa, sem realce.
+Mensagem sem texto é vazia; limite de 2000 caracteres inclui sintaxe Markdown.
+
+Validação: 22 testes de UI e 6 testes de editor aprovados (atalhos, undo e
+limite). Studio: h2 por teclado, seleção, negrito, aplicação de link, bloco de
+código e criação com Ctrl+Enter conferidos; editor limpo após salvar. Evidência:
+`docs/evidence/reminders-markdown-editor-2026-10-19.png`.
+Typecheck global continua bloqueado pelos erros preexistentes de ButtonProps
+em button-loading.tsx/AudioOutputs.tsx. Nenhum erro apontado nos arquivos novos.
+Interação nativa pendente: existe uma instância de outro worktree em execução;
+o mutex impede outra instância. Essa instância foi preservada. A validação do
+studio não substitui a conferência nativa.
+
+### Entrega da Subtask 6
+
+O payload nativo envia `description: reminder.message` como Markdown raw.
+Summary, IDs, duração, opt-in e política de retry permanecem iguais. Não há
+HTML nem conversão adicional no transporte. Round-trip cobre títulos, listas,
+negrito/itálico/tachado, código inline, links HTTP/mailto e código com linguagem,
+indentação e linhas vazias. A normalização de sintaxe pelo editor é esperada.
+
+Validação: 12 testes de editor e 22 testes de lembretes aprovados; suíte completa
+frontend com 35 arquivos/191 testes aprovada. Os 3 testes Rust de Google Calendar
+passaram, incluindo descrição idêntica após serialização JSON e preservação de
+summary, horários e ID. Build de produção, ESLint e Prettier dos arquivos
+alterados e git diff --check aprovados. Build informa aviso de bundle grande.
+Três testes adicionais de UI passaram: Enter/Ctrl+Enter/IME, limpeza do editor,
+conteúdo formatado vazio, desabilitação durante envio e erro acessível. Total
+focado: 37 testes aprovados.
+Google real não exercitado: exige credenciais Desktop e consentimento da conta.
+Conferência nativa e bloqueios globais de tipos permanecem registrados acima.

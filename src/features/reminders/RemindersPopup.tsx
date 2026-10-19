@@ -53,7 +53,8 @@ import {
   useRef,
   useState
 } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
+import { ReminderEditor } from './ReminderEditor'
 import { CalendarSettings } from './CalendarSettings'
 import { reminderFormSchema, type ReminderFormValues } from './form'
 import { scheduledDateTime } from './presentation'
@@ -251,13 +252,20 @@ export function RemindersPopup() {
 
                 <Field>
                   <FieldLabel htmlFor={`${id}-message`}>Mensagem</FieldLabel>
-                  <Input
-                    id={`${id}-message`}
-                    required
-                    maxLength={2000}
-                    {...register('message')}
-                    aria-invalid={!!errors.message}
-                    placeholder="O que você quer lembrar?"
+                  <Controller
+                    name="message"
+                    control={control}
+                    render={({ field }) => (
+                      <ReminderEditor
+                        id={`${id}-message`}
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={isSubmitting || createReminder.isPending}
+                        invalid={!!errors.message}
+                        onSubmit={() => void handleSubmit(submit)()}
+                      />
+                    )}
                   />
                 </Field>
 

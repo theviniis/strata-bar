@@ -5,6 +5,7 @@ import {
   screen,
   waitFor
 } from '@testing-library/react'
+import type { Editor } from '@tiptap/react'
 import type { ReactNode } from 'react'
 import { QueryProvider } from '@/components/QueryProvider'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -18,6 +19,18 @@ import { getRemindersStore } from '@/stores/reminders'
 import { PopupHost } from '@/popups/PopupHost'
 import { createDemoRemindersAdapter } from '@/services/system/reminders'
 import { DemoReminderAlerts } from '@/features/reminders/DemoReminderAlerts'
+
+function fillMessage(
+  element: HTMLElement,
+  options: { target: { value: string } }
+) {
+  act(() => {
+    const editor = (element as HTMLElement & { editor: Editor }).editor
+    editor.commands.setContent(options.target.value, {
+      contentType: 'markdown'
+    })
+  })
+}
 
 let dispose: () => void = () => {}
 const render = (ui: ReactNode) =>
@@ -64,7 +77,7 @@ it('renders the icon, conditionally counts down and opens the creation popup', a
 
 it('creates a duration reminder with fixed event duration and lists it', async () => {
   render(<RemindersPopup />)
-  fireEvent.change(screen.getByLabelText('Mensagem'), {
+  fillMessage(screen.getByLabelText('Mensagem'), {
     target: { value: 'Take a break' }
   })
   let minutes = 5
@@ -126,7 +139,7 @@ it('creates a duration from the time selector', async () => {
   expect(screen.getByLabelText('Duração (horas e minutos)')).toHaveValue(
     '00:05'
   )
-  fireEvent.change(screen.getByLabelText('Mensagem'), {
+  fillMessage(screen.getByLabelText('Mensagem'), {
     target: { value: 'Timer' }
   })
   fireEvent.change(screen.getByLabelText('Duração (horas e minutos)'), {
@@ -172,15 +185,15 @@ it('selects minutes on focus and masks typed or pasted duration digits', () => {
 it('submits with Enter from a field and validates a blank message with Zod', async () => {
   render(<RemindersPopup />)
   const message = screen.getByLabelText('Mensagem')
-  fireEvent.change(message, { target: { value: '   ' } })
-  fireEvent.keyDown(message, { key: 'Enter' })
+  fillMessage(message, { target: { value: '   ' } })
+  fireEvent.keyDown(message, { key: 'Enter', ctrlKey: true })
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Informe a mensagem'
   )
   expect(message).toHaveAttribute('aria-invalid', 'true')
   expect(getRemindersStore().getState().snapshot!.reminders).toHaveLength(0)
-  fireEvent.change(message, { target: { value: '  Enter reminder  ' } })
-  fireEvent.keyDown(message, { key: 'Enter' })
+  fillMessage(message, { target: { value: '  Enter reminder  ' } })
+  fireEvent.keyDown(message, { key: 'Enter', ctrlKey: true })
   await waitFor(() =>
     expect(getRemindersStore().getState().snapshot!.reminders).toHaveLength(1)
   )
@@ -195,7 +208,7 @@ it('submits date/time with Enter and ignores an invalid inactive duration', asyn
     target: { value: '' }
   })
   fireEvent.click(screen.getByRole('tab', { name: 'Data e hora' }))
-  fireEvent.change(screen.getByLabelText('Mensagem'), {
+  fillMessage(screen.getByLabelText('Mensagem'), {
     target: { value: 'Future appointment' }
   })
   const clock = vi
@@ -235,7 +248,7 @@ it.each(['00:00', '', '24:00'])(
   'rejects invalid duration %s before persistence',
   async (duration) => {
     render(<RemindersPopup />)
-    fireEvent.change(screen.getByLabelText('Mensagem'), {
+    fillMessage(screen.getByLabelText('Mensagem'), {
       target: { value: 'Invalid timer' }
     })
     fireEvent.change(screen.getByLabelText('Duração (horas e minutos)'), {
@@ -312,7 +325,7 @@ it('renders a date picker and rejects past dates before saving', async () => {
   await waitFor(() =>
     expect(screen.queryByRole('grid')).not.toBeInTheDocument()
   )
-  fireEvent.change(screen.getByLabelText('Mensagem'), {
+  fillMessage(screen.getByLabelText('Mensagem'), {
     target: { value: 'Appointment' }
   })
   fireEvent.change(screen.getByLabelText('Horário local'), {
@@ -336,7 +349,7 @@ it('converts local date/time and formats countdown without wrapping hours', () =
 
 it('opens Google settings from the gear and restores the form, draft and focus on close', async () => {
   render(<RemindersPopup />)
-  fireEvent.change(screen.getByLabelText('Mensagem'), {
+  fillMessage(screen.getByLabelText('Mensagem'), {
     target: { value: 'Keep my draft' }
   })
   const trigger = screen.getByRole('button', {
@@ -356,7 +369,7 @@ it('opens Google settings from the gear and restores the form, draft and focus o
   await waitFor(() =>
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   )
-  expect(screen.getByLabelText('Mensagem')).toHaveValue('Keep my draft')
+  expect(screen.getByLabelText('Mensagem')).toHaveTextContent('Keep my draft')
   expect(trigger).toHaveFocus()
 })
 

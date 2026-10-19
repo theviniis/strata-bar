@@ -194,6 +194,7 @@ pub fn event_body(reminder: &Reminder) -> Result<Value, String> {
     let end = format(reminder.original_at + f64::from(reminder.event_duration_seconds) * 1000.0)?;
     Ok(json!({
         "id": reminder.id.replace('-', ""), "summary": reminder.message,
+        "description": reminder.message,
         "start": { "dateTime": start }, "end": { "dateTime": end },
         "reminders": { "useDefault": false },
         "extendedProperties": { "private": { "strataReminderId": reminder.id } }
@@ -549,7 +550,7 @@ mod tests {
     fn event_uses_original_utc_time_duration_and_stable_id_even_after_snooze() {
         let mut r = Reminder {
             id: "660e8400-e29b-41d4-a716-446655440000".into(),
-            message: "Tea".into(),
+            message: "## Tea\n\n**Bold** and [link](https://example.com)\n\n```rust\n  let x = 1;\n\n  x\n```".into(),
             mode: ReminderMode::Duration { seconds: 60 },
             original_at: 1_700_000_000_000.0,
             notify_at: 1_700_000_600_000.0,
@@ -562,6 +563,10 @@ mod tests {
             calendar_error: None,
         };
         let event = event_body(&r).unwrap();
+        assert_eq!(event["description"], r.message);
+        assert_eq!(event["summary"], r.message);
+        let wire: Value = serde_json::from_str(&serde_json::to_string(&event).unwrap()).unwrap();
+        assert_eq!(wire["description"], r.message);
         assert_eq!(event["start"]["dateTime"], "2023-11-14T22:13:20.000Z");
         assert_eq!(event["end"]["dateTime"], "2023-11-14T22:18:20.000Z");
         assert_eq!(event["id"], "660e8400e29b41d4a716446655440000");
