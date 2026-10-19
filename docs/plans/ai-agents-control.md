@@ -10,7 +10,7 @@ Uma fatia de aceitação independente do bloqueio de notificações do Windows.
       um único alerta de conclusão no gerenciador nativo, sem consumidor de UI.
 - [x] Remover a conversa/pasta próprias e registrar evidência somente de estados,
       sem histórico, resposta do modelo, títulos ou credenciais.
-- [ ] Executar verificações aplicáveis, revisão e commit na branch atual.
+- [x] Executar verificações aplicáveis, revisão e commit na branch atual.
 
 Não enviar decisões de ferramenta nem mudar a política de conversas existentes.
 Esse ensaio não valida emissão de perguntas, interação no WebView2 ou banner.
@@ -31,6 +31,12 @@ Instrumentação temporária removida; o teste de aceitação permanece ignorado
 suíte padrão e falha explicitamente nesse ambiente, sem anunciar conclusão.
 Evidência: `docs/evidence/ai-agents-opencode-real-turn-2026-10-19.json`.
 API pública consultada: [OpenCode v2](https://dev.opencode.ai/v2/docs/api).
+
+Suíte Rust padrão: 155 passaram, 19 ignorados. Formatação dos arquivos alterados
+passou. Revisões de padrões e especificação: nenhum achado acionável; a
+aceitação real permanece parcial. Mudanças de código somente em cfg(test), sem
+novo build de produção. Ensaio e evidência: `d99b5ae`. Foi solicitado ao usuário
+um provedor/modelo já funcional para o próximo ensaio, sem solicitar credenciais.
 
 ## Validação instalada — Continuação do ticket 9
 
