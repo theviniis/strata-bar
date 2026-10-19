@@ -26,11 +26,16 @@ popup ou de banners.
 
 Validação: 155 testes Rust passaram, 18 ignorados. Os dois testes explícitos do
 módulo de notificações passaram no cenário bloqueado. Um filtro inicialmente
-amplo também executou oito testes nativos extras: a permissão sintética repetiu
+amplo também executou sete testes nativos extras: a permissão sintética repetiu
 a falha conhecida de ID ausente; nenhum POST de decisão foi feito. Houve também
 solicitação de som no teste de lembrete. O filtro foi restringido ao módulo de
 notificações; não contabilizar a bateria ampla como integralmente aprovada.
 Evidência: `docs/evidence/ai-agents-notifications-installed-2026-10-19.json`.
+
+Revisões de padrões e especificação: nenhum achado acionável nesta continuação.
+O cenário habilitado continua pendente; somente o usuário pode liberar essa
+aceitação ao habilitar as notificações nas preferências do Windows. Nenhuma
+mudança de produção exigiu novo build; o acréscimo de código é restrito a testes.
 
 ## Ticket 9 — Notificações nativas do Windows
 
