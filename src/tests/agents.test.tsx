@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { expect, it } from 'vitest'
 import { AgentsPopup, AgentsPopupContent } from '@/features/agents/AgentsPopup'
 import { PopupContext } from '@/popups/context'
@@ -20,17 +20,24 @@ it('distinguishes detected applications from unavailable session control', () =>
       error={null}
     />
   )
+  const trigger = screen.getByRole('button', { name: /^ChatGPT Desktop/ })
+  expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  expect(within(trigger).getByText('Processo detectado')).toBeInTheDocument()
+  fireEvent.click(trigger)
+  expect(trigger).toHaveAttribute('aria-expanded', 'true')
   const chatgpt = within(
-    screen.getByRole('region', { name: 'ChatGPT Desktop' })
+    screen.getByRole('region', { name: /^ChatGPT Desktop/ })
   )
-  expect(chatgpt.getByText('Processo detectado')).toBeInTheDocument()
   expect(chatgpt.getByText('Sessões indisponíveis')).toBeInTheDocument()
   expect(chatgpt.getByRole('button', { name: 'Nova sessão' })).toBeDisabled()
   expect(
-    within(screen.getByRole('region', { name: 'OpenCode' })).getByText(
+    within(screen.getByRole('button', { name: /^OpenCode/ })).getByText(
       'Processo não detectado'
     )
   ).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: /^OpenCode/ }))
+  expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.getByRole('region', { name: /^OpenCode/ })).toBeInTheDocument()
   expect(screen.queryByText('Concluído')).not.toBeInTheDocument()
 })
 
@@ -51,10 +58,13 @@ it('labels the studio preview and lists each tool without claiming live sessions
   expect(
     await screen.findByText('Demo · sem acesso ao sistema')
   ).toBeInTheDocument()
-  expect(
-    await screen.findByRole('region', { name: 'Antigravity' })
-  ).toBeInTheDocument()
-  expect(screen.getAllByText('Sessões indisponíveis')).toHaveLength(3)
+  const antigravity = await screen.findByRole('button', {
+    name: /^Antigravity/
+  })
+  expect(antigravity).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByText('Sessões indisponíveis')).not.toBeInTheDocument()
+  fireEvent.click(antigravity)
+  expect(screen.getByText('Sessões indisponíveis')).toBeInTheDocument()
 })
 
 it('does not show stale process presence after discovery fails', () => {

@@ -1,5 +1,11 @@
 import { Button } from '@/components/ui/button'
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from '@/components/ui/accordion'
+import {
   CardContent,
   CardDescription,
   CardHeader,
@@ -67,35 +73,39 @@ export function AgentsPopupContent({
           </p>
         )}
         {!snapshot && !error && <p role="status">Detectando aplicativos…</p>}
-        {snapshot?.applications.map((application) => (
-          <section
-            key={application.agent}
-            aria-label={labels[application.agent]}
-            className="space-y-2 rounded-lg border p-3"
-          >
-            <h3 className="text-sm font-medium">{labels[application.agent]}</h3>
-            <p className="text-xs text-muted-foreground">
-              {error || application.running === null
-                ? 'Detecção indisponível'
-                : application.running
-                  ? 'Processo detectado'
-                  : 'Processo não detectado'}
-            </p>
-            <p className="text-xs">Sessões indisponíveis</p>
-            <p className="text-xs text-muted-foreground">
-              Controle de sessões ainda não integrado. Um processo aberto não
-              informa o estado das conversas.
-            </p>
-            <div className="flex gap-2">
-              <Button size="sm" disabled>
-                Nova sessão
-              </Button>
-              <Button size="sm" variant="outline" disabled>
-                Responder
-              </Button>
-            </div>
-          </section>
-        ))}
+        <Accordion multiple={false}>
+          {snapshot?.applications.map((application) => (
+            <AccordionItem key={application.agent} value={application.agent}>
+              <AccordionTrigger>
+                <span className="flex flex-col gap-1">
+                  <span>{labels[application.agent]}</span>
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {error || application.running === null
+                      ? 'Detecção indisponível'
+                      : application.running
+                        ? 'Processo detectado'
+                        : 'Processo não detectado'}
+                  </span>
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-2">
+                <p className="text-xs">Sessões indisponíveis</p>
+                <p className="text-xs text-muted-foreground">
+                  Controle de sessões ainda não integrado. Um processo aberto
+                  não informa o estado das conversas.
+                </p>
+                <div className="flex gap-2">
+                  <Button size="sm" disabled>
+                    Nova sessão
+                  </Button>
+                  <Button size="sm" variant="outline" disabled>
+                    Responder
+                  </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </CardContent>
     </section>
   )

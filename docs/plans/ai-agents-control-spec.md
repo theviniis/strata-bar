@@ -75,6 +75,8 @@ limitações das integrações.
   do escopo acordado.
 - Reutilizar o framework de WidgetPopup, seu host compartilhado, foco, geometria
   e ciclo de vida; a feature fornece conteúdo, dados e ações.
+- Usar um único popup com accordion por ferramenta. Os itens começam recolhidos,
+  mostram a detecção no cabeçalho e permitem expandir uma ferramenta por vez.
 - Usar um serviço Rust compartilhado, independente da visibilidade do popup,
   seguindo o padrão dos lembretes para snapshots versionados e eventos.
 - Derivar AgentType, AgentSession, SessionStatus e AgentMessage de contratos Rust

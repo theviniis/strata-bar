@@ -150,6 +150,10 @@ Subtasks 2–4 também não estão concluídas pelo popup inicial.
 
 ## Validação do ticket 1
 
+Ajuste solicitado após a primeira entrega: popup único com accordion por
+ferramenta, inicialmente recolhido e com uma seção aberta por vez. O estado de
+detecção permanece visível no cabeçalho; detalhes e ações ficam na expansão.
+
 - Testes focados: 9 frontend; 3 nativos novos.
 - Testes Rust: 126 passaram e 9 foram ignorados.
 - TypeScript, build frontend, build Rust e lint dos arquivos alterados passaram.
