@@ -255,8 +255,10 @@ consulta logs, bancos privados, credenciais ou protocolos internos.
       no popup, preservando configurações de terceiros.
 - [x] Integrar o monitor no serviço compartilhado e exibir sessões no accordion,
       incluindo limitações de cobertura e estados desconhecido/desconectado.
-- [ ] Validar contrato público, transporte Windows, UI, builds e testes; revisar
-      a entrega e fazer commit.
+- [x] Validar contrato público, transporte Windows com eventos sintéticos, testes
+      de UI e builds; revisar a implementação e fazer commit.
+- [ ] Validar emissão pelo Antigravity real e interação no popup WebView2 para
+      concluir a aceitação nativa do ticket.
 
 Hooks candidatos: SessionStart, PreInvocation, PreToolUse/PostToolUse restritos a
 ask_question/ask_permission e Stop. PreToolUse delega à política padrão com allow
@@ -300,6 +302,10 @@ Validação:
 - Suíte frontend completa: 233 passaram e a falha preexistente da posição de áudio
   permaneceu. Gate agregado limitado pela formatação preexistente.
 - A configuração global real de hooks não foi alterada durante os testes.
+- Revisão de padrões: nenhuma violação ou problema acionável encontrado.
+- Revisão de especificação: nenhum problema acionável de implementação ou escopo;
+  aceitação do provedor permanece parcial até a validação real descrita abaixo.
+- Implementação registrada no commit `42b916d`.
 
 Para validar com o provedor real: iniciar o novo Strata, ativar os hooks no
 accordion e reabrir o Antigravity. Uma sessão iniciada ou retomada normalmente
