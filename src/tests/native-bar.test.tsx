@@ -66,6 +66,7 @@ vi.mock('../services/system/bridge', () => ({
         cachedBytes: metric(4294967296),
         pagingFileBytes: metric(1073741824)
       },
+      microphone: { level: 72, muted: true },
       volume: { level: 64, muted: false },
       komorebi: {
         monitor: 0,
@@ -134,4 +135,8 @@ it('places music immediately before the audio controls', () => {
   const music = screen.getByLabelText('Música')
   const audio = screen.getByRole('button', { name: 'Saída de áudio' })
   expect(music.nextElementSibling?.contains(audio)).toBe(true)
+  const microphone = screen.getByRole('button', {
+    name: 'Entrada de \u00e1udio'
+  })
+  expect(microphone.querySelector('.lucide-mic-off')).toBeInTheDocument()
 })

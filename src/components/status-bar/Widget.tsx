@@ -16,6 +16,7 @@ import {
   MemoryStick,
   Music2,
   Volume2,
+  Mic,
   Bell,
   type LucideIcon
 } from 'lucide-react'
@@ -59,6 +60,7 @@ const meta: Record<WidgetType, { icon: LucideIcon; label: string }> = {
   disk: { icon: HardDrive, label: 'HD' },
   network: { icon: ArrowDownUp, label: 'NET' },
   music: { icon: Music2, label: 'Música' },
+  microphone: { icon: Mic, label: 'Microfone' },
   volume: { icon: Volume2, label: 'Audio' },
   activeWindow: { icon: AppWindow, label: 'Active window' },
   komorebi: { icon: LayoutGrid, label: 'Workspaces' },
@@ -72,6 +74,8 @@ const formatters: Record<Channel, (value: PreviewValue) => string> = {
   gpu: (v) => `${v}%`,
   disk: () => '',
   network: (v) => `${v} KB/s`,
+  audioInputs: () => '',
+  microphone: (v) => `${v}%`,
   volume: (v) => `${v}%`,
   activeWindow: (v) => String(v),
   komorebi: () => '',
@@ -174,6 +178,7 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
             ? 'Error'
             : 'Unavailable'
   if (
+    widget.type === 'microphone' ||
     widget.type === 'volume' ||
     widget.type === 'memory' ||
     widget.type === 'cpu' ||
@@ -185,6 +190,7 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
         cpu: { id: 'cpu', label: 'Detalhes da CPU' },
         gpu: { id: 'gpu', label: 'Detalhes da GPU' },
         memory: { id: 'memory', label: 'Detalhes da memória' },
+        microphone: { id: 'audioInputs', label: 'Entrada de áudio' },
         volume: { id: 'audioOutputs', label: 'Saída de áudio' },
         disk: { id: 'disk', label: 'Detalhes dos discos' }
       }

@@ -4,12 +4,14 @@ import { Disk } from '../../features/disk/Disk'
 import { Gpu } from '../../features/gpu/Gpu'
 import { Komorebi } from '../../features/komorebi/Komorebi'
 import { Memory } from '../../features/memory/Memory'
+import { Microphone } from '../../features/microphone/Microphone'
 import { Music } from '../../features/music/Music'
-import { Volume } from '../../features/volume/Volume'
 import { Reminders } from '../../features/reminders/Reminders'
-import { BarVerticalSeparator } from '../ui/bar-vertical-separator'
-import { WidgetHoverGroup } from '../widget-hover'
+import { Volume } from '../../features/volume/Volume'
 import { QueryProvider } from '../QueryProvider'
+import { BarVerticalSeparator } from '../ui/bar-vertical-separator'
+import { ButtonGroup } from '../ui/button-group'
+import { WidgetHoverGroup } from '../widget-hover'
 
 export default function NativeBar() {
   return (
@@ -35,7 +37,11 @@ export default function NativeBar() {
 
           <div className="flex shrink-0 items-center gap-2 ml-auto">
             <Music />
-            <Volume />
+            <BarVerticalSeparator />
+            <ButtonGroup>
+              <Volume />
+              <Microphone />
+            </ButtonGroup>
             <BarVerticalSeparator />
             <Reminders />
             <Clock showDate />

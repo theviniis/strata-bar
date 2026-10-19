@@ -10,6 +10,7 @@ export const types = [
   'network',
   'music',
   'volume',
+  'microphone',
   'activeWindow',
   'komorebi'
 ] as const
@@ -73,6 +74,7 @@ export const defaultConfig = configSchema.parse({
       'network',
       'music',
       'volume',
+      'microphone',
       'reminders'
     ].map((type) => ({
       id: type,

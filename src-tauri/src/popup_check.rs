@@ -213,6 +213,7 @@ pub fn start(app: AppHandle) {
             for label in &bars {
                 for (feature, aria, added_subscriptions) in [
                     ("audioOutputs", "Saída de áudio", 2),
+                    ("audioInputs", "Entrada de \u{e1}udio", 2),
                     ("memory", "Detalhes da memória", 1),
                     ("cpu", "Detalhes da CPU", 1),
                     ("gpu", "Detalhes da GPU", 1),

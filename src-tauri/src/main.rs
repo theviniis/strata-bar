@@ -32,7 +32,7 @@ use serde_json::{json, Value};
 use tauri::Manager;
 #[tauri::command]
 fn capabilities(komorebi: tauri::State<komorebi::Komorebi>) -> Value {
-    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"media":true,"appBar":true,"gpu":true,"disk":true,"network":false,"komorebi":komorebi.available()})
+    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"appBar":true,"gpu":true,"disk":true,"network":false,"komorebi":komorebi.available()})
 }
 #[tauri::command]
 fn subscribe(
@@ -87,6 +87,16 @@ async fn set_volume(
     tauri::async_runtime::spawn_blocking(move || owner.volume(level, muted))
         .await
         .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+async fn set_microphone(state: tauri::State<'_, metrics::Metrics>, level: Option<f32>, muted: Option<bool>) -> Result<Value, String> {
+    let owner = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || owner.audio_volume(true, level, muted)).await.map_err(|e|e.to_string())?
+}
+#[tauri::command]
+async fn set_audio_input(state: tauri::State<'_, metrics::Metrics>, device_id: String) -> Result<Value, String> {
+    let owner = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || owner.audio_device(true, device_id)).await.map_err(|e|e.to_string())?
 }
 #[tauri::command]
 async fn set_audio_output(
@@ -308,6 +318,8 @@ fn main() {
             subscribe,
             unsubscribe,
             set_volume,
+            set_microphone,
+            set_audio_input,
             set_audio_output,
             komorebi_action,
             overlay_show,
