@@ -119,6 +119,17 @@ limitações das integrações.
   infraestrutura identificada. O alerta no popup faz parte do escopo.
 - Coletar somente metadados e conteúdo de perguntas pendentes necessários ao popup,
   mantidos em memória; não persistir histórico pelo Strata.
+- No Antigravity App, observar os hooks públicos após ativação explícita no
+  accordion. Não enumerar conversas anteriores por logs ou protocolos privados.
+  Instalar somente a entrada do Strata na configuração global, preservando os
+  demais hooks e removendo a entrada própria ao desativar ou encerrar normalmente.
+- Transportar somente identificador, primeiro workspace e sinais de ciclo de
+  execução por receptor local autenticado por conexão. Não ler transcriptPath,
+  argumentos de ferramentas, mensagens, artefatos ou arquivos de credenciais.
+- Delegar permissões ao comportamento padrão, sem autoaprovar ou forçar
+  continuação. Atenção é observável apenas para chamadas explícitas de pergunta
+  ou permissão; outras aprovações não são inferidas. Sem eventos novos por dois
+  minutos, processamento/atenção passam a desconhecido.
 - Preservar CSP, autorização por janela, validação nativa, estilo de janelas
   flutuantes e ausência de fallback demo em falhas nativas.
 

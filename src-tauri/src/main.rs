@@ -2,6 +2,8 @@
 mod agents;
 mod agents_contract;
 mod agents_windows;
+mod antigravity;
+mod antigravity_hooks;
 mod opencode;
 mod reminder_sound;
 mod google_calendar;
@@ -278,6 +280,11 @@ mod instance_tests {
 }
 
 fn main() {
+    let arguments: Vec<_> = std::env::args().skip(1).collect();
+    if arguments.first().is_some_and(|argument| argument == "--antigravity-hook") {
+        antigravity_hooks::run_helper(&arguments[1..]);
+        return;
+    }
     if std::env::args().any(|arg| arg == "--probe-agents") {
         let result = agents::observe(0, agents_windows::process_names);
         let text = serde_json::to_string_pretty(&result).unwrap();
@@ -319,6 +326,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             agents::agents_snapshot,
             agents::agents_set_opencode,
+            agents::agents_set_antigravity,
             reminders::reminders_snapshot,
             desktop::reminders_set_anchor,
             reminders::reminders_create,

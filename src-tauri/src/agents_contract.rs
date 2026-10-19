@@ -70,6 +70,24 @@ impl Default for OpenCodeSnapshot {
     }
 }
 
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct AntigravitySnapshot {
+    pub status: AgentConnectionStatus,
+    pub sessions: Vec<AgentSession>,
+    pub error: Option<String>,
+}
+
+impl Default for AntigravitySnapshot {
+    fn default() -> Self {
+        Self {
+            status: AgentConnectionStatus::Disabled,
+            sessions: Vec::new(),
+            error: None,
+        }
+    }
+}
+
 /// Application discovery and independently configured session connections.
 #[derive(Clone, Debug, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -80,4 +98,5 @@ pub struct AgentsSnapshot {
     pub applications: Vec<AgentApplication>,
     pub error: Option<String>,
     pub opencode: OpenCodeSnapshot,
+    pub antigravity: AntigravitySnapshot,
 }

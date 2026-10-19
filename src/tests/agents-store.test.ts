@@ -7,7 +7,8 @@ import {
 import type { AgentsSnapshot } from '@/services/system/agents.generated'
 
 const snapshot = (revision: number): AgentsSnapshot => ({
-  version: 2,
+  version: 3,
+  antigravity: { status: 'disabled', sessions: [], error: null },
   revision,
   observedAt: revision * 1000,
   applications: [
@@ -25,6 +26,7 @@ it('releases a listener that finishes connecting after its consumer closes', asy
   const load = vi.fn(async () => snapshot(1))
   const store = createAgentsStore({
     kind: 'native',
+    setAntigravity: async () => snapshot(3),
     setOpenCode: async () => snapshot(3),
     listen: () =>
       new Promise((resolve) => {
@@ -43,6 +45,7 @@ it('releases a listener that finishes connecting after its consumer closes', asy
 it('reports a native connection failure without populating demo applications', async () => {
   const store = createAgentsStore({
     kind: 'native',
+    setAntigravity: async () => snapshot(3),
     setOpenCode: async () => snapshot(3),
     async listen() {
       throw new Error('Access denied')
@@ -67,6 +70,7 @@ it('keeps a process enumeration failure separate from the session transport', as
   value.opencode.status = 'connected'
   const store = createAgentsStore({
     kind: 'native',
+    setAntigravity: async () => snapshot(3),
     setOpenCode: async () => value,
     listen: async () => () => {},
     load: async () => value
@@ -84,10 +88,35 @@ it('rejects snapshots that omit a tool or duplicate its application entry', () =
   expect(() => parseAgentsSnapshot(value)).toThrow()
 })
 
+it('accepts Antigravity UUID sessions but rejects sessions assigned to the wrong connector', () => {
+  const value = snapshot(1)
+  value.antigravity = {
+    status: 'connected',
+    error: null,
+    sessions: [
+      {
+        id: 'ec33ebf9-0cba-4100-8142-c61503f6c587',
+        agent: 'antigravity',
+        connectionId: 'antigravity-hooks',
+        title: 'Sessão ec33ebf9',
+        directory: 'D:\\project',
+        status: 'attention',
+        updatedAt: 1000
+      }
+    ]
+  }
+  expect(parseAgentsSnapshot(value).antigravity.sessions[0].status).toBe(
+    'attention'
+  )
+  value.antigravity.sessions[0].agent = 'opencode'
+  expect(() => parseAgentsSnapshot(value)).toThrow()
+})
+
 it('rechecks discovery when reopening instead of retaining a previous transport error', async () => {
   let reportError: (error: unknown) => void = () => {}
   const store = createAgentsStore({
     kind: 'native',
+    setAntigravity: async () => snapshot(3),
     setOpenCode: async () => snapshot(3),
     async listen(_listener, onError) {
       reportError = onError
@@ -110,6 +139,7 @@ it('keeps a live observation when the initial snapshot arrives late', async () =
   const stop = vi.fn()
   const adapter: AgentsAdapter = {
     kind: 'native',
+    setAntigravity: async () => snapshot(3),
     setOpenCode: async () => snapshot(3),
     async listen(listener) {
       listener(snapshot(2))
@@ -134,6 +164,7 @@ it('keeps live discovery working when the initial snapshot request fails', async
   })
   const store = createAgentsStore({
     kind: 'native',
+    setAntigravity: async () => snapshot(3),
     setOpenCode: async () => snapshot(3),
     async listen(listener) {
       publish = listener

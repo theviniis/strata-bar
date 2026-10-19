@@ -1,16 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import type { OpenCodeSnapshot, SessionStatus } from '@/services/system/agents'
-
-const statuses: Record<SessionStatus, string> = {
-  processing: 'Em execução',
-  attention: 'Atenção necessária',
-  completed: 'Último turno concluído',
-  error: 'Último turno com erro',
-  idle: 'Inativa',
-  unknown: 'Estado desconhecido',
-  disconnected: 'Desconectada'
-}
+import type { OpenCodeSnapshot } from '@/services/system/agents'
+import { AgentSessionList } from './AgentSessionList'
 const connectionLabels = {
   disabled: 'Conexão desativada',
   connecting: 'Conectando…',
@@ -70,32 +61,11 @@ export function OpenCodeSessions({
         connection.sessions.length === 0 && (
           <p className="text-xs">Nenhuma sessão encontrada.</p>
         )}
-      {connection.sessions.length > 0 && (
-        <ul
-          aria-label="Sessões do OpenCode"
-          className="max-h-64 space-y-2 overflow-y-auto"
-        >
-          {connection.sessions.map((session) => (
-            <li
-              key={`${session.connectionId}:${session.id}`}
-              className="space-y-1 rounded-md border p-2"
-            >
-              <h4 className="text-sm font-medium wrap-anywhere">
-                {session.title}
-              </h4>
-              <span
-                data-status={stale ? 'disconnected' : session.status}
-                className="inline-flex rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground data-[status=attention]:text-destructive"
-              >
-                {statuses[stale ? 'disconnected' : session.status]}
-              </span>
-              <p className="text-xs text-muted-foreground wrap-anywhere">
-                {session.directory}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
+      <AgentSessionList
+        sessions={connection.sessions}
+        label="Sessões do OpenCode"
+        stale={stale}
+      />
       {connection.hasMore && (
         <p className="text-xs text-muted-foreground">
           Mostrando até 50 sessões recentes e as execuções ativas. Há mais

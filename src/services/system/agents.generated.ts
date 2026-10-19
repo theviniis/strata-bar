@@ -9,4 +9,5 @@ export type SessionStatus = "processing" | "attention" | "completed" | "error" |
 export type AgentSession = { id: string, agent: AgentType, connectionId: string, title: string, directory: string, status: SessionStatus, updatedAt: number, };
 export type AgentConnectionStatus = "disabled" | "connecting" | "connected" | "disconnected";
 export type OpenCodeSnapshot = { status: AgentConnectionStatus, sessions: Array<AgentSession>, hasMore: boolean, error: string | null, };
-export type AgentsSnapshot = { version: number, revision: number, observedAt: number, applications: Array<AgentApplication>, error: string | null, opencode: OpenCodeSnapshot, };
+export type AntigravitySnapshot = { status: AgentConnectionStatus, sessions: Array<AgentSession>, error: string | null, };
+export type AgentsSnapshot = { version: number, revision: number, observedAt: number, applications: Array<AgentApplication>, error: string | null, opencode: OpenCodeSnapshot, antigravity: AntigravitySnapshot, };

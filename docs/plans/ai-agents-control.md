@@ -236,3 +236,73 @@ Validação inicial:
 Não inferir processamento, atenção ou sucesso apenas pela presença de processo.
 Preservar validação nativa, CSP, escopo de capabilities e ausência de fallback
 demo em falhas nativas.
+
+## Ticket 3 — Antigravity: observar sessões por hooks públicos
+
+Referência da revisão: `7550b9c5764b9fac3289041ac06b6cc3758d7378`.
+
+O Antigravity App instalado é 2.23.1. Os hooks públicos recebem conversationId,
+workspacePaths e eventos do ciclo de execução. O CLI público agentapi consulta
+metadados de uma conversa conhecida, mas não lista todas as sessões. Portanto,
+esta integração observa apenas sessões que emitirem hooks após a conexão; não
+consulta logs, bancos privados, credenciais ou protocolos internos.
+
+- [x] Criar contrato e monitor de metadados dos hooks, com limites e isolamento
+      entre conexões e sessões.
+- [x] Implementar transporte local em memória e helper nativo de hooks com
+      respostas neutras que preservem as políticas do Antigravity.
+- [x] Instalar/remover somente a entrada de hooks do Strata mediante ação explícita
+      no popup, preservando configurações de terceiros.
+- [x] Integrar o monitor no serviço compartilhado e exibir sessões no accordion,
+      incluindo limitações de cobertura e estados desconhecido/desconectado.
+- [ ] Validar contrato público, transporte Windows, UI, builds e testes; revisar
+      a entrega e fazer commit.
+
+Hooks candidatos: SessionStart, PreInvocation, PreToolUse/PostToolUse restritos a
+ask_question/ask_permission e Stop. PreToolUse delega à política padrão com allow
+(não auto_approve); Stop nunca força continuação. Sucesso requer model_stop com
+fullyIdle verdadeiro e ausência de erro. Outras aprovações não são inferidas.
+
+Fonte: [documentação oficial dos hooks](https://antigravity.google/docs/hooks).
+
+Entrega e limites:
+
+- O monitor fica desativado até a ação explícita no accordion. A instalação altera
+  somente a entrada `strata-ai-agents` em `~/.gemini/config/hooks.json`; conflitos
+  não reconhecidos são preservados e reportados. Entradas antigas reconhecidas do
+  Strata podem ser substituídas; remoção exige igualdade com a entrada instalada.
+- O helper roda antes de criar qualquer janela e envia metadados por loopback com
+  nonce próprio por conexão. Mensagens inválidas, antigas ou de outra conexão são
+  descartadas. Entrada limitada a 1 MiB; pacote sanitizado limitado a 16 KiB.
+- Receber um evento não lê transcriptPath nem transmite argumentos, perguntas,
+  mensagens ou erros textuais. A lista usa identificador resumido e primeiro
+  workspace, sem consultar nomes privados ou históricos.
+- Até 128 sessões observadas permanecem em memória. Processamento e atenção sem
+  novo evento por dois minutos passam a desconhecido. Processo encerrado marca
+  desconexão; um evento novo é necessário para restaurar estado observado.
+- Desativar limpa metadados e encerra o receptor mesmo se a remoção do arquivo de
+  hooks falhar; nesse caso, o popup informa a pendência de limpeza. Encerramento
+  normal também tenta remover apenas a entrada própria.
+- Snapshot versão 3; requer carregar o novo host nativo.
+
+Validação:
+
+- 14 testes frontend focados passaram; TypeScript e lint dos arquivos alterados
+  passaram. Build frontend e build release Rust passaram.
+- Seis testes nativos novos passaram: projeção de estados, conclusão explícita,
+  atenção/expiração, ordem de eventos, preservação de configurações e transporte.
+- Suíte Rust completa: 137 passaram e 11 ignorados.
+- O teste explícito Windows lançou o helper release pelo comando gerado para o
+  hook, conferiu stdout neutro e entrega de metadados ao monitor. Usou eventos
+  sintéticos e não abriu tarefa ou enviou mensagem no Antigravity.
+- A evidência do bridge informa explicitamente que a emissão pelo Antigravity
+  real ainda não foi verificada. Não equivale a um teste do provedor ponta a ponta.
+- Suíte frontend completa: 233 passaram e a falha preexistente da posição de áudio
+  permaneceu. Gate agregado limitado pela formatação preexistente.
+- A configuração global real de hooks não foi alterada durante os testes.
+
+Para validar com o provedor real: iniciar o novo Strata, ativar os hooks no
+accordion e reabrir o Antigravity. Uma sessão iniciada ou retomada normalmente
+pelo usuário deve então emitir os eventos. Conferir atenção, conclusão, desconexão
+e desativação sem alterar os hooks de terceiros. Esta etapa e o teste visual do
+WebView2 permanecem pendentes; não declarar aceitação nativa completa.

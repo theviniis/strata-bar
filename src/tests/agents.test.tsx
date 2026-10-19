@@ -8,7 +8,8 @@ it('distinguishes detected applications from unavailable session control', () =>
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 2,
+        version: 3,
+        antigravity: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
           sessions: [],
@@ -71,14 +72,46 @@ it('labels the studio preview and lists each tool without claiming live sessions
   expect(antigravity).toHaveAttribute('aria-expanded', 'false')
   expect(screen.queryByText('Sessões indisponíveis')).not.toBeInTheDocument()
   fireEvent.click(antigravity)
-  expect(screen.getByText('Sessões indisponíveis')).toBeInTheDocument()
+  expect(
+    screen.getByRole('button', { name: 'Ativar hooks do Antigravity' })
+  ).toBeInTheDocument()
+})
+
+it('activates Antigravity hooks without claiming discovery of previous sessions', async () => {
+  render(
+    <PopupContext.Provider
+      value={{ mode: 'demo', id: 'agents', params: {}, close: () => {} }}
+    >
+      <AgentsPopup />
+    </PopupContext.Provider>
+  )
+  fireEvent.click(await screen.findByRole('button', { name: /^Antigravity/ }))
+  expect(
+    screen.getByText(/Somente sessões que emitirem eventos após a conexão/)
+  ).toBeInTheDocument()
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Ativar hooks do Antigravity' })
+  )
+  expect(
+    await screen.findByText('Aguardando eventos do Antigravity')
+  ).toBeInTheDocument()
+  expect(
+    screen.queryByRole('list', { name: 'Sessões do Antigravity' })
+  ).not.toBeInTheDocument()
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Desativar hooks do Antigravity' })
+  )
+  expect(
+    await screen.findByRole('button', { name: 'Ativar hooks do Antigravity' })
+  ).toBeInTheDocument()
 })
 
 it('does not show stale process presence after discovery fails', () => {
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 2,
+        version: 3,
+        antigravity: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
           sessions: [],

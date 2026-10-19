@@ -17,6 +17,7 @@ import { createAgentsStore, getAgentsStore } from '@/stores/agents'
 import { usePopupContext } from '@/popups/context'
 import { useEffect, useState } from 'react'
 import { OpenCodeSessions } from './OpenCodeSessions'
+import { AntigravitySessions } from './AntigravitySessions'
 
 export function AgentsPopup() {
   const { mode } = usePopupContext('agents')
@@ -32,6 +33,7 @@ function ConnectedAgentsPopup({ mode }: { mode: 'native' | 'demo' }) {
   const snapshot = useStore((state) => state.snapshot)
   const error = useStore((state) => state.error)
   const configureOpenCode = useStore((state) => state.configureOpenCode)
+  const configureAntigravity = useStore((state) => state.configureAntigravity)
   useEffect(() => useStore.getState().connect(), [useStore])
   return (
     <AgentsPopupContent
@@ -39,6 +41,7 @@ function ConnectedAgentsPopup({ mode }: { mode: 'native' | 'demo' }) {
       error={error}
       demo={mode === 'demo'}
       onConfigureOpenCode={configureOpenCode}
+      onConfigureAntigravity={configureAntigravity}
     />
   )
 }
@@ -53,12 +56,14 @@ export function AgentsPopupContent({
   snapshot,
   error,
   demo = false,
-  onConfigureOpenCode
+  onConfigureOpenCode,
+  onConfigureAntigravity
 }: {
   snapshot: AgentsSnapshot | null
   error: string | null
   demo?: boolean
   onConfigureOpenCode?: (enabled: boolean) => Promise<void>
+  onConfigureAntigravity?: (enabled: boolean) => Promise<void>
 }) {
   const discoveryError = error ?? snapshot?.error
   return (
@@ -99,6 +104,12 @@ export function AgentsPopupContent({
                   <OpenCodeSessions
                     connection={snapshot.opencode}
                     onConfigure={onConfigureOpenCode}
+                    stale={!!error}
+                  />
+                ) : application.agent === 'antigravity' ? (
+                  <AntigravitySessions
+                    connection={snapshot.antigravity}
+                    onConfigure={onConfigureAntigravity}
                     stale={!!error}
                   />
                 ) : (
