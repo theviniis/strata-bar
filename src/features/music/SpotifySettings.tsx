@@ -1,17 +1,23 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { bridge } from '@/services/system/bridge'
 import type { SpotifyStatus } from '@/services/system/media.generated'
+import { ClipboardPaste, Copy, ExternalLink } from 'lucide-react'
 
-/** Shared account settings; playback controls remain in the compact bar. */
+const SPOTIFY_CALLBACK = 'http://127.0.0.1:43821/spotify/callback'
+const SPOTIFY_DASHBOARD = 'https://developer.spotify.com/dashboard/create'
+
+/** Spotify account settings, mounted while the music settings dialog is open. */
 export function SpotifySettings() {
   const inputId = useId()
+  const inputRef = useRef<HTMLInputElement>(null)
   const [clientId, setClientId] = useState('')
   const [status, setStatus] = useState<SpotifyStatus | null>(null)
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
+  const [copied, setCopied] = useState(false)
   const native = bridge.mode === 'native'
   useEffect(() => {
     if (!native || !bridge.spotifyStatus) return
@@ -34,6 +40,53 @@ export function SpotifySettings() {
       clearInterval(timer)
     }
   }, [native])
+  useEffect(() => {
+    if (!copied) return
+    const timer = setTimeout(() => setCopied(false), 2000)
+    return () => clearTimeout(timer)
+  }, [copied])
+  async function openDashboard() {
+    setError('')
+    try {
+      if (native) {
+        if (!bridge.spotifyOpenDashboard)
+          throw new Error('Abertura do navegador indisponível')
+        await bridge.spotifyOpenDashboard()
+      } else {
+        window.open(SPOTIFY_DASHBOARD, '_blank', 'noopener,noreferrer')
+      }
+    } catch (e) {
+      setError(String(e))
+    }
+  }
+  async function copyCallback() {
+    setError('')
+    try {
+      await navigator.clipboard.writeText(SPOTIFY_CALLBACK)
+      setCopied(true)
+    } catch {
+      setCopied(false)
+      setError(
+        'Não foi possível copiar. Copie a URL de callback exibida acima.'
+      )
+    }
+  }
+  async function pasteClientId() {
+    setError('')
+    try {
+      const value = (await navigator.clipboard.readText()).trim()
+      if (!/^[a-f\d]{32}$/i.test(value)) {
+        setError('O clipboard não contém um Client ID válido.')
+        return
+      }
+      setClientId(value)
+      inputRef.current?.focus()
+    } catch {
+      setError(
+        'Não foi possível ler o clipboard. Cole o Client ID manualmente.'
+      )
+    }
+  }
   async function change(connect: boolean) {
     setPending(true)
     setError('')
@@ -48,25 +101,59 @@ export function SpotifySettings() {
     }
   }
   return (
-    <section
-      className="flex flex-col gap-2 border-t border-border p-4"
-      aria-label="Conexão Spotify"
-    >
+    <section className="flex flex-col gap-2" aria-label="Conexão Spotify">
       <h3 className="text-sm font-medium">Spotify</h3>
       <p className="text-xs text-muted-foreground">
-        Conecte sua conta para consultar e alterar músicas favoritas. Cadastre o
-        redirect URI http://127.0.0.1:43821/spotify/callback no seu aplicativo
-        Spotify.
+        Conecte sua conta para consultar e alterar músicas favoritas. Crie um
+        aplicativo no Spotify e cadastre esta URL como Redirect URI:
       </p>
+      <code className="break-all text-xs">{SPOTIFY_CALLBACK}</code>
+      <div className="flex flex-col gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => void openDashboard()}
+        >
+          <ExternalLink size={14} />
+          Criar aplicativo Spotify
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => void copyCallback()}
+        >
+          <Copy size={14} />
+          <span aria-live="polite">
+            {copied ? 'URL copiada' : 'Copiar URL de callback'}
+          </span>
+        </Button>
+      </div>
       <Label htmlFor={inputId}>Client ID</Label>
-      <Input
-        id={inputId}
-        value={clientId}
-        onChange={(e) => setClientId(e.target.value)}
-        placeholder="Client ID do seu aplicativo"
-        autoComplete="off"
-        disabled={!native || pending || status?.state === 'connecting'}
-      />
+      <div className="flex items-center gap-2">
+        <Input
+          ref={inputRef}
+          id={inputId}
+          value={clientId}
+          onChange={(e) => setClientId(e.target.value)}
+          placeholder="Client ID do seu aplicativo"
+          autoComplete="off"
+          className="min-w-0"
+          disabled={!native || pending || status?.state === 'connecting'}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label="Colar Client ID"
+          disabled={!native || pending || status?.state === 'connecting'}
+          onClick={() => void pasteClientId()}
+        >
+          <ClipboardPaste size={14} />
+          Colar
+        </Button>
+      </div>
       <div className="flex gap-2">
         <Button
           size="sm"

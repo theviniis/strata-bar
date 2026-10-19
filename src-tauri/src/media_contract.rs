@@ -60,6 +60,7 @@ pub struct MediaCapabilities {
     pub volume: bool,
     pub mute: bool,
     pub favorite: bool,
+    pub open_player: bool,
 }
 #[derive(Clone, Debug, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -82,6 +83,7 @@ pub struct MediaData {
 #[derive(Clone, Debug, Deserialize, TS)]
 #[serde(tag = "action", rename_all = "camelCase", deny_unknown_fields)]
 pub enum MediaAction {
+    OpenPlayer,
     Previous,
     PlayPause,
     Next,
@@ -149,6 +151,7 @@ pub fn fixture() -> MediaData {
             volume: true,
             mute: true,
             favorite: false,
+            open_player: false,
         },
     }
 }

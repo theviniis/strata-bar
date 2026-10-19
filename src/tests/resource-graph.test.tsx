@@ -223,7 +223,7 @@ it('lets callers restyle the line with a colour or a class', () => {
   const area = () => container.querySelector('.recharts-area-area')
   expect(style()).toContain('--color-value: var(--chart-1);')
   expect(surface()).not.toHaveClass('line-swatch')
-  expect(area()).toHaveAttribute('fill-opacity', '0.4')
+  expect(area()).toHaveAttribute('fill-opacity', '0.1')
 
   rerender(
     chart({

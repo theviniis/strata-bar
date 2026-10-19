@@ -185,6 +185,13 @@ async fn spotify_disconnect(
         .map_err(|_| "Spotify worker failed")?
 }
 #[tauri::command]
+fn spotify_open_dashboard(window: tauri::WebviewWindow) -> Result<(), String> {
+    if !media::allowed_window(window.label()) {
+        return Err("Spotify settings require a bar or overlay".into());
+    }
+    spotify::open_dashboard()
+}
+#[tauri::command]
 fn quit(app: tauri::AppHandle) {
     app.exit(0);
 }
@@ -223,6 +230,7 @@ fn main() {
             spotify_status,
             spotify_connect,
             spotify_disconnect,
+            spotify_open_dashboard,
             capabilities,
             subscribe,
             unsubscribe,

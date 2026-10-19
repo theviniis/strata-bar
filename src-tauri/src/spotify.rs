@@ -21,6 +21,25 @@ use windows::{
 };
 
 pub const REDIRECT: &str = "http://127.0.0.1:43821/spotify/callback";
+
+/// Fixed destination only; no URL or executable is supplied by the WebView.
+pub fn open_dashboard() -> Result<(), String> {
+    let opened = unsafe {
+        windows::Win32::UI::Shell::ShellExecuteW(
+            None,
+            windows::core::w!("open"),
+            windows::core::w!("https://developer.spotify.com/dashboard/create"),
+            None,
+            None,
+            windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL,
+        )
+    };
+    if opened.0 as isize <= 32 {
+        Err("Não foi possível abrir o painel do Spotify no navegador".into())
+    } else {
+        Ok(())
+    }
+}
 const TARGET: windows::core::PCWSTR = w!("Strata/Spotify/v1");
 #[derive(Clone, Serialize, Deserialize)]
 struct Credentials {
@@ -74,6 +93,26 @@ fn http_client() -> Client {
         .redirect(reqwest::redirect::Policy::none())
         .build()
         .expect("Spotify HTTP client")
+}
+fn api_request(
+    client: &Client,
+    method: Method,
+    path: &str,
+    query: &[(&str, &str)],
+    token: &str,
+) -> reqwest::blocking::RequestBuilder {
+    let empty_mutation = method == Method::PUT || method == Method::DELETE;
+    let request = client
+        .request(method, format!("https://api.spotify.com/v1/{path}"))
+        .bearer_auth(token)
+        .query(query);
+    // These endpoints carry their arguments in the query, but HTTP gateways can
+    // reject a bodyless mutation with 411 unless its length is explicit.
+    if empty_mutation {
+        request.header(reqwest::header::CONTENT_LENGTH, "0")
+    } else {
+        request
+    }
 }
 fn secure_random() -> String {
     let mut bytes = [0; 32];
@@ -471,8 +510,9 @@ impl Spotify {
             429 => "Spotify rate limit reached",
             _ => "Spotify service request failed",
         };
-        inner.status.error = Some(message.into());
-        Err(message.into())
+        let message = format!("{message} (HTTP {code})");
+        inner.status.error = Some(message.clone());
+        Err(message)
     }
     fn request(
         &self,
@@ -486,11 +526,7 @@ impl Spotify {
             return Err("Spotify connection changed".into());
         }
         let expects_body = method == Method::GET;
-        let response = self
-            .client
-            .request(method, format!("https://api.spotify.com/v1/{path}"))
-            .bearer_auth(token)
-            .query(query)
+        let response = api_request(&self.client, method, path, query, token)
             .send()
             .map_err(|_| "Spotify network unavailable")?;
         let response = self.check(response, generation)?;
@@ -729,6 +765,54 @@ fn correlate(data: &MediaData, playback: &Value) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn library_mutations_send_explicit_zero_content_length() {
+        for method in [Method::PUT, Method::DELETE] {
+            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+            let address = listener.local_addr().unwrap();
+            let server = std::thread::spawn(move || {
+                let (mut stream, _) = listener.accept().unwrap();
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(3)))
+                    .unwrap();
+                let mut bytes = Vec::new();
+                while !bytes.ends_with(b"\r\n\r\n") {
+                    let mut byte = [0];
+                    assert_eq!(stream.read(&mut byte).unwrap(), 1);
+                    bytes.push(byte[0]);
+                }
+                let headers = String::from_utf8(bytes).unwrap().to_ascii_lowercase();
+                let status = if headers.contains("\r\ncontent-length: 0\r\n") {
+                    "200 OK"
+                } else {
+                    "411 Length Required"
+                };
+                write!(
+                    stream,
+                    "HTTP/1.1 {status}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                )
+                .unwrap();
+            });
+            let client = http_client();
+            let mut request = api_request(
+                &client,
+                method.clone(),
+                "me/library",
+                &[("uris", "spotify:track:0123456789012345678901")],
+                "test-token",
+            )
+            .build()
+            .unwrap();
+            *request.url_mut() =
+                url::Url::parse(&format!("http://{address}/v1/me/library")).unwrap();
+            let response = client.execute(request).unwrap();
+            server.join().unwrap();
+            let spotify = Spotify::with_store(Arc::new(MemoryStore::default()));
+            let result = spotify.check(response, 0);
+            spotify.stop();
+            assert!(result.is_ok(), "{method}: {}", result.unwrap_err());
+        }
+    }
     #[derive(Default)]
     struct MemoryStore(Mutex<Option<Credentials>>);
     impl CredentialStore for MemoryStore {

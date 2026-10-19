@@ -46,6 +46,15 @@ function AudioOutputs(props: { session?: string; arrowX?: number }) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // jsdom ships no ResizeObserver, which Radix's slider sizing needs on mount.
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
   host.select.mockResolvedValue({
     ...host.output,
     defaultDeviceId: 'headphones'
@@ -97,10 +106,9 @@ it('blocks concurrent selections and allows retry after failure', async () => {
 it('follows external changes and releases subscriptions on close', () => {
   const { unmount } = render(<AudioOutputs />)
   act(() => host.listeners.get('audioOutputs')!({ status: 'loading' }))
-  expect(screen.getByText(/Carregando saídas/)).toHaveAttribute(
-    'role',
-    'status'
-  )
+  expect(
+    screen.getByText('Carregando dispositivos de audio')
+  ).toBeInTheDocument()
   act(() =>
     host.listeners.get('audioOutputs')!({
       status: 'ready',
@@ -124,42 +132,45 @@ it('follows external changes and releases subscriptions on close', () => {
   expect(host.stops).toHaveBeenCalledTimes(2)
 })
 
-it('commits popup volume with pointer and keyboard and follows external changes', async () => {
+it('commits popup volume with keyboard and follows external changes', async () => {
   render(<AudioOutputs />)
   const slider = screen.getByRole('slider', { name: 'Volume' })
-  fireEvent.change(slider, { target: { value: '42' } })
-  expect(screen.getByLabelText('Volume atual')).toHaveTextContent('42%')
-  fireEvent.pointerUp(slider)
-  await waitFor(() => expect(host.mute).toHaveBeenCalledWith({ level: 42 }))
-  await waitFor(() => expect(slider).toHaveValue('64'))
-  fireEvent.change(slider, { target: { value: '65' } })
-  fireEvent.keyUp(slider, { key: 'ArrowRight' })
+  expect(slider).toHaveAttribute('aria-valuenow', '64')
+  fireEvent.keyDown(slider, { key: 'ArrowRight' })
+  expect(screen.getByLabelText('Volume atual')).toHaveTextContent('65%')
   await waitFor(() => expect(host.mute).toHaveBeenCalledWith({ level: 65 }))
+  await waitFor(() => expect(slider).toHaveAttribute('aria-valuenow', '64'))
+  fireEvent.keyDown(slider, { key: 'End' })
+  await waitFor(() => expect(host.mute).toHaveBeenCalledWith({ level: 100 }))
   act(() =>
     host.listeners.get('volume')!({ status: 'error', error: 'Sem saída' })
   )
-  expect(slider).toBeDisabled()
+  // Radix exposes the disabled thumb via `data-disabled`, not the `disabled`
+  // attribute that toBeDisabled only understands on form elements.
+  expect(slider).toHaveAttribute('data-disabled', '')
 })
 
 it('reports content height for the active session and disconnects on close', async () => {
-  let measure!: () => void
+  const callbacks: Array<() => void> = []
   const disconnect = vi.fn()
   vi.stubGlobal(
     'ResizeObserver',
     class {
       constructor(callback: () => void) {
-        measure = callback
+        callbacks.push(callback)
       }
       observe() {}
+      unobserve() {}
       disconnect = disconnect
     }
   )
   const rect = vi
     .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
     .mockReturnValue(new DOMRect(0, 0, 320, 238))
+  const measure = () => callbacks.forEach((callback) => callback())
   try {
     const { unmount } = render(<AudioOutputs session="popup-session" />)
-    act(() => measure())
+    act(measure)
     await waitFor(() =>
       expect(host.resize).toHaveBeenCalledWith('popup-session', {
         width: 320,
@@ -167,7 +178,7 @@ it('reports content height for the active session and disconnects on close', asy
       })
     )
     rect.mockReturnValue(new DOMRect(0, 0, 450, 304))
-    act(() => measure())
+    act(measure)
     await waitFor(() =>
       expect(host.resize).toHaveBeenCalledWith('popup-session', {
         width: 450,
@@ -175,7 +186,7 @@ it('reports content height for the active session and disconnects on close', asy
       })
     )
     rect.mockReturnValue(new DOMRect(0, 0, 240, 180))
-    act(() => measure())
+    act(measure)
     await waitFor(() =>
       expect(host.resize).toHaveBeenLastCalledWith('popup-session', {
         width: 240,

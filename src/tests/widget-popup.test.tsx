@@ -293,11 +293,10 @@ it('provides an interactive, themed demo without native subscriptions or command
     expect(headphones).toHaveAttribute('aria-pressed', 'true')
   )
   const slider = within(dialog).getByRole('slider', { name: 'Volume' })
-  fireEvent.change(slider, { target: { value: '33' } })
-  fireEvent.pointerUp(slider)
+  fireEvent.keyDown(slider, { key: 'End' })
   await waitFor(() =>
     expect(within(dialog).getByLabelText('Volume atual')).toHaveTextContent(
-      '33%'
+      '100%'
     )
   )
   fireEvent.click(within(dialog).getByRole('button', { name: 'Silenciar' }))

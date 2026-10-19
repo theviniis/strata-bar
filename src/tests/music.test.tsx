@@ -1,3 +1,4 @@
+import { MusicPopupContent } from '@/features/music/MusicPopup'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { MusicContent } from '@/features/music/Music'
@@ -7,6 +8,7 @@ import {
   parseMediaEvent
 } from '@/services/system/media'
 import { createMockBridge } from '@/services/system/bridge'
+import type { MediaRequest } from '@/services/system/media.generated'
 
 vi.mock('@/hooks/useOverlayTooltip', () => ({
   useOverlayTooltip: () => ({ trigger: {}, describedBy: 'music-tip' })
@@ -69,8 +71,8 @@ it('keeps the widget visible without a session and disables playback controls', 
   expect(widget).toHaveClass('max-w-45')
   expect(screen.getAllByText('Nenhuma música tocando')[0]).toBeVisible()
   expect(screen.queryAllByText('Dragonaut — Sleep')).toHaveLength(0)
-  for (const button of screen.getAllByRole('button'))
-    expect(button).toBeDisabled()
+  for (const name of ['Faixa anterior', 'Reproduzir', 'Próxima faixa'])
+    expect(screen.getByRole('button', { name })).toBeDisabled()
   fireEvent.click(screen.getByRole('button', { name: 'Reproduzir' }))
   expect(onAction).not.toHaveBeenCalled()
   rerender(
@@ -202,4 +204,215 @@ it('limits width and scrolls overflowing metadata back and forth, cancelling on 
     width.mockRestore()
     scroll.mockRestore()
   }
+})
+
+it('opens the music popup from the title without nesting playback buttons', async () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  render(
+    <MusicContent
+      event={{ status: 'ready', data: demoMedia() }}
+      onAction={vi.fn()}
+    />
+  )
+  const trigger = screen.getByRole('button', { name: 'Abrir player de música' })
+  expect(trigger.querySelector('button')).toBeNull()
+  await act(async () => {
+    fireEvent.click(trigger)
+  })
+  expect(screen.getByRole('heading', { name: 'Dragonaut' })).toBeVisible()
+  expect(screen.getByText('Sleep')).toBeVisible()
+})
+
+it('renders artwork values and sends popup controls with session identity', async () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  const data = demoMedia()
+  data.artwork = {
+    status: 'ready',
+    value: 'data:image/png;base64,AAAA',
+    reason: null
+  }
+  data.favorite = { status: 'ready', value: false, reason: null }
+  data.capabilities.favorite = true
+  data.capabilities.openPlayer = true
+  const onAction = vi.fn(async () => {})
+  render(
+    <MusicPopupContent event={{ status: 'ready', data }} onAction={onAction} />
+  )
+  expect(screen.getByRole('img')).toHaveAttribute('src', data.artwork.value)
+  expect(
+    screen.getByRole('slider', { name: 'Progresso da música' })
+  ).toHaveAttribute('aria-valuenow', '32000')
+  await act(async () =>
+    fireEvent.keyDown(
+      screen.getByRole('slider', { name: 'Progresso da música' }),
+      { key: 'ArrowRight' }
+    )
+  )
+  expect(onAction).toHaveBeenLastCalledWith({
+    sessionId: data.sessionId,
+    trackId: data.trackId,
+    action: { action: 'seek', positionMs: 33000 }
+  })
+  for (const [name, action] of [
+    ['Abrir Demonstração', { action: 'openPlayer' }],
+    ['Faixa anterior', { action: 'previous' }],
+    ['Pausar', { action: 'playPause' }],
+    ['Próxima faixa', { action: 'next' }],
+    ['Adicionar aos favoritos', { action: 'favorite', saved: true }]
+  ] as const) {
+    await act(async () => fireEvent.click(screen.getByRole('button', { name })))
+    expect(onAction).toHaveBeenLastCalledWith({
+      sessionId: data.sessionId,
+      trackId: data.trackId,
+      action
+    })
+  }
+})
+
+it('keeps popup playback controls available while a favorite request is pending', async () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  const data = demoMedia()
+  data.favorite = { status: 'ready', value: false, reason: null }
+  data.capabilities.favorite = true
+  let finishFavorite!: () => void
+  const favoriteRequest = new Promise<void>((resolve) => {
+    finishFavorite = resolve
+  })
+  const onAction = vi.fn((request: MediaRequest) =>
+    request.action.action === 'favorite' ? favoriteRequest : Promise.resolve()
+  )
+  render(
+    <MusicPopupContent event={{ status: 'ready', data }} onAction={onAction} />
+  )
+  const favorite = screen.getByRole('button', {
+    name: 'Adicionar aos favoritos'
+  })
+  fireEvent.click(favorite)
+  fireEvent.click(favorite)
+  expect(onAction).toHaveBeenCalledTimes(1)
+  expect(favorite).toBeDisabled()
+  for (const name of ['Faixa anterior', 'Pausar', 'Próxima faixa']) {
+    const control = screen.getByRole('button', { name })
+    expect(control).toBeEnabled()
+    await act(async () => fireEvent.click(control))
+    expect(favorite).toBeDisabled()
+  }
+  expect(
+    screen.getByRole('slider', { name: 'Progresso da música' })
+  ).toBeEnabled()
+  expect(onAction).toHaveBeenCalledTimes(4)
+  await act(async () => finishFavorite())
+  expect(favorite).toBeEnabled()
+})
+
+it('keeps progress steady through small native corrections but accepts a real backward seek', () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  const data = demoMedia()
+  const onAction = vi.fn(async () => {})
+  const { rerender } = render(
+    <MusicPopupContent event={{ status: 'ready', data }} onAction={onAction} />
+  )
+  act(() => vi.advanceTimersByTime(500))
+  const slider = screen.getByRole('slider', { name: 'Progresso da música' })
+  expect(slider).toHaveAttribute('aria-valuenow', '32500')
+  const progress = data.progress.value!
+  const corrected = {
+    ...data,
+    progress: {
+      ...data.progress,
+      value: { ...progress, positionMs: 32300, measuredAt: Date.now() }
+    }
+  }
+  rerender(
+    <MusicPopupContent
+      event={{ status: 'ready', data: corrected }}
+      onAction={onAction}
+    />
+  )
+  expect(slider).toHaveAttribute('aria-valuenow', '32500')
+  rerender(
+    <MusicPopupContent
+      event={{
+        status: 'ready',
+        data: {
+          ...corrected,
+          progress: {
+            ...corrected.progress,
+            value: { ...progress, positionMs: 12000, measuredAt: Date.now() }
+          }
+        }
+      }}
+      onAction={onAction}
+    />
+  )
+  expect(slider).toHaveAttribute('aria-valuenow', '12000')
+})
+
+it('continues advancing when frequent events repeat the same timeline position', () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  const data = demoMedia()
+  const onAction = vi.fn(async () => {})
+  const { rerender } = render(
+    <MusicPopupContent event={{ status: 'ready', data }} onAction={onAction} />
+  )
+  for (let i = 0; i < 20; i++) {
+    act(() => vi.advanceTimersByTime(100))
+    rerender(
+      <MusicPopupContent
+        event={{
+          status: 'ready',
+          data: {
+            ...data,
+            progress: {
+              ...data.progress,
+              value: { ...data.progress.value!, measuredAt: Date.now() }
+            }
+          }
+        }}
+        onAction={onAction}
+      />
+    )
+  }
+  expect(
+    Number(
+      screen
+        .getByRole('slider', { name: 'Progresso da música' })
+        .getAttribute('aria-valuenow')
+    )
+  ).toBeGreaterThanOrEqual(33750)
 })

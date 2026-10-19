@@ -110,6 +110,7 @@ export interface AdapterBase {
   spotifyStatus?(): Promise<SpotifyStatus>
   spotifyConnect?(clientId: string): Promise<void>
   spotifyDisconnect?(): Promise<void>
+  spotifyOpenDashboard?(): Promise<void>
   setVolume(value: VolumeChange): Promise<unknown>
   setAudioOutput?(value: {
     deviceId: string
@@ -378,6 +379,10 @@ export function createNativeBridge(): NativeBridge {
     async spotifyDisconnect() {
       const { invoke } = await import('@tauri-apps/api/core')
       return invoke('spotify_disconnect')
+    },
+    async spotifyOpenDashboard() {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke('spotify_open_dashboard')
     },
     async setVolume(value) {
       const { invoke } = await import('@tauri-apps/api/core')

@@ -79,7 +79,8 @@ const mediaSchema = z
         seek: z.boolean(),
         volume: z.boolean(),
         mute: z.boolean(),
-        favorite: z.boolean()
+        favorite: z.boolean(),
+        openPlayer: z.boolean()
       })
       .strict()
   })
@@ -153,7 +154,8 @@ export function demoMedia(): MediaData {
       seek: true,
       volume: true,
       mute: true,
-      favorite: false
+      favorite: false,
+      openPlayer: false
     }
   }
 }

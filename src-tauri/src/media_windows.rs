@@ -17,10 +17,11 @@ use windows::{
     Media::Control::*,
     Storage::Streams::DataReader,
     Win32::{
-        Foundation::CloseHandle,
+        Foundation::{CloseHandle, HWND, LPARAM},
         Media::Audio::*,
         Storage::Packaging::Appx::GetApplicationUserModelId,
-        System::{Com::*, Threading::*},
+        System::{Com::*, Diagnostics::ToolHelp::*, Threading::*},
+        UI::WindowsAndMessaging::*,
     },
 };
 
@@ -205,11 +206,13 @@ impl WindowsMedia {
                     volume: false,
                     mute: false,
                     favorite: false,
+                    open_player: false,
                 },
             });
             self.seen = revision;
         }
         let data = self.cached.as_mut().unwrap();
+        data.capabilities.open_player = player_window(&data.player_id).is_some();
         let playback = session.GetPlaybackInfo()?;
         let status = playback.PlaybackStatus()?;
         if status == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Closed {
@@ -314,6 +317,10 @@ impl WindowsMedia {
         }
         let result = (|| -> windows::core::Result<bool> {
             Ok(match action {
+                MediaAction::OpenPlayer => {
+                    focus_player(&data.player_id)?;
+                    true
+                }
                 MediaAction::Previous => complete!(session.TrySkipPreviousAsync())?,
                 MediaAction::Next => complete!(session.TrySkipNextAsync())?,
                 MediaAction::PlayPause => {
@@ -772,5 +779,224 @@ impl IAudioSessionEvents_Impl for AudioEvents_Impl {
     }
     fn OnSessionDisconnected(&self, _: AudioSessionDisconnectReason) -> windows::core::Result<()> {
         self.wake()
+    }
+}
+
+// Resolve only visible top-level windows whose process matches the native session.
+// Multiple windows are ambiguous; never guess a browser tab or execute a command.
+fn player_window(source: &str) -> Option<HWND> {
+    struct Search<'a> {
+        source: &'a str,
+        terminal: Option<u32>,
+        windows: Vec<HWND>,
+    }
+    unsafe extern "system" fn visit(hwnd: HWND, param: LPARAM) -> BOOL {
+        let search = &mut *(param.0 as *mut Search<'_>);
+        if !IsWindowVisible(hwnd).as_bool()
+            || GetWindowTextLengthW(hwnd) == 0
+            || GetWindow(hwnd, GW_OWNER).is_ok_and(|owner| !owner.is_invalid())
+        {
+            return BOOL(1);
+        }
+        let mut pid = 0;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        if pid != 0 && (search.terminal == Some(pid) || process_matches(pid, search.source)) {
+            search.windows.push(hwnd);
+        }
+        BOOL(1)
+    }
+    let mut search = Search {
+        source,
+        terminal: None,
+        windows: Vec::new(),
+    };
+    unsafe {
+        EnumWindows(Some(visit), LPARAM(&mut search as *mut _ as isize)).ok()?;
+    }
+    if search.windows.is_empty() {
+        search.terminal = terminal_for_player(source);
+        search.terminal?;
+        unsafe {
+            EnumWindows(Some(visit), LPARAM(&mut search as *mut _ as isize)).ok()?;
+        }
+    }
+    unique_player_window(&search.windows)
+}
+fn unique_player_window(windows: &[HWND]) -> Option<HWND> {
+    if windows.len() == 1 {
+        Some(windows[0])
+    } else {
+        None
+    }
+}
+fn focus_player(source: &str) -> windows::core::Result<()> {
+    let hwnd = player_window(source).ok_or_else(|| {
+        windows::core::Error::new(
+            windows::core::HRESULT(0x80004005u32 as i32),
+            "Não foi possível identificar uma janela única do player",
+        )
+    })?;
+    unsafe {
+        // Recheck after enumeration, before activating an existing application.
+        if !IsWindow(Some(hwnd)).as_bool() || player_window(source) != Some(hwnd) {
+            return Err(windows::core::Error::from_thread());
+        }
+        if IsIconic(hwnd).as_bool() {
+            let _ = ShowWindowAsync(hwnd, SW_RESTORE);
+        }
+        if !SetForegroundWindow(hwnd).as_bool() {
+            return Err(windows::core::Error::new(
+                windows::core::HRESULT(0x80004005u32 as i32),
+                "O Windows não permitiu ativar o player",
+            ));
+        }
+    }
+    Ok(())
+}
+#[cfg(test)]
+mod player_window_tests {
+    use super::*;
+    #[test]
+    fn never_selects_an_ambiguous_or_missing_window() {
+        let one = HWND(1usize as *mut _);
+        let two = HWND(2usize as *mut _);
+        assert_eq!(unique_player_window(&[]), None);
+        assert_eq!(unique_player_window(&[one]), Some(one));
+        assert_eq!(unique_player_window(&[one, two]), None);
+    }
+}
+
+// Console players own no top-level window. Follow only their verified process
+// ancestry to a known terminal host; never select a terminal by its window title.
+type ProcessTree = std::collections::HashMap<u32, (u32, String)>;
+fn terminal_ancestor(player: u32, tree: &ProcessTree) -> Option<u32> {
+    let mut pid = player;
+    let mut seen = std::collections::HashSet::new();
+    for _ in 0..16 {
+        if !seen.insert(pid) {
+            return None;
+        }
+        let (parent, _) = tree.get(&pid)?;
+        let (_, name) = tree.get(parent)?;
+        if matches!(
+            name.to_ascii_lowercase().as_str(),
+            "windowsterminal.exe"
+                | "wezterm-gui.exe"
+                | "alacritty.exe"
+                | "mintty.exe"
+                | "conhost.exe"
+                | "openconsole.exe"
+        ) {
+            return Some(*parent);
+        }
+        // Stop at non-shell ancestors instead of following into a launcher/IDE.
+        if !matches!(
+            name.to_ascii_lowercase().as_str(),
+            "powershell.exe"
+                | "pwsh.exe"
+                | "cmd.exe"
+                | "bash.exe"
+                | "nu.exe"
+                | "fish.exe"
+                | "zsh.exe"
+        ) {
+            return None;
+        }
+        pid = *parent;
+    }
+    None
+}
+fn terminal_for_player(source: &str) -> Option<u32> {
+    if !source.to_ascii_lowercase().ends_with(".exe") {
+        return None;
+    }
+    unsafe {
+        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0).ok()?;
+        let mut entry = PROCESSENTRY32W {
+            dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+            ..Default::default()
+        };
+        let mut tree = ProcessTree::new();
+        let mut players = Vec::new();
+        let mut next = Process32FirstW(snapshot, &mut entry);
+        while next.is_ok() {
+            let end = entry
+                .szExeFile
+                .iter()
+                .position(|c| *c == 0)
+                .unwrap_or(entry.szExeFile.len());
+            tree.insert(
+                entry.th32ProcessID,
+                (
+                    entry.th32ParentProcessID,
+                    String::from_utf16_lossy(&entry.szExeFile[..end]),
+                ),
+            );
+            if tree
+                .get(&entry.th32ProcessID)
+                .is_some_and(|(_, name)| name.eq_ignore_ascii_case(source))
+                && process_matches(entry.th32ProcessID, source)
+            {
+                players.push(entry.th32ProcessID);
+            }
+            next = Process32NextW(snapshot, &mut entry);
+        }
+        let _ = CloseHandle(snapshot);
+        if players.len() != 1 {
+            return None;
+        }
+        let terminal = terminal_ancestor(players[0], &tree)?;
+        // Reject reused parent PIDs: the terminal must predate the player.
+        let created = |pid| -> Option<u64> {
+            let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+            let mut creation = Default::default();
+            let mut exit = Default::default();
+            let mut kernel = Default::default();
+            let mut user = Default::default();
+            let result = GetProcessTimes(process, &mut creation, &mut exit, &mut kernel, &mut user);
+            let _ = CloseHandle(process);
+            result.ok()?;
+            Some(((creation.dwHighDateTime as u64) << 32) | creation.dwLowDateTime as u64)
+        };
+        if created(terminal)? > created(players[0])? {
+            return None;
+        }
+        Some(terminal)
+    }
+}
+#[cfg(test)]
+mod terminal_tests {
+    use super::*;
+    #[test]
+    #[ignore = "Requires one running spotatui in a supported terminal; reads window identity only"]
+    fn live_spotatui_resolves_its_terminal_window() {
+        let terminal = terminal_for_player("spotatui.exe").expect("terminal process");
+        let hwnd = player_window("spotatui.exe").expect("terminal window");
+        let mut pid = 0;
+        unsafe {
+            GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        }
+        assert_eq!(pid, terminal);
+    }
+    #[test]
+    fn follows_spotatui_shell_to_its_terminal_only() {
+        let tree = ProcessTree::from([
+            (10, (20, "spotatui.exe".into())),
+            (20, (30, "powershell.exe".into())),
+            (30, (40, "WindowsTerminal.exe".into())),
+            (40, (0, "explorer.exe".into())),
+            (50, (40, "WindowsTerminal.exe".into())),
+        ]);
+        assert_eq!(terminal_ancestor(10, &tree), Some(30));
+        assert_eq!(terminal_ancestor(40, &tree), None);
+        assert_eq!(terminal_ancestor(999, &tree), None);
+    }
+    #[test]
+    fn rejects_loops_and_unrelated_ancestors() {
+        let tree = ProcessTree::from([
+            (10, (20, "spotatui.exe".into())),
+            (20, (10, "powershell.exe".into())),
+        ]);
+        assert_eq!(terminal_ancestor(10, &tree), None);
     }
 }

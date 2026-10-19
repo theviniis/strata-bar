@@ -40,6 +40,7 @@ pub fn validate(request: &MediaRequest, data: &MediaData) -> Result<(), String> 
         return Err("Media session or track changed".into());
     }
     let supported = match request.action {
+        MediaAction::OpenPlayer => data.capabilities.open_player,
         MediaAction::Previous => data.capabilities.previous,
         MediaAction::PlayPause => data.capabilities.play_pause,
         MediaAction::Next => data.capabilities.next,
@@ -297,6 +298,16 @@ mod tests {
             track_id: "track-1".into(),
             action,
         }
+    }
+    #[test]
+    fn opening_player_requires_capability_and_current_identity() {
+        let mut data = crate::media_contract::fixture();
+        let mut r = request(MediaAction::OpenPlayer);
+        assert!(validate(&r, &data).is_err());
+        data.capabilities.open_player = true;
+        assert!(validate(&r, &data).is_ok());
+        r.session_id = "old-session".into();
+        assert!(validate(&r, &data).is_err());
     }
     #[test]
     fn rejects_stale_session_and_track() {

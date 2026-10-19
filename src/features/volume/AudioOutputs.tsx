@@ -1,4 +1,3 @@
-import { SpotifySettings } from '../music/SpotifySettings'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { type ButtonLoadingProps } from '@/components/ui/button-loading'
@@ -108,12 +107,18 @@ function AudioOutputContentItem({
       className="grid grid-cols-[16px_1fr_16px]"
       variant="outline"
       disabled={isLoading || disabled}
+      aria-pressed={!!isActive}
       {...props}
     >
       <Volume2 size={16} className="shrink-0 text-primary" />
       <span>{device.name}</span>
       {isLoading ? (
-        <Spinner width={16} height={16} className="text-primary" />
+        <Spinner
+          width={16}
+          height={16}
+          aria-hidden="true"
+          className="text-primary"
+        />
       ) : (
         isActive && (
           <Check
@@ -250,7 +255,7 @@ function AudioOutputsContent({
                 device={device}
                 onClick={() => void select(device.id)}
                 disabled={pending !== null}
-                isLoading={!!pending}
+                isLoading={pending === device.id}
               />
             ))}
           </ButtonGroup>
@@ -265,6 +270,7 @@ function AudioOutputsContent({
         <Button
           disabled={volume.status !== 'ready' || pending !== null}
           aria-pressed={muted}
+          aria-label={muted ? 'Ativar som' : 'Silenciar'}
           onClick={() => void mute()}
           variant="ghost"
           size="icon"
@@ -276,16 +282,18 @@ function AudioOutputsContent({
           defaultValue={[100]}
           max={100}
           step={1}
-          onValueChange={(value) => setLevel(value[0])}
+          aria-label="Volume"
+          disabled={volume.status !== 'ready' || pending !== null}
+          onValueChange={(value) => setDraft(value[0])}
+          onValueCommit={(value) => void setLevel(value[0])}
         />
         <WidgetItemOutput
           aria-label="Volume atual"
           className="min-w-8 text-right"
         >
-          {volume.status === 'ready' ? `${level}` : '—'}
+          {volume.status === 'ready' ? `${level}%` : '—'}
         </WidgetItemOutput>
       </CardFooter>
-      <SpotifySettings />
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { ScrollingText } from '@/components/ui/scrolling-text'
 import {
   WidgetItem,
   WidgetItemIcon,
@@ -5,6 +6,7 @@ import {
 } from '@/components/widget-item'
 import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
 import { useSystemChannel } from '@/hooks/useSystemChannel'
+import { WidgetPopup } from '@/popups/WidgetPopup'
 import {
   bridge,
   connect,
@@ -19,70 +21,6 @@ import type {
 } from '@/services/system/media.generated'
 import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-
-// Keep the controls fixed while only overflowing metadata travels at 24 px/s.
-function MusicText({
-  text,
-  describedBy
-}: {
-  text: string
-  describedBy: string
-}) {
-  const viewport = useRef<HTMLSpanElement>(null)
-  const content = useRef<HTMLSpanElement>(null)
-  useEffect(() => {
-    const box = viewport.current
-    const label = content.current
-    if (!box || !label) return
-    const motion = window.matchMedia?.('(prefers-reduced-motion: reduce)')
-    let animation: Animation | undefined
-    const measure = () => {
-      animation?.cancel()
-      animation = undefined
-      const distance = label.scrollWidth - box.clientWidth
-      if (distance <= 0 || box.clientWidth === 0 || motion?.matches) return
-      const travel = (distance / 24) * 1000
-      const duration = 2 * travel + 2400
-      const pause = 1200 / duration
-      animation = label.animate?.(
-        [
-          { transform: 'translateX(0)', offset: 0 },
-          { transform: 'translateX(0)', offset: pause },
-          { transform: `translateX(-${distance}px)`, offset: 0.5 },
-          { transform: `translateX(-${distance}px)`, offset: 0.5 + pause },
-          { transform: 'translateX(0)', offset: 1 }
-        ],
-        { duration, iterations: Infinity, easing: 'linear' }
-      )
-    }
-    const observer =
-      typeof ResizeObserver === 'undefined'
-        ? undefined
-        : new ResizeObserver(measure)
-    observer?.observe(box)
-    observer?.observe(label)
-    motion?.addEventListener?.('change', measure)
-    window.addEventListener('resize', measure)
-    measure()
-    return () => {
-      animation?.cancel()
-      observer?.disconnect()
-      motion?.removeEventListener?.('change', measure)
-      window.removeEventListener('resize', measure)
-    }
-  }, [text])
-  return (
-    <span
-      ref={viewport}
-      className="relative z-10 mx-1 min-w-0 flex-1 overflow-hidden text-[11px] motion-reduce:text-ellipsis"
-      aria-describedby={describedBy}
-    >
-      <span ref={content} className="inline-block whitespace-nowrap">
-        {text}
-      </span>
-    </span>
-  )
-}
 
 export function Music() {
   const event = useSystemChannel('media')
@@ -152,6 +90,8 @@ export function MusicContent({
       : event.status === 'error'
         ? 'Mídia indisponível'
         : 'Nenhuma música tocando'
+  const artwork =
+    current?.artwork.status === 'ready' ? current.artwork.value : null
   const tooltip = `${demo ? 'Demonstração · ' : ''}${text}${error ? ` · ${error}` : ''}`
   const tip = useOverlayTooltip(tooltip)
   async function act(action: MediaAction) {
@@ -175,32 +115,62 @@ export function MusicContent({
     }
   }
   return (
-    <div
-      aria-label={demo ? 'Música · demonstração' : 'Música'}
-      className="min-w-0 max-w-45 shrink overflow-hidden"
-    >
-      <div
-        className="relative isolate flex min-w-0 items-center overflow-hidden rounded bg-muted/40 text-foreground group-data-[theme=light]:bg-[#302a3e]/5"
-        {...tip.trigger}
-      >
-        {current?.artwork.status === 'ready' && current.artwork.value && (
-          <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]">
-            <img
-              src={current.artwork.value}
-              alt=""
-              onError={(event) => {
-                event.currentTarget.style.display = 'none'
-              }}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-            <span className="absolute rounded inset-0 bg-black/70 group-data-[theme=light]:bg-[#f8f5f2]/50" />
+    <WidgetPopup.Root popup="music">
+      <WidgetPopup.Anchor asChild>
+        <WidgetItem className="group/music p-0" disabled={!current} asChild>
+          <div
+            aria-label={demo ? 'Música · demonstração' : 'Música'}
+            className="min-w-0 max-w-45 shrink overflow-hidden"
+          >
+            <div
+              className="relative isolate flex min-w-0 items-center overflow-hidden rounded bg-muted/40 mask-[linear-gradient(#000,#000)] text-foreground group-data-[theme=light]:bg-[#302a3e]/5"
+              {...tip.trigger}
+            >
+              {artwork && (
+                <div className="pointer-events-none absolute inset-0 z-0">
+                  <img
+                    src={artwork}
+                    alt=""
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none'
+                    }}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <span className="absolute inset-0 bg-black/70 group-data-[theme=light]:bg-[#f8f5f2]/50" />
+                  {/* The cover sits above the bar's shared hover highlight, so
+                      the music widget mirrors that surface (and the popup-open
+                      state) with its own layer. */}
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 rounded bg-muted opacity-0 transition-opacity duration-200 ease-out group-hover/music:opacity-100 group-data-[popup-open=true]/music:opacity-100 motion-reduce:transition-none"
+                  />
+                </div>
+              )}
+              <MediaControls
+                current={current}
+                pending={pending}
+                onClick={act}
+              />
+              <WidgetPopup.Trigger asChild>
+                <button
+                  aria-label="Abrir player de música"
+                  className="relative z-10 flex min-w-0 flex-1 cursor-pointer items-center self-stretch focus-visible:outline-accent"
+                >
+                  <ScrollingText
+                    text={text}
+                    aria-describedby={tip.describedBy}
+                    className="relative z-10 mx-1 flex-1 text-[11px]"
+                  />
+                </button>
+              </WidgetPopup.Trigger>
+              <WidgetItemTooltip id={tip.describedBy}>
+                {tooltip}
+              </WidgetItemTooltip>
+            </div>
           </div>
-        )}
-        <MediaControls current={current} pending={pending} onClick={act} />
-        <MusicText text={text} describedBy={tip.describedBy} />
-        <WidgetItemTooltip id={tip.describedBy}>{tooltip}</WidgetItemTooltip>
-      </div>
-    </div>
+        </WidgetItem>
+      </WidgetPopup.Anchor>
+    </WidgetPopup.Root>
   )
 }
 
@@ -227,22 +197,20 @@ function MediaControls({ current, pending, onClick }: MediaControlsProps) {
   return (
     <div className="flex items-center" aria-busy={pending}>
       {mediaControlMap(current).map(([action, label, Icon]) => (
-        <WidgetItem
+        <button
           key={action}
+          type="button"
           aria-label={label}
+          // Not a WidgetItem: controls must not become their own hover targets.
           disabled={!current || !current.capabilities[action]}
           aria-disabled={pending || undefined}
-          className="relative z-10 shrink-0 px-1 disabled:opacity-40"
+          className="relative z-10 shrink-0 cursor-pointer rounded p-1 disabled:cursor-default disabled:opacity-40"
           onClick={() => {
             if (!pending) onClick({ action })
           }}
         >
-          <WidgetItemIcon
-            icon={Icon}
-            size={14}
-            className="text-secondary cursor-pointer"
-          />
-        </WidgetItem>
+          <WidgetItemIcon icon={Icon} size={12} className="text-primary" />
+        </button>
       ))}
     </div>
   )
