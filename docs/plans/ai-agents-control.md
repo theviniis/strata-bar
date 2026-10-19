@@ -12,8 +12,9 @@ de formulários. O Strata oferecerá somente `once` e `reject`, nunca `always`.
       nem envio automático; desabilitar durante envio/desconexão.
 - [x] Revalidar sessão, ID e conteúdo atual antes do POST; preservar bloqueio de
       tentativas incertas entre monitores e reconexões.
-- [ ] Validar serviço e UI nos pontos já acordados, builds e revisão; commitar
-      na branch atual.
+- [x] Validar serviço e UI nos pontos já acordados, build frontend e revisão;
+      commitar na branch atual (`8ff145e`).
+- [x] Confirmar build release com o frontend atualizado.
 - [ ] Validar decisão na API real com solicitação própria consultável.
 - [ ] Validar a decisão em execução real e interação no WebView2.
 
@@ -44,8 +45,17 @@ Validação da implementação:
   ou recusa reais validadas.
 - Suíte frontend completa: 242 passaram e dois falharam: a posição de áudio
   preexistente e o cenário intermitente conhecido de mute no demo do microfone.
+- A suíte isolada de microfone passou com seus sete testes, sem alterações.
 - A evidência de limpeza consulta somente a página recente: não foram achadas
   conversas temporárias próprias nessa página; não representa enumeração completa.
+- Revisão de padrões: nenhuma violação documentada. Uma recomendação de
+  manutenção identificou coordenação repetida entre respostas e decisões no
+  host; centralização pode ser tratada separadamente, sem bloquear esta fatia.
+- Revisão de especificação: implementação conforme a fatia, sem defeitos
+  comprovados ou escopo adicional. A aceitação do provedor permanece incompleta:
+  decisão real, continuação de ferramenta e interação WebView2 não validadas.
+- Build release passou; executável atualizado em
+  `src-tauri/target/release/strata-bar.exe`. A barra aberta não foi interrompida.
 
 ## Ticket 6 — Responder perguntas textuais do OpenCode
 
