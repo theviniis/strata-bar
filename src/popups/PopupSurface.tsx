@@ -8,6 +8,7 @@ import { POPUP_EXIT_MS } from './motion'
 
 export interface PopupSurfaceProps {
   label: string
+  className?: string
   mode: 'native' | 'demo'
   session?: string
   side?: OverlaySide
@@ -22,6 +23,7 @@ export interface PopupSurfaceProps {
 /** Owns window mechanics only. Feature content is unrestricted React. */
 export function PopupSurface({
   label,
+  className,
   mode,
   session,
   side = 'bottom',
@@ -185,7 +187,10 @@ export function PopupSurface({
           role="dialog"
           aria-label={label}
           tabIndex={-1}
-          className="bg-popover text-[12px] shadow-lg outline-none"
+          className={cn(
+            'max-w-90 bg-popover text-[12px] shadow-lg outline-none *:max-w-full',
+            className
+          )}
           onKeyDown={(event) => {
             if (event.key === 'Escape') {
               event.preventDefault()

@@ -56,6 +56,7 @@ export function PopupHost({
       {...placement}
       mode={mode}
       label={metadata.label}
+      className={'className' in metadata ? metadata.className : undefined}
       close={close}
       closeOnEscape={id !== 'reminderAlert'}
       autoFocus={id !== 'reminderAlert'}

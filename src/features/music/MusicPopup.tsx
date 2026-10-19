@@ -133,7 +133,7 @@ function MusicPopupCard({
     controls
   return (
     <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-      <Card className="min-w-80 max-w-85">
+      <Card className="min-w-45">
         <div hidden={settingsOpen}>
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
