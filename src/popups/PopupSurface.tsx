@@ -13,6 +13,8 @@ export interface PopupSurfaceProps {
   side?: OverlaySide
   arrowX?: number
   closing?: boolean
+  closeOnEscape?: boolean
+  autoFocus?: boolean
   close(): void
   children: ReactNode
 }
@@ -25,6 +27,8 @@ export function PopupSurface({
   side = 'bottom',
   arrowX,
   closing = false,
+  closeOnEscape = true,
+  autoFocus = true,
   close,
   children
 }: PopupSurfaceProps) {
@@ -79,7 +83,7 @@ export function PopupSurface({
       animation?.cancel()
     }
     if (mode === 'demo') {
-      root.current?.focus()
+      if (autoFocus) root.current?.focus()
       animateOpen()
       return stopAnimation
     }
@@ -105,7 +109,7 @@ export function PopupSurface({
           setPlacedArrowX(size.arrowX)
           if (!focused) {
             focused = true
-            root.current?.focus()
+            if (autoFocus) root.current?.focus()
             animateOpen()
           }
         })
@@ -124,7 +128,7 @@ export function PopupSurface({
       stopAnimation()
       observer?.disconnect()
     }
-  }, [mode, session, side])
+  }, [mode, session, side, autoFocus])
   useLayoutEffect(() => {
     const node = visual.current
     if (
@@ -186,7 +190,7 @@ export function PopupSurface({
             if (event.key === 'Escape') {
               event.preventDefault()
               event.stopPropagation()
-              close()
+              if (closeOnEscape) close()
             }
             if (event.key !== 'Tab') return
             const controls = root.current?.querySelectorAll<HTMLElement>(

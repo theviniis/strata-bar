@@ -1,3 +1,5 @@
+import { PopupContext } from '@/popups/context'
+import { ReminderAlert } from '@/features/reminders/ReminderAlert'
 import {
   act,
   fireEvent,
@@ -410,6 +412,74 @@ async function overdue(message: string) {
   return reminder
 }
 
+it('waits for the expiry snapshot instead of closing the native alert on stale state', async () => {
+  const reminder = await overdue('Await expiry snapshot')
+  const store = getRemindersStore()
+  const expired = store.getState().snapshot!
+  const revision = expired.revision
+  store.setState({
+    snapshot: {
+      ...expired,
+      revision: revision - 1,
+      reminders: expired.reminders.map((r) => ({ ...r, status: 'scheduled' }))
+    }
+  })
+  const close = vi.fn()
+  render(
+    <PopupContext.Provider
+      value={{
+        id: 'reminderAlert',
+        mode: 'native',
+        params: { id: reminder.id, revision },
+        close
+      }}
+    >
+      <ReminderAlert />
+    </PopupContext.Provider>
+  )
+  expect(close).not.toHaveBeenCalled()
+  expect(
+    screen.queryByRole('button', { name: 'Dispensar' })
+  ).not.toBeInTheDocument()
+  act(() => store.setState({ snapshot: expired }))
+  expect(screen.getByRole('button', { name: 'Dispensar' })).toBeEnabled()
+  expect(close).not.toHaveBeenCalled()
+  await act(async () => {
+    await store.getState().dismiss(reminder.id)
+  })
+  await waitFor(() => expect(close).toHaveBeenCalled())
+})
+
+it('renders Markdown in the expiry alert without moving keyboard focus', async () => {
+  const r = await overdue(
+    '## Heading\n\n**Important** and *formatted*\n\n- First\n- Second'
+  )
+  const input = document.createElement('input')
+  document.body.append(input)
+  input.focus()
+  try {
+    render(
+      <PopupHost
+        id="reminderAlert"
+        params={{ id: r.id }}
+        mode="demo"
+        close={() => {}}
+      />
+    )
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Heading' })
+    ).toBeInTheDocument()
+    expect(screen.getByText('Important').tagName).toBe('STRONG')
+    expect(screen.getByText('formatted').tagName).toBe('EM')
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(input).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Dispensar' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Adiar' })).toBeEnabled()
+  } finally {
+    input.remove()
+  }
+})
+
 it('snoozes an alert with a preset, persists it and closes after saving', async () => {
   const r = await overdue('Tea is ready')
   const close = vi.fn()
@@ -468,6 +538,10 @@ it('presents simultaneous overdue alerts in sequence and keeps closed alerts pen
     screen.getByRole('dialog', { name: 'Alerta de lembrete' }),
     { key: 'Escape' }
   )
+  expect(screen.getByRole('alertdialog')).toHaveTextContent('First')
+  fireEvent.pointerDown(document.body)
+  expect(screen.getByRole('alertdialog')).toHaveTextContent('First')
+  fireEvent.click(screen.getByRole('button', { name: 'Fechar alerta' }))
   expect(await screen.findByRole('alertdialog')).toHaveTextContent('Second')
   expect(getRemindersStore().getState().snapshot!.reminders[0].status).toBe(
     'ringing'

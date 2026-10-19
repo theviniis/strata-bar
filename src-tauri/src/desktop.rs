@@ -28,8 +28,10 @@ static COUNTS: [AtomicU64;4]=[const {AtomicU64::new(0)};4];
 static OVERLAY_COUNTS: [AtomicU64; 3] = [const { AtomicU64::new(0) }; 3];
 pub fn profile()->serde_json::Value{serde_json::json!({"windowMessages":COUNTS[0].load(Ordering::Relaxed),"appbarNotifications":COUNTS[1].load(Ordering::Relaxed),"positionWrites":COUNTS[2].load(Ordering::Relaxed),"windowPositionMessages":COUNTS[3].load(Ordering::Relaxed),"overlayShows":OVERLAY_COUNTS[0].load(Ordering::Relaxed),"overlayPositions":OVERLAY_COUNTS[1].load(Ordering::Relaxed),"overlayHides":OVERLAY_COUNTS[2].load(Ordering::Relaxed)})}
 #[derive(Clone)]
-struct PopupSession { id: String, source: String, side: OverlaySide, anchor: OverlayAnchor, revealed: bool, closing: bool }
+struct PopupSession { id: String, component: String, source: String, side: OverlaySide, anchor: OverlayAnchor, revealed: bool, closing: bool }
 static POPUP: Mutex<Option<PopupSession>> = Mutex::new(None);
+static REMINDER_ANCHORS: std::sync::LazyLock<Mutex<std::collections::HashMap<String, (OverlayAnchor, Option<String>)>>> =
+    std::sync::LazyLock::new(|| Mutex::new(std::collections::HashMap::new()));
 static LAST_OVERLAY_RENDER: Mutex<Option<serde_json::Value>> = Mutex::new(None);
 static OVERLAY_OWNER: Mutex<Option<String>> = Mutex::new(None);
 static OVERLAY_PLACING: AtomicBool = AtomicBool::new(false);
@@ -184,8 +186,11 @@ unsafe extern "system" fn procedure(
         }
         if wp.0 as u32 == ABN_FULLSCREENAPP {
             FULLSCREEN_APP.store(lp.0 != 0, Ordering::Relaxed);
-            // A fullscreen app owns the screen: never float a stale tooltip over it.
-            overlay_hide(&state.app);
+            // Keep an alert hidden by fullscreen queued for delivery afterwards.
+            if lp.0 != 0 {
+                retry_active_reminder(&state.app);
+                overlay_hide(&state.app);
+            }
             let top = if lp.0 != 0 {
                 HWND_NOTOPMOST
             } else {
@@ -237,6 +242,7 @@ fn fingerprint(m: &tauri::Monitor) -> String {
 fn top_strip(monitor:RECT,height:i32)->RECT{RECT{left:monitor.left,top:monitor.top,right:monitor.right,bottom:monitor.top+height.clamp(1,(monitor.bottom-monitor.top).max(1))}}
 pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     // A stale anchor must never survive a monitor/DPI change.
+    REMINDER_ANCHORS.lock().unwrap().clear();
     overlay_hide(app);
     let monitors = app.available_monitors()?;
     let mut desired = Vec::new();
@@ -650,7 +656,7 @@ pub fn overlay_dismiss(app: &AppHandle, session: Option<&str>) {
     let current = POPUP.lock().unwrap().clone();
     if let Some(popup) = current {
         if session != Some(popup.id.as_str()) { return; }
-        animate_popup_close(app, true);
+        animate_popup_close(app, popup_takes_focus(&popup.component));
     }
 }
 
@@ -677,6 +683,11 @@ pub fn overlay_resize(
     }
     let popup = POPUP.lock().unwrap().clone().filter(|p| p.id == session && !p.closing)
         .ok_or("Popup session is no longer active")?;
+    if popup.component == "reminderAlert" && fullscreen_application_active() {
+        retry_active_reminder(app);
+        overlay_hide(app);
+        return Err("Reminder alert deferred during fullscreen".into());
+    }
     let source = app.get_webview_window(&popup.source).ok_or("Popup source is unavailable")?;
     let source_hwnd = HWND(source.hwnd().map_err(|e| e.to_string())?.0);
     let hwnd = HWND(caller.hwnd().map_err(|e| e.to_string())?.0);
@@ -705,8 +716,13 @@ pub fn overlay_resize(
     if !popup.revealed {
         if let Some(active) = POPUP.lock().unwrap().as_mut().filter(|p| p.id == session) { active.revealed = true; }
         // Keep tao visibility state in sync: set_focus ignores windows it thinks are hidden.
-        caller.show().map_err(|e| e.to_string())?;
-        caller.set_focus().map_err(|e| e.to_string())?;
+        if popup_takes_focus(&popup.component) {
+            caller.show().map_err(|e| e.to_string())?;
+            caller.set_focus().map_err(|e| e.to_string())?;
+        } else {
+            // Show without activation; never use WS_EX_NOACTIVATE on WebView2.
+            unsafe { let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE); }
+        }
         OVERLAY_COUNTS[0].fetch_add(1, Ordering::Relaxed);
     }
     if let Some(render) = LAST_OVERLAY_RENDER.lock().unwrap().as_mut() {
@@ -745,6 +761,8 @@ pub fn overlay_show(
     }
     let current = POPUP.lock().unwrap().clone();
     if let Some(current) = current {
+        // Expiry alerts require an explicit close from their own controls.
+        if popup_requires_explicit_close(&current.component) { return Ok(()); }
         if request.kind == "tooltip" { return Ok(()); }
         if request.session.as_deref() == Some(current.id.as_str()) && current.source == caller.label() {
             overlay_hide(app);
@@ -778,7 +796,7 @@ pub fn overlay_show(
     let session = OVERLAY_SESSION.fetch_add(1, Ordering::Relaxed) + 1;
     let interactive = request.kind == "popover";
     if interactive {
-        *POPUP.lock().unwrap() = Some(PopupSession { id: request.session.clone().unwrap(), source: caller.label().into(), side, anchor: OverlayAnchor { x: request.anchor.x, y: request.anchor.y, width: request.anchor.width, height: request.anchor.height }, revealed: false, closing: false });
+        *POPUP.lock().unwrap() = Some(PopupSession { id: request.session.clone().unwrap(), component: request.component.clone().unwrap(), source: caller.label().into(), side, anchor: OverlayAnchor { x: request.anchor.x, y: request.anchor.y, width: request.anchor.width, height: request.anchor.height }, revealed: false, closing: false });
     }
     *OVERLAY_OWNER.lock().unwrap() = request.session.clone();
     window.set_ignore_cursor_events(!interactive).map_err(|e| e.to_string())?;
@@ -820,10 +838,70 @@ pub fn overlay_show(
     Ok(())
 }
 
+fn monitor_is_primary(flags: u32) -> bool {
+    flags & MONITORINFOF_PRIMARY != 0
+}
+
+fn valid_reminder_anchor(anchor: &OverlayAnchor, width: f64, height: f64) -> bool {
+    [anchor.x, anchor.y, anchor.width, anchor.height]
+        .iter()
+        .all(|n| n.is_finite())
+        && anchor.x >= 0.0
+        && anchor.y >= 0.0
+        && anchor.width > 0.0
+        && anchor.height > 0.0
+        && anchor.x + anchor.width <= width + 1.0
+        && anchor.y + anchor.height <= height + 1.0
+}
+
+#[tauri::command]
+pub fn reminders_set_anchor(
+    window: WebviewWindow,
+    anchor: OverlayAnchor,
+    occurrence: Option<String>,
+) -> Result<(), String> {
+    if !window.label().starts_with("bar-") {
+        return Err("Only bars may report reminder anchors".into());
+    }
+    let mut rect = RECT::default();
+    unsafe {
+        GetWindowRect(HWND(window.hwnd().map_err(|e| e.to_string())?.0), &mut rect)
+            .map_err(|e| e.to_string())?;
+    }
+    let scale = window.scale_factor().map_err(|e| e.to_string())?;
+    if !valid_reminder_anchor(
+        &anchor,
+        f64::from(rect.right - rect.left) / scale,
+        f64::from(rect.bottom - rect.top) / scale,
+    ) {
+        return Err("Invalid reminder widget anchor".into());
+    }
+    if occurrence.as_ref().is_some_and(|value| value.len() > 128) {
+        return Err("Invalid reminder anchor occurrence".into());
+    }
+    let mut anchors = REMINDER_ANCHORS.lock().unwrap();
+    let previous = anchors
+        .get(window.label())
+        .and_then(|(_, value)| value.clone());
+    anchors.insert(window.label().into(), (anchor, occurrence.or(previous)));
+    drop(anchors);
+    if let Some(scheduler) = window
+        .app_handle()
+        .try_state::<crate::reminders::ReminderScheduler>()
+    {
+        scheduler.wake();
+    }
+    Ok(())
+}
+
 /// A native-only scheduler entrypoint. Reuses the shared popup surface and
 /// reads the selected AppBar's actual Win32 rectangle for its anchor.
 pub fn show_reminder_alert(app: &AppHandle, id: &str, notify_at: f64) -> Result<bool, String> {
-    if FULLSCREEN_APP.load(Ordering::Relaxed) || POPUP.lock().unwrap().is_some() {
+    let active = POPUP.lock().unwrap().clone();
+    if defer_reminder_alert(
+        fullscreen_application_active(),
+        active.as_ref().map(|popup| popup.component.as_str()),
+    ) {
         return Ok(false);
     }
     let mut bars: Vec<_> = app
@@ -832,24 +910,35 @@ pub fn show_reminder_alert(app: &AppHandle, id: &str, notify_at: f64) -> Result<
         .filter(|(name, _)| name.starts_with("bar-"))
         .collect();
     bars.sort_by(|a, b| a.0.cmp(&b.0));
-    let foreground = unsafe { MonitorFromWindow(GetForegroundWindow(), MONITOR_DEFAULTTOPRIMARY) };
-    let selected = bars
-        .iter()
-        .find(|(_, window)| {
-            window.hwnd().ok().is_some_and(|hwnd| unsafe {
-                MonitorFromWindow(HWND(hwnd.0), MONITOR_DEFAULTTOPRIMARY) == foreground
-            })
+    let selected = bars.iter().find(|(_, window)| {
+        window.hwnd().ok().is_some_and(|hwnd| unsafe {
+            let monitor = MonitorFromWindow(HWND(hwnd.0), MONITOR_DEFAULTTONEAREST);
+            let mut info = MONITORINFO {
+                cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+                ..Default::default()
+            };
+            GetMonitorInfoW(monitor, &mut info).as_bool() && monitor_is_primary(info.dwFlags)
         })
-        .or_else(|| bars.first());
+    });
     let Some((_, source)) = selected else {
         return Ok(false);
     };
-    let mut bar = RECT::default();
-    unsafe {
-        GetWindowRect(HWND(source.hwnd().map_err(|e| e.to_string())?.0), &mut bar)
-            .map_err(|e| e.to_string())?;
-    }
-    let scale = source.scale_factor().map_err(|e| e.to_string())?;
+    // Require a fresh measurement for this occurrence, not an old layout snapshot.
+    let occurrence = format!("{id}:{notify_at:.0}");
+    let measured = REMINDER_ANCHORS
+        .lock()
+        .unwrap()
+        .get(source.label())
+        .cloned();
+    let anchor = match measured {
+        Some((anchor, Some(key))) if key == occurrence => anchor,
+        _ => {
+            source
+                .emit("reminders:measure-anchor", &occurrence)
+                .map_err(|e| e.to_string())?;
+            return Ok(false);
+        }
+    };
     overlay_show(
         app,
         source,
@@ -858,15 +947,12 @@ pub fn show_reminder_alert(app: &AppHandle, id: &str, notify_at: f64) -> Result<
             source: Some(source.label().into()),
             kind: "popover".into(),
             component: Some("reminderAlert".into()),
-            params: Some(serde_json::json!({"id": id})),
+            params: Some(
+                serde_json::json!({"id": id, "revision": app.state::<crate::reminders::Reminders>().snapshot()?.revision}),
+            ),
             session: Some(format!("reminder-{id}-{notify_at:.0}")),
             text: "Lembrete".into(),
-            anchor: OverlayAnchor {
-                x: ((bar.right - bar.left) as f64 / scale - 24.0).max(0.0),
-                y: 0.0,
-                width: 24.0,
-                height: (bar.bottom - bar.top) as f64 / scale,
-            },
+            anchor,
             size: OverlaySize {
                 width: 1.0,
                 height: 1.0,
@@ -877,9 +963,67 @@ pub fn show_reminder_alert(app: &AppHandle, id: &str, notify_at: f64) -> Result<
     Ok(true)
 }
 
-/// Independent of overlay availability and WebView autoplay permission.
+fn popup_takes_focus(component: &str) -> bool {
+    component != "reminderAlert"
+}
+
+fn foreground_covers_monitor(window: RECT, monitor: RECT) -> bool {
+    window.left <= monitor.left
+        && window.top <= monitor.top
+        && window.right >= monitor.right
+        && window.bottom >= monitor.bottom
+}
+
+fn fullscreen_application_active() -> bool {
+    if FULLSCREEN_APP.load(Ordering::Relaxed) {
+        return true;
+    }
+    unsafe {
+        if SHQueryUserNotificationState().is_ok_and(|state| {
+            state == QUNS_RUNNING_D3D_FULL_SCREEN || state == QUNS_PRESENTATION_MODE
+        }) {
+            return true;
+        }
+        let foreground = GetForegroundWindow();
+        if foreground.0.is_null()
+            || foreground == GetShellWindow()
+            || foreground == GetDesktopWindow()
+        {
+            return false;
+        }
+        let mut process = 0;
+        GetWindowThreadProcessId(foreground, Some(&mut process));
+        if process == std::process::id() {
+            return false;
+        }
+        let mut rect = RECT::default();
+        GetWindowRect(foreground, &mut rect).is_ok()
+            && monitor_rect(foreground)
+                .is_some_and(|monitor| foreground_covers_monitor(rect, monitor))
+    }
+}
+
+fn retry_active_reminder(app: &AppHandle) {
+    let popup = POPUP.lock().unwrap().clone();
+    if let Some(popup) = popup.filter(|p| p.component == "reminderAlert") {
+        if let Some(scheduler) = app.try_state::<crate::reminders::ReminderScheduler>() {
+            scheduler.retry_alert(&popup.id);
+        }
+    }
+}
+
+fn popup_requires_explicit_close(component: &str) -> bool {
+    component == "reminderAlert"
+}
+
+/// Expiry alerts may replace an ordinary widget popup, but never another alert.
+fn defer_reminder_alert(fullscreen: bool, active_component: Option<&str>) -> bool {
+    fullscreen || active_component == Some("reminderAlert")
+}
+
+/// Independent of overlay availability and Windows' configurable system sounds.
 pub fn play_reminder_sound() -> windows::core::Result<()> {
-    unsafe { windows::Win32::System::Diagnostics::Debug::MessageBeep(MB_ICONEXCLAMATION) }
+    crate::reminder_sound::play()
 }
 
 unsafe extern "system" fn overlay_procedure(
@@ -897,7 +1041,7 @@ unsafe extern "system" fn overlay_procedure(
             if let Some(popup) = current {
                 let foreground = HWND(lp.0 as *mut core::ffi::c_void);
                 let source = state.app.get_webview_window(&popup.source).and_then(|w| w.hwnd().ok()).map(|h| HWND(h.0));
-                if source != Some(foreground) { animate_popup_close(&state.app, false); }
+                if !popup_requires_explicit_close(&popup.component) && source != Some(foreground) { animate_popup_close(&state.app, false); }
             }
         }
         WM_STYLECHANGED => {
@@ -1000,6 +1144,46 @@ pub fn bar_snapshot()->serde_json::Value{
 }
 #[cfg(test)]mod geometry_tests{
     use super::*;
+    #[test]
+    fn alerts_never_autofocus_and_borderless_fullscreen_is_detected() {
+        assert!(!popup_takes_focus("reminderAlert"));
+        assert!(popup_takes_focus("reminders"));
+        let monitor = RECT { left: -1920, top: 0, right: 0, bottom: 1080 };
+        assert!(foreground_covers_monitor(monitor, monitor));
+        assert!(!foreground_covers_monitor(RECT { top: 36, ..monitor }, monitor));
+    }
+
+    #[test]
+    fn reminder_uses_primary_flag_and_validates_real_widget_bounds() {
+        assert!(monitor_is_primary(MONITORINFOF_PRIMARY));
+        assert!(!monitor_is_primary(0));
+        let anchor = OverlayAnchor { x: 3000.0, y: 4.0, width: 32.0, height: 28.0 };
+        assert!(valid_reminder_anchor(&anchor, 3440.0, 36.0));
+        assert!(!valid_reminder_anchor(&anchor, 1920.0, 36.0));
+        assert!(!valid_reminder_anchor(&OverlayAnchor { x: f64::NAN, ..anchor }, 3440.0, 36.0));
+        let scale = 1.25;
+        let center = -2560 + to_physical(anchor.x + anchor.width / 2.0, scale);
+        let left = center - 300;
+        assert_eq!(overlay_arrow_x(center, left, scale), 240.0);
+    }
+
+    #[test]
+    fn expiry_alert_requires_explicit_close_while_widgets_allow_light_dismiss() {
+        assert!(popup_requires_explicit_close("reminderAlert"));
+        assert!(!popup_requires_explicit_close("reminders"));
+        assert!(!popup_requires_explicit_close("volume"));
+    }
+
+    #[test]
+    fn reminder_alert_preempts_widget_popups_but_queues_behind_alerts_and_fullscreen() {
+        assert!(!defer_reminder_alert(false, None));
+        assert!(!defer_reminder_alert(false, Some("reminders")));
+        assert!(!defer_reminder_alert(false, Some("volume")));
+        assert!(defer_reminder_alert(false, Some("reminderAlert")));
+        assert!(defer_reminder_alert(true, None));
+        assert!(defer_reminder_alert(true, Some("reminders")));
+    }
+
     #[test]
     fn popup_sizes_allow_large_content_but_reject_invalid_numbers() {
         for (width, height) in [(0.0, 20.0), (20.0, -1.0), (f64::NAN, 20.0), (20.0, f64::INFINITY), (1_000_001.0, 20.0)] {

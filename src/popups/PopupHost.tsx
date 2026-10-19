@@ -57,6 +57,8 @@ export function PopupHost({
       mode={mode}
       label={metadata.label}
       close={close}
+      closeOnEscape={id !== 'reminderAlert'}
+      autoFocus={id !== 'reminderAlert'}
     >
       {mode === 'demo' && (
         <p className="m-4 text-[10px] text-muted-foreground">

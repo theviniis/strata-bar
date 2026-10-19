@@ -301,15 +301,16 @@ fn publish(app: &tauri::AppHandle, snapshot: ReminderSnapshot) -> ReminderSnapsh
 
 enum SchedulerSignal {
     Wake,
+    RetryAlert(String, u64),
     Stop,
 }
 
-/// One sound attempt per persisted occurrence, independent of popup delivery.
+/// One successful sound delivery per persisted occurrence, independent of popup delivery.
 /// Dropping keys after snooze/dismiss also bounds this session-only cache.
 fn deliver_due_sounds(
     snapshot: &ReminderSnapshot,
     sounded: &mut std::collections::HashSet<(String, u64)>,
-    mut play: impl FnMut(),
+    mut play: impl FnMut() -> bool,
 ) {
     sounded.retain(|(id, time)| {
         snapshot.reminders.iter().any(|r| {
@@ -318,9 +319,10 @@ fn deliver_due_sounds(
     });
     for reminder in &snapshot.reminders {
         if reminder.status == ReminderStatus::Ringing
-            && sounded.insert((reminder.id.clone(), reminder.notify_at as u64))
+            && !sounded.contains(&(reminder.id.clone(), reminder.notify_at as u64))
+            && play()
         {
-            play();
+            sounded.insert((reminder.id.clone(), reminder.notify_at as u64));
         }
     }
 }
@@ -374,8 +376,12 @@ impl ReminderScheduler {
                 if let Some(snapshot) = snapshot.as_ref() {
                     if !stop.load(Ordering::Acquire) {
                         deliver_due_sounds(snapshot, &mut sounded, || {
-                            if let Err(error) = crate::desktop::play_reminder_sound() {
-                                eprintln!("Reminder sound failed: {error}");
+                            match crate::desktop::play_reminder_sound() {
+                                Ok(()) => true,
+                                Err(error) => {
+                                    eprintln!("Reminder sound failed: {error}");
+                                    false
+                                }
                             }
                         });
                     }
@@ -425,8 +431,18 @@ impl ReminderScheduler {
                                 })
                             });
                         let shown = still_ringing
-                            && crate::desktop::show_reminder_alert(&handle, &id, notify_at)
-                                .unwrap_or(false);
+                            && match crate::desktop::show_reminder_alert(&handle, &id, notify_at) {
+                                Ok(shown) => shown,
+                                Err(error) => {
+                                    eprintln!("Reminder popup failed: {error}");
+                                    for (label, window) in handle.webview_windows() {
+                                        if label.starts_with("bar-") || label == "overlay" {
+                                            let _ = window.emit("reminders:error", &error);
+                                        }
+                                    }
+                                    false
+                                }
+                            };
                         let _ = reply.send(shown);
                     });
                     if dispatched.is_ok() && result.recv().unwrap_or(false) {
@@ -441,7 +457,14 @@ impl ReminderScheduler {
                 });
                 let delay = if due_failed {
                     Some(Duration::from_secs(30))
-                } else if has_unannounced {
+                } else if has_unannounced
+                    || snapshot.as_ref().is_some_and(|s| {
+                        s.reminders.iter().any(|r| {
+                            r.status == ReminderStatus::Ringing
+                                && !sounded.contains(&(r.id.clone(), r.notify_at as u64))
+                        })
+                    })
+                {
                     Some(Duration::from_secs(1))
                 } else {
                     snapshot.as_ref().and_then(|s| {
@@ -469,15 +492,33 @@ impl ReminderScheduler {
                 if matches!(signal, Ok(Some(SchedulerSignal::Stop)) | Err(())) {
                     break;
                 }
+                if let Ok(Some(SchedulerSignal::RetryAlert(id, time))) = signal {
+                    announced.remove(&(id, time));
+                }
                 // Coalesce bursts from several monitors instead of spinning per event.
                 while let Ok(signal) = rx.try_recv() {
-                    if matches!(signal, SchedulerSignal::Stop) {
-                        return;
+                    match signal {
+                        SchedulerSignal::Stop => return,
+                        SchedulerSignal::RetryAlert(id, time) => {
+                            announced.remove(&(id, time));
+                        }
+                        SchedulerSignal::Wake => {}
                     }
                 }
             }
         });
         Self { tx, stopped }
+    }
+
+    pub fn retry_alert(&self, session: &str) {
+        if let Some((id, time)) = session
+            .strip_prefix("reminder-")
+            .and_then(|s| s.rsplit_once('-'))
+        {
+            if let Ok(time) = time.parse::<u64>() {
+                let _ = self.tx.send(SchedulerSignal::RetryAlert(id.into(), time));
+            }
+        }
     }
 
     pub fn wake(&self) {
@@ -584,6 +625,23 @@ mod tests {
             event_duration_seconds: None,
             sync_calendar: None,
         }
+    }
+
+    #[test]
+    fn fullscreen_hidden_alert_is_requeued_by_its_exact_occurrence() {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let scheduler = ReminderScheduler {
+            tx,
+            stopped: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        };
+        let id = "12345678-1234-4123-8123-123456789abc";
+        scheduler.retry_alert(&format!("reminder-{id}-123456789"));
+        assert!(
+            matches!(rx.try_recv(), Ok(SchedulerSignal::RetryAlert(key, time))
+            if key == id && time == 123456789)
+        );
+        scheduler.retry_alert("unrelated-popup");
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]
@@ -808,33 +866,67 @@ mod tests {
         store.create(request(), 1000.0).unwrap();
         let mut sounded = std::collections::HashSet::new();
         let mut sounds = 0;
-        deliver_due_sounds(&store.snapshot().unwrap(), &mut sounded, || sounds += 1);
+        deliver_due_sounds(&store.snapshot().unwrap(), &mut sounded, || {
+            sounds += 1;
+            true
+        });
         assert_eq!(sounds, 0);
         let due = store.due(61_000.0).unwrap().unwrap();
         // No overlay show or frontend acknowledgment is required for audio.
-        deliver_due_sounds(&due, &mut sounded, || sounds += 1);
+        deliver_due_sounds(&due, &mut sounded, || {
+            sounds += 1;
+            true
+        });
         assert_eq!(sounds, 2);
         for _ in 0..3 {
-            deliver_due_sounds(&due, &mut sounded, || sounds += 1);
+            deliver_due_sounds(&due, &mut sounded, || {
+                sounds += 1;
+                true
+            });
         }
         assert_eq!(sounds, 2);
         let snoozed = store
             .transition(&id, Some(SnoozeOption::Five), 62_000.0)
             .unwrap();
-        deliver_due_sounds(&snoozed, &mut sounded, || sounds += 1);
+        deliver_due_sounds(&snoozed, &mut sounded, || {
+            sounds += 1;
+            true
+        });
         assert_eq!(sounded.len(), 1);
         let due_again = store.due(362_000.0).unwrap().unwrap();
-        deliver_due_sounds(&due_again, &mut sounded, || sounds += 1);
+        deliver_due_sounds(&due_again, &mut sounded, || {
+            sounds += 1;
+            true
+        });
         assert_eq!(sounds, 3);
         let dismissed = store.transition(&id, None, 363_000.0).unwrap();
-        deliver_due_sounds(&dismissed, &mut sounded, || sounds += 1);
+        deliver_due_sounds(&dismissed, &mut sounded, || {
+            sounds += 1;
+            true
+        });
         assert_eq!(sounds, 3);
         assert_eq!(sounded.len(), 1);
+    }
+
+    #[test]
+    fn failed_sound_delivery_remains_pending_for_retry() {
+        let dir = Directory::new();
+        let store = Reminders::open(dir.path());
+        store.create(request(), 1000.0).unwrap();
+        let due = store.due(61_000.0).unwrap().unwrap();
+        let mut sounded = std::collections::HashSet::new();
+        deliver_due_sounds(&due, &mut sounded, || false);
+        assert!(sounded.is_empty());
+        deliver_due_sounds(&due, &mut sounded, || true);
+        assert_eq!(sounded.len(), 1);
+        deliver_due_sounds(&due, &mut sounded, || panic!("Already played"));
     }
 
     #[test]
     #[ignore = "Plays the real Windows reminder sound; run explicitly"]
     fn live_windows_reminder_sound_request_succeeds() {
         crate::desktop::play_reminder_sound().expect("Windows rejected the reminder sound request");
+        // Keep the test process alive until asynchronous playback completes.
+        std::thread::sleep(std::time::Duration::from_millis(750));
     }
 }

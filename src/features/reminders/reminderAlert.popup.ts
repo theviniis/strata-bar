@@ -5,5 +5,10 @@ import { ReminderAlert } from './ReminderAlert'
 export default definePopup({
   label: 'Alerta de lembrete',
   Content: ReminderAlert,
-  schema: z.object({ id: z.uuid() }).strict()
+  schema: z
+    .object({
+      id: z.uuid(),
+      revision: z.number().int().nonnegative().optional()
+    })
+    .strict()
 })

@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod reminder_sound;
 mod google_calendar;
 mod media;
 mod media_contract;
@@ -303,6 +304,7 @@ fn main() {
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             reminders::reminders_snapshot,
+            desktop::reminders_set_anchor,
             reminders::reminders_create,
             reminders::reminders_transition,
             reminders::reminders_calendar_sync,
