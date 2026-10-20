@@ -71,8 +71,10 @@ limitações das integrações.
 
 ## Implementation Decisions
 
-- Alvos confirmados: ChatGPT Desktop, OpenCode e Antigravity. Codex não faz parte
-  do escopo acordado.
+- Alvos confirmados: ChatGPT Desktop, OpenCode e Antigravity. Em 19/10/2026,
+  o usuário ampliou o escopo para monitorar Codex local, como esta conversa,
+  em seção própria no mesmo accordion. Criar/responder no Codex depende de
+  validação posterior da capacidade; monitorar não autoriza decisões automáticas.
 - Reutilizar o framework de WidgetPopup, seu host compartilhado, foco, geometria
   e ciclo de vida; a feature fornece conteúdo, dados e ações.
 - Usar um único popup com accordion por ferramenta. Os itens começam recolhidos,
@@ -214,7 +216,7 @@ limitações das integrações.
 
 ## Out of Scope
 
-- Codex, agentes adicionais e integrações com chats apenas no navegador.
+- Agentes adicionais além dos quatro confirmados e chats apenas no navegador.
 - Automação de cliques, injeção de teclado e protocolos privados.
 - Prometer controle de sessões sem fonte de integração comprovada.
 - Aprovações automáticas, execução arbitrária de shell e reenvio automático de ações.

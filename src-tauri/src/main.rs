@@ -7,6 +7,7 @@ mod agents_contract;
 mod agents_windows;
 mod antigravity;
 mod antigravity_hooks;
+mod codex;
 mod opencode;
 mod reminder_sound;
 mod google_calendar;

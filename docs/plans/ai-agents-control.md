@@ -1,5 +1,72 @@
 # Controle de agentes de IA — Windows 11
 
+## Diagnóstico — ChatGPT Desktop mostra sessões indisponíveis
+
+- [x] Confirmar o sintoma com o usuário e verificar o caminho de código.
+- [x] Separar detecção do aplicativo de integração de conversas.
+- [x] Consultar documentação oficial atual sobre hooks e seus limites por modo.
+- [x] Identificar o tipo desta sessão pelos metadados do aplicativo: Codex local.
+- [x] Confirmar ampliação de escopo para monitorar sessões como esta, pois Codex
+      estava explicitamente excluído no escopo inicial.
+- [ ] Comprovar uma fonte compatível antes de implementar o conector e suas
+      ações; não substituir conversas do ChatGPT por sessões Codex.
+
+O sintoma informado é Sessões indisponíveis. Esse texto é produzido pelo ramo
+ChatGPT em AgentsPopup.tsx: somente o processo é detectado; criar/responder estão
+desabilitados. Não existe conector de sessões ChatGPT no estado ou serviço nativo.
+A integração completa está pendente, e esse diagnóstico não é uma correção.
+
+A documentação atual de hooks confirma suporte a hooks existentes quando
+orquestração e execução são locais, em Work local e Codex. Para Work Cloud,
+documenta limites diferentes e hooks empresariais gerenciados; isso não prova
+cobertura de conversas comuns do ChatGPT nem enumeração de conversas existentes.
+Fonte: [Hooks](https://learn.chatgpt.com/docs/hooks).
+
+Nesta máquina, ChatGPT.exe pertence ao pacote OpenAI.Codex. O aplicativo atual
+pode reunir Work e Codex; nome do executável/pacote não comprova o modo de uma
+conversa. Não alterar a detecção para excluir esse pacote com base apenas no nome.
+Nenhum histórico, credencial ou configuração de hooks foi acessado ou alterado.
+
+O usuário confirmou Sessões indisponíveis e informou não saber distinguir o modo.
+Os metadados do app identificam esta conversa como kind codex, host local, no
+workspace Strata. Isso identifica o runtime desta sessão, independentemente do
+modelo GPT. Nenhum conteúdo de outras conversas foi aberto. Foi apresentada a
+opção de incluir sessões como esta, separadamente de conversas comuns ChatGPT;
+o usuário aprovou monitorar sessões Codex locais como esta.
+
+## Ampliação aprovada — Codex local
+
+A aprovação posterior inclui Codex local como integração própria no accordion e
+substitui sua exclusão inicial. Conversas comuns ChatGPT continuam sem uma fonte
+de sessões comprovada. Executar as etapas abaixo individualmente.
+
+- [x] C1: interpretar somente metadados dos hooks oficiais e modelar estados,
+      limites, ordenação e expiração com testes nativos. Stop indica fim do turno,
+      sem comprovar sucesso; não emitir conclusão bem-sucedida nesse evento.
+- [ ] C2: conectar o coletor ao host Windows com transporte local autenticado e
+      comandos estáveis; preservar hooks existentes e exigir revisão de confiança
+      no Codex, sem modificar confiança ou políticas automaticamente.
+- [ ] C3: integrar contrato gerado, store e seção Codex no accordion, com ativação
+      explícita e indicação de que somente eventos observados são conhecidos.
+- [ ] C4: validar eventos reais e limpeza, executar checks, revisão e build.
+
+O CLI instalado é codex-cli 0.163.0-alpha.10.2. A consulta somente de leitura
+app-server daemon version falhou ao conectar ao socket de controle com erro
+Windows 10050. Isso não comprova acesso às sessões do aplicativo pelo proxy.
+Não iniciar outro servidor para apresentar metadados históricos como estado vivo.
+Fonte alternativa documentada: hooks locais em
+[Hooks](https://learn.chatgpt.com/docs/hooks). O parser não deve reter prompts,
+respostas, argumentos de ferramentas nem ler transcript_path. Sua resposta neutra
+é {} para todos os eventos; nenhuma decisão de aprovação é produzida.
+
+C1 implementada em src-tauri/src/codex.rs: projeção limitada a 128 sessões,
+entrada de até 1 MiB, validação de IDs/pasta/turno, descarte de eventos antigos e
+expiração de processamento/atenção após 120 segundos. Conteúdo de conversa e
+transcript_path são ignorados. Stop/Interrupt viram Idle, nunca Completed.
+Três testes nativos focados passaram. O módulo ainda não é chamado pelo host:
+não há monitoramento vivo nem seção Codex no popup até C2/C3. Nenhum hook ou
+arquivo de confiança do usuário foi alterado nesta etapa.
+
 ## Pasta opcional ao criar sessão
 
 - [x] Aceitar criação sem pasta no popup, com ou sem prompt, indicando uso do
@@ -457,7 +524,8 @@ em andamento; contratos e integrações dependem das decisões registradas abaix
 ## Escopo solicitado
 
 - Windows 11 como ambiente de detecção, monitoramento e notificações.
-- Agentes: ChatGPT Desktop, OpenCode e Antigravity (Codex não incluído).
+- Agentes iniciais: ChatGPT Desktop, OpenCode e Antigravity. A ampliação aprovada
+  acima inclui monitoramento do Codex local.
 - Sessões agrupadas por ferramenta, com status individual em tempo real.
 - Atenção para perguntas, confirmações e solicitações de ferramentas.
 - Iniciar sessões e responder pelo popup.
