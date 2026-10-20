@@ -40,7 +40,7 @@ sessões; não promete acesso a conversas comuns do ChatGPT.
 
 Validação: 31 testes frontend focados passaram (os dois novos falharam antes da
 integração); TypeScript e lint dos arquivos alterados passaram. Build frontend
-e cargo build passaram. Suíte Rust: 162 aprovados, 21 ignorados. Ensaio separado
+e cargo build passaram. Suíte Rust final: 163 aprovados, 21 ignorados. Ensaio separado
 com o executável Windows real e configuração temporária própria passou:
 UserPromptSubmit, PermissionRequest e Stop atravessaram o helper e o receptor,
 sem conteúdo de conversa; configuração/endpoint próprios removidos depois.
@@ -49,6 +49,17 @@ Suíte frontend geral: 243 aprovados, 8 falhas em reminders-ui e native-bar,
 fora dos arquivos funcionais alterados nesta correção; não declarar gate geral
 aprovado. Nenhum prompt foi enviado a um modelo e nenhum hook global do usuário
 foi ativado automaticamente durante os testes.
+
+Revisões Standards e Spec apontaram dois casos de limpeza, corrigidos e
+reavaliados sem achados adicionais: desativação agora sempre fecha a coleta,
+mesmo quando hooks.json não puder ser limpo; instalação/limpeza usam lock
+exclusivo e verificam token antes de tocar na configuração, preservando uma
+conexão substituta. O arquivo vazio .codex-hooks.lock permanece no diretório do
+endpoint para serialização entre processos. Teste cobre ambos os cenários.
+Evidência agregada em
+docs/evidence/ai-agents-codex-desktop-2026-10-19.json. C4/D4 permanece parcial:
+eventos de conversa real e interação WebView2 aguardam ativação/revisão de
+confiança pelo usuário no Codex; a suíte frontend geral também não está verde.
 
 ## Diagnóstico — ChatGPT Desktop mostra sessões indisponíveis
 

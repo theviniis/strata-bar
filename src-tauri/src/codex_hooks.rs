@@ -7,6 +7,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::os::windows::fs::OpenOptionsExt;
 use std::{
     fs,
     io::{Read, Write},
@@ -14,6 +15,19 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
+
+fn configuration_lock(endpoint: &Path) -> Result<fs::File, String> {
+    let parent = endpoint.parent().ok_or("Diretório inválido")?;
+    fs::create_dir_all(parent).map_err(|_| "Diretório Codex indisponível")?;
+    fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .share_mode(0)
+        .open(parent.join(".codex-hooks.lock"))
+        .map_err(|_| "Outra configuração Codex está em andamento; tente novamente".into())
+}
 
 const EVENTS: [&str; 8] = [
     "SessionStart",
@@ -114,6 +128,7 @@ impl Bridge {
         endpoint_path: PathBuf,
         executable: &Path,
     ) -> Result<Self, String> {
+        let _lock = configuration_lock(&endpoint_path)?;
         let entry = entry(executable, &endpoint_path)?;
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))
             .map_err(|_| "Receptor Codex indisponível")?;
@@ -179,22 +194,32 @@ impl Bridge {
             .map(|raw| (raw, packet.at)))
     }
     pub fn remove(&self) -> Result<(), String> {
-        let (original, mut config) = read_config(&self.config_path)?;
-        let previous = config.clone();
-        configure(&mut config, &self.entry, false)?;
-        if config != previous {
-            write_config(&self.config_path, &original, &config)?;
-        }
-        if fs::read(&self.endpoint_path)
+        let _lock = configuration_lock(&self.endpoint_path)?;
+        let owned = fs::read(&self.endpoint_path)
             .ok()
             .and_then(|bytes| serde_json::from_slice::<Endpoint>(&bytes).ok())
-            .is_some_and(|endpoint| endpoint.token == self.endpoint.token)
-        {
-            fs::remove_file(&self.endpoint_path)
-                .map_err(|_| "Não foi possível remover o endpoint Codex")?;
+            .is_some_and(|endpoint| endpoint.token == self.endpoint.token);
+        if !owned {
+            return Ok(());
         }
-        Ok(())
+        let configuration_result = (|| {
+            let (original, mut config) = read_config(&self.config_path)?;
+            let previous = config.clone();
+            configure(&mut config, &self.entry, false)?;
+            if config != previous {
+                write_config(&self.config_path, &original, &config)?;
+            }
+            Ok(())
+        })();
+        let endpoint_result = fs::remove_file(&self.endpoint_path)
+            .map_err(|_| "Não foi possível remover o endpoint Codex".to_string());
+        configuration_result.and(endpoint_result)
     }
+}
+
+/// Stop collection even if persistent hook cleanup fails.
+pub fn disable(bridge: &mut Option<Bridge>) -> Option<String> {
+    bridge.take().and_then(|bridge| bridge.remove().err())
 }
 impl Drop for Bridge {
     fn drop(&mut self) {
@@ -260,6 +285,35 @@ pub fn run_helper(arguments: &[String]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stale_owner_cannot_remove_a_replacement_and_cleanup_failure_stops_collection() {
+        let root =
+            std::env::temp_dir().join(format!("strata-codex-owner-{:016x}", rand::random::<u64>()));
+        fs::create_dir(&root).unwrap();
+        let config = root.join("hooks.json");
+        let endpoint = root.join("endpoint.json");
+        let executable = Path::new("C:\\Strata\\strata.exe");
+        let old = Bridge::open(config.clone(), endpoint.clone(), executable).unwrap();
+        let replacement = Bridge::open(config.clone(), endpoint.clone(), executable).unwrap();
+        let expected_config = fs::read(&config).unwrap();
+        let expected_endpoint = fs::read(&endpoint).unwrap();
+        old.remove().unwrap();
+        drop(old);
+        assert_eq!(fs::read(&config).unwrap(), expected_config);
+        assert_eq!(fs::read(&endpoint).unwrap(), expected_endpoint);
+        let port = replacement.endpoint.port;
+        fs::write(&config, b"invalid config preserved").unwrap();
+        let mut active = Some(replacement);
+        assert!(disable(&mut active).is_some());
+        assert!(active.is_none());
+        assert!(TcpStream::connect((Ipv4Addr::LOCALHOST, port)).is_err());
+        assert!(!endpoint.exists());
+        assert_eq!(fs::read(&config).unwrap(), b"invalid config preserved");
+        fs::remove_file(config).unwrap();
+        fs::remove_file(root.join(".codex-hooks.lock")).unwrap();
+        fs::remove_dir(root).unwrap();
+    }
     #[test]
     #[ignore = "Requires STRATA_TEST_CODEX_HELPER pointing to the built Windows executable; synthetic metadata only"]
     fn live_windows_codex_helper_metadata_roundtrip() {
@@ -307,6 +361,7 @@ mod tests {
         drop(bridge);
         assert!(!root.join("endpoint.json").exists());
         fs::remove_file(root.join("hooks.json")).unwrap();
+        fs::remove_file(root.join(".codex-hooks.lock")).unwrap();
         fs::remove_dir(root).unwrap();
     }
     #[test]
@@ -369,6 +424,7 @@ mod tests {
         drop(bridge);
         assert!(!root.join("endpoint.json").exists());
         fs::remove_file(root.join("hooks.json")).unwrap();
+        fs::remove_file(root.join(".codex-hooks.lock")).unwrap();
         fs::remove_dir(root).unwrap();
     }
 }

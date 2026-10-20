@@ -75,12 +75,10 @@ pub fn agents_set_codex(
             current.codex_error = None;
         }
     } else {
-        if let Some(bridge) = current.codex_bridge.as_ref() {
-            bridge.remove()?;
-        }
-        current.codex_bridge.take();
+        let cleanup_error = crate::codex_hooks::disable(&mut current.codex_bridge);
         current.codex = Default::default();
-        current.codex_error = None;
+        current.codex_error = cleanup_error
+            .map(|error| format!("Monitor desativado; não foi possível remover os hooks: {error}"));
     }
     let snapshot = current.updated();
     drop(current);
