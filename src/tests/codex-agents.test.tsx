@@ -6,7 +6,7 @@ import {
   parseAgentsSnapshot
 } from '@/services/system/agents'
 
-it('offers Codex hook activation in the shared accordion and explains trust', async () => {
+it('offers Codex hook activation in the shared tabs and explains trust', async () => {
   const snapshot = await createDemoAgentsAdapter().load()
   const configure = vi.fn(async () => {})
   render(
@@ -16,7 +16,7 @@ it('offers Codex hook activation in the shared accordion and explains trust', as
       onConfigureCodex={configure}
     />
   )
-  fireEvent.click(screen.getByRole('button', { name: /Codex local/ }))
+  fireEvent.click(screen.getByRole('tab', { name: /Codex local/ }))
   expect(screen.getByText(/Revise e confie/)).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Ativar hooks do Codex' }))
   await vi.waitFor(() =>
@@ -43,7 +43,7 @@ it('renders only Codex metadata and rejects provider mismatches', async () => {
   }
   expect(parseAgentsSnapshot(snapshot).codex.sessions).toHaveLength(1)
   render(<AgentsPopupContent snapshot={snapshot} error={null} />)
-  fireEvent.click(screen.getByRole('button', { name: /Codex local/ }))
+  fireEvent.click(screen.getByRole('tab', { name: /Codex local/ }))
   expect(
     within(screen.getByRole('list', { name: 'Sessões do Codex' })).getByText(
       'Sessão 01a1543f'

@@ -1,9 +1,4 @@
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger
-} from '@/components/ui/accordion'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import {
   CardContent,
@@ -122,66 +117,73 @@ export function AgentsPopupContent({
             onDismiss={onDismissAlerts}
           />
         )}
-        <Accordion multiple={false}>
+        <Tabs defaultValue="chatgpt" size="sm">
+          <TabsList
+            aria-label="Agentes de IA"
+            className="grid w-full grid-cols-4"
+          >
+            {snapshot?.applications.map((application) => (
+              <TabsTrigger key={application.agent} value={application.agent}>
+                {labels[application.agent]}
+              </TabsTrigger>
+            ))}
+          </TabsList>
           {snapshot?.applications.map((application) => (
-            <AccordionItem key={application.agent} value={application.agent}>
-              <AccordionTrigger>
-                <span className="flex flex-col gap-1">
-                  <span>{labels[application.agent]}</span>
-                  <span className="text-xs font-normal text-muted-foreground">
-                    {discoveryError || application.running === null
-                      ? 'Detecção indisponível'
-                      : application.running
-                        ? 'Processo detectado'
-                        : 'Processo não detectado'}
-                  </span>
-                </span>
-              </AccordionTrigger>
-              <AccordionContent className="space-y-2">
-                {application.agent === 'opencode' ? (
-                  <OpenCodeSessions
-                    connection={snapshot.opencode}
-                    onConfigure={onConfigureOpenCode}
-                    stale={!!error}
-                    onCreate={onCreateOpenCode}
-                    onReply={onReplyOpenCode}
-                    onDecision={onDecideOpenCode}
-                  />
-                ) : application.agent === 'antigravity' ? (
-                  <AntigravitySessions
-                    connection={snapshot.antigravity}
-                    onConfigure={onConfigureAntigravity}
-                    stale={!!error}
-                  />
-                ) : application.agent === 'codex' ? (
-                  <CodexSessions
-                    connection={snapshot.codex}
-                    onConfigure={onConfigureCodex}
-                    stale={!!error}
-                  />
-                ) : (
-                  <>
-                    <p className="text-xs">Sessões indisponíveis</p>
-                    <p className="text-xs text-muted-foreground">
-                      Controle de sessões ainda não integrado. Um processo
-                      aberto não informa o estado das conversas. Para sessões
-                      locais como as do Codex, abra a seção Codex local neste
-                      painel e ative seus hooks.
-                    </p>
-                    <div className="flex gap-2">
-                      <Button size="sm" disabled>
-                        Nova sessão
-                      </Button>
-                      <Button size="sm" variant="outline" disabled>
-                        Responder
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </AccordionContent>
-            </AccordionItem>
+            <TabsContent
+              key={application.agent}
+              value={application.agent}
+              className="space-y-2"
+            >
+              <p className="text-xs text-muted-foreground">
+                {discoveryError || application.running === null
+                  ? 'Detecção indisponível'
+                  : application.running
+                    ? 'Processo detectado'
+                    : 'Processo não detectado'}
+              </p>
+              {application.agent === 'opencode' ? (
+                <OpenCodeSessions
+                  connection={snapshot.opencode}
+                  onConfigure={onConfigureOpenCode}
+                  stale={!!error}
+                  onCreate={onCreateOpenCode}
+                  onReply={onReplyOpenCode}
+                  onDecision={onDecideOpenCode}
+                />
+              ) : application.agent === 'antigravity' ? (
+                <AntigravitySessions
+                  connection={snapshot.antigravity}
+                  onConfigure={onConfigureAntigravity}
+                  stale={!!error}
+                />
+              ) : application.agent === 'codex' ? (
+                <CodexSessions
+                  connection={snapshot.codex}
+                  onConfigure={onConfigureCodex}
+                  stale={!!error}
+                />
+              ) : (
+                <>
+                  <p className="text-xs">Sessões indisponíveis</p>
+                  <p className="text-xs text-muted-foreground">
+                    Controle de sessões ainda não integrado. Um processo aberto
+                    não informa o estado das conversas. Para sessões locais como
+                    as do Codex, abra a seção Codex local neste painel e ative
+                    seus hooks.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button size="sm" disabled>
+                      Nova sessão
+                    </Button>
+                    <Button size="sm" variant="outline" disabled>
+                      Responder
+                    </Button>
+                  </div>
+                </>
+              )}
+            </TabsContent>
           ))}
-        </Accordion>
+        </Tabs>
       </CardContent>
     </section>
   )

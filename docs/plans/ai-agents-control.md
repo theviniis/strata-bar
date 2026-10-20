@@ -1,5 +1,15 @@
 # Controle de agentes de IA — Windows 11
 
+## Navegação por abas — alteração solicitada
+
+- [x] Substituir o accordion pelo componente Tabs existente no mesmo popup.
+- [x] Preservar ações e estados por agente; validar seleção de abas e controles.
+
+A solicitação atual substitui a decisão anterior de usar accordion.
+ChatGPT Desktop é a aba inicial. A detecção aparece no painel selecionado;
+alertas continuam compartilhados acima das abas. Os 23 testes do popup passaram,
+assim como TypeScript, lint dos arquivos alterados e diff check.
+
 ## Correção de inicialização e conexão Codex — 19/10/2026
 
 - [x] D1: reproduzir pnpm desktop, liberar graciosamente o host debug anterior

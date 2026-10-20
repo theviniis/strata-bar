@@ -73,12 +73,12 @@ limitações das integrações.
 
 - Alvos confirmados: ChatGPT Desktop, OpenCode e Antigravity. Em 19/10/2026,
   o usuário ampliou o escopo para monitorar Codex local, como esta conversa,
-  em seção própria no mesmo accordion. Criar/responder no Codex depende de
+  em seção própria no mesmo popup com abas. Criar/responder no Codex depende de
   validação posterior da capacidade; monitorar não autoriza decisões automáticas.
 - Reutilizar o framework de WidgetPopup, seu host compartilhado, foco, geometria
   e ciclo de vida; a feature fornece conteúdo, dados e ações.
-- Usar um único popup com accordion por ferramenta. Os itens começam recolhidos,
-  mostram a detecção no cabeçalho e permitem expandir uma ferramenta por vez.
+- Usar um único popup com o componente Tabs por ferramenta. ChatGPT Desktop é a
+  aba inicial; uma seção fica visível por vez e mostra a detecção do aplicativo.
 - Codex local usa hooks oficiais, somente metadados, ativação explícita e revisão
   de confiança no próprio Codex. Não editar trust hashes ou políticas. Hooks
   desconhecidos são preservados; desativar remove apenas definições idênticas
@@ -191,7 +191,7 @@ limitações das integrações.
 - Coletar somente metadados e conteúdo de perguntas pendentes necessários ao popup,
   mantidos em memória; não persistir histórico pelo Strata.
 - No Antigravity App, observar os hooks públicos após ativação explícita no
-  accordion. Não enumerar conversas anteriores por logs ou protocolos privados.
+  painel de abas. Não enumerar conversas anteriores por logs ou protocolos privados.
   Instalar somente a entrada do Strata na configuração global, preservando os
   demais hooks e removendo a entrada própria ao desativar ou encerrar normalmente.
 - Transportar somente identificador, primeiro workspace e sinais de ciclo de
