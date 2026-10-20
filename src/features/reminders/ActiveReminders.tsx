@@ -149,14 +149,15 @@ export const ActiveRemindersItem = ({
           </p>
           <Button
             size="icon"
-            className="w-full"
+            className="w-full flex items-center gap-2"
             variant="outline"
             disabled={pending || !connected}
             onClick={() => {
               onSync(reminder)
             }}
           >
-            <RefreshCw data-icon="inline-start" /> Tentar sincronizar
+            <RefreshCw data-icon="inline-start" />
+            Tentar sincronizar
           </Button>
         </>
       )}
@@ -164,14 +165,15 @@ export const ActiveRemindersItem = ({
         <ReminderAlertActions id={reminder.id} />
       ) : (
         <Button
-          className="w-full"
+          className="w-full flex items-center gap-2"
           variant="destructive"
           disabled={pending}
           onClick={() => {
             onDimiss(reminder)
           }}
         >
-          <Trash data-icon="inline-start" /> Dispensar
+          <Trash data-icon="inline-start" />
+          Dispensar
         </Button>
       )}
     </div>
