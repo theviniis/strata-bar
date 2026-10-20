@@ -41,11 +41,12 @@ mod metrics;
 #[cfg(debug_assertions)]
 mod popup_check;
 mod popup_ids;
+mod voicemeeter;
 use serde_json::{json, Value};
 use tauri::Manager;
 #[tauri::command]
 fn capabilities(komorebi: tauri::State<komorebi::Komorebi>) -> Value {
-    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"appBar":true,"gpu":true,"disk":true,"network":false,"komorebi":komorebi.available()})
+    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"appBar":true,"gpu":true,"disk":true,"network":false,"komorebi":komorebi.available(),"voicemeeter":crate::voicemeeter::installed()})
 }
 #[tauri::command]
 fn subscribe(
@@ -105,6 +106,17 @@ async fn set_volume(
 async fn set_microphone(state: tauri::State<'_, metrics::Metrics>, level: Option<f32>, muted: Option<bool>) -> Result<Value, String> {
     let owner = state.inner().clone();
     tauri::async_runtime::spawn_blocking(move || owner.audio_volume(true, level, muted)).await.map_err(|e|e.to_string())?
+}
+#[tauri::command]
+async fn set_channel_source(
+    state: tauri::State<'_, metrics::Metrics>,
+    channel: String,
+    target: Option<voicemeeter::TargetRequest>,
+) -> Result<(), String> {
+    let owner = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || owner.set_channel_source(channel, target))
+        .await
+        .map_err(|e| e.to_string())?
 }
 #[tauri::command]
 async fn set_audio_input(state: tauri::State<'_, metrics::Metrics>, device_id: String) -> Result<Value, String> {
@@ -306,6 +318,10 @@ fn main() {
         println!("{}", media::probe());
         return;
     }
+    if std::env::args().any(|arg| arg == "--probe-vm") {
+        println!("{}", serde_json::to_string(&voicemeeter::probe_vm()).unwrap());
+        return;
+    }
     if std::env::args().any(|v| v == "--probe") {
         let result = json!({"metrics":metrics::probe(),"komorebi":komorebi::probe(),"overlay":desktop::overlay_snapshot(),"monitors":desktop::monitor_snapshot(),"bars":desktop::bar_snapshot()});
         let file = std::env::temp_dir().join("strata-native-probe.json");
@@ -360,6 +376,7 @@ fn main() {
             unsubscribe,
             set_volume,
             set_microphone,
+            set_channel_source,
             set_audio_input,
             set_audio_output,
             komorebi_action,

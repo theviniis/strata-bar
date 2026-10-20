@@ -74,6 +74,11 @@ enum Request {
         mpsc::SyncSender<Result<Value, String>>,
     ),
     Output(bool, String, mpsc::SyncSender<Result<Value, String>>),
+    Source(
+        String,
+        Option<crate::voicemeeter::Target>,
+        mpsc::SyncSender<Result<(), String>>,
+    ),
     Stop,
 }
 impl Metrics {
@@ -93,7 +98,7 @@ impl Metrics {
         window: String,
         interval: u64,
     ) -> Result<Value, String> {
-        if !["cpu", "gpu", "memory", "disk", "volume", "audioOutputs", "microphone", "audioInputs"].contains(&channel.as_str()) {
+        if !["cpu", "gpu", "memory", "disk", "volume", "audioOutputs", "microphone", "audioInputs", "voicemeeter"].contains(&channel.as_str()) {
             return Err(format!("Unsupported channel: {channel}"));
         }
         if interval != 2000 {
@@ -180,6 +185,36 @@ impl Metrics {
         self.tx.send(Request::Output(capture, id, tx)).map_err(|e| e.to_string())?;
         rx.recv_timeout(Duration::from_secs(3)).map_err(|e| e.to_string())?
     }
+    /// Routes a channel through Voicemeeter (`Some`) or back to the Windows
+    /// default endpoints (`None`). The worker owns the routing, so reads and
+    /// writes on that channel follow it consistently.
+    pub fn set_channel_source(
+        &self,
+        channel: String,
+        target: Option<crate::voicemeeter::TargetRequest>,
+    ) -> Result<(), String> {
+        if !["volume", "microphone"].contains(&channel.as_str()) {
+            return Err("set_channel_source supports the volume and microphone channels".into());
+        }
+        let target = match target {
+            None => None,
+            Some(request) => Some(
+                crate::voicemeeter::Target::parse(Some(&request.kind), Some(request.index))
+                    .ok_or_else(|| {
+                        format!(
+                            "Invalid Voicemeeter target: {}[{}]",
+                            request.kind, request.index
+                        )
+                    })?,
+            ),
+        };
+        let (tx, rx) = mpsc::sync_channel(1);
+        self.tx
+            .send(Request::Source(channel, target, tx))
+            .map_err(|e| e.to_string())?;
+        rx.recv_timeout(Duration::from_secs(3))
+            .map_err(|e| e.to_string())?
+    }
     pub fn diagnostics(&self) -> Value {
         let d = self.data.lock().unwrap();
         json!({"subscribers":d.subs.len(),"channels":d.latest,"collectorThreads":1,"intervalMs":2000,"incoming":d.incoming,"emitted":d.emitted})
@@ -213,12 +248,65 @@ impl Metrics {
             let mut gpu_collector = crate::gpu::GpuCollector::new(crate::gpu_windows::WindowsGpuSource::default());
             let mut disk_collector = crate::disk::DiskCollector::new(crate::disk_windows::WindowsDiskSource);
             let mut memory_collector = crate::memory::MemoryCollector::default();
+            let mut voicemeeter = crate::voicemeeter::Client::native();
+            let mut sources: HashMap<String, crate::voicemeeter::Target> = HashMap::new();
+            let mut vm_published = false;
             let mut next_tick = Instant::now();
             let mut ticks=0;
             let mut devices_active = [false; 2];
             let mut volume_active = [false; 2];
             loop {
                 let dirty = changed.swap(false, Ordering::AcqRel);
+                // Voicemeeter maintenance: keep the remote session warm when the
+                // routing menu or a routed audio channel needs it, then publish
+                // per-channel levels and the strip/bus snapshot (the remote API
+                // is poll-driven).
+                let routed: Vec<&str> = ["volume", "microphone"]
+                    .into_iter()
+                    .filter(|channel| sources.contains_key(*channel) && self.active(channel))
+                    .collect();
+                let menu_wanted = self.active("voicemeeter");
+                if !routed.is_empty() || menu_wanted {
+                    match voicemeeter.poll() {
+                        Err(_) => {
+                            // Never fall through to Windows demo values: routed
+                            // channels and the menu stay unavailable until
+                            // Voicemeeter is back.
+                            for channel in &routed {
+                                self.publish(&app, channel, envelope("unavailable", Value::Null));
+                            }
+                            if menu_wanted {
+                                self.publish(&app, "voicemeeter", envelope("unavailable", Value::Null));
+                            }
+                        }
+                        Ok(state) => {
+                            for channel in &routed {
+                                let target = sources.get(*channel).copied().expect("filtered");
+                                match voicemeeter.read(target) {
+                                    Ok((level, muted)) => self.publish(
+                                        &app,
+                                        channel,
+                                        envelope("ready", json!({"level": level, "muted": muted})),
+                                    ),
+                                    Err(e) => self.publish(&app, channel, error(e)),
+                                }
+                            }
+                            if menu_wanted && (matches!(state, crate::voicemeeter::Poll::Changed) || !vm_published) {
+                                match voicemeeter.snapshot() {
+                                    Ok(snapshot) => self.publish(
+                                        &app,
+                                        "voicemeeter",
+                                        envelope("ready", serde_json::to_value(&snapshot).expect("Voicemeeter snapshot serializes")),
+                                    ),
+                                    Err(e) => self.publish(&app, "voicemeeter", error(e)),
+                                }
+                                vm_published = true;
+                            }
+                        }
+                    }
+                } else {
+                    vm_published = false;
+                }
                 for (index, flow, devices_channel, volume_channel) in [(0, eRender, "audioOutputs", "volume"), (1, eCapture, "audioInputs", "microphone")] {
                     let active = self.active(devices_channel);
                     if active && (dirty || !devices_active[index]) {
@@ -229,9 +317,13 @@ impl Metrics {
                     }
                     devices_active[index] = active;
                     let active_volume = self.active(volume_channel);
-                    if active_volume
-                        && (dirty || !volume_active[index])
-                    {
+                    if sources.contains_key(volume_channel) {
+                        // Voicemeeter owns this channel: never read the Windows
+                        // default endpoint and drop any WASAPI callback.
+                        if let Some((e, cb)) = audio[index].take() {
+                            let _ = e.UnregisterControlChangeNotify(&cb);
+                        }
+                    } else if active_volume && (dirty || !volume_active[index]) {
                         if let Some((e, cb)) = audio[index].take() {
                             let _ = e.UnregisterControlChangeNotify(&cb);
                         }
@@ -263,12 +355,12 @@ impl Metrics {
                                 self.publish(&app, volume_channel, if absent { envelope("unavailable", Value::Null) } else { error(e) });
                             },
                         }
-                    } else if !self.active(volume_channel) {
+                    } else if !active_volume {
                         if let Some((e, cb)) = audio[index].take() {
                             let _ = e.UnregisterControlChangeNotify(&cb);
                         }
                     }
-                    volume_active[index] = active_volume;
+                    volume_active[index] = active_volume && !sources.contains_key(volume_channel);
                 }
                 if Instant::now() >= next_tick {
                     if self.active("cpu") {
@@ -310,18 +402,47 @@ impl Metrics {
                         let _ = reply.send(result);
                     }
                     Ok(Request::Volume(capture, level, muted, reply)) => {
-                        let result = (|| -> windows::core::Result<Value> {
-                            let e = endpoint(enumerator.as_ref().map_err(|e| e.clone())?, if capture { eCapture } else { eRender })?;
-                            if let Some(v) = level {
-                                e.SetMasterVolumeLevelScalar(v / 100., std::ptr::null())?;
+                        let channel = if capture { "microphone" } else { "volume" };
+                        let result: Result<Value, String> = match sources.get(channel).copied() {
+                            // Routed through Voicemeeter: the writes land on the
+                            // configured strip/bus, not on any WASAPI endpoint.
+                            Some(target) => voicemeeter
+                                .write(target, level, muted)
+                                .map(|(level, muted)| json!({"level": level, "muted": muted})),
+                            None => {
+                                let flow = if capture { eCapture } else { eRender };
+                                (|| -> windows::core::Result<Value> {
+                                    let e =
+                                        endpoint(enumerator.as_ref().map_err(|e| e.clone())?, flow)?;
+                                    if let Some(v) = level {
+                                        e.SetMasterVolumeLevelScalar(v / 100., std::ptr::null())?;
+                                    }
+                                    if let Some(v) = muted {
+                                        e.SetMute(v, std::ptr::null())?;
+                                    }
+                                    audio_read(&e)
+                                })()
+                                .map_err(|e| e.to_string())
                             }
-                            if let Some(v) = muted {
-                                e.SetMute(v, std::ptr::null())?;
+                        };
+                        if let Ok(v) = &result {
+                            self.publish(&app, channel, envelope("ready", v.clone()));
+                        }
+                        let _ = reply.send(result);
+                    }
+                    Ok(Request::Source(channel, target, reply)) => {
+                        match target {
+                            Some(target) => {
+                                sources.insert(channel.clone(), target);
                             }
-                            audio_read(&e)
-                        })();
-                        if let Ok(v) = &result { self.publish(&app, if capture { "microphone" } else { "volume" }, envelope("ready", v.clone())); }
-                        let _ = reply.send(result.map_err(|e| e.to_string()));
+                            None => {
+                                sources.remove(&channel);
+                            }
+                        }
+                        devices_active = [false; 2];
+                        volume_active = [false; 2];
+                        changed.store(true, Ordering::Release);
+                        let _ = reply.send(Ok(()));
                     }
                     Ok(Request::Wake) => { devices_active = [false; 2]; volume_active = [false; 2]; },
                     _ => {}
@@ -439,6 +560,52 @@ mod tests {
         if let Some(percent) = m["percent"]["value"].as_f64() {
             assert!((0.0..=100.0).contains(&percent));
         }
+    }
+}
+#[cfg(test)]
+mod channel_source_tests {
+    use super::*;
+
+    #[test]
+    fn routing_validates_the_channel_and_target() {
+        let (tx, rx) = mpsc::channel();
+        drop(rx); // No worker: valid requests must stop at the worker hop.
+        let m = Metrics {
+            data: Default::default(),
+            tx,
+        };
+        let error = m.set_channel_source("cpu".into(), None).unwrap_err();
+        assert!(error.contains("volume and microphone"), "{error}");
+        assert!(m
+            .set_channel_source(
+                "volume".into(),
+                Some(crate::voicemeeter::TargetRequest {
+                    kind: "aux".into(),
+                    index: 0
+                })
+            )
+            .unwrap_err()
+            .contains("Invalid Voicemeeter target"));
+        assert!(m
+            .set_channel_source(
+                "volume".into(),
+                Some(crate::voicemeeter::TargetRequest {
+                    kind: "bus".into(),
+                    index: 8
+                })
+            )
+            .unwrap_err()
+            .contains("Invalid Voicemeeter target"));
+        // A validated request reaches the (dead) worker instead of failing validation.
+        assert!(m
+            .set_channel_source(
+                "microphone".into(),
+                Some(crate::voicemeeter::TargetRequest {
+                    kind: "strip".into(),
+                    index: 0
+                })
+            )
+            .is_err());
     }
 }
 #[cfg(test)]

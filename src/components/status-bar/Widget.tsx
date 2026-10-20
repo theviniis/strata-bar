@@ -83,6 +83,7 @@ const formatters: Record<Channel, (value: PreviewValue) => string> = {
   activeWindow: (v) => String(v),
   komorebi: () => '',
   media: () => '',
+  voicemeeter: () => '',
   audioOutputs: () => ''
 }
 

@@ -25,6 +25,7 @@ export type Channel =
   | 'audioInputs'
   | 'microphone'
   | 'media'
+  | 'voicemeeter'
 
 export type WorkspaceStatus = 'active' | 'populated' | 'empty'
 
@@ -65,6 +66,7 @@ export interface ChannelData {
   volume: { level: number; muted: boolean }
   activeWindow: string
   komorebi: KomorebiData
+  voicemeeter: VoicemeeterData
 }
 
 /**
@@ -86,6 +88,7 @@ export interface DemoChannelData {
   volume: number
   activeWindow: string
   komorebi: KomorebiData
+  voicemeeter: null
 }
 
 export type SystemStatus = 'loading' | 'ready' | 'unavailable' | 'error'
@@ -102,6 +105,32 @@ export interface SubscribeOptions {
 }
 
 export type VolumeChange = { level?: number; muted?: boolean }
+
+/** Voicemeeter destination forwarded to the native worker. */
+export type VmTarget = { kind: 'strip' | 'bus'; index: number }
+/** Channels whose snapshot can be published by the Voicemeeter engine. */
+export type AudioChannel = 'volume' | 'microphone'
+
+/** One strip/bus of the Voicemeeter engine as shown by the routing menu. */
+export interface VoicemeeterIo {
+  index: number
+  /** Engine label: `A1`, `B1`, `Hardware 1`, `V1`... */
+  slot: string
+  /** `false` for the virtual VAIO strips/buses. */
+  physical: boolean
+  /** Assigned device or user label; empty when the engine reports none. */
+  name: string
+  gain: number
+  mute: boolean
+}
+
+/** What the dedicated `voicemeeter` channel publishes for the routing menu. */
+export interface VoicemeeterData {
+  /** `VBVMR_GetVoicemeeterType`: 1 Voicemeeter, 2 Banana, 3 Potato. */
+  application: number
+  strips: VoicemeeterIo[]
+  buses: VoicemeeterIo[]
+}
 
 export interface Subscribable<D extends Record<Channel, unknown>> {
   subscribe<C extends Channel>(
@@ -125,6 +154,13 @@ export interface AdapterBase {
   setAudioOutput?(value: {
     deviceId: string
   }): Promise<ChannelData['audioOutputs']>
+  /** Native-only: routing a channel through Voicemeeter (`null` means Windows). */
+  setChannelSource?(
+    channel: AudioChannel,
+    target: VmTarget | null
+  ): Promise<void>
+  /** Native-only: static feature gates per channel. */
+  capabilities?(): Promise<Record<string, boolean>>
   /** Only the native adapter owns the process, so the demo adapter cannot quit. */
   quit?(): Promise<void>
   /** Native-only: the studio demo cannot drive a real window manager. */
@@ -188,6 +224,7 @@ export function createMockBridge(): DemoBridge {
     volume: 64,
     audioOutputs: null,
     activeWindow: 'Visual Studio Code',
+    voicemeeter: null,
     komorebi: {
       monitor: 0,
       floatOverride: false,
@@ -403,6 +440,14 @@ export function createNativeBridge(): NativeBridge {
     async setVolume(value) {
       const { invoke } = await import('@tauri-apps/api/core')
       return invoke('set_volume', value)
+    },
+    async setChannelSource(channel, target) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke('set_channel_source', { channel, target })
+    },
+    async capabilities() {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke<Record<string, boolean>>('capabilities')
     },
     async setMicrophone(value) {
       const { invoke } = await import('@tauri-apps/api/core')

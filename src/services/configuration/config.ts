@@ -18,14 +18,61 @@ export const types = [
 
 export type WidgetType = (typeof types)[number]
 
+/** Voicemeeter destination of an audio widget: a strip or bus index on the engine. */
+const vmTarget = z.object({
+  kind: z.enum(['strip', 'bus']),
+  index: z.number().int().min(0).max(7)
+})
+
+const audio = z
+  .object({
+    /** `windows` drives the default endpoints; `voicemeeter` drives a strip/bus. */
+    source: z.enum(['windows', 'voicemeeter']).default('windows'),
+    target: vmTarget.optional(),
+    /** Friendly label shown by the widget instead of `Strip/Bus n`. */
+    label: z.string().optional(),
+    /** `false` keeps the stored target but drives the Windows endpoints again. */
+    enabled: z.boolean().optional()
+  })
+  .superRefine((a, ctx) => {
+    if (a.source === 'voicemeeter' && !a.target)
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Voicemeeter source requires a target strip or bus'
+      })
+  })
+
+export type AudioSourceConfig = z.infer<typeof audio>
+export type VmAudioTarget = z.infer<typeof vmTarget>
+
 const widget = z.object({
   id: z.string().min(1),
   type: z.enum(types),
   enabled: z.boolean().default(true),
   intervalMs: z.number().int().min(1000).max(60000).default(2000),
   format: z.enum(['compact', 'label']).default('label'),
-  tooltip: z.boolean().default(true)
+  tooltip: z.boolean().default(true),
+  /** Per-widget audio routing. Only the volume and microphone widgets consume it. */
+  audio: audio.optional()
 })
+
+/** Audio settings of the first widget of a type in the layout. */
+export function widgetAudio(config: Config, type: WidgetType) {
+  return [
+    ...config.widgets.left,
+    ...config.widgets.center,
+    ...config.widgets.right
+  ].find((w) => w.type === type)?.audio
+}
+
+/** Friendly Voicemeeter label; the configured override beats `Strip/Bus n`. */
+export function voicemeeterLabel(audio: AudioSourceConfig): string {
+  if (!audio.target) return 'Voicemeeter'
+  return (
+    audio.label ??
+    `${audio.target.kind === 'strip' ? 'Strip' : 'Bus'} ${audio.target.index}`
+  )
+}
 
 const bar = z.object({
   position: z.enum(['top', 'bottom']).default('top'),

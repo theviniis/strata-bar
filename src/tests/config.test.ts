@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { defaultConfig, parseConfig } from '../services/configuration/config'
+import {
+  defaultConfig,
+  parseConfig,
+  voicemeeterLabel,
+  widgetAudio
+} from '../services/configuration/config'
 import { useConfig } from '../stores/config'
 
 describe('configuration', () => {
@@ -34,6 +39,76 @@ describe('configuration', () => {
     c.bar.position = 'bottom'
     expect(useConfig.getState().apply(JSON.stringify(c))).toBe(true)
     expect(localStorage.getItem('strata.config.v1')).toContain('bottom')
+  })
+  it('records and clears the widget audio routing', () => {
+    const settings = useConfig.getState()
+    expect(
+      settings.setWidgetAudio('volume', {
+        source: 'voicemeeter',
+        target: { kind: 'bus', index: 0 },
+        label: 'A1 · ASIO4ALL v2'
+      })
+    ).toBe(true)
+    expect(widgetAudio(useConfig.getState().config, 'volume')).toMatchObject({
+      source: 'voicemeeter'
+    })
+    const persisted = JSON.parse(localStorage.getItem('strata.config.v1')!) as {
+      widgets: { right: Array<{ type: string; audio?: unknown }> }
+    }
+    const widget = persisted.widgets.right.find((w) => w.type === 'volume')!
+    expect(widget).toHaveProperty('audio')
+
+    expect(settings.setWidgetAudio('volume', undefined)).toBe(true)
+    expect(widgetAudio(useConfig.getState().config, 'volume')).toBeUndefined()
+    const persisted2 = JSON.parse(
+      localStorage.getItem('strata.config.v1')!
+    ) as {
+      widgets: { right: Array<{ type: string; audio?: unknown }> }
+    }
+    const cleared = persisted2.widgets.right.find((w) => w.type === 'volume')!
+    expect('audio' in cleared).toBe(false)
+  })
+  it('defaults audio widgets to the Windows endpoints', () => {
+    const parsed = parseConfig(JSON.stringify(defaultConfig))
+    expect(widgetAudio(parsed, 'volume')).toBeUndefined()
+    expect(widgetAudio(parsed, 'microphone')).toBeUndefined()
+  })
+  it('routes an audio widget to Voicemeeter only with a strip/bus target', () => {
+    const c = structuredClone(defaultConfig)
+    c.widgets.right.find((w) => w.type === 'volume')!.audio = {
+      source: 'voicemeeter',
+      target: { kind: 'bus', index: 0 },
+      label: 'A1 fones'
+    }
+    const parsed = parseConfig(JSON.stringify(c))
+    const audio = widgetAudio(parsed, 'volume')!
+    expect(audio.source).toBe('voicemeeter')
+    expect(voicemeeterLabel(audio)).toBe('A1 fones')
+    expect(
+      voicemeeterLabel({
+        source: 'voicemeeter',
+        target: { kind: 'bus', index: 0 }
+      })
+    ).toBe('Bus 0')
+    expect(() =>
+      parseConfig(
+        JSON.stringify(
+          Object.assign(structuredClone(defaultConfig), {
+            widgets: {
+              left: [],
+              center: [],
+              right: [
+                {
+                  id: 'volume',
+                  type: 'volume',
+                  audio: { source: 'voicemeeter' }
+                }
+              ]
+            }
+          })
+        )
+      )
+    ).toThrow(/target/)
   })
 })
 

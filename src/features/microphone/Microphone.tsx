@@ -4,21 +4,33 @@ import {
   WidgetItemTooltip
 } from '@/components/widget-item'
 import { Mic, MicOff } from 'lucide-react'
+import { useAudioSource } from '../../hooks/useAudioSource'
 import { useOverlayTooltip } from '../../hooks/useOverlayTooltip'
 import { useSystemChannel } from '../../hooks/useSystemChannel'
+import {
+  voicemeeterLabel,
+  widgetAudio
+} from '../../services/configuration/config'
+import { useConfig } from '../../stores/config'
 import { WidgetPopup } from '../../popups/WidgetPopup'
 
 export function Microphone() {
+  const audio = useConfig((state) => widgetAudio(state.config, 'microphone'))
+  useAudioSource('microphone', audio)
   const value = useSystemChannel('microphone')
   const muted = value.status === 'ready' && value.data.muted
+  const source =
+    audio?.source === 'voicemeeter' && audio.enabled !== false
+      ? `Microfone (${voicemeeterLabel(audio)})`
+      : 'Microfone'
   const text =
     value.status === 'ready'
-      ? `Microfone: ${value.data.level}%${muted ? ' (silenciado)' : ''}`
+      ? `${source}: ${value.data.level}%${muted ? ' (silenciado)' : ''}`
       : value.status === 'error'
         ? value.error
         : value.status === 'unavailable'
-          ? 'Microfone indispon\u00edvel'
-          : 'Carregando microfone'
+          ? `${source} indisponível`
+          : `Carregando ${source.toLowerCase()}`
   const tip = useOverlayTooltip(text)
   const Icon = muted ? MicOff : Mic
 

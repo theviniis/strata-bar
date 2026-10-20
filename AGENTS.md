@@ -246,14 +246,23 @@ flowchart TD
   `komorebi` is reported by capability and, when komorebi or `komorebic.exe` is absent, subscribes to a
   streamed `unavailable` status instead of rejecting. `gpu` reports per-metric `unavailable` when a sensor
   (for example a missing MSI Afterburner) is absent and always keeps its vendor-neutral readings.
-- Tauri commands: `capabilities`, `subscribe`, `unsubscribe`, `set_volume`, `komorebi_action`, `overlay_show`,
+  `volume`/`microphone` can be routed through Voicemeeter (Banana/Potato) instead of the Windows default
+  endpoints: `set_channel_source` sends the configured strip/bus per widget, the shared worker owns the
+  routing globally per channel (last write wins) and a routed channel publishes `unavailable` when the
+  Voicemeeter DLL or the application is absent — it never falls back to Windows or demo values. Level is
+  linear 0-100% over the -60..+12 dB slider range; the device popups keep switching Windows endpoints.
+  See `docs/plans/voicemeeter-audio.md`.
+- Tauri commands: `capabilities`, `subscribe`, `unsubscribe`, `set_volume`, `set_channel_source`,
+  `komorebi_action`, `overlay_show`,
   `overlay_hide`, `diagnostics`, `quit` (`src-tauri/src/main.rs`); the AppBar host is `desktop::reconcile` /
   `desktop::release_all`, the shared floating surface is `desktop::ensure_overlay` / `desktop::overlay_show` /
-  `desktop::overlay_hide` (probe via `desktop::overlay_snapshot`), and the
-  komorebi named-pipe watcher is `komorebi::Komorebi::start` (probe via `komorebi::probe`).
+  `desktop::overlay_hide` (probe via `desktop::overlay_snapshot`), the
+  komorebi named-pipe watcher is `komorebi::Komorebi::start` (probe via `komorebi::probe`), and the
+  Voicemeeter remote session is `voicemeeter::Client::native()` (owned by the metrics worker thread).
 - Configuration: JSON schema version 1 with unique widget IDs, `enabled`, `intervalMs`, `format`, `tooltip`,
-  plus per-monitor overrides (`monitors`); browser persistence uses localStorage key `strata.config.v1` with
-  last-known-good retention. Native atomic write + directory watch is planned.
+  per-widget `audio` routing (`source: windows|voicemeeter` with `target {kind,index}` — required when
+  `source=voicemeeter`), plus per-monitor overrides (`monitors`); browser persistence uses localStorage key
+  `strata.config.v1` with last-known-good retention. Native atomic write + directory watch is planned.
 - Feature flags: the per-widget `enabled` flag and per-channel `capabilities()` booleans are the current
   toggle points (e.g. network is reported unavailable).
 - Environment variables: none are documented.
@@ -265,6 +274,7 @@ flowchart TD
 - [docs/implementation-plan.md](docs/implementation-plan.md) — milestones, acceptance gates, measurement protocol.
 - [docs/plans/overlay-window.md](docs/plans/overlay-window.md) — overlay window plan of record (tooltips now, widget popups later).
 - [docs/plans/gpu-popup.md](docs/plans/gpu-popup.md) — GPU channel/widget/popup plan of record and its recorded gate exception.
+- [docs/plans/voicemeeter-audio.md](docs/plans/voicemeeter-audio.md) — Voicemeeter routing for the volume/microphone widgets.
 - [docs/native-mvp-validation.md](docs/native-mvp-validation.md) — current native evidence and remaining limits.
 - [docs/validation.md](docs/validation.md) — historical foundation checkpoint (superseded).
 - [docs/yasb-analysis.md](docs/yasb-analysis.md) — read-only YASB source investigation and adaptations.

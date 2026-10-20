@@ -223,3 +223,18 @@ it('routes microphone controls through dedicated native commands', async () => {
     deviceId: 'capture-id'
   })
 })
+
+it('forwards Voicemeeter channel routing to the native command', async () => {
+  state.invoke.mockReset().mockResolvedValue(null)
+  const bridge = createNativeBridge()
+  await bridge.setChannelSource!('volume', { kind: 'bus', index: 0 })
+  expect(state.invoke).toHaveBeenCalledWith('set_channel_source', {
+    channel: 'volume',
+    target: { kind: 'bus', index: 0 }
+  })
+  await bridge.setChannelSource!('microphone', null)
+  expect(state.invoke).toHaveBeenCalledWith('set_channel_source', {
+    channel: 'microphone',
+    target: null
+  })
+})

@@ -9,6 +9,14 @@ import {
   CardTitle
 } from '@/components/ui/card'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog'
+import {
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -18,9 +26,10 @@ import {
 import { Slider } from '@/components/ui/slider'
 import { Spinner } from '@/components/ui/spinner'
 import { WidgetItemOutput } from '@/components/widget-item'
-import { Check, Mic, MicOff } from 'lucide-react'
+import { Check, Mic, MicOff, Settings } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useSystemChannel } from '../../hooks/useSystemChannel'
+import { useVoicemeeterCapability } from '../../hooks/useVoicemeeterCapability'
 import { usePopupContext } from '../../popups/context'
 import {
   bridge,
@@ -28,6 +37,7 @@ import {
   type SystemEvent,
   type VolumeChange
 } from '../../services/system/bridge'
+import { VoicemeeterSettings } from '../audio/VoicemeeterSettings'
 
 type Inputs = ChannelData['audioInputs']
 type Volume = ChannelData['microphone']
@@ -162,6 +172,9 @@ function AudioInputsContent({
   const [pending, setPending] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [draft, setDraft] = useState<number | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  // The Voicemeeter menu only exists in a native bar that detected the DLL.
+  const voicemeeter = useVoicemeeterCapability()
   const [confirmed, setConfirmed] = useState<{
     base: typeof inputs
     data: ChannelData['audioInputs']
@@ -228,93 +241,122 @@ function AudioInputsContent({
   const Icon = muted ? MicOff : Mic
 
   return (
-    <div className="flex flex-col">
-      <CardHeader>
-        <CardTitle>Entrada de áudio</CardTitle>
-        <CardDescription>
-          Controle o volume e a entrada de áudio
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="" aria-busy={pending !== null}>
-          {inputs.status === 'loading' && <EmptyInputItems />}
-          {inputs.status === 'error' && (
-            <p role="alert" className="p-3 text-destructive">
-              {inputs.error}
+    <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+      <div className="flex flex-col" hidden={settingsOpen}>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle>Entrada de áudio</CardTitle>
+            {voicemeeter && (
+              <DialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Configurações do Voicemeeter"
+                >
+                  <Settings size={16} aria-hidden="true" />
+                </Button>
+              </DialogTrigger>
+            )}
+          </div>
+          <CardDescription>
+            Controle o volume e a entrada de áudio
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="" aria-busy={pending !== null}>
+            {inputs.status === 'loading' && <EmptyInputItems />}
+            {inputs.status === 'error' && (
+              <p role="alert" className="p-3 text-destructive">
+                {inputs.error}
+              </p>
+            )}
+            {inputs.status === 'error' && (
+              <Button variant={'destructive'} onClick={retry}>
+                Tentar novamente
+              </Button>
+            )}
+            {inputs.status === 'unavailable' && (
+              <p className="p-3">Entradas de áudio indisponíveis.</p>
+            )}
+            {data?.devices.length === 0 && (
+              <p className="p-3">Nenhuma entrada de áudio disponível.</p>
+            )}
+            <ButtonGroup orientation="vertical" aria-label="Microfones">
+              {data?.devices.map((device) => (
+                <AudioInputContentItem
+                  key={device.id}
+                  isActive={device.id === data.defaultDeviceId}
+                  device={device}
+                  onClick={() => void select(device.id)}
+                  disabled={pending !== null}
+                  isLoading={pending === device.id}
+                />
+              ))}
+            </ButtonGroup>
+          </div>
+          {error && (
+            <p role="alert" className="px-3 py-1 text-destructive">
+              {error}
             </p>
           )}
-          {inputs.status === 'error' && (
-            <Button variant={'destructive'} onClick={retry}>
-              Tentar novamente
-            </Button>
-          )}
-          {inputs.status === 'unavailable' && (
-            <p className="p-3">Entradas de áudio indisponíveis.</p>
-          )}
-          {data?.devices.length === 0 && (
-            <p className="p-3">Nenhuma entrada de áudio disponível.</p>
-          )}
-          <ButtonGroup orientation="vertical" aria-label="Microfones">
-            {data?.devices.map((device) => (
-              <AudioInputContentItem
-                key={device.id}
-                isActive={device.id === data.defaultDeviceId}
-                device={device}
-                onClick={() => void select(device.id)}
-                disabled={pending !== null}
-                isLoading={pending === device.id}
-              />
-            ))}
-          </ButtonGroup>
-        </div>
-        {error && (
-          <p role="alert" className="px-3 py-1 text-destructive">
-            {error}
+        </CardContent>
+        {volume.status === 'error' && (
+          <p role="alert">
+            {volume.error}
+            <Button onClick={retry}>Tentar novamente</Button>
           </p>
         )}
-      </CardContent>
-      {volume.status === 'error' && (
-        <p role="alert">
-          {volume.error}
-          <Button onClick={retry}>Tentar novamente</Button>
-        </p>
-      )}
-      {volume.status === 'unavailable' && <p>Microfone indisponível.</p>}
-      <CardFooter className="gap-4">
-        <Button
-          disabled={
-            volume.status !== 'ready' ||
-            !data?.defaultDeviceId ||
-            pending !== null
-          }
-          aria-pressed={muted}
-          aria-label={muted ? 'Ativar microfone' : 'Silenciar microfone'}
-          onClick={() => void mute()}
-          variant="ghost"
-          size="icon"
-        >
-          <Icon size={16} />
-        </Button>
-        <Slider
-          value={[level]}
-          max={100}
-          step={1}
-          aria-label="Volume"
-          disabled={
-            volume.status !== 'ready' ||
-            !data?.defaultDeviceId ||
-            pending !== null
-          }
-          onValueChange={(value) => setDraft(value[0])}
-          onValueCommit={(value) => void setLevel(value[0])}
-        />
-        <WidgetItemOutput
-          aria-label="Volume atual"
-          className="min-w-8 text-right"
-        >
-          {volume.status === 'ready' ? level : '—'}
-        </WidgetItemOutput>
-      </CardFooter>
-    </div>
+        {volume.status === 'unavailable' && <p>Microfone indisponível.</p>}
+        <CardFooter className="gap-4">
+          <Button
+            disabled={
+              volume.status !== 'ready' ||
+              !data?.defaultDeviceId ||
+              pending !== null
+            }
+            aria-pressed={muted}
+            aria-label={muted ? 'Ativar microfone' : 'Silenciar microfone'}
+            onClick={() => void mute()}
+            variant="ghost"
+            size="icon"
+          >
+            <Icon size={16} />
+          </Button>
+          <Slider
+            value={[level]}
+            max={100}
+            step={1}
+            aria-label="Volume"
+            disabled={
+              volume.status !== 'ready' ||
+              !data?.defaultDeviceId ||
+              pending !== null
+            }
+            onValueChange={(value) => setDraft(value[0])}
+            onValueCommit={(value) => void setLevel(value[0])}
+          />
+          <WidgetItemOutput
+            aria-label="Volume atual"
+            className="min-w-8 text-right"
+          >
+            {volume.status === 'ready' ? level : '—'}
+          </WidgetItemOutput>
+        </CardFooter>
+      </div>
+      <DialogContent
+        inline
+        className="w-[320px] overflow-y-auto"
+        onKeyDown={(event) => event.stopPropagation()}
+      >
+        <DialogHeader>
+          <DialogTitle>Configurações do Voicemeeter</DialogTitle>
+          <DialogDescription>
+            Define se o mute e o slider controlam o Voicemeeter e qual faixa do
+            Voicemeeter eles controlam.
+          </DialogDescription>
+        </DialogHeader>
+        <VoicemeeterSettings type="microphone" kind="strip" />
+      </DialogContent>
+    </Dialog>
   )
 }
