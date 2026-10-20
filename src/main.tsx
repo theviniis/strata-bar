@@ -2,8 +2,16 @@ import React, { Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import './app/styles.css'
 import NativeBar from './components/status-bar/NativeBar'
-import { getRemindersStore } from './stores/reminders'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from './components/ui/card'
+import { Spinner } from './components/ui/spinner'
 import { loadConfig, watchConfig } from './stores/config'
+import { getRemindersStore } from './stores/reminders'
 import { OverlayView, PopupCheckView, StudioView } from './views'
 
 // `?view=` is set by the native host: `bar` for AppBar strips, `overlay` for the
@@ -39,7 +47,24 @@ if (import.meta.hot) {
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <Card>
+          <CardHeader>
+            <CardTitle>Carregando componente</CardTitle>
+            <CardDescription>
+              Estamos carregando o seu componente, por favor aguarde
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Spinner />
+              <p>Carregando...</p>
+            </div>
+          </CardContent>
+        </Card>
+      }
+    >
       {view === 'overlay' ? (
         <OverlayView />
       ) : import.meta.env.DEV &&

@@ -1,3 +1,11 @@
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card'
+import { Spinner } from '@/components/ui/spinner'
 import { Component, Suspense, type ReactNode } from 'react'
 import type { OverlaySide } from '../services/system/overlay'
 import { PopupContext } from './context'
@@ -77,7 +85,24 @@ export function PopupHost({
           }}
         >
           <ContentBoundary close={close}>
-            <Suspense fallback={null}>
+            <Suspense
+              fallback={
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Carregando componente</CardTitle>
+                    <CardDescription>
+                      Estamos carregando o seu componente, por favor aguarde
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2">
+                      <Spinner />
+                      <p>Carregando...</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              }
+            >
               <Content />
             </Suspense>
           </ContentBoundary>
