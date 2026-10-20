@@ -453,3 +453,26 @@ ESLint e Prettier dos arquivos alterados aprovados.
 - [x] Reutilizar ReminderMessage no popup de alerta, preservando limite de altura
       e rolagem, acoes, sincronizacao e abertura sem autofocus.
 - [x] Cobrir formatacao Markdown no alerta e preservacao do foco.
+
+### Agenda dedicada Lembretes Strata
+
+- [x] Procurar agenda secundaria propria pelo nome exato Lembretes Strata,
+      incluindo agendas ocultas e todas as paginas da lista.
+- [x] Criar agenda quando ausente, serializando operacoes para evitar corrida
+      entre lembretes na mesma instancia.
+- [x] Inserir/confirmar eventos somente no ID da agenda selecionada, codificado
+      na URL; manter ID deterministico, duracoes e regra de snooze local.
+- [x] Solicitar calendar.calendarlist.readonly e calendar.app.created junto de
+      calendar.events.owned; informar reconexao quando falta permissao.
+- [x] Preservar verificacao de troca de conta entre todas as chamadas da operacao.
+- [x] Atualizar texto das configuracoes e testes de escopos/destino/selecao.
+
+A mudanca vale para novas sincronizacoes. Eventos ja vinculados na agenda anterior
+nao sao movidos automaticamente. Conexoes OAuth existentes precisam de nova
+autorizacao para as permissoes adicionais. Nenhuma conta Google real foi usada
+nos testes desta etapa.
+
+Referencias:
+
+- https://developers.google.com/workspace/calendar/api/v3/reference/calendarList/list
+- https://developers.google.com/workspace/calendar/api/v3/reference/calendars/insert

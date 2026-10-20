@@ -1,9 +1,9 @@
-import { useEffect, useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { calendar } from '@/services/system/calendar'
 import type { CalendarStatus } from '@/services/system/reminders.generated'
+import { useEffect, useId, useState } from 'react'
 
 export function CalendarSettings({
   onConnected
@@ -58,7 +58,8 @@ export function CalendarSettings({
       {status?.connected ? (
         <>
           <p className="text-muted-foreground">
-            Eventos na agenda principal. Adiar altera somente o alerta local.
+            Eventos na agenda <strong>Lembretes Strata</strong>, criada
+            automaticamente se preciso. Adiar altera somente o alerta local.
           </p>
           <Button
             variant="outline"

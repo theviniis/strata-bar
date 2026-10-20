@@ -18,7 +18,48 @@ use windows::{
 };
 
 const TARGET: PCWSTR = w!("Strata/GoogleCalendar/v1");
-const SCOPE: &str = "https://www.googleapis.com/auth/calendar.events.owned";
+const CALENDAR_NAME: &str = "Lembretes Strata";
+const SCOPE: &str = concat!(
+    "https://www.googleapis.com/auth/calendar.events.owned ",
+    "https://www.googleapis.com/auth/calendar.calendarlist.readonly ",
+    "https://www.googleapis.com/auth/calendar.app.created"
+);
+
+fn sufficient_scopes(scope: &str) -> bool {
+    let scopes: std::collections::HashSet<_> = scope.split_whitespace().collect();
+    scopes.contains("https://www.googleapis.com/auth/calendar")
+        || (scopes.contains("https://www.googleapis.com/auth/calendar.events.owned")
+            || scopes.contains("https://www.googleapis.com/auth/calendar.events"))
+            && (scopes.contains("https://www.googleapis.com/auth/calendar.calendarlist.readonly")
+                || scopes.contains("https://www.googleapis.com/auth/calendar.calendarlist")
+                || scopes.contains("https://www.googleapis.com/auth/calendar.readonly"))
+            && (scopes.contains("https://www.googleapis.com/auth/calendar.app.created")
+                || scopes.contains("https://www.googleapis.com/auth/calendar.calendars"))
+}
+
+fn matching_calendar(value: &Value) -> Option<&str> {
+    value["items"]
+        .as_array()?
+        .iter()
+        .filter(|item| {
+            item["summary"] == CALENDAR_NAME
+                && item["accessRole"] == "owner"
+                && item["primary"] != true
+                && item["deleted"] != true
+        })
+        .filter_map(|item| item["id"].as_str().filter(|id| !id.is_empty()))
+        .min()
+}
+
+fn events_url(calendar_id: &str) -> String {
+    let mut url = url::Url::parse("https://www.googleapis.com/calendar/v3/calendars/").unwrap();
+    url.path_segments_mut()
+        .unwrap()
+        .pop_if_empty()
+        .push(calendar_id)
+        .push("events");
+    url.into()
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 struct Credentials {
@@ -154,12 +195,8 @@ fn decode_tokens(
     previous_refresh: Option<String>,
 ) -> Result<Credentials, String> {
     if let Some(scope) = value["scope"].as_str() {
-        if !scope.split_whitespace().any(|s| {
-            s == SCOPE
-                || s == "https://www.googleapis.com/auth/calendar.events"
-                || s == "https://www.googleapis.com/auth/calendar"
-        }) {
-            return Err("Permissão do Google Calendar não concedida".into());
+        if !sufficient_scopes(scope) {
+            return Err("Reconecte o Google para autorizar a agenda Lembretes Strata".into());
         }
     }
     Ok(Credentials {
@@ -433,57 +470,145 @@ impl GoogleCalendar {
         Ok((generation, token))
     }
 
-    pub fn create_event(&self, reminder: &Reminder) -> Result<String, String> {
-        let _api = self.api_lock.lock().unwrap();
-        let body = event_body(reminder)?;
-        let id = reminder.id.replace('-', "");
+    fn calendar_request(
+        &self,
+        method: reqwest::Method,
+        url: &str,
+        body: Option<&Value>,
+        expected_generation: u64,
+    ) -> Result<reqwest::blocking::Response, String> {
         for retry in 0..2 {
             let (generation, token) = self.access(retry != 0)?;
-            let response = self
-                .client
-                .post("https://www.googleapis.com/calendar/v3/calendars/primary/events")
-                .bearer_auth(&token)
-                .json(&body)
+            if generation != expected_generation {
+                return Err("Conta Google alterada durante a operacao".into());
+            }
+            let mut request = self.client.request(method.clone(), url).bearer_auth(token);
+            if let Some(body) = body {
+                request = request.json(body);
+            }
+            let response = request
                 .send()
-                .map_err(|_| "Google indisponível; tente sincronizar novamente")?;
+                .map_err(|_| "Google indisponivel; o lembrete local continua ativo")?;
             if self.inner.lock().unwrap().generation != generation {
-                return Err("Conta Google alterada durante a operação".into());
+                return Err("Conta Google alterada durante a operacao".into());
             }
             if response.status().as_u16() == 401 && retry == 0 {
                 continue;
             }
-            if response.status().as_u16() == 409 {
-                let existing = self
-                    .client
-                    .get(format!(
-                        "https://www.googleapis.com/calendar/v3/calendars/primary/events/{id}"
-                    ))
-                    .bearer_auth(&token)
-                    .send()
-                    .map_err(|_| "Não foi possível confirmar o evento existente")?;
-                if existing.status().is_success() {
-                    let value: Value = existing.json().map_err(|_| "Evento Google inválido")?;
-                    if value["extendedProperties"]["private"]["strataReminderId"] == reminder.id {
-                        return Ok(id);
-                    }
-                }
-                return Err("Conflito ao criar evento Google".into());
+            if response.status().as_u16() == 403 {
+                return Err("Sem permissao para a agenda Lembretes Strata; reconecte o Google e autorize as permissoes solicitadas".into());
             }
+            return Ok(response);
+        }
+        Err("Acesso ao Google expirou; reconecte a conta".into())
+    }
+
+    fn reminder_calendar(&self, generation: u64) -> Result<String, String> {
+        let mut page: Option<String> = None;
+        let mut visited = std::collections::HashSet::new();
+        let mut found: Option<String> = None;
+        loop {
+            let mut url =
+                url::Url::parse("https://www.googleapis.com/calendar/v3/users/me/calendarList")
+                    .unwrap();
+            url.query_pairs_mut().extend_pairs([
+                ("minAccessRole", "owner"),
+                ("showHidden", "true"),
+                ("maxResults", "250"),
+            ]);
+            if let Some(page) = &page {
+                url.query_pairs_mut().append_pair("pageToken", page);
+            }
+            let response =
+                self.calendar_request(reqwest::Method::GET, url.as_str(), None, generation)?;
             if !response.status().is_success() {
                 return Err(format!(
-                    "Google Calendar retornou HTTP {}; o lembrete local continua ativo",
+                    "Falha ao localizar Lembretes Strata: HTTP {}",
                     response.status().as_u16()
                 ));
             }
             let value: Value = response
                 .json()
-                .map_err(|_| "Resposta inválida do Google Calendar")?;
-            if value["id"].as_str() != Some(id.as_str()) {
-                return Err("ID do evento Google inválido".into());
+                .map_err(|_| "Lista de agendas Google invalida")?;
+            if !value["items"].is_null() && !value["items"].is_array() {
+                return Err("Lista de agendas Google invalida".into());
             }
+            if let Some(id) = matching_calendar(&value) {
+                if found.as_ref().is_none_or(|previous| id < previous.as_str()) {
+                    found = Some(id.into());
+                }
+            }
+            page = value["nextPageToken"]
+                .as_str()
+                .filter(|p| !p.is_empty())
+                .map(String::from);
+            let Some(token) = &page else {
+                break;
+            };
+            if !visited.insert(token.clone()) || visited.len() > 100 {
+                return Err("Paginacao de agendas Google invalida".into());
+            }
+        }
+        if let Some(id) = found {
             return Ok(id);
         }
-        Err("Acesso ao Google expirou; reconecte a conta".into())
+        let response = self.calendar_request(
+            reqwest::Method::POST,
+            "https://www.googleapis.com/calendar/v3/calendars",
+            Some(&json!({"summary": CALENDAR_NAME})),
+            generation,
+        )?;
+        if !response.status().is_success() {
+            return Err(format!(
+                "Falha ao criar Lembretes Strata: HTTP {}",
+                response.status().as_u16()
+            ));
+        }
+        let value: Value = response.json().map_err(|_| "Agenda Google invalida")?;
+        value["id"]
+            .as_str()
+            .filter(|id| !id.is_empty())
+            .map(String::from)
+            .ok_or_else(|| "ID da agenda Lembretes Strata ausente".into())
+    }
+
+    pub fn create_event(&self, reminder: &Reminder) -> Result<String, String> {
+        let _api = self.api_lock.lock().unwrap();
+        let body = event_body(reminder)?;
+        let id = reminder.id.replace('-', "");
+        let generation = self.inner.lock().unwrap().generation;
+        let calendar = self.reminder_calendar(generation)?;
+        let url = events_url(&calendar);
+        let response =
+            self.calendar_request(reqwest::Method::POST, &url, Some(&body), generation)?;
+        if response.status().as_u16() == 409 {
+            let existing = self.calendar_request(
+                reqwest::Method::GET,
+                &format!("{url}/{id}"),
+                None,
+                generation,
+            )?;
+            if existing.status().is_success() {
+                let value: Value = existing.json().map_err(|_| "Evento Google invalido")?;
+                if value["extendedProperties"]["private"]["strataReminderId"] == reminder.id {
+                    return Ok(id);
+                }
+            }
+            return Err("Conflito ao criar evento Google".into());
+        }
+        if !response.status().is_success() {
+            return Err(format!(
+                "Google Calendar retornou HTTP {}; o lembrete local continua ativo",
+                response.status().as_u16()
+            ));
+        }
+        let value: Value = response
+            .json()
+            .map_err(|_| "Resposta invalida do Google Calendar")?;
+        if value["id"].as_str() != Some(id.as_str()) {
+            return Err("ID do evento Google invalido".into());
+        }
+        Ok(id)
     }
 }
 
@@ -528,6 +653,38 @@ pub fn calendar_disconnect(
 mod tests {
     use super::*;
     use crate::reminders_contract::{ReminderMode, ReminderStatus};
+
+    #[test]
+    fn dedicated_calendar_requires_owner_exact_name_and_ignores_primary() {
+        let page = json!({"items": [
+            {"id":"primary", "summary":CALENDAR_NAME, "accessRole":"owner", "primary":true},
+            {"id":"shared", "summary":CALENDAR_NAME, "accessRole":"reader"},
+            {"id":"other", "summary":"Other", "accessRole":"owner"},
+            {"id":"deleted", "summary":CALENDAR_NAME, "accessRole":"owner", "deleted":true},
+            {"id":"z@group.calendar.google.com", "summary":CALENDAR_NAME, "accessRole":"owner"},
+            {"id":"a@group.calendar.google.com", "summary":CALENDAR_NAME, "accessRole":"owner"}
+        ]});
+        assert_eq!(
+            matching_calendar(&page),
+            Some("a@group.calendar.google.com")
+        );
+        assert_eq!(matching_calendar(&json!({"items":[]})), None);
+        assert!(sufficient_scopes(SCOPE));
+        assert!(sufficient_scopes(
+            "https://www.googleapis.com/auth/calendar"
+        ));
+        assert!(!sufficient_scopes(
+            "https://www.googleapis.com/auth/calendar.events.owned"
+        ));
+    }
+
+    #[test]
+    fn event_destination_encodes_calendar_id_as_one_path_segment() {
+        let url = url::Url::parse(&events_url("strata/name@example.com")).unwrap();
+        assert!(url.path().contains("strata%2Fname@example.com"));
+        assert!(url.path().ends_with("/events"));
+        assert!(!url.path().contains("/primary/"));
+    }
 
     #[test]
     fn callbacks_require_unique_state_code_and_expected_path() {
