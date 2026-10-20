@@ -1,5 +1,24 @@
 # Controle de agentes de IA — Windows 11
 
+## Correção de alvo — ChatGPT Desktop, sem CLI
+
+O usuário esclareceu que quer usar o aplicativo ChatGPT Desktop pelo Strata.
+O conector Codex não satisfaz esse requisito e não deve ser apresentado como
+solução alternativa. Nenhuma configuração pela CLI pode ser exigida no fluxo
+ChatGPT Desktop. As abas solicitadas continuam sendo a navegação do popup.
+
+- [x] Registrar a correção explícita de alvo.
+- [ ] Comprovar um mecanismo do aplicativo que cubra conversas, estados e envio
+      pelo Strata, sem substituir por sessões criadas pela API ou pela CLI.
+- [ ] Resolver a restrição atual contra automação da interface se os mecanismos
+      oficiais do aplicativo não cobrirem as capacidades pedidas.
+
+A documentação de extensões de plugins confirma envio para conversa atual ou
+nova, dentro da integração de plugins. Isso ainda não comprova enumeração e
+controle externo de todas as conversas pelo Strata. Não declarar o conector
+Desktop implementado nem afirmar inexistência de API apenas por essa lacuna.
+Fonte: https://developers.openai.com/plugins/build/extensions.
+
 ## Navegação por abas — alteração solicitada
 
 - [x] Substituir o accordion pelo componente Tabs existente no mesmo popup.

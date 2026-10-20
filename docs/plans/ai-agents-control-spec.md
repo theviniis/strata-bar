@@ -71,6 +71,12 @@ limitações das integrações.
 
 ## Implementation Decisions
 
+- Correção posterior do usuário: o objetivo é usar ChatGPT Desktop através do
+  Strata, sem fluxo dependente da CLI do Codex. O conector Codex registrado abaixo
+  não atende nem substitui esse objetivo; sua implementação é trabalho separado.
+  É necessário comprovar acesso às conversas reais do aplicativo antes de
+  declarar a integração ChatGPT disponível.
+
 - Alvos confirmados: ChatGPT Desktop, OpenCode e Antigravity. Em 19/10/2026,
   o usuário ampliou o escopo para monitorar Codex local, como esta conversa,
   em seção própria no mesmo popup com abas. Criar/responder no Codex depende de
