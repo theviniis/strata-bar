@@ -33,6 +33,7 @@ pub struct Session {
     pub status: SessionStatus,
     pub updated_at: f64,
     turn_id: Option<String>,
+    terminal: bool,
 }
 
 #[derive(Default)]
@@ -80,6 +81,19 @@ impl Monitor {
         if existing.is_some_and(|session| session.updated_at > at) {
             return Ok(false);
         }
+        if existing.is_some_and(|session| session.terminal)
+            && !matches!(
+                input.hook_event_name,
+                Event::SessionStart | Event::UserPromptSubmit | Event::SessionEnd
+            )
+        {
+            return Ok(false);
+        }
+        if matches!(input.hook_event_name, Event::UserPromptSubmit)
+            && existing.is_some_and(|session| session.terminal && session.turn_id == input.turn_id)
+        {
+            return Ok(false);
+        }
         // A late event from a previous turn cannot finish the currently observed
         // turn. Only UserPromptSubmit starts a new observed turn for this session.
         if !matches!(
@@ -91,7 +105,9 @@ impl Monitor {
             return Ok(false);
         }
         if matches!(input.hook_event_name, Event::SessionStart)
-            && existing.is_some_and(|session| session.turn_id.is_some())
+            && existing.is_some_and(|session| {
+                session.status != SessionStatus::Disconnected && session.turn_id.is_some()
+            })
         {
             return Ok(false);
         }
@@ -104,6 +120,13 @@ impl Monitor {
             Event::Stop | Event::Interrupt => SessionStatus::Idle,
             Event::SessionEnd => SessionStatus::Disconnected,
         };
+        let turn_id = if matches!(input.hook_event_name, Event::SessionEnd) {
+            input
+                .turn_id
+                .or_else(|| existing.and_then(|session| session.turn_id.clone()))
+        } else {
+            input.turn_id
+        };
         self.sessions
             .retain(|session| session.id != input.session_id);
         self.sessions.push(Session {
@@ -111,7 +134,11 @@ impl Monitor {
             directory: input.cwd,
             status,
             updated_at: at,
-            turn_id: input.turn_id,
+            turn_id,
+            terminal: matches!(
+                input.hook_event_name,
+                Event::Stop | Event::Interrupt | Event::SessionEnd
+            ),
         });
         self.sessions
             .sort_by(|a, b| b.updated_at.total_cmp(&a.updated_at));
@@ -200,6 +227,32 @@ mod tests {
             .observe(&event("SessionEnd", "turn-2"), 120_004.0)
             .unwrap();
         assert_eq!(monitor.sessions()[0].status, SessionStatus::Disconnected);
+    }
+
+    #[test]
+    fn terminal_events_require_a_new_turn_before_processing_can_resume() {
+        let mut monitor = Monitor::default();
+        monitor
+            .observe(&event("UserPromptSubmit", "turn-1"), 1.0)
+            .unwrap();
+        monitor.observe(&event("Stop", "turn-1"), 2.0).unwrap();
+        assert!(!monitor
+            .observe(&event("PostToolUse", "turn-1"), 3.0)
+            .unwrap());
+        assert!(!monitor
+            .observe(&event("UserPromptSubmit", "turn-1"), 4.0)
+            .unwrap());
+        assert_eq!(monitor.sessions()[0].status, SessionStatus::Idle);
+        let end = json!({"session_id":ID,"cwd":"C:\\work","hook_event_name":"SessionEnd"});
+        monitor.observe(&end.to_string(), 5.0).unwrap();
+        assert!(!monitor
+            .observe(&event("PostToolUse", "turn-1"), 6.0)
+            .unwrap());
+        assert_eq!(monitor.sessions()[0].status, SessionStatus::Disconnected);
+        monitor
+            .observe(&event("UserPromptSubmit", "turn-2"), 7.0)
+            .unwrap();
+        assert_eq!(monitor.sessions()[0].status, SessionStatus::Processing);
     }
 
     #[test]

@@ -63,9 +63,15 @@ C1 implementada em src-tauri/src/codex.rs: projeção limitada a 128 sessões,
 entrada de até 1 MiB, validação de IDs/pasta/turno, descarte de eventos antigos e
 expiração de processamento/atenção após 120 segundos. Conteúdo de conversa e
 transcript_path são ignorados. Stop/Interrupt viram Idle, nunca Completed.
-Três testes nativos focados passaram. O módulo ainda não é chamado pelo host:
+Quatro testes nativos focados passaram; a suíte Rust completa terminou com 160
+testes aprovados e 20 ignorados. Formatação dos documentos e diff check passaram.
+O módulo ainda não é chamado pelo host:
 não há monitoramento vivo nem seção Codex no popup até C2/C3. Nenhum hook ou
 arquivo de confiança do usuário foi alterado nesta etapa.
+
+Revisão Standards sem achados. Revisão Spec identificou que um evento atrasado
+poderia reabrir um turno encerrado; corrigido com terminalidade explícita e teste
+de regressão, depois reavaliado sem achados adicionais. C2–C4 seguem pendentes.
 
 ## Pasta opcional ao criar sessão
 
