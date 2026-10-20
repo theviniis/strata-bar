@@ -11,7 +11,7 @@
     "lint:fix": "pnpm generate:popups && eslint . --fix",
     "typecheck": "pnpm generate:popups && tsc -b",
     "check": "pnpm generate:popups && prettier --check . && eslint . && tsc -b && vitest run",
-    "desktop": "tauri dev",
+    "desktop": "powershell -NoProfile -File scripts/check-desktop.ps1 && tauri dev",
     "package:windows": "tauri build",
     "format": "pnpm generate:popups && prettier --write .",
     "format:check": "pnpm generate:popups && prettier --check .",

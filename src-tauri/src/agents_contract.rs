@@ -24,6 +24,7 @@ pub enum AgentType {
     Chatgpt,
     Opencode,
     Antigravity,
+    Codex,
 }
 
 #[derive(Clone, Debug, Serialize, TS)]
@@ -230,6 +231,24 @@ pub struct AgentsSnapshot {
     pub error: Option<String>,
     pub opencode: OpenCodeSnapshot,
     pub antigravity: AntigravitySnapshot,
+    pub codex: CodexSnapshot,
     pub alerts: AgentAlertsSnapshot,
     pub notifications: AgentNotificationsSnapshot,
+}
+
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexSnapshot {
+    pub status: AgentConnectionStatus,
+    pub sessions: Vec<AgentSession>,
+    pub error: Option<String>,
+}
+impl Default for CodexSnapshot {
+    fn default() -> Self {
+        Self {
+            status: AgentConnectionStatus::Disabled,
+            sessions: Vec::new(),
+            error: None,
+        }
+    }
 }

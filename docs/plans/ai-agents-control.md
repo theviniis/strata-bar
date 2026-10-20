@@ -1,5 +1,55 @@
 # Controle de agentes de IA — Windows 11
 
+## Correção de inicialização e conexão Codex — 19/10/2026
+
+- [x] D1: reproduzir pnpm desktop, liberar graciosamente o host debug anterior
+      e validar inicialização real; evitar diagnóstico silencioso de executável
+      bloqueado nas próximas execuções.
+- [x] D2/C2: implementar transporte local autenticado dos hooks Codex,
+      configuração estável com preservação dos hooks existentes e confiança
+      revisada pelo usuário no Codex.
+- [x] D3/C3: ligar contrato, store e accordion Codex; explicar no ChatGPT Desktop
+      como acessar o monitor local em vez de sugerir integração já disponível.
+- [ ] D4/C4: testar caminho nativo e UI, compilar, revisar e registrar limites
+      da validação real sem enviar prompts de teste para modelos.
+
+Reprodução D1: pnpm desktop chega ao Cargo e falha ao substituir
+src-tauri/target/debug/strata-bar.exe, acesso negado (Windows 5). O processo
+debug anterior ainda estava em execução; fechar suas barras via WM_CLOSE é
+gracioso e mantém o caminho de limpeza de AppBars.
+
+Após fechar ambas as barras e a superfície restante, MainWindowHandle ficou
+zero; o processo residual da bandeja foi encerrado somente após conferir o
+caminho exato do executável debug deste checkout. pnpm desktop iniciou novamente
+e permaneceu executando: dois monitores, duas barras visíveis/topmost, sem
+elegibilidade komorebi, overlay presente. O preflight agora identifica uma
+instância debug já aberta antes do link e orienta Sair pela bandeja. Não encerra
+automaticamente aplicativos, nem altera a instalação release.
+
+C2 usa TCP somente em loopback com token efêmero e pacotes limitados. O helper
+lê endpoint local, reduz stdin aos metadados permitidos e responde {} inclusive
+em falhas. Definições em hooks.json usam comando estável, sem token/porta na
+definição confiada. Ativar preserva outros handlers; desativar remove somente
+entradas idênticas desta instalação. Nenhum arquivo de confiança é editado.
+
+C3 entrega contrato versão 9 gerado do Rust, validação Zod por provedor,
+adapter/store e seção Codex local no accordion. A presença do processo continua
+separada da recepção de eventos. Criar/responder e alertas Codex permanecem
+indisponíveis nesta fatia. A seção ChatGPT orienta usar Codex local para essas
+sessões; não promete acesso a conversas comuns do ChatGPT.
+
+Validação: 31 testes frontend focados passaram (os dois novos falharam antes da
+integração); TypeScript e lint dos arquivos alterados passaram. Build frontend
+e cargo build passaram. Suíte Rust: 162 aprovados, 21 ignorados. Ensaio separado
+com o executável Windows real e configuração temporária própria passou:
+UserPromptSubmit, PermissionRequest e Stop atravessaram o helper e o receptor,
+sem conteúdo de conversa; configuração/endpoint próprios removidos depois.
+Esse ensaio não equivale a eventos de uma conversa real confiada no Codex.
+Suíte frontend geral: 243 aprovados, 8 falhas em reminders-ui e native-bar,
+fora dos arquivos funcionais alterados nesta correção; não declarar gate geral
+aprovado. Nenhum prompt foi enviado a um modelo e nenhum hook global do usuário
+foi ativado automaticamente durante os testes.
+
 ## Diagnóstico — ChatGPT Desktop mostra sessões indisponíveis
 
 - [x] Confirmar o sintoma com o usuário e verificar o caminho de código.
@@ -43,10 +93,10 @@ de sessões comprovada. Executar as etapas abaixo individualmente.
 - [x] C1: interpretar somente metadados dos hooks oficiais e modelar estados,
       limites, ordenação e expiração com testes nativos. Stop indica fim do turno,
       sem comprovar sucesso; não emitir conclusão bem-sucedida nesse evento.
-- [ ] C2: conectar o coletor ao host Windows com transporte local autenticado e
+- [x] C2: conectar o coletor ao host Windows com transporte local autenticado e
       comandos estáveis; preservar hooks existentes e exigir revisão de confiança
       no Codex, sem modificar confiança ou políticas automaticamente.
-- [ ] C3: integrar contrato gerado, store e seção Codex no accordion, com ativação
+- [x] C3: integrar contrato gerado, store e seção Codex no accordion, com ativação
       explícita e indicação de que somente eventos observados são conhecidos.
 - [ ] C4: validar eventos reais e limpeza, executar checks, revisão e build.
 
@@ -65,13 +115,14 @@ expiração de processamento/atenção após 120 segundos. Conteúdo de conversa
 transcript_path são ignorados. Stop/Interrupt viram Idle, nunca Completed.
 Quatro testes nativos focados passaram; a suíte Rust completa terminou com 160
 testes aprovados e 20 ignorados. Formatação dos documentos e diff check passaram.
-O módulo ainda não é chamado pelo host:
-não há monitoramento vivo nem seção Codex no popup até C2/C3. Nenhum hook ou
-arquivo de confiança do usuário foi alterado nesta etapa.
+Na conclusão de C1 o módulo ainda não era chamado pelo host; C2/C3, registradas
+acima, ligaram o transporte ao painel. Nenhum arquivo de confiança do usuário foi
+alterado; aceitação com eventos de conversa real ainda depende da revisão dos
+hooks no Codex.
 
 Revisão Standards sem achados. Revisão Spec identificou que um evento atrasado
 poderia reabrir um turno encerrado; corrigido com terminalidade explícita e teste
-de regressão, depois reavaliado sem achados adicionais. C2–C4 seguem pendentes.
+de regressão, depois reavaliado sem achados adicionais. C4 segue pendente.
 
 ## Pasta opcional ao criar sessão
 

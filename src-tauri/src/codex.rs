@@ -1,12 +1,12 @@
 //! Metadata-only projection of official local Codex hooks.
 //! Stop does not prove a successful turn. Never infer completion from it.
 use crate::agents_contract::SessionStatus;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 const MAX_INPUT: usize = 1024 * 1024;
 const MAX_SESSIONS: usize = 128;
 
-#[derive(Clone, Copy, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum Event {
     SessionStart,
     UserPromptSubmit,
@@ -18,12 +18,18 @@ pub enum Event {
     SessionEnd,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct Input {
     session_id: String,
     cwd: String,
     hook_event_name: Event,
     turn_id: Option<String>,
+}
+
+pub fn metadata(raw: &str, at: f64) -> Result<String, String> {
+    Monitor::default().observe(raw, at)?;
+    let input: Input = serde_json::from_str(raw).map_err(|_| "Hook Codex inválido")?;
+    serde_json::to_string(&input).map_err(|_| "Hook Codex inválido".into())
 }
 
 #[derive(Clone, Debug)]

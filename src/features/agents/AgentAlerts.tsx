@@ -9,7 +9,8 @@ import { useState } from 'react'
 const labels = {
   opencode: 'OpenCode',
   antigravity: 'Antigravity',
-  chatgpt: 'ChatGPT Desktop'
+  chatgpt: 'ChatGPT Desktop',
+  codex: 'Codex local'
 } as const
 
 const notificationLabels = {

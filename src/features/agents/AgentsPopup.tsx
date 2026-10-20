@@ -24,6 +24,7 @@ import { useEffect, useState } from 'react'
 import { AgentAlerts } from './AgentAlerts'
 import { AntigravitySessions } from './AntigravitySessions'
 import { OpenCodeSessions } from './OpenCodeSessions'
+import { CodexSessions } from './CodexSessions'
 
 export function AgentsPopup() {
   const { mode } = usePopupContext('agents')
@@ -40,6 +41,7 @@ function ConnectedAgentsPopup({ mode }: { mode: 'native' | 'demo' }) {
   const error = useStore((state) => state.error)
   const configureOpenCode = useStore((state) => state.configureOpenCode)
   const configureAntigravity = useStore((state) => state.configureAntigravity)
+  const configureCodex = useStore((state) => state.configureCodex)
   const createOpenCode = useStore((state) => state.createOpenCode)
   const replyOpenCode = useStore((state) => state.replyOpenCode)
   const decideOpenCode = useStore((state) => state.decideOpenCode)
@@ -52,6 +54,7 @@ function ConnectedAgentsPopup({ mode }: { mode: 'native' | 'demo' }) {
       demo={mode === 'demo'}
       onConfigureOpenCode={configureOpenCode}
       onConfigureAntigravity={configureAntigravity}
+      onConfigureCodex={configureCodex}
       onCreateOpenCode={createOpenCode}
       onReplyOpenCode={replyOpenCode}
       onDecideOpenCode={decideOpenCode}
@@ -63,7 +66,8 @@ function ConnectedAgentsPopup({ mode }: { mode: 'native' | 'demo' }) {
 const labels = {
   chatgpt: 'ChatGPT Desktop',
   opencode: 'OpenCode',
-  antigravity: 'Antigravity'
+  antigravity: 'Antigravity',
+  codex: 'Codex local'
 } as const
 
 export function AgentsPopupContent({
@@ -72,6 +76,7 @@ export function AgentsPopupContent({
   demo = false,
   onConfigureOpenCode,
   onConfigureAntigravity,
+  onConfigureCodex,
   onCreateOpenCode,
   onReplyOpenCode,
   onDecideOpenCode,
@@ -82,6 +87,7 @@ export function AgentsPopupContent({
   demo?: boolean
   onConfigureOpenCode?: (enabled: boolean) => Promise<void>
   onConfigureAntigravity?: (enabled: boolean) => Promise<void>
+  onConfigureCodex?: (enabled: boolean) => Promise<void>
   onCreateOpenCode?: (
     directory?: string,
     prompt?: string
@@ -147,12 +153,20 @@ export function AgentsPopupContent({
                     onConfigure={onConfigureAntigravity}
                     stale={!!error}
                   />
+                ) : application.agent === 'codex' ? (
+                  <CodexSessions
+                    connection={snapshot.codex}
+                    onConfigure={onConfigureCodex}
+                    stale={!!error}
+                  />
                 ) : (
                   <>
                     <p className="text-xs">Sessões indisponíveis</p>
                     <p className="text-xs text-muted-foreground">
                       Controle de sessões ainda não integrado. Um processo
-                      aberto não informa o estado das conversas.
+                      aberto não informa o estado das conversas. Para sessões
+                      locais como as do Codex, abra a seção Codex local neste
+                      painel e ative seus hooks.
                     </p>
                     <div className="flex gap-2">
                       <Button size="sm" disabled>

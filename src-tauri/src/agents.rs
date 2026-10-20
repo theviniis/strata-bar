@@ -16,6 +16,7 @@ pub fn observe(
         AgentType::Chatgpt,
         AgentType::Opencode,
         AgentType::Antigravity,
+        AgentType::Codex,
     ]
     .into_iter()
     .map(|agent| {
@@ -23,6 +24,7 @@ pub fn observe(
             AgentType::Chatgpt => &["chatgpt.exe"],
             AgentType::Opencode => &["opencode.exe", "opencode-desktop.exe", "opencode-cli.exe"],
             AgentType::Antigravity => &["antigravity.exe"],
+            AgentType::Codex => &["codex.exe"],
         };
         AgentApplication {
             agent,
@@ -35,7 +37,7 @@ pub fn observe(
     })
     .collect();
     AgentsSnapshot {
-        version: 8,
+        version: 9,
         revision,
         observed_at: SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -45,6 +47,7 @@ pub fn observe(
         error: result.err(),
         opencode: Default::default(),
         antigravity: Default::default(),
+        codex: Default::default(),
         alerts: Default::default(),
         notifications: Default::default(),
     }
@@ -52,6 +55,37 @@ pub fn observe(
 
 pub fn allowed_window(label: &str) -> bool {
     label == "overlay" || label.starts_with("bar-")
+}
+
+#[tauri::command]
+pub fn agents_set_codex(
+    window: tauri::WebviewWindow,
+    app: tauri::AppHandle,
+    state: tauri::State<Agents>,
+    enabled: bool,
+) -> Result<AgentsSnapshot, String> {
+    if !allowed_window(window.label()) {
+        return Err("Codex requer uma barra ou overlay".into());
+    }
+    let mut current = state.shared.lock().map_err(|_| "Codex indisponível")?;
+    if enabled {
+        if current.codex_bridge.is_none() {
+            current.codex_bridge = Some(crate::codex_hooks::Bridge::install()?);
+            current.codex = Default::default();
+            current.codex_error = None;
+        }
+    } else {
+        if let Some(bridge) = current.codex_bridge.as_ref() {
+            bridge.remove()?;
+        }
+        current.codex_bridge.take();
+        current.codex = Default::default();
+        current.codex_error = None;
+    }
+    let snapshot = current.updated();
+    drop(current);
+    publish(&app, &snapshot);
+    Ok(snapshot)
 }
 
 enum Wake {
@@ -64,6 +98,9 @@ struct Shared {
     connection: crate::opencode::Connection,
     antigravity: crate::antigravity::Monitor,
     hook_bridge: Option<crate::antigravity_hooks::Bridge>,
+    codex: crate::codex::Monitor,
+    codex_bridge: Option<crate::codex_hooks::Bridge>,
+    codex_error: Option<String>,
     alerts: crate::agent_alerts::Alerts,
     notifications: crate::agent_notifications::Queue,
 }
@@ -73,6 +110,33 @@ impl Shared {
         self.snapshot.revision = self.snapshot.revision.saturating_add(1);
         self.snapshot.opencode = self.connection.snapshot();
         self.snapshot.antigravity = self.antigravity.snapshot();
+        self.codex.expire(now());
+        self.snapshot.codex = crate::agents_contract::CodexSnapshot {
+            status: if self.codex_bridge.is_none() {
+                crate::agents_contract::AgentConnectionStatus::Disabled
+            } else if self.codex_error.is_some() {
+                crate::agents_contract::AgentConnectionStatus::Disconnected
+            } else if self.codex.sessions().is_empty() {
+                crate::agents_contract::AgentConnectionStatus::Connecting
+            } else {
+                crate::agents_contract::AgentConnectionStatus::Connected
+            },
+            sessions: self
+                .codex
+                .sessions()
+                .iter()
+                .map(|session| crate::agents_contract::AgentSession {
+                    id: session.id.clone(),
+                    agent: AgentType::Codex,
+                    connection_id: "codex-hooks".into(),
+                    title: format!("Sessão {}", &session.id[..8]),
+                    directory: session.directory.clone(),
+                    status: session.status.clone(),
+                    updated_at: session.updated_at,
+                })
+                .collect(),
+            error: self.codex_error.clone(),
+        };
         let emitted =
             self.alerts
                 .observe(&self.snapshot.opencode, &self.snapshot.antigravity, now());
@@ -114,6 +178,9 @@ impl Agents {
             connection: Default::default(),
             antigravity: Default::default(),
             hook_bridge: None,
+            codex: Default::default(),
+            codex_bridge: None,
+            codex_error: None,
             alerts: Default::default(),
             notifications: notifications.queue.clone(),
         }));
@@ -127,6 +194,7 @@ impl Agents {
             notifications,
         };
         let application = app.clone();
+        let codex_app = app.clone();
         let hook_app = app.clone();
         let hook_state = shared.clone();
         let process_state = shared.clone();
@@ -230,6 +298,43 @@ impl Agents {
                 }
             })?;
         agents.workers.lock().unwrap().push((stop, worker));
+        let codex_state = agents.shared.clone();
+        let (stop, receiver) = mpsc::channel();
+        let worker = std::thread::Builder::new()
+            .name("strata-codex".into())
+            .spawn(move || loop {
+                match receiver.recv_timeout(Duration::from_millis(100)) {
+                    Ok(Wake::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                    _ => {}
+                }
+                let Ok(mut current) = codex_state.lock() else {
+                    break;
+                };
+                let Some(bridge) = current.codex_bridge.as_ref() else {
+                    continue;
+                };
+                let changed = match bridge.poll() {
+                    Ok(Some((raw, at))) => {
+                        let changed = current.codex.observe(&raw, at).unwrap_or(false);
+                        if changed {
+                            current.codex_error = None;
+                        }
+                        changed
+                    }
+                    Ok(None) => false,
+                    Err(error) => {
+                        let changed = current.codex_error.as_ref() != Some(&error);
+                        current.codex_error = Some(error);
+                        changed
+                    }
+                };
+                if changed {
+                    let snapshot = current.updated();
+                    drop(current);
+                    publish(&codex_app, &snapshot);
+                }
+            })?;
+        agents.workers.lock().unwrap().push((stop, worker));
         Ok(agents)
     }
 
@@ -245,6 +350,8 @@ impl Agents {
             current.connection.configure(false);
             current.antigravity.configure(false);
             current.hook_bridge.take();
+            current.codex_bridge.take();
+            current.codex = Default::default();
         }
         if let Ok(mut workers) = self.workers.lock() {
             for (stop, _) in workers.iter() {
@@ -555,7 +662,8 @@ mod tests {
                 "not-opencode.exe".into(),
             ])
         });
-        assert_eq!(snapshot.applications.len(), 3);
+        assert_eq!(snapshot.applications.len(), 4);
+        assert_eq!(snapshot.applications[3].running, Some(true));
         assert_eq!(snapshot.applications[0].running, Some(true));
         assert_eq!(snapshot.applications[1].running, Some(false));
         assert_eq!(snapshot.applications[2].running, Some(true));

@@ -355,10 +355,11 @@ it('distinguishes detected applications from unavailable session control', () =>
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 8,
+        version: 9,
         notifications: { status: 'demo', skipped: 0 },
         alerts: { items: [], overflowCount: 0, paused: false },
         antigravity: { status: 'disabled', sessions: [], error: null },
+        codex: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
           sessions: [],
@@ -374,7 +375,8 @@ it('distinguishes detected applications from unavailable session control', () =>
         applications: [
           { agent: 'chatgpt', running: true },
           { agent: 'opencode', running: false },
-          { agent: 'antigravity', running: true }
+          { agent: 'antigravity', running: true },
+          { agent: 'codex', running: true }
         ]
       }}
       error={null}
@@ -462,10 +464,11 @@ it('does not show stale process presence after discovery fails', () => {
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 8,
+        version: 9,
         notifications: { status: 'demo', skipped: 0 },
         alerts: { items: [], overflowCount: 0, paused: false },
         antigravity: { status: 'disabled', sessions: [], error: null },
+        codex: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
           sessions: [],
@@ -481,7 +484,8 @@ it('does not show stale process presence after discovery fails', () => {
         applications: [
           { agent: 'chatgpt', running: true },
           { agent: 'opencode', running: true },
-          { agent: 'antigravity', running: true }
+          { agent: 'antigravity', running: true },
+          { agent: 'codex', running: true }
         ]
       }}
       error="Access denied"
@@ -489,7 +493,7 @@ it('does not show stale process presence after discovery fails', () => {
   )
   expect(screen.getByRole('alert')).toHaveTextContent('Access denied')
   expect(screen.queryByText('Processo detectado')).not.toBeInTheDocument()
-  expect(screen.getAllByText('Detecção indisponível')).toHaveLength(3)
+  expect(screen.getAllByText('Detecção indisponível')).toHaveLength(4)
 })
 
 it('connects and disconnects OpenCode inside its accordion', async () => {

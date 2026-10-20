@@ -1,5 +1,5 @@
 // Generated from Rust agents_contract.rs by cargo build. Do not edit.
-export type AgentType = "chatgpt" | "opencode" | "antigravity";
+export type AgentType = "chatgpt" | "opencode" | "antigravity" | "codex";
 export type AgentAlertKind = "attention" | "completed";
 export type AgentAlert = { id: string, agent: AgentType, sessionId: string, sessionTitle: string, kind: AgentAlertKind, createdAt: number, };
 export type AgentAlertsSnapshot = { items: Array<AgentAlert>, overflowCount: number, paused: boolean, };
@@ -23,4 +23,5 @@ export type AgentSession = { id: string, agent: AgentType, connectionId: string,
 export type AgentConnectionStatus = "disabled" | "connecting" | "connected" | "disconnected";
 export type OpenCodeSnapshot = { status: AgentConnectionStatus, sessions: Array<AgentSession>, hasMore: boolean, questions: Array<AgentMessage>, permissions: Array<AgentPermission>, completedTurns: { [key in string]?: number }, error: string | null, };
 export type AntigravitySnapshot = { status: AgentConnectionStatus, sessions: Array<AgentSession>, error: string | null, };
-export type AgentsSnapshot = { version: number, revision: number, observedAt: number, applications: Array<AgentApplication>, error: string | null, opencode: OpenCodeSnapshot, antigravity: AntigravitySnapshot, alerts: AgentAlertsSnapshot, notifications: AgentNotificationsSnapshot, };
+export type CodexSnapshot = { status: AgentConnectionStatus, sessions: Array<AgentSession>, error: string | null, };
+export type AgentsSnapshot = { version: number, revision: number, observedAt: number, applications: Array<AgentApplication>, error: string | null, opencode: OpenCodeSnapshot, antigravity: AntigravitySnapshot, codex: CodexSnapshot, alerts: AgentAlertsSnapshot, notifications: AgentNotificationsSnapshot, };
