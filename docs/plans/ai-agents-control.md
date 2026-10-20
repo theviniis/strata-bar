@@ -8,7 +8,7 @@
       quando ausente; continuar validando caminhos explicitamente informados.
 - [x] Validar UI, serviço nativo e criação vazia real sem pasta; limpar somente
       a conversa de teste e registrar evidência sem dados privados.
-- [ ] Executar checks/builds, revisão e commit na branch atual.
+- [x] Executar checks/builds, revisão e commit na branch atual.
 
 Ausência ou campo em branco envia directory null ao comando, que omite location
 na API do OpenCode. Caminhos preenchidos continuam locais, absolutos e existentes,
@@ -18,6 +18,13 @@ Os testes do popup e do serviço falharam antes da mudança e passaram depois.
 passaram. A criação vazia real sem pasta passou, com seleção de local padrão
 válido e remoção da conversa, sem prompt, histórico ou execução de modelo.
 Evidência: `docs/evidence/ai-agents-optional-directory-2026-10-19.json`.
+
+Suíte Rust: 156 passaram, 20 ignorados. Suíte frontend completa: 248 passaram,
+com a falha preexistente da posição de áudio em native-bar.test.tsx. Revisões de
+padrões e especificação sem achados acionáveis. Implementação: `0cdc93f`.
+Build frontend, release e instalador NSIS passaram. Artefato atualizado em
+`src-tauri/target/release/bundle/nsis/Strata_0.1.0_x64-setup.exe`. O host já
+instalado não foi substituído nesta etapa; a alteração está no novo artefato.
 
 ## Validação de execução real — OpenCode
 
