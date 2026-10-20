@@ -41,10 +41,10 @@ import {
   useState
 } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
+import { ActiveReminders } from './ActiveReminders'
 import { CalendarSettings } from './CalendarSettings'
 import { reminderFormSchema, type ReminderFormValues } from './form'
 import { scheduledDateTime } from './presentation'
-import { ActiveReminders } from './ActiveReminders'
 import { ReminderEditor } from './ReminderEditor'
 
 export function RemindersPopup() {
@@ -178,7 +178,7 @@ export function RemindersPopup() {
     error
   return (
     <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-      <div>
+      <div className="w-105">
         <div hidden={settingsOpen}>
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
