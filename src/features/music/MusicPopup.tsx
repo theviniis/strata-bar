@@ -133,8 +133,8 @@ function MusicPopupCard({
     controls
   return (
     <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-      <Card className="min-w-45 max-w-90">
-        <div hidden={settingsOpen}>
+      <Card className="w-90">
+        <div className="w-full" hidden={settingsOpen}>
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
               <CardTitle>Player de música</CardTitle>
@@ -489,7 +489,7 @@ function MusicPopupContentData({
           <SkipBack size={18} />
         </Button>
         <Button
-          variant="ghost"
+          variant="secondary"
           size="icon"
           aria-label={playing ? 'Pausar' : 'Reproduzir'}
           disabled={pending.playback || !media.capabilities.playPause}
@@ -545,6 +545,7 @@ function MusicPopupContentData({
             onClick={() =>
               void act({ action: 'favorite', saved: !favoriteValue })
             }
+            className="text-primary"
           >
             <Heart size={18} fill={favoriteValue ? 'currentColor' : 'none'} />
           </Button>
@@ -552,6 +553,7 @@ function MusicPopupContentData({
       </div>
       <div className="flex flex-col gap-2">
         <Slider
+          variant="secondary"
           aria-label="Progresso da música"
           min={progress?.minSeekMs ?? 0}
           max={progress?.maxSeekMs || 1}
