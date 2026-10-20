@@ -107,22 +107,27 @@ export function VoicemeeterSettings({ type, kind }: VoicemeeterSettingsProps) {
             return (
               <Button
                 key={item.index}
-                className="grid grid-cols-[1fr_16px] items-center justify-start text-left w-full"
+                className="grid grid-cols-[16px_1fr] items-center justify-start w-full gap-2 text-left px-3"
                 variant="outline"
                 aria-pressed={isActive}
                 aria-label={`Faixa de Voicemeeter controlando ${voiceLabel(kind)}`}
                 onClick={() => select(String(item.index))}
               >
-                {isActive && (
+                {isActive ? (
                   <Check
                     size={16}
                     aria-label={
                       kind === 'bus' ? 'Saída atual' : 'Entrada atual'
                     }
-                    className="shrink-0 text-primary justify-self-end"
+                    className="shrink-0 text-primary justify-self-start"
                   />
+                ) : (
+                  <div className="w-4 h-4 shrink-0" aria-hidden="true" />
                 )}
-                <span className="text-left truncate">{optionLabel(item)}</span>
+
+                <span className="truncate justify-self-start">
+                  {optionLabel(item)}
+                </span>
               </Button>
             )
           })}
