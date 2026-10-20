@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "pnpm generate:popups && vite --host 127.0.0.1",
     "build": "pnpm generate:popups && vite build",
+    "build:desktop": "pnpm exec tauri build --no-bundle",
     "test": "pnpm generate:popups && vitest run",
     "lint": "pnpm generate:popups && eslint .",
     "lint:fix": "pnpm generate:popups && eslint . --fix",
