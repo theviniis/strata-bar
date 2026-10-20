@@ -157,7 +157,13 @@
     @apply font-sans scroll-smooth;
   }
 
-  /* The native AppBar host owns the whole window. */
+  /* The native AppBar host owns the whole window. `data-view` is resolved by an
+     inline head script, so the bar is already painted the bar colour before
+     `.native-bar` mounts; the `:has()` selectors keep the mounted case
+     authoritative. */
+  html[data-view='bar'],
+  html[data-view='bar'] body,
+  html[data-view='bar'] #root,
   html:has(.native-bar),
   body:has(.native-bar),
   body:has(.native-bar) #root {

@@ -1,18 +1,18 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './app/App'
 import './app/styles.css'
 import NativeBar from './components/status-bar/NativeBar'
-import Overlay from './overlay/Overlay'
-import { PopupCheckBar } from './popups/PopupCheckBar'
 import { getRemindersStore } from './stores/reminders'
 import { loadConfig, watchConfig } from './stores/config'
+import { OverlayView, PopupCheckView, StudioView } from './views'
 
-// `?view=` is set by the native host: `bar` for AppBar strips, `overlay` for
-// the shared floating surface. The browser studio arrives without a view and
-// without Tauri internals, so it keeps rendering the demo shell.
+// `?view=` is set by the native host: `bar` for AppBar strips, `overlay` for the
+// shared floating surface. The browser studio arrives without a view and without
+// Tauri internals, so it keeps rendering the demo shell. `index.html` resolves
+// the same value before the first paint; this is the routing authority.
 const native = Boolean(window.__TAURI_INTERNALS__)
-const view = new URLSearchParams(window.location.search).get('view')
+const view =
+  document.documentElement.dataset.view ?? (native ? 'bar' : 'studio')
 
 // Native bars and the overlay do not mount the studio's configuration effect.
 if (native || view === 'bar' || view === 'overlay') {
@@ -20,7 +20,6 @@ if (native || view === 'bar' || view === 'overlay') {
   const stopConfig = watchConfig()
   import.meta.hot?.dispose(stopConfig)
 }
-document.documentElement.dataset.view = view ?? (native ? 'bar' : 'studio')
 
 const remindersConnection = getRemindersStore()
   .getState()
@@ -40,15 +39,17 @@ if (import.meta.hot) {
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {view === 'overlay' ? (
-      <Overlay />
-    ) : import.meta.env.DEV &&
-      new URLSearchParams(window.location.search).has('popup-check') ? (
-      <PopupCheckBar />
-    ) : native || view === 'bar' ? (
-      <NativeBar />
-    ) : (
-      <App />
-    )}
+    <Suspense fallback={null}>
+      {view === 'overlay' ? (
+        <OverlayView />
+      ) : import.meta.env.DEV &&
+        new URLSearchParams(window.location.search).has('popup-check') ? (
+        <PopupCheckView />
+      ) : native || view === 'bar' ? (
+        <NativeBar />
+      ) : (
+        <StudioView />
+      )}
+    </Suspense>
   </React.StrictMode>
 )

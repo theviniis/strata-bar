@@ -1,3 +1,6 @@
-import { definePopup } from '@/popups/definition'
-import { CpuPopup } from './CpuPopup'
-export default definePopup({ label: 'CPU', Content: CpuPopup })
+import { definePopup, lazyContent } from '@/popups/definition'
+
+export default definePopup({
+  label: 'CPU',
+  Content: lazyContent(() => import('./CpuPopup'), 'CpuPopup')
+})

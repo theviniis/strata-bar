@@ -285,7 +285,7 @@ it('provides an interactive, themed demo without native subscriptions or command
   expect(screen.getAllByRole('dialog')).toHaveLength(1)
   expect(screen.getByText(/Demonstração interativa/)).toBeInTheDocument()
   expect(dialog.closest('[data-theme]')).toHaveAttribute('data-theme', 'light')
-  const headphones = within(dialog).getByRole('button', {
+  const headphones = await within(dialog).findByRole('button', {
     name: 'Fones de ouvido (demo)'
   })
   fireEvent.click(headphones)

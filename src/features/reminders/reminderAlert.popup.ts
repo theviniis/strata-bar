@@ -1,10 +1,9 @@
 import { z } from 'zod'
-import { definePopup } from '@/popups/definition'
-import { ReminderAlert } from './ReminderAlert'
+import { definePopup, lazyContent } from '@/popups/definition'
 
 export default definePopup({
   label: 'Alerta de lembrete',
-  Content: ReminderAlert,
+  Content: lazyContent(() => import('./ReminderAlert'), 'ReminderAlert'),
   schema: z
     .object({
       id: z.uuid(),

@@ -17,6 +17,9 @@ const CALLBACK: u32 = WM_APP + 42;
 const REFRESH_GEOMETRY: u32 = WM_APP + 43;
 const SUBCLASS: usize = 0x53545241;
 const OVERLAY_SUBCLASS: usize = 0x5354524F;
+/// `#171821` — the bar colour in `styles.css`. The window paints it before the
+/// webview has any content, so a starting bar is never white.
+const BAR_BACKGROUND: tauri::window::Color = tauri::window::Color(23, 24, 33, 255);
 /// Window label and title of the shared floating surface. The title deliberately
 /// does not start with `"Strata ·"`, which `bar_snapshot` uses to find AppBars.
 pub const OVERLAY: &str = "overlay";
@@ -268,6 +271,7 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 .always_on_top(true)
                 .shadow(false)
                 .visible(false)
+                .background_color(BAR_BACKGROUND)
                 .inner_size(m.size().width as f64 / m.scale_factor(), 36.)
                 .position(
                     m.position().x as f64 / m.scale_factor(),

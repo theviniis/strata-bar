@@ -67,10 +67,10 @@ beforeEach(() => {
 it('confirms selection, retains the popup and controls mute', async () => {
   const { container } = render(<AudioOutputs arrowX={280} />)
   expect(container.querySelector('.rotate-45')).toHaveStyle({ left: '280px' })
-  expect(screen.getByRole('button', { name: /Alto-falantes/ })).toHaveAttribute(
-    'aria-pressed',
-    'true'
-  )
+  // Popup content is a code-split chunk; the surface mounts before it resolves.
+  expect(
+    await screen.findByRole('button', { name: /Alto-falantes/ })
+  ).toHaveAttribute('aria-pressed', 'true')
   fireEvent.click(screen.getByRole('button', { name: 'Fones' }))
   await waitFor(() =>
     expect(screen.getByRole('button', { name: /Fones/ })).toHaveAttribute(
@@ -92,7 +92,7 @@ it('blocks concurrent selections and allows retry after failure', async () => {
     })
   )
   render(<AudioOutputs />)
-  fireEvent.click(screen.getByRole('button', { name: 'Fones' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Fones' }))
   expect(screen.getByRole('button', { name: 'Fones' })).toBeDisabled()
   fireEvent.click(screen.getByRole('button', { name: /Alto-falantes/ }))
   expect(host.select).toHaveBeenCalledTimes(1)
@@ -103,8 +103,10 @@ it('blocks concurrent selections and allows retry after failure', async () => {
   expect(screen.getByRole('button', { name: 'Fones' })).toBeEnabled()
 })
 
-it('follows external changes and releases subscriptions on close', () => {
+it('follows external changes and releases subscriptions on close', async () => {
   const { unmount } = render(<AudioOutputs />)
+  // Wait for the code-split content before driving the subscription it owns.
+  await screen.findByRole('button', { name: /Alto-falantes/ })
   act(() => host.listeners.get('audioOutputs')!({ status: 'loading' }))
   expect(
     screen.getByText('Carregando dispositivos de audio')
@@ -134,7 +136,7 @@ it('follows external changes and releases subscriptions on close', () => {
 
 it('commits popup volume with keyboard and follows external changes', async () => {
   render(<AudioOutputs />)
-  const slider = screen.getByRole('slider', { name: 'Volume' })
+  const slider = await screen.findByRole('slider', { name: 'Volume' })
   expect(slider).toHaveAttribute('aria-valuenow', '64')
   fireEvent.keyDown(slider, { key: 'ArrowRight' })
   expect(screen.getByLabelText('Volume atual')).toHaveTextContent('65%')

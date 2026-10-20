@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react'
+import { lazy } from 'react'
 import { z } from 'zod'
 
 const emptyParams = z.object({}).strict().default({})
@@ -8,6 +9,17 @@ type Definition<S extends z.ZodType> = {
   Content: ComponentType
   className?: string
   schema: S
+}
+
+/**
+ * Defers a popup's content module until the surface actually renders it, so a
+ * window's startup graph never carries that popup's dependencies.
+ */
+export function lazyContent<
+  M extends Record<K, ComponentType>,
+  K extends string
+>(load: () => Promise<M>, name: K) {
+  return lazy(async () => ({ default: (await load())[name] }))
 }
 
 export function definePopup<S extends z.ZodType>(

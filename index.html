@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Strata · Status bar studio</title>
+    <script>
+      // Resolve the surface before the first paint: the native host owns `?view=`,
+      // and without it the window would show the browser's default white until
+      // `main.tsx` runs. `src/main.tsx` reads this attribute.
+      document.documentElement.dataset.view =
+        new URLSearchParams(location.search).get('view') ||
+        (window.__TAURI_INTERNALS__ ? 'bar' : 'studio')
+    </script>
   </head>
   <body>
     <div id="root"></div>

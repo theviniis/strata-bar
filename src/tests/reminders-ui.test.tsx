@@ -466,8 +466,9 @@ it('renders Markdown in the expiry alert without moving keyboard focus', async (
         close={() => {}}
       />
     )
+    // Popup content is a code-split chunk; the surface mounts before it resolves.
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Heading' })
+      await screen.findByRole('heading', { level: 2, name: 'Heading' })
     ).toBeInTheDocument()
     expect(screen.getByText('Important').tagName).toBe('STRONG')
     expect(screen.getByText('formatted').tagName).toBe('EM')
@@ -491,7 +492,9 @@ it('snoozes an alert with a preset, persists it and closes after saving', async 
       close={close}
     />
   )
-  expect(screen.getByRole('alertdialog')).toHaveTextContent('Tea is ready')
+  expect(await screen.findByRole('alertdialog')).toHaveTextContent(
+    'Tea is ready'
+  )
   fireEvent.change(screen.getByLabelText('Adiar por'), {
     target: { value: '15' }
   })
@@ -514,11 +517,12 @@ it('keeps an alert open if saving a dismissal fails', async () => {
       close={close}
     />
   )
+  const dismiss = await screen.findByRole('button', { name: 'Dispensar' })
   const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
     throw new Error('disk full')
   })
   try {
-    fireEvent.click(screen.getByRole('button', { name: 'Dispensar' }))
+    fireEvent.click(dismiss)
     expect(await screen.findByRole('alert')).toHaveTextContent('disk full')
     expect(close).not.toHaveBeenCalled()
     expect(getRemindersStore().getState().snapshot!.reminders[0].status).toBe(
@@ -533,7 +537,7 @@ it('presents simultaneous overdue alerts in sequence and keeps closed alerts pen
   await overdue('First')
   await overdue('Second')
   render(<DemoReminderAlerts />)
-  expect(screen.getByRole('alertdialog')).toHaveTextContent('First')
+  expect(await screen.findByRole('alertdialog')).toHaveTextContent('First')
   fireEvent.keyDown(
     screen.getByRole('dialog', { name: 'Alerta de lembrete' }),
     { key: 'Escape' }

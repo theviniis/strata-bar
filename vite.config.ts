@@ -43,6 +43,23 @@ function popupDiscovery() {
 export default defineConfig({
   plugins: [popupDiscovery(), react(), tailwindcss()],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
-  server: { port: 1420, strictPort: true },
-  test: { environment: 'jsdom', setupFiles: ['./src/tests/setup.ts'] }
+  server: {
+    port: 1420,
+    strictPort: true,
+    warmup: { clientFiles: ['./src/main.tsx'] },
+    watch: {
+      ignored: [
+        '**/.git/**',
+        '**/node_modules/**',
+        '**/dist/**',
+        '**/src-tauri/**',
+        '**/research/**'
+      ]
+    }
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/tests/setup.ts'],
+    testTimeout: 10000
+  }
 })
