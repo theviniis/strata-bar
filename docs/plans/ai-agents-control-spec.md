@@ -71,6 +71,13 @@ limitações das integrações.
 
 ## Implementation Decisions
 
+- Flags agents.visible.chatgpt/opencode/antigravity/codex escolhem as abas e
+  alertas visuais exibidos. Todos começam visíveis para preservar configurações
+  anteriores. O popup permite selecionar agentes e persistir na configuração
+  existente. Ocultar não desativa conexões, hooks ou notificações nativas.
+  Seleção vazia mantém o acesso às opções; ocultar a aba ativa seleciona outra
+  disponível. As superfícies nativas carregam e acompanham as configurações.
+
 - Correção posterior do usuário: o objetivo é usar ChatGPT Desktop através do
   Strata, sem fluxo dependente da CLI do Codex. O conector Codex registrado abaixo
   não atende nem substitui esse objetivo; sua implementação é trabalho separado.

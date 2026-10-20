@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { AgentType } from '@/services/system/agents.generated'
 import {
   defaultConfig,
   parseConfig,
@@ -10,15 +11,28 @@ type ConfigState = {
   config: Config
   error: string | null
   apply(text: string, persist?: boolean): boolean
+  setAgentVisible(agent: AgentType, visible: boolean): boolean
 }
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : String(error)
 }
 
-export const useConfig = create<ConfigState>((set) => ({
+export const useConfig = create<ConfigState>((set, get) => ({
   config: defaultConfig,
   error: null,
+  setAgentVisible(agent, visible) {
+    const { config, apply } = get()
+    return apply(
+      JSON.stringify({
+        ...config,
+        agents: {
+          ...config.agents,
+          visible: { ...config.agents.visible, [agent]: visible }
+        }
+      })
+    )
+  },
   apply(text, persist = true) {
     try {
       const config = parseConfig(text)

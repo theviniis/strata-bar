@@ -6,12 +6,20 @@ import NativeBar from './components/status-bar/NativeBar'
 import Overlay from './overlay/Overlay'
 import { PopupCheckBar } from './popups/PopupCheckBar'
 import { getRemindersStore } from './stores/reminders'
+import { loadConfig, watchConfig } from './stores/config'
 
 // `?view=` is set by the native host: `bar` for AppBar strips, `overlay` for
 // the shared floating surface. The browser studio arrives without a view and
 // without Tauri internals, so it keeps rendering the demo shell.
 const native = Boolean(window.__TAURI_INTERNALS__)
 const view = new URLSearchParams(window.location.search).get('view')
+
+// Native bars and the overlay do not mount the studio's configuration effect.
+if (native || view === 'bar' || view === 'overlay') {
+  loadConfig()
+  const stopConfig = watchConfig()
+  import.meta.hot?.dispose(stopConfig)
+}
 document.documentElement.dataset.view = view ?? (native ? 'bar' : 'studio')
 
 const remindersConnection = getRemindersStore()

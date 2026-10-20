@@ -1,5 +1,25 @@
 # Controle de agentes de IA — Windows 11
 
+## Feature flags de visibilidade por agente
+
+- [x] Adicionar flags persistentes na configuração, com todos os agentes visíveis
+      por padrão e compatibilidade com configurações anteriores.
+- [x] Oferecer seleção no popup, filtrar abas/alertas e tratar seleção vazia ou
+      remoção da aba ativa; manter configurações sincronizadas entre superfícies.
+- [x] Validar persistência, seleção e controles existentes.
+
+As flags controlam apresentação; não alteram conexões, hooks ou permissões.
+Disponíveis no botão Selecionar agentes do popup e em agents.visible na
+configuração JSON. A seleção filtra abas, alertas visuais e contador da barra;
+os alertas ocultos não são descartados. Todas as opções desmarcadas mantêm o
+seletor acessível. Barras e overlay carregam configurações persistidas e recebem
+alterações entre janelas pelo storage event. Configurações antigas recebem
+valores padrão, sem alteração de versão. Falha de persistência mantém a última
+seleção válida e apresenta o erro.
+
+Validação: 42 testes de agentes, configuração e app aprovados; TypeScript,
+lint dos arquivos alterados, build frontend e diff check aprovados.
+
 ## Correção de alvo — ChatGPT Desktop, sem CLI
 
 O usuário esclareceu que quer usar o aplicativo ChatGPT Desktop pelo Strata.
