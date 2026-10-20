@@ -1,4 +1,6 @@
-import { definePopup } from '@/popups/definition'
-import { AgentsPopup } from './AgentsPopup'
+import { definePopup, lazyContent } from '@/popups/definition'
 
-export default definePopup({ label: 'Agentes de IA', Content: AgentsPopup })
+export default definePopup({
+  label: 'Agentes de IA',
+  Content: lazyContent(() => import('./AgentsPopup'), 'AgentsPopup')
+})

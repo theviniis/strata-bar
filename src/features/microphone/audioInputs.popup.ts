@@ -1,4 +1,6 @@
-import { definePopup } from '@/popups/definition'
-import { AudioInputs } from './AudioInputs'
+import { definePopup, lazyContent } from '@/popups/definition'
 
-export default definePopup({ label: 'Entrada de áudio', Content: AudioInputs })
+export default definePopup({
+  label: 'Entrada de áudio',
+  Content: lazyContent(() => import('./AudioInputs'), 'AudioInputs')
+})
