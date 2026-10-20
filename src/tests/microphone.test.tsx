@@ -71,10 +71,10 @@ beforeEach(() => {
 it('confirms selection, retains the popup and controls mute', async () => {
   const { container } = render(<AudioInputs arrowX={280} />)
   expect(container).toBeTruthy()
-  expect(screen.getByRole('button', { name: /Microfone/ })).toHaveAttribute(
-    'aria-pressed',
-    'true'
-  )
+  // Popup content is a code-split chunk; the surface mounts before it resolves.
+  expect(
+    await screen.findByRole('button', { name: /Microfone/ })
+  ).toHaveAttribute('aria-pressed', 'true')
   fireEvent.click(screen.getByRole('button', { name: 'Headset' }))
   await waitFor(() =>
     expect(screen.getByRole('button', { name: /Headset/ })).toHaveAttribute(
@@ -96,7 +96,7 @@ it('blocks concurrent selections and allows retry after failure', async () => {
     })
   )
   render(<AudioInputs />)
-  fireEvent.click(screen.getByRole('button', { name: 'Headset' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Headset' }))
   expect(screen.getByRole('button', { name: 'Headset' })).toBeDisabled()
   fireEvent.click(screen.getByRole('button', { name: /Microfone/ }))
   expect(host.select).toHaveBeenCalledTimes(1)
@@ -107,8 +107,10 @@ it('blocks concurrent selections and allows retry after failure', async () => {
   expect(screen.getByRole('button', { name: 'Headset' })).toBeEnabled()
 })
 
-it('follows external changes and releases subscriptions on close', () => {
+it('follows external changes and releases subscriptions on close', async () => {
   const { unmount } = render(<AudioInputs />)
+  // Wait for the code-split content before driving the subscription it owns.
+  await screen.findByRole('button', { name: 'Silenciar microfone' })
   act(() => host.listeners.get('audioInputs')!({ status: 'loading' }))
   expect(
     screen.getByText('Carregando dispositivos de áudio')
@@ -140,7 +142,7 @@ it('follows external changes and releases subscriptions on close', () => {
 
 it('commits popup volume with keyboard and follows external changes', async () => {
   render(<AudioInputs />)
-  const slider = screen.getByRole('slider', { name: 'Volume' })
+  const slider = await screen.findByRole('slider', { name: 'Volume' })
   expect(slider).toHaveAttribute('aria-valuenow', '64')
   fireEvent.keyDown(slider, { key: 'ArrowRight' })
   expect(screen.getByLabelText('Volume atual')).toHaveTextContent('65%')
@@ -156,8 +158,9 @@ it('commits popup volume with keyboard and follows external changes', async () =
   expect(slider).toHaveAttribute('data-disabled', '')
 })
 
-it('disables controls when no microphone is connected', () => {
+it('disables controls when no microphone is connected', async () => {
   render(<AudioInputs />)
+  await screen.findByRole('button', { name: 'Silenciar microfone' })
   act(() =>
     host.listeners.get('audioInputs')!({
       status: 'ready',
@@ -181,7 +184,7 @@ it('ignores completion after unmount', async () => {
     })
   )
   const { unmount } = render(<AudioInputs />)
-  fireEvent.click(screen.getByRole('button', { name: 'Headset' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Headset' }))
   unmount()
   await act(async () => resolve(host.output))
   expect(host.stops).toHaveBeenCalledTimes(2)
@@ -190,7 +193,7 @@ it('ignores completion after unmount', async () => {
 it('keeps demo microphone controls local to the preview', async () => {
   render(<PopupHost id="audioInputs" mode="demo" close={host.hide} />)
   fireEvent.click(
-    screen.getByRole('button', { name: 'Microfone do headset (demo)' })
+    await screen.findByRole('button', { name: 'Microfone do headset (demo)' })
   )
   await waitFor(() =>
     expect(

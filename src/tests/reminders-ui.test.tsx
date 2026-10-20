@@ -466,8 +466,9 @@ it('renders Markdown in the expiry alert without moving keyboard focus', async (
         close={() => {}}
       />
     )
+    // Popup content is a code-split chunk; the surface mounts before it resolves.
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Heading' })
+      await screen.findByRole('heading', { level: 2, name: 'Heading' })
     ).toBeInTheDocument()
     expect(screen.getByText('Important').tagName).toBe('STRONG')
     expect(screen.getByText('formatted').tagName).toBe('EM')
