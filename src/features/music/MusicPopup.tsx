@@ -170,7 +170,7 @@ function MusicPopupCard({
         </div>
         <DialogContent
           inline
-          className="w-80 max-w-full"
+          className="w-full"
           onKeyDown={(event) => event.stopPropagation()}
         >
           <DialogHeader>
