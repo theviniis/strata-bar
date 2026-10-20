@@ -1,14 +1,16 @@
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type {
   AgentAlertsSnapshot,
   AgentNotificationsSnapshot
 } from '@/services/system/agents'
+import { Trash } from 'lucide-react'
+import { useState } from 'react'
 
 const labels = {
   opencode: 'OpenCode',
   antigravity: 'Antigravity',
-  chatgpt: 'ChatGPT Desktop'
+  chatgpt: 'ChatGPT Desktop',
+  codex: 'Codex local'
 } as const
 
 const notificationLabels = {
@@ -101,13 +103,13 @@ export function AgentAlerts({
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="destructive"
                   className="ml-2"
                   disabled={!onDismiss || pending}
                   onClick={() => void dismiss([alert.id])}
                   aria-label={`Dispensar alerta de ${alert.sessionTitle}`}
                 >
-                  Dispensar
+                  <Trash data-icon="inline-start" /> Dispensar
                 </Button>
               </li>
             ))}
@@ -115,11 +117,11 @@ export function AgentAlerts({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="destructive"
             disabled={!onDismiss || pending}
             onClick={() => void dismiss(alerts.items.map((alert) => alert.id))}
           >
-            Dispensar exibidos
+            <Trash data-icon="inline-start" /> Dispensar exibidos
           </Button>
         </>
       )}

@@ -136,7 +136,7 @@ export function MusicContent({
                     }}
                     className="absolute inset-0 h-full w-full object-cover"
                   />
-                  <span className="absolute inset-0 bg-black/70 group-data-[theme=light]:bg-[#f8f5f2]/50" />
+                  <span className="absolute inset-0 bg-black/80 group-data-[theme=light]:bg-[#f8f5f2]/50" />
                   {/* The cover sits above the bar's shared hover highlight, so
                       the music widget mirrors that surface (and the popup-open
                       state) with its own layer. */}
@@ -209,7 +209,7 @@ function MediaControls({ current, pending, onClick }: MediaControlsProps) {
             if (!pending) onClick({ action })
           }}
         >
-          <WidgetItemIcon icon={Icon} size={12} className="text-primary" />
+          <WidgetItemIcon icon={Icon} size={14} className="text-secondary" />
         </button>
       ))}
     </div>

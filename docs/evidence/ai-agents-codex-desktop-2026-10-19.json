@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-19",
+  "scope": "Codex local hook transport and Windows development startup",
+  "desktopStartup": {
+    "initialFailure": "Windows error 5 replacing the running debug executable",
+    "restartedWithPnpmDesktop": true,
+    "visibleBars": 2,
+    "monitors": 2,
+    "allBarsTopmost": true,
+    "anyBarKomorebiEligible": false,
+    "overlayPresent": true,
+    "duplicateDebugPreflightRejectsWithExplanation": true
+  },
+  "checks": {
+    "focusedFrontendPassed": 31,
+    "nativePassed": 163,
+    "nativeIgnored": 21,
+    "typecheck": "passed",
+    "changedFrontendLint": "passed",
+    "changedFrontendFormatting": "passed",
+    "frontendBuild": "passed",
+    "nativeDebugBuild": "passed",
+    "fullFrontendPassed": 243,
+    "fullFrontendFailed": 8,
+    "fullFrontendFailingSuites": [
+      "reminders-ui.test.tsx",
+      "native-bar.test.tsx"
+    ]
+  },
+  "windowsHelperRoundtrip": {
+    "passed": true,
+    "actualWindowsExecutable": true,
+    "events": ["UserPromptSubmit", "PermissionRequest", "Stop"],
+    "syntheticMetadataOnly": true,
+    "neutralOutput": "{}",
+    "finalState": "idle",
+    "temporaryConfigurationCleaned": true,
+    "temporaryEndpointCleaned": true,
+    "modelRequests": 0,
+    "userGlobalHooksChanged": false,
+    "hookTrustChanged": false
+  },
+  "pending": [
+    "User activation and Codex hook trust review",
+    "Events emitted by an actual Codex conversation",
+    "Interactive WebView2 acceptance",
+    "Full frontend gate"
+  ]
+}

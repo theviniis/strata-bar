@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { snoozeOptions, type SnoozeOption } from '@/services/system/reminders'
 import { useReminders } from '@/stores/reminders'
+import { Trash } from 'lucide-react'
 import { useId, useState } from 'react'
 
 export function ReminderAlertActions({
@@ -62,8 +63,9 @@ export function ReminderAlertActions({
           className="flex-1"
           disabled={pending}
           onClick={() => void act(false)}
+          variant="destructive"
         >
-          Dispensar
+          <Trash data-icon="inline-start" /> Dispensar
         </Button>
       </div>
       {error && (

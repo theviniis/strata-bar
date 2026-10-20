@@ -188,7 +188,7 @@ export function PopupSurface({
           aria-label={label}
           tabIndex={-1}
           className={cn(
-            'max-w-90 bg-popover text-[12px] shadow-lg outline-none *:max-w-full',
+            'bg-popover text-[12px] shadow-lg outline-none *:max-w-full',
             className
           )}
           onKeyDown={(event) => {

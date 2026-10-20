@@ -1,5 +1,189 @@
 # Controle de agentes de IA — Windows 11
 
+## Feature flags de visibilidade por agente
+
+- [x] Adicionar flags persistentes na configuração, com todos os agentes visíveis
+      por padrão e compatibilidade com configurações anteriores.
+- [x] Oferecer seleção no popup, filtrar abas/alertas e tratar seleção vazia ou
+      remoção da aba ativa; manter configurações sincronizadas entre superfícies.
+- [x] Validar persistência, seleção e controles existentes.
+
+As flags controlam apresentação; não alteram conexões, hooks ou permissões.
+Disponíveis no botão Selecionar agentes do popup e em agents.visible na
+configuração JSON. A seleção filtra abas, alertas visuais e contador da barra;
+os alertas ocultos não são descartados. Todas as opções desmarcadas mantêm o
+seletor acessível. Barras e overlay carregam configurações persistidas e recebem
+alterações entre janelas pelo storage event. Configurações antigas recebem
+valores padrão, sem alteração de versão. Falha de persistência mantém a última
+seleção válida e apresenta o erro.
+
+Validação: 42 testes de agentes, configuração e app aprovados; TypeScript,
+lint dos arquivos alterados, build frontend e diff check aprovados.
+
+## Correção de alvo — ChatGPT Desktop, sem CLI
+
+O usuário esclareceu que quer usar o aplicativo ChatGPT Desktop pelo Strata.
+O conector Codex não satisfaz esse requisito e não deve ser apresentado como
+solução alternativa. Nenhuma configuração pela CLI pode ser exigida no fluxo
+ChatGPT Desktop. As abas solicitadas continuam sendo a navegação do popup.
+
+- [x] Registrar a correção explícita de alvo.
+- [ ] Comprovar um mecanismo do aplicativo que cubra conversas, estados e envio
+      pelo Strata, sem substituir por sessões criadas pela API ou pela CLI.
+- [ ] Resolver a restrição atual contra automação da interface se os mecanismos
+      oficiais do aplicativo não cobrirem as capacidades pedidas.
+
+A documentação de extensões de plugins confirma envio para conversa atual ou
+nova, dentro da integração de plugins. Isso ainda não comprova enumeração e
+controle externo de todas as conversas pelo Strata. Não declarar o conector
+Desktop implementado nem afirmar inexistência de API apenas por essa lacuna.
+Fonte: https://developers.openai.com/plugins/build/extensions.
+
+## Navegação por abas — alteração solicitada
+
+- [x] Substituir o accordion pelo componente Tabs existente no mesmo popup.
+- [x] Preservar ações e estados por agente; validar seleção de abas e controles.
+
+A solicitação atual substitui a decisão anterior de usar accordion.
+ChatGPT Desktop é a aba inicial. A detecção aparece no painel selecionado;
+alertas continuam compartilhados acima das abas. Os 23 testes do popup passaram,
+assim como TypeScript, lint dos arquivos alterados e diff check.
+
+## Correção de inicialização e conexão Codex — 19/10/2026
+
+- [x] D1: reproduzir pnpm desktop, liberar graciosamente o host debug anterior
+      e validar inicialização real; evitar diagnóstico silencioso de executável
+      bloqueado nas próximas execuções.
+- [x] D2/C2: implementar transporte local autenticado dos hooks Codex,
+      configuração estável com preservação dos hooks existentes e confiança
+      revisada pelo usuário no Codex.
+- [x] D3/C3: ligar contrato, store e accordion Codex; explicar no ChatGPT Desktop
+      como acessar o monitor local em vez de sugerir integração já disponível.
+- [ ] D4/C4: testar caminho nativo e UI, compilar, revisar e registrar limites
+      da validação real sem enviar prompts de teste para modelos.
+
+Reprodução D1: pnpm desktop chega ao Cargo e falha ao substituir
+src-tauri/target/debug/strata-bar.exe, acesso negado (Windows 5). O processo
+debug anterior ainda estava em execução; fechar suas barras via WM_CLOSE é
+gracioso e mantém o caminho de limpeza de AppBars.
+
+Após fechar ambas as barras e a superfície restante, MainWindowHandle ficou
+zero; o processo residual da bandeja foi encerrado somente após conferir o
+caminho exato do executável debug deste checkout. pnpm desktop iniciou novamente
+e permaneceu executando: dois monitores, duas barras visíveis/topmost, sem
+elegibilidade komorebi, overlay presente. O preflight agora identifica uma
+instância debug já aberta antes do link e orienta Sair pela bandeja. Não encerra
+automaticamente aplicativos, nem altera a instalação release.
+
+C2 usa TCP somente em loopback com token efêmero e pacotes limitados. O helper
+lê endpoint local, reduz stdin aos metadados permitidos e responde {} inclusive
+em falhas. Definições em hooks.json usam comando estável, sem token/porta na
+definição confiada. Ativar preserva outros handlers; desativar remove somente
+entradas idênticas desta instalação. Nenhum arquivo de confiança é editado.
+
+C3 entrega contrato versão 9 gerado do Rust, validação Zod por provedor,
+adapter/store e seção Codex local no accordion. A presença do processo continua
+separada da recepção de eventos. Criar/responder e alertas Codex permanecem
+indisponíveis nesta fatia. A seção ChatGPT orienta usar Codex local para essas
+sessões; não promete acesso a conversas comuns do ChatGPT.
+
+Validação: 31 testes frontend focados passaram (os dois novos falharam antes da
+integração); TypeScript e lint dos arquivos alterados passaram. Build frontend
+e cargo build passaram. Suíte Rust final: 163 aprovados, 21 ignorados. Ensaio separado
+com o executável Windows real e configuração temporária própria passou:
+UserPromptSubmit, PermissionRequest e Stop atravessaram o helper e o receptor,
+sem conteúdo de conversa; configuração/endpoint próprios removidos depois.
+Esse ensaio não equivale a eventos de uma conversa real confiada no Codex.
+Suíte frontend geral: 243 aprovados, 8 falhas em reminders-ui e native-bar,
+fora dos arquivos funcionais alterados nesta correção; não declarar gate geral
+aprovado. Nenhum prompt foi enviado a um modelo e nenhum hook global do usuário
+foi ativado automaticamente durante os testes.
+
+Revisões Standards e Spec apontaram dois casos de limpeza, corrigidos e
+reavaliados sem achados adicionais: desativação agora sempre fecha a coleta,
+mesmo quando hooks.json não puder ser limpo; instalação/limpeza usam lock
+exclusivo e verificam token antes de tocar na configuração, preservando uma
+conexão substituta. O arquivo vazio .codex-hooks.lock permanece no diretório do
+endpoint para serialização entre processos. Teste cobre ambos os cenários.
+Evidência agregada em
+docs/evidence/ai-agents-codex-desktop-2026-10-19.json. C4/D4 permanece parcial:
+eventos de conversa real e interação WebView2 aguardam ativação/revisão de
+confiança pelo usuário no Codex; a suíte frontend geral também não está verde.
+
+## Diagnóstico — ChatGPT Desktop mostra sessões indisponíveis
+
+- [x] Confirmar o sintoma com o usuário e verificar o caminho de código.
+- [x] Separar detecção do aplicativo de integração de conversas.
+- [x] Consultar documentação oficial atual sobre hooks e seus limites por modo.
+- [x] Identificar o tipo desta sessão pelos metadados do aplicativo: Codex local.
+- [x] Confirmar ampliação de escopo para monitorar sessões como esta, pois Codex
+      estava explicitamente excluído no escopo inicial.
+- [ ] Comprovar uma fonte compatível antes de implementar o conector e suas
+      ações; não substituir conversas do ChatGPT por sessões Codex.
+
+O sintoma informado é Sessões indisponíveis. Esse texto é produzido pelo ramo
+ChatGPT em AgentsPopup.tsx: somente o processo é detectado; criar/responder estão
+desabilitados. Não existe conector de sessões ChatGPT no estado ou serviço nativo.
+A integração completa está pendente, e esse diagnóstico não é uma correção.
+
+A documentação atual de hooks confirma suporte a hooks existentes quando
+orquestração e execução são locais, em Work local e Codex. Para Work Cloud,
+documenta limites diferentes e hooks empresariais gerenciados; isso não prova
+cobertura de conversas comuns do ChatGPT nem enumeração de conversas existentes.
+Fonte: [Hooks](https://learn.chatgpt.com/docs/hooks).
+
+Nesta máquina, ChatGPT.exe pertence ao pacote OpenAI.Codex. O aplicativo atual
+pode reunir Work e Codex; nome do executável/pacote não comprova o modo de uma
+conversa. Não alterar a detecção para excluir esse pacote com base apenas no nome.
+Nenhum histórico, credencial ou configuração de hooks foi acessado ou alterado.
+
+O usuário confirmou Sessões indisponíveis e informou não saber distinguir o modo.
+Os metadados do app identificam esta conversa como kind codex, host local, no
+workspace Strata. Isso identifica o runtime desta sessão, independentemente do
+modelo GPT. Nenhum conteúdo de outras conversas foi aberto. Foi apresentada a
+opção de incluir sessões como esta, separadamente de conversas comuns ChatGPT;
+o usuário aprovou monitorar sessões Codex locais como esta.
+
+## Ampliação aprovada — Codex local
+
+A aprovação posterior inclui Codex local como integração própria no accordion e
+substitui sua exclusão inicial. Conversas comuns ChatGPT continuam sem uma fonte
+de sessões comprovada. Executar as etapas abaixo individualmente.
+
+- [x] C1: interpretar somente metadados dos hooks oficiais e modelar estados,
+      limites, ordenação e expiração com testes nativos. Stop indica fim do turno,
+      sem comprovar sucesso; não emitir conclusão bem-sucedida nesse evento.
+- [x] C2: conectar o coletor ao host Windows com transporte local autenticado e
+      comandos estáveis; preservar hooks existentes e exigir revisão de confiança
+      no Codex, sem modificar confiança ou políticas automaticamente.
+- [x] C3: integrar contrato gerado, store e seção Codex no accordion, com ativação
+      explícita e indicação de que somente eventos observados são conhecidos.
+- [ ] C4: validar eventos reais e limpeza, executar checks, revisão e build.
+
+O CLI instalado é codex-cli 0.163.0-alpha.10.2. A consulta somente de leitura
+app-server daemon version falhou ao conectar ao socket de controle com erro
+Windows 10050. Isso não comprova acesso às sessões do aplicativo pelo proxy.
+Não iniciar outro servidor para apresentar metadados históricos como estado vivo.
+Fonte alternativa documentada: hooks locais em
+[Hooks](https://learn.chatgpt.com/docs/hooks). O parser não deve reter prompts,
+respostas, argumentos de ferramentas nem ler transcript_path. Sua resposta neutra
+é {} para todos os eventos; nenhuma decisão de aprovação é produzida.
+
+C1 implementada em src-tauri/src/codex.rs: projeção limitada a 128 sessões,
+entrada de até 1 MiB, validação de IDs/pasta/turno, descarte de eventos antigos e
+expiração de processamento/atenção após 120 segundos. Conteúdo de conversa e
+transcript_path são ignorados. Stop/Interrupt viram Idle, nunca Completed.
+Quatro testes nativos focados passaram; a suíte Rust completa terminou com 160
+testes aprovados e 20 ignorados. Formatação dos documentos e diff check passaram.
+Na conclusão de C1 o módulo ainda não era chamado pelo host; C2/C3, registradas
+acima, ligaram o transporte ao painel. Nenhum arquivo de confiança do usuário foi
+alterado; aceitação com eventos de conversa real ainda depende da revisão dos
+hooks no Codex.
+
+Revisão Standards sem achados. Revisão Spec identificou que um evento atrasado
+poderia reabrir um turno encerrado; corrigido com terminalidade explícita e teste
+de regressão, depois reavaliado sem achados adicionais. C4 segue pendente.
+
 ## Pasta opcional ao criar sessão
 
 - [x] Aceitar criação sem pasta no popup, com ou sem prompt, indicando uso do
@@ -8,7 +192,7 @@
       quando ausente; continuar validando caminhos explicitamente informados.
 - [x] Validar UI, serviço nativo e criação vazia real sem pasta; limpar somente
       a conversa de teste e registrar evidência sem dados privados.
-- [ ] Executar checks/builds, revisão e commit na branch atual.
+- [x] Executar checks/builds, revisão e commit na branch atual.
 
 Ausência ou campo em branco envia directory null ao comando, que omite location
 na API do OpenCode. Caminhos preenchidos continuam locais, absolutos e existentes,
@@ -18,6 +202,13 @@ Os testes do popup e do serviço falharam antes da mudança e passaram depois.
 passaram. A criação vazia real sem pasta passou, com seleção de local padrão
 válido e remoção da conversa, sem prompt, histórico ou execução de modelo.
 Evidência: `docs/evidence/ai-agents-optional-directory-2026-10-19.json`.
+
+Suíte Rust: 156 passaram, 20 ignorados. Suíte frontend completa: 248 passaram,
+com a falha preexistente da posição de áudio em native-bar.test.tsx. Revisões de
+padrões e especificação sem achados acionáveis. Implementação: `0cdc93f`.
+Build frontend, release e instalador NSIS passaram. Artefato atualizado em
+`src-tauri/target/release/bundle/nsis/Strata_0.1.0_x64-setup.exe`. O host já
+instalado não foi substituído nesta etapa; a alteração está no novo artefato.
 
 ## Validação de execução real — OpenCode
 
@@ -450,7 +641,8 @@ em andamento; contratos e integrações dependem das decisões registradas abaix
 ## Escopo solicitado
 
 - Windows 11 como ambiente de detecção, monitoramento e notificações.
-- Agentes: ChatGPT Desktop, OpenCode e Antigravity (Codex não incluído).
+- Agentes iniciais: ChatGPT Desktop, OpenCode e Antigravity. A ampliação aprovada
+  acima inclui monitoramento do Codex local.
 - Sessões agrupadas por ferramenta, com status individual em tempo real.
 - Atenção para perguntas, confirmações e solicitações de ferramentas.
 - Iniciar sessões e responder pelo popup.

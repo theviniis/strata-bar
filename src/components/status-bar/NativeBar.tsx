@@ -1,5 +1,5 @@
-import { Clock } from '../../features/clock/Clock'
 import { Agents } from '../../features/agents/Agents'
+import { Clock } from '../../features/clock/Clock'
 import { Cpu } from '../../features/cpu/Cpu'
 import { Disk } from '../../features/disk/Disk'
 import { Gpu } from '../../features/gpu/Gpu'
@@ -11,7 +11,6 @@ import { Reminders } from '../../features/reminders/Reminders'
 import { Volume } from '../../features/volume/Volume'
 import { QueryProvider } from '../QueryProvider'
 import { BarVerticalSeparator } from '../ui/bar-vertical-separator'
-import { ButtonGroup } from '../ui/button-group'
 import { WidgetHoverGroup } from '../widget-hover'
 
 export default function NativeBar() {
@@ -26,7 +25,7 @@ export default function NativeBar() {
             <Komorebi />
           </div>
 
-          <div className="flex justify-self-center items-center gap-2">
+          <div className="flex justify-self-center items-center">
             <Cpu />
             <BarVerticalSeparator />
             <Gpu />
@@ -36,16 +35,14 @@ export default function NativeBar() {
             <Disk />
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 ml-auto">
+          <div className="flex shrink-0 items-center ml-auto">
             <Music />
             <BarVerticalSeparator />
-            <ButtonGroup>
-              <Volume />
-              <Microphone />
-            </ButtonGroup>
+            <Volume />
+            <Microphone />
             <BarVerticalSeparator />
-            <Reminders />
             <Agents />
+            <Reminders />
             <Clock showDate />
           </div>
         </nav>

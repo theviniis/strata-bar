@@ -7,6 +7,9 @@ mod agents_contract;
 mod agents_windows;
 mod antigravity;
 mod antigravity_hooks;
+mod codex;
+mod codex_hooks;
+mod hook_config;
 mod opencode;
 mod reminder_sound;
 mod google_calendar;
@@ -284,6 +287,10 @@ mod instance_tests {
 
 fn main() {
     let arguments: Vec<_> = std::env::args().skip(1).collect();
+    if arguments.first().is_some_and(|argument| argument == "--codex-hook") {
+        codex_hooks::run_helper(&arguments[1..]);
+        return;
+    }
     if arguments.first().is_some_and(|argument| argument == "--antigravity-hook") {
         antigravity_hooks::run_helper(&arguments[1..]);
         return;
@@ -334,6 +341,7 @@ fn main() {
             agents::agents_reply_opencode,
             agents::agents_decide_opencode,
             agents::agents_set_antigravity,
+            agents::agents_set_codex,
             reminders::reminders_snapshot,
             desktop::reminders_set_anchor,
             reminders::reminders_create,

@@ -1,7 +1,7 @@
+import { cn } from '@/lib/utils'
 import { Accordion as AccordionPrimitive } from '@base-ui/react/accordion'
 import { ChevronDown } from 'lucide-react'
 import type { ComponentProps } from 'react'
-import { cn } from '@/lib/utils'
 
 type StyledProps<T> = Omit<T, 'className'> & { className?: string }
 
@@ -41,7 +41,7 @@ function AccordionTrigger({
       <AccordionPrimitive.Trigger
         data-slot="accordion-trigger"
         className={cn(
-          'group/accordion-trigger flex flex-1 items-center justify-between gap-4 rounded-md py-3 text-left text-sm font-medium outline-none transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+          'mb-2 cursor-pointer group/accordion-trigger flex flex-1 items-center justify-between gap-4 rounded-md py-3 text-left text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
           className
         )}
         {...props}
@@ -72,4 +72,4 @@ function AccordionContent({
   )
 }
 
-export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
+export { Accordion, AccordionContent, AccordionItem, AccordionTrigger }

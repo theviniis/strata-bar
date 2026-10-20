@@ -7,16 +7,18 @@ import {
 import type { AgentsSnapshot } from '@/services/system/agents.generated'
 
 const snapshot = (revision: number): AgentsSnapshot => ({
-  version: 8,
+  version: 9,
   notifications: { status: 'demo', skipped: 0 },
   alerts: { items: [], overflowCount: 0, paused: false },
   antigravity: { status: 'disabled', sessions: [], error: null },
+  codex: { status: 'disabled', sessions: [], error: null },
   revision,
   observedAt: revision * 1000,
   applications: [
     { agent: 'chatgpt', running: true },
     { agent: 'opencode', running: false },
-    { agent: 'antigravity', running: false }
+    { agent: 'antigravity', running: false },
+    { agent: 'codex', running: false }
   ],
   error: null,
   opencode: {
@@ -40,6 +42,7 @@ it('releases a listener that finishes connecting after its consumer closes', asy
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
     setAntigravity: async () => snapshot(3),
+    setCodex: async () => snapshot(3),
     createOpenCode: async () => ({
       sessionId: 'ses_created',
       promptStatus: 'notRequested',
@@ -67,6 +70,7 @@ it('reports a native connection failure without populating demo applications', a
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
     setAntigravity: async () => snapshot(3),
+    setCodex: async () => snapshot(3),
     createOpenCode: async () => ({
       sessionId: 'ses_created',
       promptStatus: 'notRequested',
@@ -100,6 +104,7 @@ it('keeps a process enumeration failure separate from the session transport', as
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
     setAntigravity: async () => snapshot(3),
+    setCodex: async () => snapshot(3),
     createOpenCode: async () => ({
       sessionId: 'ses_created',
       promptStatus: 'notRequested',
@@ -154,6 +159,7 @@ it('rechecks discovery when reopening instead of retaining a previous transport 
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
     setAntigravity: async () => snapshot(3),
+    setCodex: async () => snapshot(3),
     createOpenCode: async () => ({
       sessionId: 'ses_created',
       promptStatus: 'notRequested',
@@ -185,6 +191,7 @@ it('keeps a live observation when the initial snapshot arrives late', async () =
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
     setAntigravity: async () => snapshot(3),
+    setCodex: async () => snapshot(3),
     createOpenCode: async () => ({
       sessionId: 'ses_created',
       promptStatus: 'notRequested',
@@ -218,6 +225,7 @@ it('keeps live discovery working when the initial snapshot request fails', async
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
     setAntigravity: async () => snapshot(3),
+    setCodex: async () => snapshot(3),
     createOpenCode: async () => ({
       sessionId: 'ses_created',
       promptStatus: 'notRequested',

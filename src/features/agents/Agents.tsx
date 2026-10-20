@@ -9,10 +9,16 @@ import {
 import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
 import { WidgetPopup } from '@/popups/WidgetPopup'
 import { getAgentsStore } from '@/stores/agents'
+import { useConfig } from '@/stores/config'
 
 export function Agents() {
   const [useStore] = useState(getAgentsStore)
-  const count = useStore((state) => state.snapshot?.alerts.items.length ?? 0)
+  const visible = useConfig((state) => state.config.agents.visible)
+  const count = useStore(
+    (state) =>
+      state.snapshot?.alerts.items.filter((alert) => visible[alert.agent])
+        .length ?? 0
+  )
   const paused = useStore((state) => state.snapshot?.alerts.paused ?? false)
   useEffect(() => useStore.getState().connect(), [useStore])
   const text = paused

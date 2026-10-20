@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { Label } from '@/components/ui/label'
 import {
   Popover,
@@ -41,10 +42,10 @@ import {
   useState
 } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
+import { ActiveReminders } from './ActiveReminders'
 import { CalendarSettings } from './CalendarSettings'
 import { reminderFormSchema, type ReminderFormValues } from './form'
 import { scheduledDateTime } from './presentation'
-import { ActiveReminders } from './ActiveReminders'
 import { ReminderEditor } from './ReminderEditor'
 
 export function RemindersPopup() {
@@ -178,7 +179,7 @@ export function RemindersPopup() {
     error
   return (
     <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-      <div>
+      <div className="w-105">
         <div hidden={settingsOpen}>
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
@@ -475,7 +476,18 @@ export function RemindersPopup() {
                   type="submit"
                   disabled={pending || isSubmitting || snapshot === null}
                 >
-                  {pending ? 'Salvando…' : 'Criar lembrete'}
+                  {pending ? (
+                    'Salvando…'
+                  ) : (
+                    <>
+                      Criar lembrete{' '}
+                      <KbdGroup data-icon="inline-end">
+                        <Kbd variant="primary">Ctrl</Kbd>
+                        <span>+</span>
+                        <Kbd variant="primary">⏎</Kbd>
+                      </KbdGroup>
+                    </>
+                  )}
                 </Button>
               </form>
             </Tabs>

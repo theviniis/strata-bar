@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './app/styles.css'
 import NativeBar from './components/status-bar/NativeBar'
 import { getRemindersStore } from './stores/reminders'
+import { loadConfig, watchConfig } from './stores/config'
 import { OverlayView, PopupCheckView, StudioView } from './views'
 
 // `?view=` is set by the native host: `bar` for AppBar strips, `overlay` for the
@@ -12,6 +13,13 @@ import { OverlayView, PopupCheckView, StudioView } from './views'
 const native = Boolean(window.__TAURI_INTERNALS__)
 const view =
   document.documentElement.dataset.view ?? (native ? 'bar' : 'studio')
+
+// Native bars and the overlay do not mount the studio's configuration effect.
+if (native || view === 'bar' || view === 'overlay') {
+  loadConfig()
+  const stopConfig = watchConfig()
+  import.meta.hot?.dispose(stopConfig)
+}
 
 const remindersConnection = getRemindersStore()
   .getState()

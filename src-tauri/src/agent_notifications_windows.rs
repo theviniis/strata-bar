@@ -79,6 +79,7 @@ fn payload(alert: &AgentAlert) -> String {
         AgentType::Opencode => "OpenCode",
         AgentType::Antigravity => "Antigravity",
         AgentType::Chatgpt => "ChatGPT Desktop",
+        AgentType::Codex => "Codex local",
     };
     let event = match alert.kind {
         AgentAlertKind::Attention => "Atenção necessária",

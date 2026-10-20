@@ -355,10 +355,11 @@ it('distinguishes detected applications from unavailable session control', () =>
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 8,
+        version: 9,
         notifications: { status: 'demo', skipped: 0 },
         alerts: { items: [], overflowCount: 0, paused: false },
         antigravity: { status: 'disabled', sessions: [], error: null },
+        codex: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
           sessions: [],
@@ -374,30 +375,28 @@ it('distinguishes detected applications from unavailable session control', () =>
         applications: [
           { agent: 'chatgpt', running: true },
           { agent: 'opencode', running: false },
-          { agent: 'antigravity', running: true }
+          { agent: 'antigravity', running: true },
+          { agent: 'codex', running: true }
         ]
       }}
       error={null}
     />
   )
-  const trigger = screen.getByRole('button', { name: /^ChatGPT Desktop/ })
-  expect(trigger).toHaveAttribute('aria-expanded', 'false')
-  expect(within(trigger).getByText('Processo detectado')).toBeInTheDocument()
+  const trigger = screen.getByRole('tab', { name: /^ChatGPT Desktop/ })
+  expect(trigger).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByRole('tabpanel')).toHaveTextContent('Processo detectado')
   fireEvent.click(trigger)
-  expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  expect(trigger).toHaveAttribute('aria-selected', 'true')
   const chatgpt = within(
-    screen.getByRole('region', { name: /^ChatGPT Desktop/ })
+    screen.getByRole('tabpanel', { name: /^ChatGPT Desktop/ })
   )
   expect(chatgpt.getByText('Sessões indisponíveis')).toBeInTheDocument()
   expect(chatgpt.getByRole('button', { name: 'Nova sessão' })).toBeDisabled()
-  expect(
-    within(screen.getByRole('button', { name: /^OpenCode/ })).getByText(
-      'Processo não detectado'
-    )
-  ).toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: /^OpenCode/ }))
-  expect(trigger).toHaveAttribute('aria-expanded', 'false')
-  expect(screen.getByRole('region', { name: /^OpenCode/ })).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('tab', { name: /^OpenCode/ }))
+  expect(trigger).toHaveAttribute('aria-selected', 'false')
+  expect(screen.getByRole('tabpanel', { name: /^OpenCode/ })).toHaveTextContent(
+    'Processo não detectado'
+  )
   expect(screen.queryByText('Concluído')).not.toBeInTheDocument()
 })
 
@@ -418,11 +417,11 @@ it('labels the studio preview and lists each tool without claiming live sessions
   expect(
     await screen.findByText('Demo · sem acesso ao sistema')
   ).toBeInTheDocument()
-  const antigravity = await screen.findByRole('button', {
+  const antigravity = await screen.findByRole('tab', {
     name: /^Antigravity/
   })
-  expect(antigravity).toHaveAttribute('aria-expanded', 'false')
-  expect(screen.queryByText('Sessões indisponíveis')).not.toBeInTheDocument()
+  expect(antigravity).toHaveAttribute('aria-selected', 'false')
+  expect(screen.getByText('Sessões indisponíveis')).toBeInTheDocument()
   fireEvent.click(antigravity)
   expect(
     screen.getByRole('button', { name: 'Ativar hooks do Antigravity' })
@@ -437,7 +436,7 @@ it('activates Antigravity hooks without claiming discovery of previous sessions'
       <AgentsPopup />
     </PopupContext.Provider>
   )
-  fireEvent.click(await screen.findByRole('button', { name: /^Antigravity/ }))
+  fireEvent.click(await screen.findByRole('tab', { name: /^Antigravity/ }))
   expect(
     screen.getByText(/Somente sessões que emitirem eventos após a conexão/)
   ).toBeInTheDocument()
@@ -462,10 +461,11 @@ it('does not show stale process presence after discovery fails', () => {
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 8,
+        version: 9,
         notifications: { status: 'demo', skipped: 0 },
         alerts: { items: [], overflowCount: 0, paused: false },
         antigravity: { status: 'disabled', sessions: [], error: null },
+        codex: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
           sessions: [],
@@ -481,7 +481,8 @@ it('does not show stale process presence after discovery fails', () => {
         applications: [
           { agent: 'chatgpt', running: true },
           { agent: 'opencode', running: true },
-          { agent: 'antigravity', running: true }
+          { agent: 'antigravity', running: true },
+          { agent: 'codex', running: true }
         ]
       }}
       error="Access denied"
@@ -489,10 +490,10 @@ it('does not show stale process presence after discovery fails', () => {
   )
   expect(screen.getByRole('alert')).toHaveTextContent('Access denied')
   expect(screen.queryByText('Processo detectado')).not.toBeInTheDocument()
-  expect(screen.getAllByText('Detecção indisponível')).toHaveLength(3)
+  expect(screen.getAllByText('Detecção indisponível')).toHaveLength(1)
 })
 
-it('connects and disconnects OpenCode inside its accordion', async () => {
+it('connects and disconnects OpenCode inside its tab', async () => {
   render(
     <PopupContext.Provider
       value={{ mode: 'demo', id: 'agents', params: {}, close: () => {} }}
@@ -500,7 +501,7 @@ it('connects and disconnects OpenCode inside its accordion', async () => {
       <AgentsPopup />
     </PopupContext.Provider>
   )
-  fireEvent.click(await screen.findByRole('button', { name: /^OpenCode/ }))
+  fireEvent.click(await screen.findByRole('tab', { name: /^OpenCode/ }))
   fireEvent.click(screen.getByRole('button', { name: 'Conectar OpenCode' }))
   expect(await screen.findByText('Exemplo de sessão')).toBeInTheDocument()
   expect(screen.getByText('Atenção necessária')).toBeInTheDocument()
@@ -555,7 +556,7 @@ it('creates an empty OpenCode conversation in the chosen folder through the popu
       <AgentsPopup />
     </PopupContext.Provider>
   )
-  fireEvent.click(await screen.findByRole('button', { name: /^OpenCode/ }))
+  fireEvent.click(await screen.findByRole('tab', { name: /^OpenCode/ }))
   fireEvent.click(screen.getByRole('button', { name: 'Conectar OpenCode' }))
   await screen.findByText('Exemplo de sessão')
   fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
@@ -576,7 +577,7 @@ it('admits an optional initial prompt without reporting the task as completed', 
       <AgentsPopup />
     </PopupContext.Provider>
   )
-  fireEvent.click(await screen.findByRole('button', { name: /^OpenCode/ }))
+  fireEvent.click(await screen.findByRole('tab', { name: /^OpenCode/ }))
   fireEvent.click(screen.getByRole('button', { name: 'Conectar OpenCode' }))
   await screen.findByText('Exemplo de sessão')
   fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))

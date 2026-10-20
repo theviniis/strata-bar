@@ -39,9 +39,21 @@ export type WidgetConfig = z.infer<typeof widget>
 export type BarConfig = z.infer<typeof bar>
 export type Config = z.infer<typeof configSchema>
 
+const agentVisibility = z.object({
+  chatgpt: z.boolean().default(true),
+  opencode: z.boolean().default(true),
+  antigravity: z.boolean().default(true),
+  codex: z.boolean().default(true)
+})
+
 export const configSchema = z
   .object({
     version: z.literal(1),
+    agents: z
+      .object({
+        visible: agentVisibility.default(() => agentVisibility.parse({}))
+      })
+      .default(() => ({ visible: agentVisibility.parse({}) })),
     bar,
     widgets: z.object({
       left: z.array(widget),

@@ -164,7 +164,7 @@ export function Workspaces({
           aria-hidden="true"
           className={cn(
             'pointer-events-none absolute top-1/2 z-10',
-            'h-3 -translate-y-1/2 rounded-full bg-primary'
+            'h-3 -translate-y-1/2 rounded-full bg-secondary'
           )}
           style={{
             width: INDICATOR_WIDTH,

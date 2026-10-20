@@ -71,12 +71,41 @@ limitações das integrações.
 
 ## Implementation Decisions
 
-- Alvos confirmados: ChatGPT Desktop, OpenCode e Antigravity. Codex não faz parte
-  do escopo acordado.
+- Flags agents.visible.chatgpt/opencode/antigravity/codex escolhem as abas e
+  alertas visuais exibidos. Todos começam visíveis para preservar configurações
+  anteriores. O popup permite selecionar agentes e persistir na configuração
+  existente. Ocultar não desativa conexões, hooks ou notificações nativas.
+  Seleção vazia mantém o acesso às opções; ocultar a aba ativa seleciona outra
+  disponível. As superfícies nativas carregam e acompanham as configurações.
+
+- Correção posterior do usuário: o objetivo é usar ChatGPT Desktop através do
+  Strata, sem fluxo dependente da CLI do Codex. O conector Codex registrado abaixo
+  não atende nem substitui esse objetivo; sua implementação é trabalho separado.
+  É necessário comprovar acesso às conversas reais do aplicativo antes de
+  declarar a integração ChatGPT disponível.
+
+- Alvos confirmados: ChatGPT Desktop, OpenCode e Antigravity. Em 19/10/2026,
+  o usuário ampliou o escopo para monitorar Codex local, como esta conversa,
+  em seção própria no mesmo popup com abas. Criar/responder no Codex depende de
+  validação posterior da capacidade; monitorar não autoriza decisões automáticas.
 - Reutilizar o framework de WidgetPopup, seu host compartilhado, foco, geometria
   e ciclo de vida; a feature fornece conteúdo, dados e ações.
-- Usar um único popup com accordion por ferramenta. Os itens começam recolhidos,
-  mostram a detecção no cabeçalho e permitem expandir uma ferramenta por vez.
+- Usar um único popup com o componente Tabs por ferramenta. ChatGPT Desktop é a
+  aba inicial; uma seção fica visível por vez e mostra a detecção do aplicativo.
+- Codex local usa hooks oficiais, somente metadados, ativação explícita e revisão
+  de confiança no próprio Codex. Não editar trust hashes ou políticas. Hooks
+  desconhecidos são preservados; desativar remove apenas definições idênticas
+  desta instalação. O comando é estável entre reinícios e lê um endpoint local
+  efêmero. Nenhuma decisão de ferramenta é enviada; stdout neutro é {}.
+- Sem eventos recentes, processamento/atenção Codex tornam-se desconhecidos.
+  Stop/Interrupt indicam inatividade sem comprovar sucesso. Não emitir alerta de
+  conclusão por esses hooks. Criar/responder e notificações Codex ficam para uma
+  etapa posterior; esta fatia oferece monitoramento após hooks carregados e
+  confiados, sem enumeração de conversas anteriores.
+- Configuração Codex: respeitar CODEX_HOME quando definido; caso contrário,
+  USERPROFILE/.codex/hooks.json. Endpoint efêmero em
+  LOCALAPPDATA/Strata/codex-hook-endpoint.json. STRATA_TEST_CODEX_HELPER é somente
+  para o ensaio nativo ignorado e aponta ao executável Windows compilado.
 - Usar um serviço Rust compartilhado, independente da visibilidade do popup,
   seguindo o padrão dos lembretes para snapshots versionados e eventos.
 - Derivar AgentType, AgentSession, SessionStatus e AgentMessage de contratos Rust
@@ -175,7 +204,7 @@ limitações das integrações.
 - Coletar somente metadados e conteúdo de perguntas pendentes necessários ao popup,
   mantidos em memória; não persistir histórico pelo Strata.
 - No Antigravity App, observar os hooks públicos após ativação explícita no
-  accordion. Não enumerar conversas anteriores por logs ou protocolos privados.
+  painel de abas. Não enumerar conversas anteriores por logs ou protocolos privados.
   Instalar somente a entrada do Strata na configuração global, preservando os
   demais hooks e removendo a entrada própria ao desativar ou encerrar normalmente.
 - Transportar somente identificador, primeiro workspace e sinais de ciclo de
@@ -214,7 +243,7 @@ limitações das integrações.
 
 ## Out of Scope
 
-- Codex, agentes adicionais e integrações com chats apenas no navegador.
+- Agentes adicionais além dos quatro confirmados e chats apenas no navegador.
 - Automação de cliques, injeção de teclado e protocolos privados.
 - Prometer controle de sessões sem fonte de integração comprovada.
 - Aprovações automáticas, execução arbitrária de shell e reenvio automático de ações.
