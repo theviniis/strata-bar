@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { Label } from '@/components/ui/label'
 import {
   Popover,
@@ -475,7 +476,18 @@ export function RemindersPopup() {
                   type="submit"
                   disabled={pending || isSubmitting || snapshot === null}
                 >
-                  {pending ? 'Salvando…' : 'Criar lembrete'}
+                  {pending ? (
+                    'Salvando…'
+                  ) : (
+                    <>
+                      Criar lembrete{' '}
+                      <KbdGroup data-icon="inline-end">
+                        <Kbd variant="primary">Ctrl</Kbd>
+                        <span>+</span>
+                        <Kbd variant="primary">⏎</Kbd>
+                      </KbdGroup>
+                    </>
+                  )}
                 </Button>
               </form>
             </Tabs>
