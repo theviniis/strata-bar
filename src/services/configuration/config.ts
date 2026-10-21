@@ -96,6 +96,12 @@ const agentVisibility = z.object({
 
 export const configSchema = z
   .object({
+    /**
+     * Pointer to the published JSON Schema. Editors use it for completion and
+     * inline range errors while a document is hand-edited. Kept on the document
+     * so a save round-trips it instead of dropping the author's pointer.
+     */
+    $schema: z.string().optional(),
     version: z.literal(1),
     agents: z
       .object({

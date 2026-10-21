@@ -17,6 +17,11 @@ use tauri::{AppHandle, Emitter, Manager};
 
 pub const EVENT: &str = "config";
 const FILE: &str = "config.json";
+/// Published JSON Schema for the hand-edited document. A remote URL keeps the
+/// reference working from any machine without shipping a second copy next to
+/// `config.json`; editors fetch it for completion and inline range errors.
+pub const SCHEMA_URL: &str =
+    "https://raw.githubusercontent.com/theviniis/strata-bar/main/config.schema.json";
 const MIN_INTERVAL_MS: u32 = 1_000;
 const MAX_INTERVAL_MS: u32 = 60_000;
 const MIN_HEIGHT: u32 = 28;
@@ -47,6 +52,7 @@ pub fn defaults() -> Config {
         ("agents", WidgetKind::Agents),
     ];
     Config {
+        schema: Some(SCHEMA_URL.to_string()),
         version: SCHEMA_VERSION,
         agents: AgentsConfig::default(),
         bar: BarConfig {
@@ -771,6 +777,44 @@ mod tests {
         assert!(config.widgets.center[0].enabled);
         assert!(config.agents.visible.codex);
         assert!(config.monitors.is_empty());
+    }
+
+    #[test]
+    fn the_schema_pointer_is_preserved_across_a_parse() {
+        // A hand-edited document carries `$schema` for editor completion. It must
+        // survive parsing and a save, or the first write drops the author's
+        // pointer and their editor silently stops validating.
+        let mut value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&defaults()).unwrap()).unwrap();
+        assert_eq!(value["$schema"], serde_json::json!(SCHEMA_URL));
+        value["$schema"] = serde_json::json!("https://example.test/config.json");
+        let config = parse(&value.to_string()).unwrap();
+        assert_eq!(
+            config.schema.as_deref(),
+            Some("https://example.test/config.json")
+        );
+        // Round-trips back out under the JSON name, not the Rust field name.
+        let saved: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&config).unwrap()).unwrap();
+        assert_eq!(
+            saved["$schema"],
+            serde_json::json!("https://example.test/config.json")
+        );
+        assert!(saved.get("schema").is_none());
+    }
+
+    #[test]
+    fn a_document_without_the_schema_pointer_still_parses() {
+        // Documents written before the pointer existed stay readable.
+        let mut value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&defaults()).unwrap()).unwrap();
+        value.as_object_mut().unwrap().remove("$schema");
+        let config = parse(&value.to_string()).unwrap();
+        assert!(config.schema.is_none());
+        // And a save does not invent one, so an omitted pointer stays omitted.
+        let saved: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&config).unwrap()).unwrap();
+        assert!(saved.get("$schema").is_none());
     }
 
     #[test]

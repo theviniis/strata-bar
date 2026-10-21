@@ -205,6 +205,12 @@ pub struct AgentsConfig {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
+    /// Pointer to the published JSON Schema, so a hand-edited document gets
+    /// editor completion and inline range errors. Optional and optional to
+    /// serialize: documents written before it existed stay valid, and a save
+    /// preserves whatever the author put there.
+    #[serde(rename = "$schema", default, skip_serializing_if = "Option::is_none")]
+    pub schema: Option<String>,
     pub version: u32,
     #[serde(default)]
     pub agents: AgentsConfig,

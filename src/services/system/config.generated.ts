@@ -13,5 +13,12 @@ export type BarOverride = { position?: BarPosition | null, height?: number | nul
 export type WidgetSections = { left: Array<WidgetConfig>, center: Array<WidgetConfig>, right: Array<WidgetConfig>, };
 export type AgentVisibility = { chatgpt: boolean, opencode: boolean, antigravity: boolean, codex: boolean, };
 export type AgentsConfig = { visible: AgentVisibility, };
-export type Config = { version: number, agents: AgentsConfig, bar: BarConfig, widgets: WidgetSections, monitors: { [key in string]?: BarOverride }, };
+export type Config = { 
+/**
+ * Pointer to the published JSON Schema, so a hand-edited document gets
+ * editor completion and inline range errors. Optional and optional to
+ * serialize: documents written before it existed stay valid, and a save
+ * preserves whatever the author put there.
+ */
+$schema?: string | null, version: number, agents: AgentsConfig, bar: BarConfig, widgets: WidgetSections, monitors: { [key in string]?: BarOverride }, };
 export type ConfigSnapshot = { revision: number, config: Config, error: string | null, };
