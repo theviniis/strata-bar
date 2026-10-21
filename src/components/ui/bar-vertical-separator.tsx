@@ -1,3 +1,3 @@
 export function BarVerticalSeparator() {
-  return <span className="h-3.25 w-px shrink-0 bg-muted mx-1" />
+  return <span className="h-3.25 w-px shrink-0 bg-muted" />
 }
