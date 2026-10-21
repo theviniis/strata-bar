@@ -14,6 +14,14 @@ describe('configuration', () => {
   })
   it('normalizes defaults', () =>
     expect(parseConfig(JSON.stringify(defaultConfig)).bar.height).toBe(36))
+  it('accepts the document the native store writes unchanged', () => {
+    // `defaults()` in the Rust store writes this shape (the version literally
+    // included); the runtime validator must accept it without altering it, so
+    // the two definitions fail loudly when they drift.
+    const native = JSON.parse(JSON.stringify(defaultConfig))
+    expect(parseConfig(JSON.stringify(native))).toEqual(defaultConfig)
+    expect(native.version).toBe(1)
+  })
   it('ships the komorebi workspace widget in the default layout', () => {
     const widget = defaultConfig.widgets.left.find((w) => w.type === 'komorebi')
     expect(widget).toBeDefined()

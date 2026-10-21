@@ -1,6 +1,9 @@
 #[path = "src/agents_contract.rs"]
 #[allow(dead_code)]
 mod agents_contract;
+#[path = "src/config_contract.rs"]
+#[allow(dead_code)]
+mod config_contract;
 #[path = "src/cpu_contract.rs"]
 #[allow(dead_code)]
 mod cpu_contract;
@@ -147,6 +150,37 @@ fn main() {
     let target = std::path::Path::new("../src/services/system/memory.generated.ts");
     if std::fs::read_to_string(target).ok().as_deref() != Some(&generated) {
         std::fs::write(target, generated).expect("Generate memory contract");
+    }
+    println!("cargo:rerun-if-changed=src/config_contract.rs");
+    let config_declarations = [
+        config_contract::WidgetKind::decl(),
+        config_contract::AudioTargetKind::decl(),
+        config_contract::AudioTarget::decl(),
+        config_contract::AudioSource::decl(),
+        config_contract::WidgetAudio::decl(),
+        config_contract::WidgetFormat::decl(),
+        config_contract::WidgetConfig::decl(),
+        config_contract::BarPosition::decl(),
+        config_contract::BarTheme::decl(),
+        config_contract::BarConfig::decl(),
+        config_contract::BarOverride::decl(),
+        config_contract::WidgetSections::decl(),
+        config_contract::AgentVisibility::decl(),
+        config_contract::AgentsConfig::decl(),
+        config_contract::Config::decl(),
+        config_contract::ConfigSnapshot::decl(),
+    ];
+    let config_generated = format!(
+        "// Generated from Rust config_contract.rs by cargo build. Do not edit.\n{}\n",
+        config_declarations
+            .iter()
+            .map(|decl| format!("export {decl}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+    let config_target = std::path::Path::new("../src/services/system/config.generated.ts");
+    if std::fs::read_to_string(config_target).ok().as_deref() != Some(&config_generated) {
+        std::fs::write(config_target, config_generated).expect("Generate config contract");
     }
     println!("cargo:rerun-if-changed=src/gpu_contract.rs");
     let gpu_declarations = [

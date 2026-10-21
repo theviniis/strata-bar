@@ -23,6 +23,8 @@ mod tray;
 
 mod afterburner;
 mod audio_policy;
+mod config;
+mod config_contract;
 mod cpu;
 mod cpu_contract;
 mod cpu_windows;
@@ -46,7 +48,7 @@ use serde_json::{json, Value};
 use tauri::Manager;
 #[tauri::command]
 fn capabilities(komorebi: tauri::State<komorebi::Komorebi>) -> Value {
-    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"appBar":true,"gpu":true,"disk":true,"network":false,"komorebi":komorebi.available(),"voicemeeter":crate::voicemeeter::installed()})
+    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"appBar":true,"gpu":true,"disk":true,"network":false,"komorebi":komorebi.available(),"voicemeeter":crate::voicemeeter::installed(),"config":true})
 }
 #[tauri::command]
 fn subscribe(
@@ -167,12 +169,26 @@ fn overlay_resize(
     desktop::overlay_resize(&app, &window, &session, &size)
 }
 #[tauri::command]
+fn config_load(store: tauri::State<config::ConfigStore>) -> Result<config_contract::ConfigSnapshot, String> {
+    store.snapshot()
+}
+#[tauri::command]
+fn config_save(
+    app: tauri::AppHandle,
+    store: tauri::State<config::ConfigStore>,
+    config: config_contract::Config,
+) -> Result<config_contract::ConfigSnapshot, String> {
+    let snapshot = store.save(config)?;
+    config::publish(&app, &snapshot);
+    Ok(snapshot)
+}
+#[tauri::command]
 fn diagnostics(
     app: tauri::AppHandle,
     metrics: tauri::State<metrics::Metrics>,
     komorebi: tauri::State<komorebi::Komorebi>,
 ) -> Value {
-    json!({"metrics":metrics.diagnostics(),"komorebi":komorebi.diagnostics(),"overlay":desktop::overlay_snapshot(),"profile":desktop::profile(),"bars":app.webview_windows().keys().collect::<Vec<_>>()})
+    json!({"metrics":metrics.diagnostics(),"komorebi":komorebi.diagnostics(),"overlay":desktop::overlay_snapshot(),"profile":desktop::profile(),"config":config::diagnostics(&app),"bars":app.webview_windows().keys().collect::<Vec<_>>()})
 }
 #[tauri::command]
 async fn media_action(
@@ -323,7 +339,8 @@ fn main() {
         return;
     }
     if std::env::args().any(|v| v == "--probe") {
-        let result = json!({"metrics":metrics::probe(),"komorebi":komorebi::probe(),"overlay":desktop::overlay_snapshot(),"monitors":desktop::monitor_snapshot(),"bars":desktop::bar_snapshot()});
+        let probe_context = tauri::generate_context!();
+        let result = json!({"metrics":metrics::probe(),"komorebi":komorebi::probe(),"overlay":desktop::overlay_snapshot(),"monitors":desktop::monitor_snapshot(),"bars":desktop::bar_snapshot(),"config":config::probe(&probe_context)});
         let file = std::env::temp_dir().join("strata-native-probe.json");
         std::fs::write(&file, serde_json::to_string_pretty(&result).unwrap()).unwrap();
         println!("{}", serde_json::to_string(&result).unwrap());
@@ -380,6 +397,8 @@ fn main() {
             set_audio_input,
             set_audio_output,
             komorebi_action,
+            config_load,
+            config_save,
             overlay_show,
             overlay_hide,
             overlay_resize,
@@ -389,6 +408,9 @@ fn main() {
         ])
         .setup(|app| {
             tray::setup(app.handle())?;
+            let store = config::open_store(app.handle())?;
+            config::watch(app.handle().clone(), &store)?;
+            app.manage(store);
             app.manage(google_calendar::GoogleCalendar::start());
             app.manage(reminders::Reminders::open(
                 app.path().app_data_dir()?.join("reminders.json"),

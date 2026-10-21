@@ -8,6 +8,8 @@ import type { GpuData } from './gpu.generated'
 import { parseGpuEvent } from './gpu'
 import type { DiskData } from './disk.generated'
 import { parseDiskEvent } from './disk'
+import type { Config, ConfigSnapshot } from './config.generated'
+import { parseSnapshot } from '@/services/configuration/config'
 
 export type BridgeMode = 'demo' | 'native'
 
@@ -142,6 +144,9 @@ export interface Subscribable<D extends Record<Channel, unknown>> {
 
 export interface AdapterBase {
   mediaAction?(request: MediaRequest): Promise<unknown>
+  /** Native-only: the configuration file is the desktop runtime's, not the studio's. */
+  configLoad?(): Promise<ConfigSnapshot>
+  configSave?(config: Config): Promise<ConfigSnapshot>
   spotifyStatus?(): Promise<SpotifyStatus>
   spotifyConnect?(clientId: string): Promise<void>
   spotifyDisconnect?(): Promise<void>
@@ -420,6 +425,16 @@ export function createNativeBridge(): NativeBridge {
     async mediaAction(request) {
       const { invoke } = await import('@tauri-apps/api/core')
       return invoke('media_action', { request })
+    },
+    async configLoad() {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return parseSnapshot(await invoke<ConfigSnapshot>('config_load'))
+    },
+    async configSave(config) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return parseSnapshot(
+        await invoke<ConfigSnapshot>('config_save', { config })
+      )
     },
     async spotifyStatus() {
       const { invoke } = await import('@tauri-apps/api/core')

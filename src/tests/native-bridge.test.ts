@@ -44,7 +44,8 @@ vi.mock('@tauri-apps/api/event', () => ({
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: (...args: unknown[]) => state.invoke(...args)
 }))
-import { createNativeBridge } from '../services/system/bridge'
+import { createNativeBridge, createMockBridge } from '../services/system/bridge'
+import { defaultConfig } from '../services/configuration/config'
 import {
   createDemoOverlay,
   createNativeOverlay
@@ -237,4 +238,46 @@ it('forwards Voicemeeter channel routing to the native command', async () => {
     channel: 'microphone',
     target: null
   })
+})
+
+it('loads the stored configuration through the native command', async () => {
+  state.invoke.mockReset().mockResolvedValue({
+    revision: 3,
+    config: defaultConfig,
+    error: null
+  })
+  const bridge = createNativeBridge()
+  const snapshot = await bridge.configLoad!()
+  expect(state.invoke).toHaveBeenCalledWith('config_load')
+  expect(snapshot.revision).toBe(3)
+  expect(snapshot.config).toEqual(defaultConfig)
+})
+
+it('saves the drafted configuration through the native command', async () => {
+  state.invoke.mockReset().mockResolvedValue({
+    revision: 4,
+    config: defaultConfig,
+    error: null
+  })
+  const bridge = createNativeBridge()
+  await bridge.configSave!(defaultConfig)
+  expect(state.invoke).toHaveBeenCalledWith('config_save', {
+    config: defaultConfig
+  })
+})
+
+it('rejects a native configuration payload that fails runtime validation', async () => {
+  const broken = structuredClone(defaultConfig) as unknown as {
+    bar: { height: number }
+  }
+  broken.bar.height = 12
+  state.invoke.mockReset().mockResolvedValue({
+    revision: 1,
+    config: broken,
+    error: null
+  })
+  const bridge = createNativeBridge()
+  await expect(bridge.configLoad!()).rejects.toThrow()
+  // The demo adapter has no configuration commands: the studio cannot save.
+  expect(createMockBridge().configLoad).toBeUndefined()
 })

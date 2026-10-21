@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { ConfigSnapshot } from '@/services/system/config.generated'
 
 export const types = [
   'clock',
@@ -146,6 +147,12 @@ export const defaultConfig = configSchema.parse({
 
 export function parseConfig(text: string): Config {
   return configSchema.parse(JSON.parse(text))
+}
+
+/** Validates a native snapshot at runtime; the generated type is unchecked wire data. */
+export function parseSnapshot(snapshot: ConfigSnapshot): ConfigSnapshot {
+  // Keep the parsed result: Zod fills any field the native document omitted.
+  return { ...snapshot, config: configSchema.parse(snapshot.config) }
 }
 
 export const storageKey = 'strata.config.v1'
