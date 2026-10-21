@@ -71,6 +71,62 @@ pub fn defaults() -> Config {
     }
 }
 
+/// Normalizes a `monitors` key for comparison: Windows device names arrive as
+/// `\\.\\DISPLAY1`, and a hand-written document may omit the prefix or vary case.
+pub fn normalize_monitor(key: &str) -> String {
+    let trimmed = key.trim();
+    trimmed
+        .strip_prefix(r"\\.\")
+        .unwrap_or(trimmed)
+        .trim()
+        .to_ascii_uppercase()
+}
+
+/// The document one window renders: the shared configuration with that
+/// monitor's bar overrides merged in. Widget composition stays global, so every
+/// bar agrees on what exists; only the bar surface differs per monitor.
+pub fn project(config: &Config, monitor: Option<&str>) -> Config {
+    let key = monitor.map(normalize_monitor).filter(|key| !key.is_empty());
+    let Some(key) = key else {
+        return config.clone();
+    };
+    let Some(over) = config
+        .monitors
+        .iter()
+        .find(|(name, _)| normalize_monitor(name) == key)
+        .map(|(_, over)| over)
+    else {
+        return config.clone();
+    };
+    let mut projected = config.clone();
+    if let Some(value) = &over.position {
+        projected.bar.position = value.clone();
+    }
+    if let Some(value) = over.height {
+        projected.bar.height = value;
+    }
+    if let Some(value) = over.spacing {
+        projected.bar.spacing = value;
+    }
+    if let Some(value) = &over.theme {
+        projected.bar.theme = value.clone();
+    }
+    if let Some(value) = over.always_on_top {
+        projected.bar.always_on_top = value;
+    }
+    projected
+}
+
+/// One monitor's projection of a snapshot, carrying the revision and any
+/// rejection reason unchanged so every window reports the same document state.
+pub fn project_snapshot(snapshot: &ConfigSnapshot, monitor: Option<&str>) -> ConfigSnapshot {
+    ConfigSnapshot {
+        revision: snapshot.revision,
+        config: project(&snapshot.config, monitor),
+        error: snapshot.error.clone(),
+    }
+}
+
 fn validate_bar(bar: &BarConfig) -> Result<(), String> {
     if !(MIN_HEIGHT..=MAX_HEIGHT).contains(&bar.height) {
         return Err(format!(
@@ -368,16 +424,41 @@ pub fn apply_external_change(app: &AppHandle) {
     }
 }
 
+/// Publishes one projection per window: each bar renders its own monitor's
+/// overrides, while surfaces that are not mounted on a monitor (the overlay)
+/// render the shared document. Sending one payload to every window would make a
+/// secondary-monitor bar obey the primary monitor's overrides.
 pub fn publish(app: &AppHandle, snapshot: &ConfigSnapshot) {
-    let payload = serde_json::to_value(snapshot).expect("Config snapshot serializes");
     for (label, window) in app.webview_windows() {
         if !accepts_config(&label) {
             continue;
         }
-        if let Err(e) = window.emit(EVENT, payload.clone()) {
+        let projected = if label.starts_with("bar-") {
+            project_snapshot(snapshot, crate::desktop::monitor_name(&window).as_deref())
+        } else {
+            snapshot.clone()
+        };
+        let payload = serde_json::to_value(&projected).expect("Config snapshot serializes");
+        if let Err(e) = window.emit(EVENT, payload) {
             eprintln!("Emit config to {label}: {e}");
         }
     }
+}
+
+/// The snapshot a caller renders: a bar gets its monitor's projection, every
+/// other surface gets the shared document.
+pub fn snapshot_for(
+    store: &ConfigStore,
+    window: &tauri::WebviewWindow,
+) -> Result<ConfigSnapshot, String> {
+    let snapshot = store.snapshot()?;
+    if !window.label().starts_with("bar-") {
+        return Ok(snapshot);
+    }
+    Ok(project_snapshot(
+        &snapshot,
+        crate::desktop::monitor_name(window).as_deref(),
+    ))
 }
 
 /// Only surfaces that render configuration consume the event. The settings
@@ -699,5 +780,67 @@ mod tests {
         value["bar"]["height"] = serde_json::json!(36);
         value["widgets"]["right"] = serde_json::json!([{ "id": "a", "type": "nonsense" }]);
         assert!(parse(&value.to_string()).is_err());
+    }
+
+    #[test]
+    fn monitor_keys_normalize_device_names() {
+        assert_eq!(normalize_monitor(r"\\.\DISPLAY2"), "DISPLAY2");
+        assert_eq!(normalize_monitor("display2"), "DISPLAY2");
+        assert_eq!(normalize_monitor("  DISPLAY2  "), "DISPLAY2");
+    }
+
+    #[test]
+    fn projection_merges_only_that_monitors_overrides() {
+        let mut config = defaults();
+        config.monitors.insert(
+            "DISPLAY2".into(),
+            BarOverride { theme: Some(BarTheme::Light), spacing: Some(4.0), ..Default::default() },
+        );
+        config.monitors.insert(
+            "DISPLAY1".into(),
+            BarOverride { theme: Some(BarTheme::Dark), spacing: Some(16.0), ..Default::default() },
+        );
+        let secondary = project(&config, Some(r"\\.\DISPLAY2"));
+        assert_eq!(secondary.bar.theme, BarTheme::Light);
+        assert_eq!(secondary.bar.spacing, 4.0);
+        // Untouched fields keep the shared value.
+        assert_eq!(secondary.bar.height, config.bar.height);
+        assert_eq!(secondary.bar.position, config.bar.position);
+
+        let primary = project(&config, Some("display1"));
+        assert_eq!(primary.bar.theme, BarTheme::Dark);
+        assert_eq!(primary.bar.spacing, 16.0);
+        assert_eq!(secondary.bar.spacing, 4.0, "monitors never share a projection");
+    }
+
+    #[test]
+    fn a_monitor_without_overrides_renders_the_shared_document() {
+        let mut config = defaults();
+        config.monitors.insert(
+            "DISPLAY1".into(),
+            BarOverride { spacing: Some(20.0), ..Default::default() },
+        );
+        assert_eq!(project(&config, Some("DISPLAY3")), config);
+        assert_eq!(project(&config, None), config);
+    }
+
+    #[test]
+    fn projection_keeps_revision_widgets_and_error_source() {
+        let mut config = defaults();
+        config.monitors.insert(
+            "DISPLAY2".into(),
+            BarOverride { height: Some(48), ..Default::default() },
+        );
+        let snapshot = ConfigSnapshot {
+            revision: 7,
+            config,
+            error: Some("Widget time interval must be between 1000 and 60000 ms".into()),
+        };
+        let projected = project_snapshot(&snapshot, Some("DISPLAY2"));
+        assert_eq!(projected.revision, 7);
+        assert_eq!(projected.error, snapshot.error);
+        assert_eq!(projected.config.bar.height, 48);
+        // Widget composition is global: a monitor override never edits widgets.
+        assert_eq!(projected.config.widgets, snapshot.config.widgets);
     }
 }
