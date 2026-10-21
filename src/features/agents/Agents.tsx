@@ -10,8 +10,10 @@ import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
 import { WidgetPopup } from '@/popups/WidgetPopup'
 import { getAgentsStore } from '@/stores/agents'
 import { useConfig } from '@/stores/config'
+import { useWidgetView } from '@/components/status-bar/widget-view'
 
 export function Agents() {
+  const view = useWidgetView()
   const [useStore] = useState(getAgentsStore)
   const visible = useConfig((state) => state.config.agents.visible)
   const count = useStore(
@@ -26,7 +28,7 @@ export function Agents() {
     : count > 0
       ? `Agentes de IA · ${count} alertas`
       : 'Agentes de IA'
-  const tip = useOverlayTooltip(text)
+  const tip = useOverlayTooltip(view.tooltip ? text : '')
   return (
     <WidgetPopup.Root popup="agents">
       <WidgetPopup.Trigger asChild>
@@ -37,7 +39,7 @@ export function Agents() {
               ? `Abrir agentes de IA, ${count} alertas`
               : 'Abrir agentes de IA'
           }
-          aria-describedby={tip.describedBy}
+          aria-describedby={view.tooltip ? tip.describedBy : undefined}
           {...tip.trigger}
         >
           <WidgetItemIcon
@@ -46,7 +48,9 @@ export function Agents() {
             className={count > 0 || paused ? 'text-destructive' : undefined}
           />
           <AgentAlertCount count={count} />
-          <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
+          {view.tooltip && (
+            <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
+          )}
         </WidgetItem>
       </WidgetPopup.Trigger>
     </WidgetPopup.Root>

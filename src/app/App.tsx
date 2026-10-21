@@ -5,7 +5,7 @@ import { WidgetHoverGroup } from '../components/widget-hover'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ArrowUpRight, Check, Layers3, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Widget } from '../components/status-bar/Widget'
+import { DemoWidget } from '../components/status-bar/DemoWidget'
 import type { BarConfig, WidgetConfig } from '../services/configuration/config'
 import { bridge } from '../services/system/bridge'
 import { loadConfig, useConfig, watchConfig } from '../stores/config'
@@ -119,7 +119,7 @@ export default function App() {
                                 : 'shrink-0 rounded p-1'
                             }
                           >
-                            <Widget widget={widget} />
+                            <DemoWidget widget={widget} />
                           </div>
                         ))}
                     </div>

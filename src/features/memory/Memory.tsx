@@ -9,10 +9,13 @@ import { MemoryStick } from 'lucide-react'
 import { useOverlayTooltip } from '../../hooks/useOverlayTooltip'
 import { WidgetPopup } from '@/popups/WidgetPopup'
 import { useResourceChannel } from '@/hooks/useResourceChannel'
+import { useWidgetView } from '@/components/status-bar/widget-view'
+import { showLabel } from '@/components/status-bar/presentation'
 import { isMemoryMetricStale } from './presentation'
 
 export function Memory() {
-  const { event, lastData, now } = useResourceChannel('memory')
+  const view = useWidgetView()
+  const { event, lastData, now } = useResourceChannel('memory', view.intervalMs)
   const data = event.status === 'ready' ? event.data : lastData
   const percent = data?.percent
   const stale = isMemoryMetricStale(percent, now, event.status === 'ready')
@@ -22,17 +25,17 @@ export function Memory() {
       : stale
         ? 'Leitura de RAM desatualizada ou indisponível'
         : 'Detalhes da memória'
-  const tip = useOverlayTooltip(text)
+  const tip = useOverlayTooltip(view.tooltip ? text : '')
 
   return (
     <WidgetPopup.Root popup="memory">
       <WidgetPopup.Trigger asChild>
         <WidgetItem aria-label="Detalhes da memória" {...tip.trigger}>
           <WidgetItemIcon icon={MemoryStick} />
-          <WidgetItemLabel>RAM</WidgetItemLabel>
+          {showLabel(view.format) && <WidgetItemLabel>RAM</WidgetItemLabel>}
           <WidgetItemOutput
             aria-label="Uso da RAM"
-            aria-describedby={tip.describedBy}
+            aria-describedby={view.tooltip ? tip.describedBy : undefined}
           >
             {percent?.value != null
               ? percent.value.toFixed(1)
@@ -43,7 +46,9 @@ export function Memory() {
               <span aria-label="Leitura desatualizada">*</span>
             )}
           </WidgetItemOutput>
-          <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
+          {view.tooltip && (
+            <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
+          )}
         </WidgetItem>
       </WidgetPopup.Trigger>
     </WidgetPopup.Root>

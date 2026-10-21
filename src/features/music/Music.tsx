@@ -21,12 +21,15 @@ import type {
 } from '@/services/system/media.generated'
 import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useWidgetView } from '@/components/status-bar/widget-view'
 
 export function Music() {
-  const event = useSystemChannel('media')
+  const view = useWidgetView()
+  const event = useSystemChannel('media', 0, view.intervalMs)
   return (
     <MusicContent
       event={event}
+      tooltip={view.tooltip}
       onAction={async (request) => {
         if (!bridge.mediaAction)
           throw new Error('Controles de mídia indisponíveis')
@@ -64,11 +67,14 @@ export function DemoMusic() {
 export function MusicContent({
   event,
   onAction,
-  demo = false
+  demo = false,
+  tooltip = true
 }: {
   event: SystemEvent<MediaData>
   onAction(request: MediaRequest): Promise<unknown>
   demo?: boolean
+  /** The widget's configured tooltip toggle. */
+  tooltip?: boolean
 }) {
   const current = event.status === 'ready' ? event.data : null
   const [pending, setPending] = useState(false)
@@ -92,8 +98,8 @@ export function MusicContent({
         : 'Nenhuma música tocando'
   const artwork =
     current?.artwork.status === 'ready' ? current.artwork.value : null
-  const tooltip = `${demo ? 'Demonstração · ' : ''}${text}${error ? ` · ${error}` : ''}`
-  const tip = useOverlayTooltip(tooltip)
+  const tooltipText = `${demo ? 'Demonstração · ' : ''}${text}${error ? ` · ${error}` : ''}`
+  const tip = useOverlayTooltip(tooltip ? tooltipText : '')
   async function act(action: MediaAction) {
     if (!current || busy.current) return
     busy.current = true
@@ -158,14 +164,16 @@ export function MusicContent({
                 >
                   <ScrollingText
                     text={text}
-                    aria-describedby={tip.describedBy}
+                    aria-describedby={tooltip ? tip.describedBy : undefined}
                     className="relative z-10 mx-1 flex-1 text-[11px]"
                   />
                 </button>
               </WidgetPopup.Trigger>
-              <WidgetItemTooltip id={tip.describedBy}>
-                {tooltip}
-              </WidgetItemTooltip>
+              {tooltip && (
+                <WidgetItemTooltip id={tip.describedBy}>
+                  {tooltipText}
+                </WidgetItemTooltip>
+              )}
             </div>
           </div>
         </WidgetItem>
