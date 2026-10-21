@@ -5,6 +5,7 @@ import { BarVerticalSeparator } from '../ui/bar-vertical-separator'
 import { QueryProvider } from '../QueryProvider'
 import { Widget } from './Widget'
 import { WidgetHoverGroup } from '../widget-hover'
+import { useAudioRouting } from '@/hooks/useAudioRouting'
 
 /** Order-preserving section filter: presence and order both come from config. */
 function enabled(widgets: WidgetConfig[]) {
@@ -41,6 +42,12 @@ export default function NativeBar() {
   const widgets = useConfig((state) => state.config.widgets)
   const bar = useConfig((state) => state.config.bar)
   const error = useConfig((state) => state.error)
+
+  // Push audio routing for all volume/microphone widgets in this bar's config
+  // on mount and on config changes. The native worker applies last-write-wins
+  // per channel, so the order in the config array determines priority.
+  useAudioRouting([widgets.left, widgets.center, widgets.right])
+
   const sections = useMemo(
     () =>
       [
