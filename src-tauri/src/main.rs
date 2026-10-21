@@ -169,18 +169,25 @@ fn overlay_resize(
     desktop::overlay_resize(&app, &window, &session, &size)
 }
 #[tauri::command]
-fn config_load(store: tauri::State<config::ConfigStore>) -> Result<config_contract::ConfigSnapshot, String> {
-    store.snapshot()
+fn config_load(
+    window: tauri::WebviewWindow,
+    store: tauri::State<config::ConfigStore>,
+) -> Result<config_contract::ConfigSnapshot, String> {
+    config::snapshot_for(&store, &window)
 }
 #[tauri::command]
 fn config_save(
+    window: tauri::WebviewWindow,
     app: tauri::AppHandle,
     store: tauri::State<config::ConfigStore>,
     config: config_contract::Config,
 ) -> Result<config_contract::ConfigSnapshot, String> {
     let snapshot = store.save(config)?;
     config::publish(&app, &snapshot);
-    Ok(snapshot)
+    Ok(config::project_snapshot(
+        &snapshot,
+        crate::desktop::monitor_name(&window).as_deref(),
+    ))
 }
 #[tauri::command]
 fn diagnostics(

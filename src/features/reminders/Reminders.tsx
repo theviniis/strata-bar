@@ -10,11 +10,14 @@ import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
 import { WidgetPopup } from '@/popups/WidgetPopup'
 import { nextReminder } from '@/services/system/reminders'
 import { useReminders } from '@/stores/reminders'
+import { useWidgetView } from '@/components/status-bar/widget-view'
+import { showLabel } from '@/components/status-bar/presentation'
 
 import { useReminderAnchor } from './useReminderAnchor'
 import { formatCountdown } from './presentation'
 
 export function Reminders() {
+  const view = useWidgetView()
   const anchor = useReminderAnchor()
   const snapshot = useReminders((s) => s.snapshot)
   const error = useReminders((s) => s.error)
@@ -37,7 +40,7 @@ export function Reminders() {
       : next
         ? `Próximo lembrete: ${next.message}`
         : 'Lembretes'
-  const tip = useOverlayTooltip(text)
+  const tip = useOverlayTooltip(view.tooltip ? text : '')
   return (
     <WidgetPopup.Root popup="reminders">
       <WidgetPopup.Anchor asChild>
@@ -46,7 +49,7 @@ export function Reminders() {
             <WidgetItem
               type="button"
               aria-label="Abrir lembretes"
-              aria-describedby={tip.describedBy}
+              aria-describedby={view.tooltip ? tip.describedBy : undefined}
               {...tip.trigger}
             >
               <WidgetItemIcon
@@ -54,12 +57,16 @@ export function Reminders() {
                 aria-hidden="true"
                 className={error ? 'text-destructive' : undefined}
               />
-              {next && (
+              {next && showLabel(view.format) && (
                 <WidgetItemLabel aria-label="Tempo restante">
                   {formatCountdown(next.notifyAt - now)}
                 </WidgetItemLabel>
               )}
-              <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
+              {view.tooltip && (
+                <WidgetItemTooltip id={tip.describedBy}>
+                  {text}
+                </WidgetItemTooltip>
+              )}
             </WidgetItem>
           </WidgetPopup.Trigger>
         </div>

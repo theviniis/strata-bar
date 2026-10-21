@@ -9,7 +9,8 @@ import {
 
 /** Resource channels share retention and freshness behavior across bar and popup. */
 export function useResourceChannel<C extends 'cpu' | 'gpu' | 'memory' | 'disk'>(
-  channel: C
+  channel: C,
+  intervalMs = 2000
 ) {
   const [reading, setReading] = useState<{
     channel: C
@@ -21,7 +22,7 @@ export function useResourceChannel<C extends 'cpu' | 'gpu' | 'memory' | 'disk'>(
     return connect<ChannelData, C>(
       bridge as NativeBridge,
       channel,
-      { intervalMs: 2000 },
+      { intervalMs },
       (event) =>
         setReading((previous) => ({
           channel,
@@ -41,7 +42,7 @@ export function useResourceChannel<C extends 'cpu' | 'gpu' | 'memory' | 'disk'>(
           event: { status: 'error', error: String(error) }
         }))
     )
-  }, [channel])
+  }, [channel, intervalMs])
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)

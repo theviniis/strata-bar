@@ -537,6 +537,32 @@ fn monitor_rect(hwnd: HWND) -> Option<RECT> {
     }
 }
 
+/// The monitor's Windows device name (`\\.\\DISPLAY1`) for the window's
+/// current monitor. Configuration overrides are keyed by this name because it
+/// survives moves, scale changes and reboots, unlike a positional fingerprint.
+pub fn monitor_name(window: &WebviewWindow) -> Option<String> {
+    monitor_device(HWND(window.hwnd().ok()?.0))
+}
+
+fn monitor_device(hwnd: HWND) -> Option<String> {
+    unsafe {
+        let handle = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        let mut info = MONITORINFOEXW {
+            monitorInfo: MONITORINFO {
+                cbSize: std::mem::size_of::<MONITORINFOEXW>() as u32,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        if !GetMonitorInfoW(handle, &mut info.monitorInfo).as_bool() {
+            return None;
+        }
+        let chars = &info.szDevice[..info.szDevice.iter().position(|c| *c == 0).unwrap_or(info.szDevice.len())];
+        let name = String::from_utf16_lossy(chars);
+        (!name.is_empty()).then_some(name)
+    }
+}
+
 pub fn ensure_overlay(app: &AppHandle) -> Result<WebviewWindow, Box<dyn std::error::Error>> {
     if let Some(window) = app.get_webview_window(OVERLAY) {
         return Ok(window);

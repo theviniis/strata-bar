@@ -7,6 +7,7 @@ import { Volume2, VolumeX } from 'lucide-react'
 import { useAudioSource } from '../../hooks/useAudioSource'
 import { useOverlayTooltip } from '../../hooks/useOverlayTooltip'
 import { useSystemChannel } from '../../hooks/useSystemChannel'
+import { useWidgetView } from '@/components/status-bar/widget-view'
 import {
   voicemeeterLabel,
   widgetAudio
@@ -15,9 +16,10 @@ import { useConfig } from '../../stores/config'
 import { WidgetPopup } from '../../popups/WidgetPopup'
 
 export function Volume() {
+  const view = useWidgetView()
   const audio = useConfig((state) => widgetAudio(state.config, 'volume'))
   useAudioSource('volume', audio)
-  const value = useSystemChannel('volume')
+  const value = useSystemChannel('volume', 0, view.intervalMs)
   const muted = value.status === 'ready' && value.data.muted
   const source =
     audio?.source === 'voicemeeter' && audio.enabled !== false
@@ -29,7 +31,7 @@ export function Volume() {
       : value.status === 'unavailable'
         ? `${source} indisponível`
         : source
-  const tip = useOverlayTooltip(text)
+  const tip = useOverlayTooltip(view.tooltip ? text : '')
   const Icon = muted ? VolumeX : Volume2
 
   return (
@@ -39,7 +41,11 @@ export function Volume() {
           <WidgetPopup.Trigger asChild>
             <WidgetItem aria-label="Saída de áudio" {...tip.trigger}>
               <WidgetItemIcon icon={Icon} />
-              <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
+              {view.tooltip && (
+                <WidgetItemTooltip id={tip.describedBy}>
+                  {text}
+                </WidgetItemTooltip>
+              )}
             </WidgetItem>
           </WidgetPopup.Trigger>
         </div>

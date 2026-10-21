@@ -25,6 +25,49 @@ pub fn timestamp() -> u128 {
         .unwrap_or_default()
         .as_millis()
 }
+
+/// Channels the shared worker polls. Everything else is event-driven: Core
+/// Audio callbacks push volume/microphone, komorebi streams its pipe.
+const POLLED: [&str; 4] = ["cpu", "gpu", "memory", "disk"];
+/// Documented bounds, identical to the Zod schema and `config.rs` validation.
+const MIN_INTERVAL_MS: u64 = 1_000;
+const MAX_INTERVAL_MS: u64 = 60_000;
+
+/// Per-channel poll deadlines. A channel first collected on demand is due
+/// immediately, then every `interval_ms`; a one-second floor keeps a fast
+/// subscriber from starving the audio and message work in the same loop.
+#[derive(Default)]
+struct Timer {
+    due: std::collections::HashMap<&'static str, Instant>,
+}
+
+impl Timer {
+    fn due(&mut self, channel: &'static str, interval_ms: u64, now: Instant) -> bool {
+        match self.due.get(channel) {
+            Some(deadline) if *deadline > now => false,
+            _ => {
+                // Never schedule behind the clock: a stall must not become a burst.
+                self.due.insert(channel, now + Duration::from_millis(interval_ms));
+                true
+            }
+        }
+    }
+
+    fn clear(&mut self, channel: &'static str) {
+        self.due.remove(channel);
+    }
+
+    /// How long the worker may sleep: the nearest deadline, capped so message
+    /// handling, Voicemeeter maintenance and the runtime profile still run.
+    fn next_wait(&self, now: Instant) -> Duration {
+        self.due
+            .values()
+            .min()
+            .map(|deadline| deadline.saturating_duration_since(now))
+            .unwrap_or(Duration::from_secs(2))
+            .min(Duration::from_secs(2))
+    }
+}
 pub fn envelope(status: &str, data: Value) -> Value {
     json!({"status":status,"data":data,"timestamp":timestamp()})
 }
@@ -51,6 +94,7 @@ pub unsafe fn audio_read(ep: &IAudioEndpointVolume) -> windows::core::Result<Val
 struct Sub {
     channel: String,
     window: String,
+    interval_ms: u64,
 }
 #[derive(Default)]
 struct Data {
@@ -101,8 +145,10 @@ impl Metrics {
         if !["cpu", "gpu", "memory", "disk", "volume", "audioOutputs", "microphone", "audioInputs", "voicemeeter"].contains(&channel.as_str()) {
             return Err(format!("Unsupported channel: {channel}"));
         }
-        if interval != 2000 {
-            return Err("MVP native sampling interval is 2000 ms".into());
+        if !(MIN_INTERVAL_MS..=MAX_INTERVAL_MS).contains(&interval) {
+            return Err(format!(
+                "Sampling interval must be between {MIN_INTERVAL_MS} and {MAX_INTERVAL_MS} ms"
+            ));
         }
         let mut d = self.data.lock().map_err(|e| e.to_string())?;
         d.next += 1;
@@ -112,7 +158,14 @@ impl Metrics {
             .get(&channel)
             .cloned()
             .unwrap_or_else(|| envelope("loading", Value::Null));
-        d.subs.insert(token.clone(), Sub { channel, window });
+        d.subs.insert(
+            token.clone(),
+            Sub {
+                channel,
+                window,
+                interval_ms: interval,
+            },
+        );
         drop(d);
         let _ = self.tx.send(Request::Wake);
         Ok(json!({"token":token,"initial":initial}))
@@ -140,6 +193,22 @@ impl Metrics {
             .subs
             .values()
             .any(|s| s.channel == channel)
+    }
+    /// Shortest interval any live subscriber asked for, so the shared worker
+    /// collects at the cadence the fastest widget needs. `None` for channels
+    /// that are event-driven or have no subscribers.
+    fn interval(&self, channel: &str) -> Option<u64> {
+        if !POLLED.contains(&channel) {
+            return None;
+        }
+        self.data
+            .lock()
+            .unwrap()
+            .subs
+            .values()
+            .filter(|s| s.channel == channel)
+            .map(|s| s.interval_ms)
+            .min()
     }
     fn publish(&self, app: &AppHandle, channel: &str, value: Value) {
         let windows = {
@@ -216,8 +285,14 @@ impl Metrics {
             .map_err(|e| e.to_string())?
     }
     pub fn diagnostics(&self) -> Value {
+        let intervals: serde_json::Map<String, Value> = POLLED
+            .into_iter()
+            .filter_map(|channel| {
+                self.interval(channel).map(|ms| (channel.to_string(), json!(ms)))
+            })
+            .collect();
         let d = self.data.lock().unwrap();
-        json!({"subscribers":d.subs.len(),"channels":d.latest,"collectorThreads":1,"intervalMs":2000,"incoming":d.incoming,"emitted":d.emitted})
+        json!({"subscribers":d.subs.len(),"channels":d.latest,"collectorThreads":1,"intervals":intervals,"incoming":d.incoming,"emitted":d.emitted})
     }
     pub fn stop(&self) {
         let _ = self.tx.send(Request::Stop);
@@ -251,7 +326,7 @@ impl Metrics {
             let mut voicemeeter = crate::voicemeeter::Client::native();
             let mut sources: HashMap<String, crate::voicemeeter::Target> = HashMap::new();
             let mut vm_published = false;
-            let mut next_tick = Instant::now();
+            let mut timer = Timer::default();
             let mut ticks=0;
             let mut devices_active = [false; 2];
             let mut volume_active = [false; 2];
@@ -362,30 +437,42 @@ impl Metrics {
                     }
                     volume_active[index] = active_volume && !sources.contains_key(volume_channel);
                 }
-                if Instant::now() >= next_tick {
-                    if self.active("cpu") {
-                        let sample=cpu_collector.collect();
-                        self.publish(&app,"cpu",envelope("ready",serde_json::to_value(sample).expect("CPU contract serializes")));
+                let now = Instant::now();
+                let mut collected = false;
+                for channel in POLLED {
+                    let Some(interval) = self.interval(channel) else {
+                        timer.clear(channel);
+                        continue;
+                    };
+                    if !timer.due(channel, interval, now) {
+                        continue;
                     }
-                    if self.active("gpu") {
-                        let sample = gpu_collector.collect();
-                        self.publish(&app, "gpu", envelope("ready", serde_json::to_value(sample).expect("GPU contract serializes")));
-                    }
-                    if self.active("disk") {
-                        match disk_collector.collect() {
+                    collected = true;
+                    match channel {
+                        "cpu" => {
+                            let sample=cpu_collector.collect();
+                            self.publish(&app,"cpu",envelope("ready",serde_json::to_value(sample).expect("CPU contract serializes")));
+                        }
+                        "gpu" => {
+                            let sample = gpu_collector.collect();
+                            self.publish(&app, "gpu", envelope("ready", serde_json::to_value(sample).expect("GPU contract serializes")));
+                        }
+                        "disk" => match disk_collector.collect() {
                             Ok(sample) => self.publish(&app, "disk", envelope("ready", serde_json::to_value(sample).expect("Disk contract serializes"))),
                             Err(e) => self.publish(&app, "disk", error(e)),
+                        },
+                        "memory" => {
+                            let sample = memory_collector.collect();
+                            self.publish(&app, "memory", envelope("ready", serde_json::to_value(sample).expect("Memory contract serializes")));
                         }
+                        _ => {}
                     }
-                    if self.active("memory") {
-                        let sample = memory_collector.collect();
-                        self.publish(&app, "memory", envelope("ready", serde_json::to_value(sample).expect("Memory contract serializes")));
-                    }
-                    next_tick = Instant::now() + Duration::from_secs(2);
+                }
+                if collected {
                     ticks+=1;
                     if ticks==10{let report=json!({"metrics":self.diagnostics(),"windows":crate::desktop::profile()});if let Err(e)=std::fs::write(std::env::temp_dir().join("strata-runtime-profile.json"),report.to_string()){eprintln!("Runtime profile: {e}");}}
                 }
-                match rx.recv_timeout(next_tick.saturating_duration_since(Instant::now())) {
+                match rx.recv_timeout(timer.next_wait(Instant::now())) {
                     Ok(Request::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
                     Ok(Request::Output(capture, id, reply)) => {
                         let flow = if capture { eCapture } else { eRender };
@@ -657,5 +744,41 @@ mod lifecycle_tests {
         m.subscribe("microphone".into(), "bar-one".into(), 2000).unwrap();
         assert!(m.active("microphone"));
         assert!(!m.active("volume"));
+    }
+    #[test]
+    fn configured_intervals_are_accepted_within_the_documented_bounds() {
+        let m = owner();
+        for interval in [1000, 1500, 2000, 5000, 60_000] {
+            assert!(
+                m.subscribe("cpu".into(), "bar-one".into(), interval).is_ok(),
+                "{interval} ms must be accepted"
+            );
+        }
+        assert!(m.subscribe("cpu".into(), "bar-one".into(), 999).is_err());
+        assert!(m.subscribe("cpu".into(), "bar-one".into(), 60_001).is_err());
+    }
+    #[test]
+    fn the_fastest_subscriber_sets_each_channels_effective_interval() {
+        let m = owner();
+        m.subscribe("cpu".into(), "bar-one".into(), 5000).unwrap();
+        m.subscribe("cpu".into(), "bar-two".into(), 2000).unwrap();
+        m.subscribe("memory".into(), "bar-one".into(), 10_000).unwrap();
+        assert_eq!(m.interval("cpu"), Some(2000));
+        assert_eq!(m.interval("memory"), Some(10_000));
+        assert_eq!(m.interval("gpu"), None);
+        // Removing every subscriber returns the channel to "not scheduled".
+        m.remove_window("bar-one");
+        m.remove_window("bar-two");
+        assert_eq!(m.interval("cpu"), None);
+        assert_eq!(m.interval("memory"), None);
+    }
+    #[test]
+    fn event_channels_ignore_the_poll_interval() {
+        let m = owner();
+        // Volume and microphone are Core Audio callbacks, komorebi is a pipe.
+        for channel in ["volume", "microphone", "audioOutputs", "voicemeeter"] {
+            m.subscribe(channel.into(), "bar-one".into(), 60_000).unwrap();
+            assert_eq!(m.interval(channel), None, "{channel} is event-driven");
+        }
     }
 }

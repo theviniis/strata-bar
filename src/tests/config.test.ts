@@ -22,6 +22,21 @@ describe('configuration', () => {
     expect(parseConfig(JSON.stringify(native))).toEqual(defaultConfig)
     expect(native.version).toBe(1)
   })
+  it('keeps the schema pointer a hand edit added', () => {
+    // Editors read `$schema` for completion and range errors. A parse must not
+    // drop it, or the first save silences the author's editor.
+    const url =
+      'https://raw.githubusercontent.com/theviniis/strata-bar/main/config.schema.json'
+    const parsed = parseConfig(
+      JSON.stringify({ ...defaultConfig, $schema: url })
+    )
+    expect(parsed.$schema).toBe(url)
+    expect(JSON.parse(JSON.stringify(parsed)).$schema).toBe(url)
+  })
+  it('accepts a document without the schema pointer', () => {
+    const { $schema: _omitted, ...rest } = defaultConfig
+    expect(parseConfig(JSON.stringify(rest)).$schema).toBeUndefined()
+  })
   it('ships the komorebi workspace widget in the default layout', () => {
     const widget = defaultConfig.widgets.left.find((w) => w.type === 'komorebi')
     expect(widget).toBeDefined()

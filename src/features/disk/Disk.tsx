@@ -2,6 +2,8 @@ import { Progress } from '@/components/ui/progress'
 import { WidgetItem, WidgetItemTooltip } from '@/components/widget-item'
 import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
 import { useResourceChannel } from '@/hooks/useResourceChannel'
+import { useWidgetView } from '@/components/status-bar/widget-view'
+import { showLabel } from '@/components/status-bar/presentation'
 import { WidgetPopup } from '@/popups/WidgetPopup'
 import type { DiskVolume } from '@/services/system/disk.generated'
 import { HardDrive } from 'lucide-react'
@@ -19,7 +21,14 @@ function describe(volumes: DiskVolume[]) {
 }
 
 /** One row per mounted volume; shared by the native bar and the studio demo. */
-export function DiskBar({ volumes }: { volumes: DiskVolume[] }) {
+export function DiskBar({
+  volumes,
+  compact = false
+}: {
+  volumes: DiskVolume[]
+  /** `compact` keeps the bars and hides the mount/percentage text. */
+  compact?: boolean
+}) {
   if (!volumes.length)
     return <span className="text-[11px] text-muted-foreground">—</span>
   return (
@@ -27,9 +36,11 @@ export function DiskBar({ volumes }: { volumes: DiskVolume[] }) {
       {volumes.map((volume) => (
         <span key={volume.mount} className="flex items-center gap-1.5">
           <HardDrive size={14} className="shrink-0 text-secondary" />
-          <span className="text-[11px] whitespace-nowrap tabular-nums">
-            {volume.mount} {wholePercent(volume)}%
-          </span>
+          {!compact && (
+            <span className="text-[11px] whitespace-nowrap tabular-nums">
+              {volume.mount} {wholePercent(volume)}%
+            </span>
+          )}
           <Progress
             value={wholePercent(volume)}
             aria-label={`Uso do disco ${volume.mount}`}
@@ -42,11 +53,12 @@ export function DiskBar({ volumes }: { volumes: DiskVolume[] }) {
 }
 
 export function Disk() {
-  const { event, lastData } = useResourceChannel('disk')
+  const view = useWidgetView()
+  const { event, lastData } = useResourceChannel('disk', view.intervalMs)
   const data = event.status === 'ready' ? event.data : lastData
   const volumes = localVolumes(data?.volumes ?? [])
   const text = event.status === 'error' ? event.error : describe(volumes)
-  const tip = useOverlayTooltip(text)
+  const tip = useOverlayTooltip(view.tooltip ? text : '')
   return (
     <WidgetPopup.Root popup="disk">
       <WidgetPopup.Trigger asChild>
@@ -55,8 +67,10 @@ export function Disk() {
           className="gap-3"
           {...tip.trigger}
         >
-          <DiskBar volumes={volumes} />
-          <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
+          <DiskBar volumes={volumes} compact={!showLabel(view.format)} />
+          {view.tooltip && (
+            <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
+          )}
         </WidgetItem>
       </WidgetPopup.Trigger>
     </WidgetPopup.Root>

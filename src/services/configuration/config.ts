@@ -96,6 +96,12 @@ const agentVisibility = z.object({
 
 export const configSchema = z
   .object({
+    /**
+     * Pointer to the published JSON Schema. Editors use it for completion and
+     * inline range errors while a document is hand-edited. Kept on the document
+     * so a save round-trips it instead of dropping the author's pointer.
+     */
+    $schema: z.string().optional(),
     version: z.literal(1),
     agents: z
       .object({
@@ -149,10 +155,21 @@ export function parseConfig(text: string): Config {
   return configSchema.parse(JSON.parse(text))
 }
 
+/** A native snapshot with its document validated and defaulted. */
+export interface ConfigDocument {
+  revision: number
+  config: Config
+  error: string | null
+}
+
 /** Validates a native snapshot at runtime; the generated type is unchecked wire data. */
-export function parseSnapshot(snapshot: ConfigSnapshot): ConfigSnapshot {
+export function parseSnapshot(snapshot: ConfigSnapshot): ConfigDocument {
   // Keep the parsed result: Zod fills any field the native document omitted.
-  return { ...snapshot, config: configSchema.parse(snapshot.config) }
+  return {
+    revision: snapshot.revision,
+    config: configSchema.parse(snapshot.config),
+    error: snapshot.error ?? null
+  }
 }
 
 export const storageKey = 'strata.config.v1'

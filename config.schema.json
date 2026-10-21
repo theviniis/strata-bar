@@ -1,0 +1,287 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "type": "number", "const": 1 },
+    "agents": {
+      "default": {
+        "visible": {
+          "chatgpt": true,
+          "opencode": true,
+          "antigravity": true,
+          "codex": true
+        }
+      },
+      "type": "object",
+      "properties": {
+        "visible": {
+          "default": {
+            "chatgpt": true,
+            "opencode": true,
+            "antigravity": true,
+            "codex": true
+          },
+          "type": "object",
+          "properties": {
+            "chatgpt": { "default": true, "type": "boolean" },
+            "opencode": { "default": true, "type": "boolean" },
+            "antigravity": { "default": true, "type": "boolean" },
+            "codex": { "default": true, "type": "boolean" }
+          }
+        }
+      }
+    },
+    "bar": {
+      "type": "object",
+      "properties": {
+        "position": {
+          "default": "top",
+          "type": "string",
+          "enum": ["top", "bottom"]
+        },
+        "height": {
+          "default": 36,
+          "type": "integer",
+          "minimum": 28,
+          "maximum": 80
+        },
+        "spacing": {
+          "default": 8,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 32
+        },
+        "theme": {
+          "default": "dark",
+          "type": "string",
+          "enum": ["dark", "light"]
+        },
+        "alwaysOnTop": { "default": true, "type": "boolean" }
+      }
+    },
+    "widgets": {
+      "type": "object",
+      "properties": {
+        "left": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "clock",
+                  "reminders",
+                  "agents",
+                  "cpu",
+                  "memory",
+                  "gpu",
+                  "disk",
+                  "network",
+                  "music",
+                  "volume",
+                  "microphone",
+                  "activeWindow",
+                  "komorebi"
+                ]
+              },
+              "enabled": { "default": true, "type": "boolean" },
+              "intervalMs": {
+                "default": 2000,
+                "type": "integer",
+                "minimum": 1000,
+                "maximum": 60000
+              },
+              "format": {
+                "default": "label",
+                "type": "string",
+                "enum": ["compact", "label"]
+              },
+              "tooltip": { "default": true, "type": "boolean" },
+              "audio": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "default": "windows",
+                    "type": "string",
+                    "enum": ["windows", "voicemeeter"]
+                  },
+                  "target": {
+                    "type": "object",
+                    "properties": {
+                      "kind": { "type": "string", "enum": ["strip", "bus"] },
+                      "index": { "type": "integer", "minimum": 0, "maximum": 7 }
+                    },
+                    "required": ["kind", "index"]
+                  },
+                  "label": { "type": "string" },
+                  "enabled": { "type": "boolean" }
+                }
+              }
+            },
+            "required": ["id", "type"]
+          }
+        },
+        "center": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "clock",
+                  "reminders",
+                  "agents",
+                  "cpu",
+                  "memory",
+                  "gpu",
+                  "disk",
+                  "network",
+                  "music",
+                  "volume",
+                  "microphone",
+                  "activeWindow",
+                  "komorebi"
+                ]
+              },
+              "enabled": { "default": true, "type": "boolean" },
+              "intervalMs": {
+                "default": 2000,
+                "type": "integer",
+                "minimum": 1000,
+                "maximum": 60000
+              },
+              "format": {
+                "default": "label",
+                "type": "string",
+                "enum": ["compact", "label"]
+              },
+              "tooltip": { "default": true, "type": "boolean" },
+              "audio": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "default": "windows",
+                    "type": "string",
+                    "enum": ["windows", "voicemeeter"]
+                  },
+                  "target": {
+                    "type": "object",
+                    "properties": {
+                      "kind": { "type": "string", "enum": ["strip", "bus"] },
+                      "index": { "type": "integer", "minimum": 0, "maximum": 7 }
+                    },
+                    "required": ["kind", "index"]
+                  },
+                  "label": { "type": "string" },
+                  "enabled": { "type": "boolean" }
+                }
+              }
+            },
+            "required": ["id", "type"]
+          }
+        },
+        "right": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "clock",
+                  "reminders",
+                  "agents",
+                  "cpu",
+                  "memory",
+                  "gpu",
+                  "disk",
+                  "network",
+                  "music",
+                  "volume",
+                  "microphone",
+                  "activeWindow",
+                  "komorebi"
+                ]
+              },
+              "enabled": { "default": true, "type": "boolean" },
+              "intervalMs": {
+                "default": 2000,
+                "type": "integer",
+                "minimum": 1000,
+                "maximum": 60000
+              },
+              "format": {
+                "default": "label",
+                "type": "string",
+                "enum": ["compact", "label"]
+              },
+              "tooltip": { "default": true, "type": "boolean" },
+              "audio": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "default": "windows",
+                    "type": "string",
+                    "enum": ["windows", "voicemeeter"]
+                  },
+                  "target": {
+                    "type": "object",
+                    "properties": {
+                      "kind": { "type": "string", "enum": ["strip", "bus"] },
+                      "index": { "type": "integer", "minimum": 0, "maximum": 7 }
+                    },
+                    "required": ["kind", "index"]
+                  },
+                  "label": { "type": "string" },
+                  "enabled": { "type": "boolean" }
+                }
+              }
+            },
+            "required": ["id", "type"]
+          }
+        }
+      },
+      "required": ["left", "center", "right"]
+    },
+    "monitors": {
+      "default": {},
+      "type": "object",
+      "propertyNames": { "type": "string" },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "default": "top",
+            "type": "string",
+            "enum": ["top", "bottom"]
+          },
+          "height": {
+            "default": 36,
+            "type": "integer",
+            "minimum": 28,
+            "maximum": 80
+          },
+          "spacing": {
+            "default": 8,
+            "type": "number",
+            "minimum": 0,
+            "maximum": 32
+          },
+          "theme": {
+            "default": "dark",
+            "type": "string",
+            "enum": ["dark", "light"]
+          },
+          "alwaysOnTop": { "default": true, "type": "boolean" }
+        }
+      }
+    }
+  },
+  "required": ["version", "bar", "widgets"]
+}
