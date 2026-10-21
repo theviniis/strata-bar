@@ -8,15 +8,9 @@ import {
   widgetAudio,
   type WidgetType
 } from '@/services/configuration/config'
-import type { VoicemeeterData } from '@/services/system/bridge'
 import { useConfig } from '@/stores/config'
+import { optionLabel } from './presentation'
 import { Check } from 'lucide-react'
-
-/** Display text of one Voicemeeter option: engine slot plus device/label. */
-export function optionLabel(item: VoicemeeterData['strips'][number]) {
-  const name = item.name.trim()
-  return name ? `${item.slot} · ${name}` : item.slot
-}
 
 interface VoicemeeterSettingsProps {
   /** The widget whose routing this popup settings view edits. */

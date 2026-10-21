@@ -43,10 +43,8 @@ import { defaultConfig } from '../services/configuration/config'
 import { useConfig } from '../stores/config'
 import { Microphone } from '../features/microphone/Microphone'
 import { Volume } from '../features/volume/Volume'
-import {
-  VoicemeeterSettings,
-  optionLabel
-} from '../features/audio/VoicemeeterSettings'
+import { VoicemeeterSettings } from '../features/audio/VoicemeeterSettings'
+import { optionLabel } from '../features/audio/presentation'
 import { PopupHost } from '../popups/PopupHost'
 import { resetVoicemeeterCapability } from '../hooks/useVoicemeeterCapability'
 

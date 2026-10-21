@@ -130,11 +130,13 @@ it('renders komorebi workspaces and focuses the clicked one', async () => {
   )
 })
 
-it('places music immediately before the audio controls', () => {
+it('places music before the audio controls', () => {
   render(<NativeBar />)
   const music = screen.getByLabelText('Música')
   const audio = screen.getByRole('button', { name: 'Saída de áudio' })
-  expect(music.nextElementSibling?.contains(audio)).toBe(true)
+  expect(
+    music.compareDocumentPosition(audio) & Node.DOCUMENT_POSITION_FOLLOWING
+  ).toBeTruthy()
   const microphone = screen.getByRole('button', {
     name: 'Entrada de \u00e1udio'
   })

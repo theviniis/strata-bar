@@ -37,7 +37,7 @@ export const ActiveReminders = memo(function ActiveReminders({
   const reminders = useReminders((state) => state.snapshot?.reminders)
   const dismiss = useReminders((state) => state.dismiss)
   const sync = useReminders((state) => state.syncCalendar)
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
 
   const active = useMemo(
     () =>
@@ -47,15 +47,21 @@ export const ActiveReminders = memo(function ActiveReminders({
     [reminders]
   )
 
-  const onDimiss = useCallback((r: Reminder) => {
-    onPendingChange(true)
-    void dismiss(r.id).finally(() => onPendingChange(false))
-  }, [])
+  const onDismiss = useCallback(
+    (r: Reminder) => {
+      onPendingChange(true)
+      void dismiss(r.id).finally(() => onPendingChange(false))
+    },
+    [dismiss, onPendingChange]
+  )
 
-  const onSync = useCallback((r: Reminder) => {
-    onPendingChange(true)
-    void sync(r.id).finally(() => onPendingChange(false))
-  }, [])
+  const onSync = useCallback(
+    (r: Reminder) => {
+      onPendingChange(true)
+      void sync(r.id).finally(() => onPendingChange(false))
+    },
+    [sync, onPendingChange]
+  )
 
   return (
     <Collapsible
@@ -95,7 +101,7 @@ export const ActiveReminders = memo(function ActiveReminders({
             pending={pending}
             connected={connected}
             onSync={onSync}
-            onDimiss={onDimiss}
+            onDismiss={onDismiss}
           />
         ))}
       </CollapsibleContent>
@@ -108,7 +114,7 @@ interface ActiveRemindersItemProps extends ComponentProps<'div'> {
   pending: boolean
   connected: boolean
   onSync: (reminder: Reminder) => void
-  onDimiss: (reminder: Reminder) => void
+  onDismiss: (reminder: Reminder) => void
 }
 
 export const ActiveRemindersItem = ({
@@ -117,7 +123,7 @@ export const ActiveRemindersItem = ({
   pending,
   connected,
   onSync,
-  onDimiss,
+  onDismiss,
   ...props
 }: ActiveRemindersItemProps) => {
   return (
@@ -169,7 +175,7 @@ export const ActiveRemindersItem = ({
           variant="destructive"
           disabled={pending}
           onClick={() => {
-            onDimiss(reminder)
+            onDismiss(reminder)
           }}
         >
           <Trash data-icon="inline-start" />

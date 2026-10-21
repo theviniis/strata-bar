@@ -481,7 +481,7 @@ export function RemindersPopup() {
                   ) : (
                     <>
                       Criar lembrete{' '}
-                      <KbdGroup data-icon="inline-end">
+                      <KbdGroup aria-hidden="true" data-icon="inline-end">
                         <Kbd variant="primary">Ctrl</Kbd>
                         <span>+</span>
                         <Kbd variant="primary">⏎</Kbd>
