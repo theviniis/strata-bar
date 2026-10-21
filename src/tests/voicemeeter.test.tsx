@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VoicemeeterData } from '../services/system/bridge'
+import { useAudioRouting } from '../hooks/useAudioRouting'
 
 type Listener = (event: {
   status: string
@@ -340,3 +341,156 @@ it('warns for the current target without the engine running', () => {
   ).toBeInTheDocument()
   expect(screen.getByText('Alvo atual: V1 · Windows.')).toBeInTheDocument()
 })
+
+describe('config events push audio routing', () => {
+  it('pushes routing for all audio widgets on config hydration (startup)', () => {
+    const config = structuredClone(defaultConfig)
+    config.widgets.right.find((w) => w.type === 'volume')!.audio = {
+      source: 'voicemeeter',
+      target: { kind: 'bus', index: 1 },
+      label: 'Bus 1'
+    }
+    config.widgets.right.find((w) => w.type === 'microphone')!.audio = {
+      source: 'voicemeeter',
+      target: { kind: 'strip', index: 2 },
+      label: 'Strip 2'
+    }
+    // Simulate the native store hydrating the config (startup)
+    useConfig.setState({ config, error: null, revision: 1 })
+
+    // Render a bar-like component that uses useAudioRouting
+    render(<TestBar config={config} />)
+
+    expect(host.channelSource).toHaveBeenCalledWith('volume', {
+      kind: 'bus',
+      index: 1
+    })
+    expect(host.channelSource).toHaveBeenCalledWith('microphone', {
+      kind: 'strip',
+      index: 2
+    })
+
+    // Config event arrives (external edit) - new revision
+    const newConfig = structuredClone(config)
+    newConfig.widgets.right.find((w) => w.type === 'volume')!.audio = {
+      source: 'voicemeeter',
+      target: { kind: 'bus', index: 3 },
+      label: 'Bus 3'
+    }
+    useConfig.setState({ config: newConfig, error: null, revision: 2 })
+    // Re-render to trigger the hook again
+    render(<TestBar config={newConfig} />)
+
+    // The hook pushes routing for ALL audio widgets, so the last call might be for microphone
+    // Check that the volume routing was pushed with the new config
+    const calls = host.channelSource.mock.calls as unknown as Array<
+      [string, { kind: 'bus' | 'strip'; index: number } | null]
+    >
+    const volumeCalls = calls.filter((c) => c[0] === 'volume')
+    expect(volumeCalls[volumeCalls.length - 1]).toEqual([
+      'volume',
+      { kind: 'bus', index: 3 }
+    ])
+  })
+
+  it('preserves last-write-wins per channel across rapid config edits', () => {
+    const config = structuredClone(defaultConfig)
+    config.widgets.right.find((w) => w.type === 'volume')!.audio = {
+      source: 'voicemeeter',
+      target: { kind: 'bus', index: 0 },
+      label: 'Bus 0'
+    }
+    useConfig.setState({ config, error: null, revision: 1 })
+    render(<TestBar config={config} />)
+
+    // Rapid edits: push multiple routing changes for the same channel
+    const edit1 = structuredClone(config)
+    edit1.widgets.right.find((w) => w.type === 'volume')!.audio = {
+      source: 'voicemeeter',
+      target: { kind: 'bus', index: 1 },
+      label: 'Bus 1'
+    }
+    useConfig.setState({ config: edit1, error: null, revision: 2 })
+    render(<TestBar config={edit1} />)
+
+    const edit2 = structuredClone(config)
+    edit2.widgets.right.find((w) => w.type === 'volume')!.audio = {
+      source: 'voicemeeter',
+      target: { kind: 'bus', index: 2 },
+      label: 'Bus 2'
+    }
+    useConfig.setState({ config: edit2, error: null, revision: 3 })
+    render(<TestBar config={edit2} />)
+
+    const edit3 = structuredClone(config)
+    edit3.widgets.right.find((w) => w.type === 'volume')!.audio = {
+      source: 'windows'
+    }
+    useConfig.setState({ config: edit3, error: null, revision: 4 })
+    render(<TestBar config={edit3} />)
+
+    // The last write (edit3) should win - routing cleared (windows)
+    const calls = host.channelSource.mock.calls as unknown as Array<
+      [string, { kind: 'bus' | 'strip'; index: number } | null]
+    >
+    const volumeCalls = calls.filter((c) => c[0] === 'volume')
+    expect(volumeCalls[volumeCalls.length - 1]).toEqual(['volume', null])
+  })
+
+  it('reports unavailable when Voicemeeter is missing, no fallback to Windows', () => {
+    host.capabilities.mockResolvedValue({ voicemeeter: false })
+    const config = structuredClone(defaultConfig)
+    config.widgets.right.find((w) => w.type === 'volume')!.audio = {
+      source: 'voicemeeter',
+      target: { kind: 'bus', index: 0 },
+      label: 'Bus 0'
+    }
+    useConfig.setState({ config, error: null, revision: 1 })
+
+    // Render Volume widget directly to test the unavailable status
+    seed('volume', {
+      source: 'voicemeeter',
+      target: { kind: 'bus', index: 0 },
+      label: 'Bus 0'
+    })
+    render(<Volume />)
+
+    // Routing was pushed to native worker
+    expect(host.channelSource).toHaveBeenCalledWith('volume', {
+      kind: 'bus',
+      index: 0
+    })
+
+    // Simulate Voicemeeter becoming unavailable (engine not running)
+    const volumeListener = host.listeners.get('volume')!
+    act(() =>
+      volumeListener({
+        status: 'unavailable',
+        data: null,
+        timestamp: 0
+      } as never)
+    )
+
+    // The widget should show unavailable, not fall back to Windows
+    expect(
+      screen.getByText('Voicemeeter: Bus 0 indisponível')
+    ).toBeInTheDocument()
+
+    // Switching back to Windows should work normally
+    seed('volume')
+    render(<Volume />)
+
+    expect(host.channelSource).toHaveBeenLastCalledWith('volume', null)
+    expect(screen.getByText('Volume do dispositivo padrão')).toBeInTheDocument()
+  })
+})
+
+// Test component that uses the bar-level audio routing hook
+function TestBar({ config }: { config: typeof defaultConfig }) {
+  useAudioRouting([
+    config.widgets.left,
+    config.widgets.center,
+    config.widgets.right
+  ])
+  return <div data-testid="test-bar" />
+}
