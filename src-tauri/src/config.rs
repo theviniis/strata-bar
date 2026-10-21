@@ -428,6 +428,11 @@ pub fn apply_external_change(app: &AppHandle) {
 /// overrides, while surfaces that are not mounted on a monitor (the overlay)
 /// render the shared document. Sending one payload to every window would make a
 /// secondary-monitor bar obey the primary monitor's overrides.
+///
+/// `emit` is a broadcast in Tauri 2: `Manager::emit` forwards the payload to
+/// every webview, so calling it once per window would deliver every monitor's
+/// projection to every bar and the last one would win. `emit_to` addresses a
+/// single window, which is what a per-monitor projection requires.
 pub fn publish(app: &AppHandle, snapshot: &ConfigSnapshot) {
     for (label, window) in app.webview_windows() {
         if !accepts_config(&label) {
@@ -439,7 +444,7 @@ pub fn publish(app: &AppHandle, snapshot: &ConfigSnapshot) {
             snapshot.clone()
         };
         let payload = serde_json::to_value(&projected).expect("Config snapshot serializes");
-        if let Err(e) = window.emit(EVENT, payload) {
+        if let Err(e) = window.emit_to(&label, EVENT, payload) {
             eprintln!("Emit config to {label}: {e}");
         }
     }
@@ -794,11 +799,19 @@ mod tests {
         let mut config = defaults();
         config.monitors.insert(
             "DISPLAY2".into(),
-            BarOverride { theme: Some(BarTheme::Light), spacing: Some(4.0), ..Default::default() },
+            BarOverride {
+                theme: Some(BarTheme::Light),
+                spacing: Some(4.0),
+                ..Default::default()
+            },
         );
         config.monitors.insert(
             "DISPLAY1".into(),
-            BarOverride { theme: Some(BarTheme::Dark), spacing: Some(16.0), ..Default::default() },
+            BarOverride {
+                theme: Some(BarTheme::Dark),
+                spacing: Some(16.0),
+                ..Default::default()
+            },
         );
         let secondary = project(&config, Some(r"\\.\DISPLAY2"));
         assert_eq!(secondary.bar.theme, BarTheme::Light);
@@ -810,7 +823,10 @@ mod tests {
         let primary = project(&config, Some("display1"));
         assert_eq!(primary.bar.theme, BarTheme::Dark);
         assert_eq!(primary.bar.spacing, 16.0);
-        assert_eq!(secondary.bar.spacing, 4.0, "monitors never share a projection");
+        assert_eq!(
+            secondary.bar.spacing, 4.0,
+            "monitors never share a projection"
+        );
     }
 
     #[test]
@@ -818,7 +834,10 @@ mod tests {
         let mut config = defaults();
         config.monitors.insert(
             "DISPLAY1".into(),
-            BarOverride { spacing: Some(20.0), ..Default::default() },
+            BarOverride {
+                spacing: Some(20.0),
+                ..Default::default()
+            },
         );
         assert_eq!(project(&config, Some("DISPLAY3")), config);
         assert_eq!(project(&config, None), config);
@@ -829,7 +848,10 @@ mod tests {
         let mut config = defaults();
         config.monitors.insert(
             "DISPLAY2".into(),
-            BarOverride { height: Some(48), ..Default::default() },
+            BarOverride {
+                height: Some(48),
+                ..Default::default()
+            },
         );
         let snapshot = ConfigSnapshot {
             revision: 7,
