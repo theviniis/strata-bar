@@ -281,3 +281,17 @@ flowchart TD
 - [docs/evidence/](docs/evidence/) and [docs/performance/](docs/performance/) — recorded validation JSON.
 - [README.md](README.md) — high-level develop/validate instructions.
 - `> TODO: add ADRs and a docs/ARCH index if architecture decisions multiply.`
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in this repo's GitHub Issues (theviniis/strata-bar) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-label triage vocabulary: needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
