@@ -1,4 +1,6 @@
 import { useId } from 'react'
+import { Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Field,
@@ -15,6 +17,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { AgentType } from '@/services/system/agents.generated'
 import type { Config } from '@/services/configuration/config'
 import type { ConfigDraft } from './draft'
+import { ThemePreview } from './ThemePreview'
 
 const agents: { key: AgentType; label: string }[] = [
   { key: 'chatgpt', label: 'ChatGPT' },
@@ -38,6 +41,7 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
       <Field data-disabled={disabled}>
         <FieldTitle id={themeId}>Tema</FieldTitle>
         <ToggleGroup
+          className="grid w-full grid-cols-1 items-stretch"
           disabled={disabled}
           aria-labelledby={themeId}
           variant="outline"
@@ -49,9 +53,37 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
             }
           }}
         >
-          <ToggleGroupItem value="dark">Escuro</ToggleGroupItem>
-          <ToggleGroupItem value="light">Claro</ToggleGroupItem>
+          {(
+            [
+              { theme: 'dark', label: 'Escuro' },
+              { theme: 'light', label: 'Claro' }
+            ] as const
+          ).map(({ theme, label }) => (
+            <ToggleGroupItem
+              key={theme}
+              value={theme}
+              aria-label={label}
+              render={<div />}
+              nativeButton={false}
+              className="h-auto min-w-0 flex-col gap-3 p-3"
+            >
+              <ThemePreview
+                config={{ ...draft, bar: { ...draft.bar, theme } }}
+              />
+              <span className="flex w-full items-center justify-between gap-2">
+                {label}
+                <Check
+                  aria-hidden="true"
+                  className={cn(draft.bar.theme !== theme && 'invisible')}
+                />
+              </span>
+            </ToggleGroupItem>
+          ))}
         </ToggleGroup>
+        <FieldDescription>
+          Prévia da barra com o layout do rascunho e dados demonstrativos, como
+          no studio.
+        </FieldDescription>
       </Field>
       <Field data-disabled={disabled}>
         <FieldLabel htmlFor={spacingId}>

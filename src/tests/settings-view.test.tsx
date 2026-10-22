@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { configSchema, defaultConfig } from '../services/configuration/config'
-import { bridge } from '../services/system/bridge'
+import { bridge, connect } from '../services/system/bridge'
 import { SettingsView } from '../settings/SettingsView'
 
 const close = vi.hoisted(() => vi.fn())
@@ -23,7 +23,9 @@ vi.stubGlobal(
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => ({ close })
 }))
-vi.mock('../services/system/bridge', () => ({
+vi.mock('../services/system/bridge', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/system/bridge')>()),
+  connect: vi.fn(),
   bridge: {
     mode: 'native',
     configLoad: vi.fn(),
@@ -152,6 +154,31 @@ it('closes only the settings window', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Fechar' }))
   await waitFor(() => expect(close).toHaveBeenCalledOnce())
   expect(bridge.quit).not.toHaveBeenCalled()
+})
+
+it('previews the draft NativeBar layout in both themes without native subscriptions', async () => {
+  await openEditor()
+  fireEvent.change(screen.getByRole('combobox', { name: 'Mover CPU para' }), {
+    target: { value: 'left' }
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
+  for (const name of ['Escuro', 'Claro']) {
+    const choice = screen.getByRole('button', { name })
+    const preview = choice.querySelector('[data-theme-preview]')!
+    expect(preview).toHaveAttribute('inert')
+    const cpu = within(preview as HTMLElement).getByLabelText(
+      'Detalhes da CPU',
+      { selector: 'button' }
+    )
+    expect(cpu).toHaveTextContent('17%')
+    expect(cpu.closest('[data-section]')).toHaveAttribute(
+      'data-section',
+      'left'
+    )
+    expect(preview.querySelector('.native-bar')).toBeNull()
+  }
+  expect(connect).not.toHaveBeenCalled()
+  expect(bridge.configSave).not.toHaveBeenCalled()
 })
 
 it('opens section navigation in a narrow window and closes it after selection', async () => {
