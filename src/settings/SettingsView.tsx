@@ -12,8 +12,30 @@ import {
 import { FieldSet } from '@/components/ui/field'
 import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
-import { Settings2, Save, Undo2, RotateCw, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar
+} from '@/components/ui/sidebar'
+import {
+  Settings2,
+  Save,
+  Undo2,
+  RotateCw,
+  X,
+  LayoutDashboard,
+  Palette
+} from 'lucide-react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { Config } from '@/services/configuration/config'
 import { bridge } from '@/services/system/bridge'
 import { LayoutEditor } from './LayoutEditor'
@@ -24,6 +46,8 @@ import {
   type ConfigPersistence
 } from './draft'
 
+type SettingsSection = 'layout' | 'appearance'
+
 /**
  * The settings window: a plain captioned window hosting the draft editor.
  * Native mode persists through `config_load`/`config_save`; the browser studio
@@ -31,6 +55,7 @@ import {
  */
 export function SettingsView() {
   const [demoConfig, setDemoConfig] = useState<Config | null>(null)
+  const [section, setSection] = useState<SettingsSection>('layout')
 
   useEffect(() => {
     if (bridge.mode === 'native') return
@@ -63,119 +88,130 @@ export function SettingsView() {
   return (
     <QueryProvider>
       <TooltipProvider delay={250}>
-        <main className="flex h-screen w-screen flex-col bg-background text-foreground">
-          <header className="flex h-14 shrink-0 items-center justify-between px-6">
-            <div className="flex items-center gap-2">
-              <Settings2 className="size-5" aria-hidden="true" />
-              <h1 className="text-lg font-semibold">Configurações do Strata</h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleWindowClose}
-                aria-label="Fechar"
-                title="Fechar"
-              >
-                <X aria-hidden="true" />
-              </Button>
-            </div>
-          </header>
-          <Separator />
-
-          <div className="flex-1 overflow-auto p-6">
-            <FieldSet disabled={editor.loading || editor.saving}>
-              <Card>
-                <CardHeader>
-                  <CardTitle role="heading" aria-level={2}>
-                    Editor de Layout
-                  </CardTitle>
-                  <CardDescription>
-                    Organize os widgets nas três seções da barra.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <LayoutEditor
-                    disabled={editor.loading || editor.saving}
-                    draft={editor.form.getValues()}
-                    onChange={editor.replaceDraft}
-                  />
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle role="heading" aria-level={2}>
-                    Aparência
-                  </CardTitle>
-                  <CardDescription>
-                    Escolha o tema, o espaçamento e os agentes visíveis.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <BarSettings
-                    disabled={editor.loading || editor.saving}
-                    draft={editor.form.getValues()}
-                    onChange={editor.replaceDraft}
-                  />
-                </CardContent>
-              </Card>
-            </FieldSet>
-
-            {editor.error && (
-              <Alert variant="destructive" className="mt-6">
-                <AlertTitle>
-                  Não foi possível aplicar as configurações
-                </AlertTitle>
-                <AlertDescription>{editor.error.message}</AlertDescription>
-              </Alert>
-            )}
-          </div>
-
-          <Separator />
-          <footer className="px-6 py-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <SidebarProvider
+          className="h-screen min-h-0"
+          style={{ '--sidebar-width': '12rem' } as CSSProperties}
+        >
+          <SettingsSidebar section={section} onSelect={setSection} />
+          <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background text-foreground">
+            <header className="flex h-14 shrink-0 items-center justify-between px-6">
+              <div className="flex items-center gap-2">
+                <SidebarTrigger aria-label="Alternar navegação" />
+                <Settings2 className="size-5" aria-hidden="true" />
+                <h1 className="text-lg font-semibold">
+                  Configurações do Strata
+                </h1>
+              </div>
               <div className="flex items-center gap-2">
                 <Button
-                  variant="outline"
-                  onClick={editor.restoreDefaults}
-                  disabled={editor.loading || editor.saving}
-                  title="Restaurar configurações padrão"
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleWindowClose}
+                  aria-label="Fechar"
+                  title="Fechar"
                 >
-                  <RotateCw data-icon="inline-start" aria-hidden="true" />
-                  Restaurar padrões
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={editor.revert}
-                  disabled={editor.loading || editor.saving}
-                  title="Descartar alterações e recarregar da configuração salva"
-                >
-                  <Undo2 data-icon="inline-start" aria-hidden="true" />
-                  Reverter
+                  <X aria-hidden="true" />
                 </Button>
               </div>
+            </header>
+            <Separator />
 
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  {bridge.mode === 'demo' ? 'Visualização do navegador' : ''}
-                </span>
-                <Button
-                  onClick={editor.apply}
-                  disabled={!!editor.error || editor.loading || editor.saving}
-                  title="Aplicar e salvar as alterações"
-                >
-                  {editor.saving ? (
-                    <Spinner data-icon="inline-start" aria-label="Salvando" />
-                  ) : (
-                    <Save data-icon="inline-start" aria-hidden="true" />
-                  )}
-                  {editor.saving ? 'Salvando...' : 'Aplicar'}
-                </Button>
-              </div>
+            <div className="min-h-0 flex-1 overflow-auto p-6">
+              <FieldSet disabled={editor.loading || editor.saving}>
+                {section === 'layout' ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle role="heading" aria-level={2}>
+                        Editor de Layout
+                      </CardTitle>
+                      <CardDescription>
+                        Organize os widgets nas três seções da barra.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <LayoutEditor
+                        disabled={editor.loading || editor.saving}
+                        draft={editor.form.getValues()}
+                        onChange={editor.replaceDraft}
+                      />
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle role="heading" aria-level={2}>
+                        Aparência
+                      </CardTitle>
+                      <CardDescription>
+                        Escolha o tema, o espaçamento e os agentes visíveis.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <BarSettings
+                        disabled={editor.loading || editor.saving}
+                        draft={editor.form.getValues()}
+                        onChange={editor.replaceDraft}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+              </FieldSet>
+
+              {editor.error && (
+                <Alert variant="destructive" className="mt-6">
+                  <AlertTitle>
+                    Não foi possível aplicar as configurações
+                  </AlertTitle>
+                  <AlertDescription>{editor.error.message}</AlertDescription>
+                </Alert>
+              )}
             </div>
-          </footer>
-        </main>
+
+            <Separator />
+            <footer className="px-6 py-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={editor.restoreDefaults}
+                    disabled={editor.loading || editor.saving}
+                    title="Restaurar configurações padrão"
+                  >
+                    <RotateCw data-icon="inline-start" aria-hidden="true" />
+                    Restaurar padrões
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={editor.revert}
+                    disabled={editor.loading || editor.saving}
+                    title="Descartar alterações e recarregar da configuração salva"
+                  >
+                    <Undo2 data-icon="inline-start" aria-hidden="true" />
+                    Reverter
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {bridge.mode === 'demo' ? 'Visualização do navegador' : ''}
+                  </span>
+                  <Button
+                    onClick={editor.apply}
+                    disabled={!!editor.error || editor.loading || editor.saving}
+                    title="Aplicar e salvar as alterações"
+                  >
+                    {editor.saving ? (
+                      <Spinner data-icon="inline-start" aria-label="Salvando" />
+                    ) : (
+                      <Save data-icon="inline-start" aria-hidden="true" />
+                    )}
+                    {editor.saving ? 'Salvando...' : 'Aplicar'}
+                  </Button>
+                </div>
+              </div>
+            </footer>
+          </main>
+        </SidebarProvider>
       </TooltipProvider>
     </QueryProvider>
   )
@@ -188,6 +224,62 @@ export function SettingsView() {
       window.close()
     }
   }
+}
+
+function SettingsSidebar({
+  section,
+  onSelect
+}: {
+  section: SettingsSection
+  onSelect(section: SettingsSection): void
+}) {
+  const { setOpenMobile } = useSidebar()
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" render={<div />}>
+              <Settings2 aria-hidden="true" />
+              <span>Strata</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Configurações</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <nav aria-label="Seções das configurações">
+              <SidebarMenu>
+                {(
+                  [
+                    { id: 'layout', label: 'Layout', icon: LayoutDashboard },
+                    { id: 'appearance', label: 'Aparência', icon: Palette }
+                  ] as const
+                ).map(({ id, label, icon: Icon }) => (
+                  <SidebarMenuItem key={id}>
+                    <SidebarMenuButton
+                      isActive={section === id}
+                      aria-current={section === id ? 'page' : undefined}
+                      tooltip={label}
+                      onClick={() => {
+                        onSelect(id)
+                        setOpenMobile(false)
+                      }}
+                    >
+                      <Icon aria-hidden="true" />
+                      <span>{label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </nav>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
+  )
 }
 
 export default SettingsView

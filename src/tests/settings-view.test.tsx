@@ -34,6 +34,14 @@ vi.mock('../services/system/bridge', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockReturnValue({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    })
+  )
   vi.mocked(bridge.configLoad!).mockResolvedValue({
     config: structuredClone(defaultConfig),
     revision: 1,
@@ -55,11 +63,13 @@ async function openEditor() {
 
 it('loads the saved configuration and applies the edited layout through native save', async () => {
   await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
   fireEvent.click(screen.getByRole('button', { name: 'Claro' }))
   expect(screen.getByRole('button', { name: 'Claro' })).toHaveAttribute(
     'aria-pressed',
     'true'
   )
+  fireEvent.click(screen.getByRole('button', { name: 'Layout' }))
   fireEvent.change(screen.getByRole('combobox', { name: 'Mover CPU para' }), {
     target: { value: 'left' }
   })
@@ -81,6 +91,7 @@ it('loads the saved configuration and applies the edited layout through native s
 
 it('reverts by reloading the saved file and restores defaults through save', async () => {
   await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
   fireEvent.click(screen.getByRole('button', { name: 'Claro' }))
   fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
   await waitFor(() =>
@@ -103,10 +114,37 @@ it('shows a native rejection in the validation alert and blocks Apply until edit
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('Disk full')
   expect(screen.getByRole('button', { name: 'Aplicar' })).toBeDisabled()
+  fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
   fireEvent.click(screen.getByRole('button', { name: 'Claro' }))
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
   )
+})
+
+it('shows one section at a time and preserves the draft across sidebar navigation', async () => {
+  await openEditor()
+  expect(
+    screen.getByRole('heading', { name: 'Editor de Layout' })
+  ).toBeInTheDocument()
+  expect(
+    screen.queryByRole('heading', { name: 'Aparência' })
+  ).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
+  expect(screen.getByRole('button', { name: 'Aparência' })).toHaveAttribute(
+    'aria-current',
+    'page'
+  )
+  expect(
+    screen.queryByRole('heading', { name: 'Editor de Layout' })
+  ).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Claro' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Layout' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
+  expect(screen.getByRole('button', { name: 'Claro' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  )
+  expect(bridge.configSave).not.toHaveBeenCalled()
 })
 
 it('closes only the settings window', async () => {
@@ -114,4 +152,25 @@ it('closes only the settings window', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Fechar' }))
   await waitFor(() => expect(close).toHaveBeenCalledOnce())
   expect(bridge.quit).not.toHaveBeenCalled()
+})
+
+it('opens section navigation in a narrow window and closes it after selection', async () => {
+  vi.mocked(window.matchMedia).mockReturnValue({
+    matches: true,
+    media: '(max-width: 767px)',
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn().mockReturnValue(true),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn()
+  })
+  await openEditor()
+  expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Alternar navegação' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Aparência' }))
+  expect(screen.getByRole('heading', { name: 'Aparência' })).toBeInTheDocument()
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  )
 })

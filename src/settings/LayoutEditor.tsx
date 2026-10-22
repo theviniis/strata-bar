@@ -225,7 +225,12 @@ function SortableWidget({
           onCheckedChange={() => onChange(toggleWidget(draft, widget.id))}
         />
         <ItemContent className="min-w-0">
-          <ItemTitle>{typeLabels[widget.type]}</ItemTitle>
+          <ItemTitle
+            className="block max-w-full truncate"
+            title={typeLabels[widget.type]}
+          >
+            {typeLabels[widget.type]}
+          </ItemTitle>
           <ItemDescription title={widget.id}>{widget.id}</ItemDescription>
         </ItemContent>
         <SectionSelect widget={widget} draft={draft} onChange={onChange} />
