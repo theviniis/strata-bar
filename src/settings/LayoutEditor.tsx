@@ -1,40 +1,5 @@
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Switch } from '@/components/ui/switch'
-import { ManagerContext, type ColumnMoveFocus } from './manager-context'
-import { useMonitors } from './useMonitors'
-import {
-  readNavigation,
-  rememberNavigation,
-  type SettingsNavigation
-} from './navigation'
-import { WidgetCatalog } from './WidgetCatalog'
-import {
-  aggregateIds,
-  addToScope,
-  barEnabled,
-  displayedLayout,
-  effectiveWidget,
-  layoutFor,
-  patchWidget,
-  removeFromScope,
-  scopedIds,
-  setBarEnabled,
-  setLayout,
-  viewConfig
-} from './monitor-layout'
-import {
-  normalizeMonitorName,
-  widgetSchema,
-  type WidgetType
-} from '@/services/configuration/config'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from '@/components/ui/popover'
-import { MonitorWidgetInspector } from './MonitorWidgetInspector'
 import { WidgetPreview } from '@/components/status-bar/WidgetPreview'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -52,8 +17,20 @@ import {
   ItemHeader,
   ItemTitle
 } from '@/components/ui/item'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover'
+import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import type { Config, WidgetConfig } from '@/services/configuration/config'
+import {
+  normalizeMonitorName,
+  widgetSchema,
+  type WidgetType
+} from '@/services/configuration/config'
 import {
   closestCenter,
   DndContext,
@@ -76,12 +53,18 @@ import {
   useSortable,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable'
-import { ArrowLeft, ArrowRight, GripVertical, Trash2 } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  GripVertical,
+  Settings,
+  Trash2
+} from 'lucide-react'
 import { LayoutGroup, motion, MotionConfig } from 'motion/react'
 import {
   useContext,
-  useId,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -96,6 +79,29 @@ import {
   typeLabels,
   type Section
 } from './layout'
+import { ManagerContext, type ColumnMoveFocus } from './manager-context'
+import {
+  addToScope,
+  aggregateIds,
+  barEnabled,
+  displayedLayout,
+  effectiveWidget,
+  layoutFor,
+  patchWidget,
+  removeFromScope,
+  scopedIds,
+  setBarEnabled,
+  setLayout,
+  viewConfig
+} from './monitor-layout'
+import { MonitorWidgetInspector } from './MonitorWidgetInspector'
+import {
+  readNavigation,
+  rememberNavigation,
+  type SettingsNavigation
+} from './navigation'
+import { useMonitors } from './useMonitors'
+import { WidgetCatalog } from './WidgetCatalog'
 
 interface LayoutEditorProps {
   disabled?: boolean
@@ -682,10 +688,10 @@ function WidgetCard({
             <Button
               disabled={disabled}
               variant="outline"
-              size="sm"
+              size="icon"
               aria-label={`Configurar ${typeLabels[widget.type]}`}
             >
-              Configurar
+              <Settings />
             </Button>
           </PopoverTrigger>
           <PopoverContent
@@ -719,13 +725,13 @@ function WidgetCard({
               {
                 direction: 'left',
                 offset: -1,
-                Icon: ArrowLeft,
+                Icon: ChevronLeft,
                 edge: 'esquerda'
               },
               {
                 direction: 'right',
                 offset: 1,
-                Icon: ArrowRight,
+                Icon: ChevronRight,
                 edge: 'direita'
               }
             ] as const
