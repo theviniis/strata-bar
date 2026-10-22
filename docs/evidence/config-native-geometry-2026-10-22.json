@@ -1,0 +1,121 @@
+{
+  "monitors": [
+    {
+      "deviceName": "\\\\.\\DISPLAY1",
+      "height": 1440,
+      "id": "\\\\?\\DISPLAY#GBT3402#5&3e143f&0&UID4357#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}",
+      "name": "Generic PnP Monitor",
+      "primary": true,
+      "width": 3440
+    },
+    {
+      "deviceName": "\\\\.\\DISPLAY2",
+      "height": 1080,
+      "id": "\\\\?\\DISPLAY#AOC2402#5&3e143f&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}",
+      "name": "Generic PnP Monitor",
+      "primary": false,
+      "width": 1920
+    }
+  ],
+  "passed": true,
+  "phases": [
+    {
+      "alwaysOnTop": false,
+      "bars": [
+        {
+          "client": [1920, 80],
+          "dpi": 96,
+          "komorebiEligible": false,
+          "noActivate": false,
+          "rect": [724, -80, 2644, 0],
+          "title": "Strata · \\\\.\\DISPLAY2",
+          "toolWindow": true,
+          "topmost": false,
+          "visible": true
+        },
+        {
+          "client": [3440, 80],
+          "dpi": 96,
+          "komorebiEligible": false,
+          "noActivate": false,
+          "rect": [0, 1360, 3440, 1440],
+          "title": "Strata · \\\\.\\DISPLAY1",
+          "toolWindow": true,
+          "topmost": false,
+          "visible": true
+        }
+      ],
+      "height": 80,
+      "monitors": [
+        {
+          "monitor": [0, 0, 3440, 1440],
+          "workArea": [0, 0, 3440, 1360]
+        },
+        {
+          "monitor": [724, -1080, 2644, 0],
+          "workArea": [724, -1080, 2644, -80]
+        }
+      ],
+      "position": "bottom",
+      "renderedSpacing": true,
+      "sameWindows": true,
+      "scriptPassed": true,
+      "spacing": 32
+    },
+    {
+      "alwaysOnTop": true,
+      "bars": [
+        {
+          "client": [1920, 28],
+          "dpi": 96,
+          "komorebiEligible": false,
+          "noActivate": false,
+          "rect": [724, -1080, 2644, -1052],
+          "title": "Strata · \\\\.\\DISPLAY2",
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        },
+        {
+          "client": [3440, 28],
+          "dpi": 96,
+          "komorebiEligible": false,
+          "noActivate": false,
+          "rect": [0, 0, 3440, 28],
+          "title": "Strata · \\\\.\\DISPLAY1",
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        }
+      ],
+      "height": 28,
+      "monitors": [
+        {
+          "monitor": [0, 0, 3440, 1440],
+          "workArea": [0, 28, 3440, 1440]
+        },
+        {
+          "monitor": [724, -1080, 2644, 0],
+          "workArea": [724, -1052, 2644, 0]
+        }
+      ],
+      "position": "top",
+      "renderedSpacing": true,
+      "sameWindows": true,
+      "scriptPassed": true,
+      "spacing": 0
+    }
+  ],
+  "settingsApply": true,
+  "exitReservationReleased": true,
+  "afterExit": [
+    {
+      "monitor": [0, 0, 3440, 1440],
+      "workArea": [0, 0, 3440, 1440]
+    },
+    {
+      "monitor": [724, -1080, 2644, 0],
+      "workArea": [724, -1080, 2644, 0]
+    }
+  ]
+}
