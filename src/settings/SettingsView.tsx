@@ -1,7 +1,6 @@
 import { QueryProvider } from '@/components/QueryProvider'
-import { TooltipProvider } from '@/components/ui/tooltip'
-import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
@@ -11,7 +10,6 @@ import {
 } from '@/components/ui/card'
 import { FieldSet } from '@/components/ui/field'
 import { Separator } from '@/components/ui/separator'
-import { Spinner } from '@/components/ui/spinner'
 import {
   Sidebar,
   SidebarContent,
@@ -26,26 +24,28 @@ import {
   SidebarTrigger,
   useSidebar
 } from '@/components/ui/sidebar'
+import { Spinner } from '@/components/ui/spinner'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import type { Config } from '@/services/configuration/config'
+import { bridge } from '@/services/system/bridge'
 import {
-  Settings2,
-  Save,
-  Undo2,
-  RotateCw,
-  X,
   LayoutDashboard,
-  Palette
+  Palette,
+  RotateCw,
+  Save,
+  Settings2,
+  Undo2,
+  X
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import type { Config } from '@/services/configuration/config'
-import { bridge } from '@/services/system/bridge'
-import { LayoutEditor } from './LayoutEditor'
 import { BarSettings } from './BarSettings'
 import {
   createNativePersistence,
   useConfigEditor,
   type ConfigPersistence
 } from './draft'
+import { LayoutEditor } from './LayoutEditor'
 
 type SettingsSection = 'layout' | 'appearance'
 
@@ -98,10 +98,7 @@ export function SettingsView() {
             <header className="flex h-14 shrink-0 items-center justify-between px-6">
               <div className="flex items-center gap-2">
                 <SidebarTrigger aria-label="Alternar navegação" />
-                <Settings2 className="size-5" aria-hidden="true" />
-                <h1 className="text-lg font-semibold">
-                  Configurações do Strata
-                </h1>
+                <h1 className="text-lg font-semibold">Configurações</h1>
               </div>
               <div className="flex items-center gap-2">
                 <Button
