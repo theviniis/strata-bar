@@ -1,9 +1,12 @@
 import { useEffect, useRef } from 'react'
+import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
 
 /** Native owns placement; report only the widget's viewport rectangle in CSS px. */
 export function useReminderAnchor() {
+  const preview = useWidgetPreview()
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
+    if (preview) return
     if (!window.__TAURI_INTERNALS__) return
     const node = ref.current
     if (!node) return
@@ -54,6 +57,6 @@ export function useReminderAnchor() {
       window.removeEventListener('resize', onResize)
       unlisten?.()
     }
-  }, [])
+  }, [preview])
   return ref
 }

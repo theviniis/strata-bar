@@ -1,10 +1,14 @@
 import { getISOWeek } from 'date-fns'
 import { useEffect, useMemo, useState } from 'react'
+import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
+import { PREVIEW_TIME } from '@/services/system/widget-preview'
 
 export function useTime() {
+  const preview = useWidgetPreview()
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
+    if (preview) return
     let timer: ReturnType<typeof setTimeout>
 
     const update = () => {
@@ -14,27 +18,27 @@ export function useTime() {
 
     update()
     return () => clearTimeout(timer)
-  }, [])
+  }, [preview])
 
-  return useMemo(
-    () => ({
-      now,
-      dateTime: now.toISOString(),
-      hours: now.toLocaleTimeString(undefined, {
+  return useMemo(() => {
+    const displayed = preview ? new Date(PREVIEW_TIME) : now
+    return {
+      now: displayed,
+      dateTime: displayed.toISOString(),
+      hours: displayed.toLocaleTimeString(undefined, {
         hour: '2-digit',
         minute: '2-digit'
       }),
-      date: now.toLocaleDateString(undefined, {
+      date: displayed.toLocaleDateString(undefined, {
         weekday: 'short',
         day: '2-digit',
         month: 'short'
       }),
-      text: now.toLocaleDateString(undefined, { dateStyle: 'full' }),
-      day: now.toLocaleDateString('pt-BR', { weekday: 'long' }),
-      month: now.toLocaleDateString('pt-BR', { month: 'long' }),
-      year: now.getFullYear(),
-      week: getISOWeek(now)
-    }),
-    [now]
-  )
+      text: displayed.toLocaleDateString(undefined, { dateStyle: 'full' }),
+      day: displayed.toLocaleDateString('pt-BR', { weekday: 'long' }),
+      month: displayed.toLocaleDateString('pt-BR', { month: 'long' }),
+      year: displayed.getFullYear(),
+      week: getISOWeek(displayed)
+    }
+  }, [now, preview])
 }

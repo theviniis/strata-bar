@@ -1,12 +1,34 @@
+import { WidgetPreview } from '@/components/status-bar/WidgetPreview'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty'
+import { Item, ItemContent, ItemHeader, ItemTitle } from '@/components/ui/item'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { cn } from '@/lib/utils'
+import type { Config, WidgetConfig } from '@/services/configuration/config'
 import {
   closestCenter,
   DndContext,
+  DragOverlay,
   KeyboardSensor,
+  MeasuringStrategy,
   PointerSensor,
+  pointerWithin,
+  useDndContext,
   useDroppable,
   useSensor,
   useSensors,
-  type DragEndEvent
+  type CollisionDetection,
+  type DragEndEvent,
+  type DragMoveEvent
 } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -16,29 +38,12 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
+import { useState, type ComponentProps } from 'react'
+import { createPortal } from 'react-dom'
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card'
-import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty'
-import {
-  Item,
-  ItemContent,
-  ItemDescription,
-  ItemTitle
-} from '@/components/ui/item'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { cn } from '@/lib/utils'
-import type { Config, WidgetConfig } from '@/services/configuration/config'
-import {
-  addWidget,
   addableTypes,
+  addWidget,
+  findWidget,
   moveWidget,
   removeWidget,
   sectionLabels,
@@ -57,22 +62,34 @@ interface LayoutEditorProps {
 /**
  * The three ordered bar sections as sortable columns. A drag inside a column
  * reorders it; dropping on another column moves the widget across sections.
- * Every mutation installs a new document in the draft, so what is on screen is
- * always the draft, and a generated ID is checked against all three columns
- * before it is used.
+ * Dragging projects a temporary layout, committed to the draft only on drop.
+ * Cancel restores the original layout. Generated IDs are checked across all
+ * three columns before use.
  *
  * The keyboard sensor and the explicit "Mover para" select are the accessible
  * paths; the tests drive those, never drag internals.
  */
 export function LayoutEditor({ draft, onChange, disabled }: LayoutEditorProps) {
+  const [drag, setDrag] = useState<{ id: string; config: Config } | null>(null)
+  const display = drag?.config ?? draft
+  const location = drag ? findWidget(display, drag.id) : undefined
+  const activeWidget = location
+    ? display.widgets[location.section][location.index]
+    : undefined
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
   function onDragEnd(event: DragEndEvent) {
+    setDrag(null)
     const { active, over } = event
-    if (!over) return
+    if (!over || !drag) return
+    if (!(event.activatorEvent instanceof KeyboardEvent)) {
+      if (drag.config !== draft) onChange(drag.config)
+      return
+    }
+    if (active.id === over.id) return
     const overId = String(over.id)
     const target = overId.startsWith('section:')
       ? {
@@ -80,16 +97,64 @@ export function LayoutEditor({ draft, onChange, disabled }: LayoutEditorProps) {
           index:
             draft.widgets[overId.slice('section:'.length) as Section].length
         }
-      : locate(draft, overId)
+      : findWidget(draft, overId)
     if (!target) return
     const next = moveWidget(draft, String(active.id), target)
     if (next !== draft) onChange(next)
   }
 
+  function previewMove(event: DragMoveEvent) {
+    const { active, over, activatorEvent, delta } = event
+    if (
+      !over ||
+      active.id === over.id ||
+      !(activatorEvent instanceof MouseEvent)
+    )
+      return
+    const pointerY = activatorEvent.clientY + delta.y
+    setDrag((current) => {
+      if (!current) return current
+      const from = findWidget(current.config, String(active.id))
+      const overId = String(over.id)
+      const target = overId.startsWith('section:')
+        ? {
+            section: overId.slice('section:'.length) as Section,
+            index:
+              current.config.widgets[overId.slice('section:'.length) as Section]
+                .length
+          }
+        : findWidget(current.config, overId)
+      if (!from || !target) return current
+      let index = target.index
+      if (
+        !overId.startsWith('section:') &&
+        pointerY > over.rect.top + over.rect.height / 2
+      )
+        index += 1
+      if (from.section === target.section && from.index < index) index -= 1
+      if (from.section === target.section && from.index === index)
+        return current
+      return {
+        ...current,
+        config: moveWidget(current.config, String(active.id), {
+          section: target.section,
+          index
+        })
+      }
+    })
+  }
+
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={layoutCollision}
+      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+      onDragStart={({ active }) =>
+        setDrag({ id: String(active.id), config: draft })
+      }
+      onDragCancel={() => setDrag(null)}
+      onDragOver={previewMove}
+      onDragMove={previewMove}
       onDragEnd={onDragEnd}
     >
       <div className="grid gap-4 md:grid-cols-3">
@@ -97,23 +162,43 @@ export function LayoutEditor({ draft, onChange, disabled }: LayoutEditorProps) {
           <SectionColumn
             key={section}
             section={section}
-            widgets={draft.widgets[section]}
-            draft={draft}
+            widgets={display.widgets[section]}
+            draft={display}
             onChange={onChange}
             disabled={disabled}
           />
         ))}
       </div>
+      {createPortal(
+        <DragOverlay adjustScale={false} dropAnimation={null}>
+          {activeWidget && (
+            <div
+              role="img"
+              aria-label={`Movendo ${typeLabels[activeWidget.type]}`}
+              className="rounded-md bg-card shadow-lg"
+            >
+              <WidgetCard
+                widget={activeWidget}
+                draft={display}
+                onChange={onChange}
+                disabled
+              />
+            </div>
+          )}
+        </DragOverlay>,
+        document.body
+      )}
     </DndContext>
   )
 }
 
-function locate(draft: Config, id: string) {
-  for (const section of sections) {
-    const index = draft.widgets[section].findIndex((w) => w.id === id)
-    if (index >= 0) return { section, index }
-  }
-  return undefined
+// Pointer drops use the item or section actually under the cursor. Keyboard
+// sorting keeps the library's distance-based navigation between targets.
+const layoutCollision: CollisionDetection = (args) => {
+  if (!args.pointerCoordinates) return closestCenter(args)
+  const hits = pointerWithin(args)
+  const items = hits.filter(({ id }) => !String(id).startsWith('section:'))
+  return items.length ? items : hits
 }
 
 interface SectionColumnProps extends LayoutEditorProps {
@@ -129,13 +214,18 @@ function SectionColumn({
   disabled
 }: SectionColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `section:${section}` })
+  const { over } = useDndContext()
+  const isOverSection =
+    isOver ||
+    (over !== null && findWidget(draft, String(over.id))?.section === section)
   return (
     <Card
       ref={setNodeRef}
       role="region"
       aria-label={`Seção ${sectionLabels[section]}`}
       data-section={section}
-      className={cn('min-w-0', isOver && 'ring-2 ring-ring')}
+      data-drag-over={isOverSection}
+      className="min-w-0 data-[drag-over=true]:ring-2 data-[drag-over=true]:ring-ring"
     >
       <CardHeader>
         <CardTitle role="heading" aria-level={3}>
@@ -203,74 +293,77 @@ function SortableWidget({
   return (
     <li
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
+      style={{
+        transform: isDragging ? undefined : CSS.Transform.toString(transform),
+        transition
+      }}
+      className={cn(isDragging && 'opacity-30')}
       data-widget={widget.id}
       data-dragging={isDragging || undefined}
     >
-      <Item variant="outline" size="sm">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          className="cursor-grab touch-none"
-          aria-label={`Mover ${typeLabels[widget.type]}`}
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical aria-hidden="true" />
-        </Button>
-        <Checkbox
-          aria-label={`Ativar ${typeLabels[widget.type]}`}
-          checked={widget.enabled}
-          onCheckedChange={() => onChange(toggleWidget(draft, widget.id))}
-        />
-        <ItemContent className="min-w-0">
+      <WidgetCard
+        widget={widget}
+        draft={draft}
+        onChange={onChange}
+        disabled={disabled}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
+    </li>
+  )
+}
+
+function WidgetCard({
+  widget,
+  draft,
+  onChange,
+  disabled,
+  dragHandleProps
+}: SortableWidgetProps & {
+  dragHandleProps?: ComponentProps<typeof Button>
+}) {
+  return (
+    <Item variant="outline" size="sm">
+      <ItemHeader>
+        <div className="flex min-w-0 items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className="cursor-grab touch-none"
+            disabled={disabled}
+            aria-label={`Mover ${typeLabels[widget.type]}`}
+            {...dragHandleProps}
+          >
+            <GripVertical aria-hidden="true" />
+          </Button>
+          <Checkbox
+            disabled={disabled}
+            aria-label={`Ativar ${typeLabels[widget.type]}`}
+            checked={widget.enabled}
+            onCheckedChange={() => onChange(toggleWidget(draft, widget.id))}
+          />
           <ItemTitle
             className="block max-w-full truncate"
             title={typeLabels[widget.type]}
           >
             {typeLabels[widget.type]}
           </ItemTitle>
-          <ItemDescription title={widget.id}>{widget.id}</ItemDescription>
-        </ItemContent>
-        <SectionSelect widget={widget} draft={draft} onChange={onChange} />
+        </div>
         <Button
           type="button"
           size="icon-xs"
           variant="ghost"
+          disabled={disabled}
           aria-label={`Remover ${typeLabels[widget.type]}`}
           onClick={() => onChange(removeWidget(draft, widget.id))}
         >
           <Trash2 aria-hidden="true" />
         </Button>
-      </Item>
-    </li>
-  )
-}
-
-/** Keyboard/pointer-free equivalent of a cross-column drag. */
-function SectionSelect({ widget, draft, onChange }: SortableWidgetProps) {
-  const current = locate(draft, widget.id)?.section ?? 'left'
-  return (
-    <NativeSelect
-      size="sm"
-      aria-label={`Mover ${typeLabels[widget.type]} para`}
-      value={current}
-      onChange={(event) =>
-        onChange(
-          moveWidget(draft, widget.id, {
-            section: event.target.value as Section,
-            index: draft.widgets[event.target.value as Section].length
-          })
-        )
-      }
-    >
-      {sections.map((section) => (
-        <NativeSelectOption key={section} value={section}>
-          {sectionLabels[section]}
-        </NativeSelectOption>
-      ))}
-    </NativeSelect>
+      </ItemHeader>
+      <ItemContent className="min-w-0 basis-full">
+        <WidgetPreview widget={widget} theme={draft.bar.theme} />
+      </ItemContent>
+    </Item>
   )
 }
 
