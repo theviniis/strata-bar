@@ -26,7 +26,6 @@ interface BarSettingsProps {
  * read-only with a pointer to the geometry follow-up (#3).
  */
 export function BarSettings({ draft, onChange }: BarSettingsProps) {
-  const themeId = useId()
   const spacingId = useId()
   return (
     <section className="grid gap-4" aria-label="Barra">

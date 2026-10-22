@@ -36,7 +36,7 @@ export function SettingsView() {
 
   // The hook must run unconditionally; while demo config is still loading the
   // persistence is a no-op stub that keeps the form on the defaults.
-  const editor = useConfigEditor(persistence ?? stubPersistence())
+  const editor = useConfigEditor(persistence ?? STUB_PERSISTENCE)
 
   if (!persistence) {
     return (
@@ -56,15 +56,14 @@ export function SettingsView() {
           <header className="flex h-14 items-center justify-between border-b px-6">
             <div className="flex items-center gap-2">
               <Settings2 className="h-5 w-5" />
-              <h1 className="text-lg font-semibold">
-                Configurações do Strata
-              </h1>
+              <h1 className="text-lg font-semibold">Configurações do Strata</h1>
             </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handleWindowClose}
+                aria-label="Fechar"
                 title="Fechar"
               >
                 <X className="h-4 w-4" />
@@ -73,30 +72,35 @@ export function SettingsView() {
           </header>
 
           <div className="flex-1 overflow-auto p-6">
-            <section className="mb-6">
-              <div className="mb-4 flex items-center gap-2">
-                <Settings2 className="h-4 w-4 text-muted-foreground" />
-                <h2 className="text-sm font-medium">Editor de Layout</h2>
-              </div>
-              <LayoutEditor
-                draft={editor.form.getValues()}
-                onChange={editor.replaceDraft}
-              />
-            </section>
+            <fieldset disabled={editor.loading || editor.saving}>
+              <section className="mb-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <Settings2 className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="text-sm font-medium">Editor de Layout</h2>
+                </div>
+                <LayoutEditor
+                  draft={editor.form.getValues()}
+                  onChange={editor.replaceDraft}
+                />
+              </section>
 
-            <section className="mb-6">
-              <div className="mb-4 flex items-center gap-2">
-                <Settings2 className="h-4 w-4 text-muted-foreground" />
-                <h2 className="text-sm font-medium">Aparência</h2>
-              </div>
-              <BarSettings
-                draft={editor.form.getValues()}
-                onChange={editor.replaceDraft}
-              />
-            </section>
+              <section className="mb-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <Settings2 className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="text-sm font-medium">Aparência</h2>
+                </div>
+                <BarSettings
+                  draft={editor.form.getValues()}
+                  onChange={editor.replaceDraft}
+                />
+              </section>
+            </fieldset>
 
             {editor.error && (
-              <div className="mb-4 rounded-md border border-red-500/20 bg-red-500/5 p-3">
+              <div
+                role="alert"
+                className="mb-4 rounded-md border border-red-500/20 bg-red-500/5 p-3"
+              >
                 <p className="text-sm text-red-600 dark:text-red-400">
                   {editor.error.message}
                 </p>
@@ -147,24 +151,28 @@ export function SettingsView() {
     </QueryProvider>
   )
 
-  function handleWindowClose() {
+  async function handleWindowClose() {
     if (bridge.mode === 'native') {
-      bridge.quit?.()
+      const { getCurrentWindow } = await import('@tauri-apps/api/window')
+      await getCurrentWindow().close()
     } else {
       window.close()
     }
   }
 }
 
-/** Placeholder so the editor hook runs while the demo config loads. */
-function stubPersistence(): ConfigPersistence {
-  return {
-    async load() {
-      throw new Error('Carregando configuração do navegador...')
-    },
-    async save(config) {
-      return config
-    }
+export default SettingsView
+
+/**
+ * Placeholder so the editor hook runs while the demo config loads. Module-level
+ * because a fresh identity per render would re-trigger the load effect.
+ */
+const STUB_PERSISTENCE: ConfigPersistence = {
+  async load() {
+    throw new Error('Carregando configuração do navegador...')
+  },
+  async save(config) {
+    return config
   }
 }
 

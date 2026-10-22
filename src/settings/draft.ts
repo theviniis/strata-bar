@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { useCallback, useEffect, useState } from 'react'
 import { useForm, type UseFormReturn } from 'react-hook-form'
 import {
@@ -26,6 +27,15 @@ import { bridge } from '../services/system/bridge'
 /** The form works on the schema's input shape; Apply submits its parsed output. */
 export type ConfigDraft = Config
 export type ValidConfig = Config
+
+// Editor mutations always supply complete documents; the canonical schema still
+// validates every field and supplies defaults at the persistence boundary.
+const draftSchema = z.custom<ConfigDraft>().transform((value, context) => {
+  const result = configSchema.safeParse(value)
+  if (result.success) return result.data
+  for (const issue of result.error.issues) context.addIssue({ ...issue })
+  return z.NEVER
+})
 
 export type ConfigPersistence = {
   load(): Promise<ValidConfig>
@@ -101,11 +111,9 @@ export type ConfigEditor = {
  * hook, not a store: the draft is window-local, so closing the settings window
  * (the `settings` webview is destroyed) leaves no state behind.
  */
-export function useConfigEditor(
-  persistence: ConfigPersistence = createNativePersistence()
-): ConfigEditor {
+export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
   const form = useForm<ConfigDraft, unknown, ValidConfig>({
-    resolver: zodResolver(configSchema),
+    resolver: zodResolver(draftSchema),
     mode: 'onChange',
     defaultValues: structuredClone(defaultConfig)
   })
@@ -113,6 +121,7 @@ export function useConfigEditor(
   const [error, setError] = useState<EditorError | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const fieldMessage = firstError(form.formState.errors)
 
   const load = useCallback(async () => {
     try {
@@ -128,7 +137,7 @@ export function useConfigEditor(
   }, [form, persistence])
 
   useEffect(() => {
-    void load()
+    void Promise.resolve().then(load)
   }, [load])
 
   const replaceDraft = useCallback(
@@ -171,6 +180,7 @@ export function useConfigEditor(
   const revert = useCallback(() => {
     // Re-read the file: an external edit made while the window was open must
     // be what Revert restores, not a stale in-memory copy.
+    setLoading(true)
     void load()
   }, [load])
 
@@ -184,7 +194,7 @@ export function useConfigEditor(
   return {
     form,
     saved,
-    error,
+    error: fieldMessage ? { source: 'field', message: fieldMessage } : error,
     loading,
     saving,
     replaceDraft,

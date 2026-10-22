@@ -1,142 +1,122 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, expect, it, vi, describe } from 'vitest'
-import type { Config, WidgetConfig } from '../services/configuration/config'
+import { useState } from 'react'
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within
+} from '@testing-library/react'
+import { expect, it, vi } from 'vitest'
+import { configSchema } from '../services/configuration/config'
 import { LayoutEditor } from '../settings/LayoutEditor'
 
-const defaultConfig: Config = {
-  version: 1,
-  bar: {},
-  widgets: {
-    left: [{ id: 'komorebi', type: 'komorebi' }],
-    center: [{ id: 'cpu', type: 'cpu' }],
-    right: [
-      { id: 'volume', type: 'volume' },
-      { id: 'microphone', type: 'microphone' }
-    ]
-  }
-}
-
-function renderLayoutEditor(config: Config, onChange: (next: Config) => void) {
-  return render(<LayoutEditor draft={config} onChange={onChange} />)
-}
-
-describe('LayoutEditor', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('renders three sortable columns', () => {
-    const onChange = vi.fn()
-    renderLayoutEditor(defaultConfig, onChange)
-
-    expect(screen.getByLabelText('Seção Esquerda')).toBeInTheDocument()
-    expect(screen.getByLabelText('Seção Centro')).toBeInTheDocument()
-    expect(screen.getByLabelText('Seção Direita')).toBeInTheDocument()
-  })
-
-  it('renders widgets in their configured sections', () => {
-    const onChange = vi.fn()
-    renderLayoutEditor(defaultConfig, onChange)
-
-    expect(screen.getByLabelText('Uso da CPU')).toBeInTheDocument()
-    expect(screen.getByLabelText('Área de trabalho')).toBeInTheDocument()
-    expect(screen.getByLabelText('Saída de áudio')).toBeInTheDocument()
-    expect(screen.getByLabelText('Entrada de áudio')).toBeInTheDocument()
-  })
-
-  it('allows reordering widgets within a section', () => {
-    const onChange = vi.fn((next) => next)
-    renderLayoutEditor(defaultConfig, onChange)
-
-    const widgets = screen.getAllByRole('listitem')
-    expect(widgets).toHaveLength(4)
-
-    // Simulate moving CPU to the end of center
-    const cpuWidget = screen.getByTitle('Uso da CPU (cpu)')
-    expect(cpuWidget).toHaveTextContent('Uso da CPU')
-  })
-
-  it('allows moving widgets between sections', () => {
-    const onChange = vi.fn((next) => next)
-    renderLayoutEditor(defaultConfig, onChange)
-
-    const select = screen.getByRole('combobox', {
-      name: 'Mover Uso da CPU para'
-    })
-    expect(select).toBeInTheDocument()
-
-    // Check initial position
-    const centerSection = screen.getByLabelText('Seção Centro')
-    expect(centerSection).toHaveTextContent('Uso da CPU')
-  })
-
-  it('prevents duplicate widget IDs', () => {
-    const onChange = vi.fn((next) => next)
-    const configWithDuplicate = structuredClone(defaultConfig)
-    configWithDuplicate.widgets.right[0].id = 'cpu'
-
-    expect(() => {
-      renderLayoutEditor(configWithDuplicate, onChange)
-    }).not.toThrow()
-  })
-
-  it('allows adding new widgets', () => {
-    const onChange = vi.fn((next) => next)
-    const config = structuredClone(defaultConfig)
-    renderLayoutEditor(config, onChange)
-
-    const addWidgetSummary = screen.getByText('Adicionar')
-    expect(addWidgetSummary).toBeInTheDocument()
-
-    // Expand the dropdown
-    fireEvent.click(addWidgetSummary)
-
-    // Check that all widget types are available
-    expect(screen.getByText('Relógio')).toBeInTheDocument()
-    expect(screen.getByText('CPU')).toBeInTheDocument()
-    expect(screen.getByText('RAM')).toBeInTheDocument()
-  })
-
-  it('allows removing widgets', () => {
-    const onChange = vi.fn((next) => next)
-    renderLayoutEditor(defaultConfig, onChange)
-
-    const removeButtons = screen.getAllByRole('button', { name: /Remover/ })
-    expect(removeButtons).toHaveLength(4)
-
-    // Remove CPU widget
-    const cpuRemoveButton = removeButtons[0] // CPU is first in the list
-    fireEvent.click(cpuRemoveButton)
-
-    expect(screen.queryByLabelText('Uso da CPU')).not.toBeInTheDocument()
-  })
-
-  it('allows toggling widget enabled state', () => {
-    const onChange = vi.fn((next) => next)
-    renderLayoutEditor(defaultConfig, onChange)
-
-    const checkboxes = screen.getAllByRole('checkbox')
-    expect(checkboxes).toHaveLength(4)
-
-    // Toggle CPU
-    const cpuCheckbox = checkboxes[1] // First is layout, second is CPU
-    fireEvent.click(cpuCheckbox)
-
-    // onChange should be called with updated enabled state
-    expect(onChange).toHaveBeenCalled()
-  })
-
-  it('shows empty section message', () => {
-    const emptyConfig: Config = {
+function Editor() {
+  const [draft, setDraft] = useState(() =>
+    configSchema.parse({
       version: 1,
       bar: {},
-      widgets: { left: [], center: [], right: [] }
-    }
+      widgets: {
+        left: [
+          { id: 'cpu', type: 'cpu' },
+          { id: 'memory', type: 'memory' }
+        ],
+        center: [],
+        right: []
+      }
+    })
+  )
+  return (
+    <>
+      <LayoutEditor draft={draft} onChange={setDraft} />
+      <output aria-label="Draft">{JSON.stringify(draft)}</output>
+    </>
+  )
+}
 
-    const onChange = vi.fn()
-    renderLayoutEditor(emptyConfig, onChange)
-
-    const sections = screen.getAllByRole('region')
-    expect(sections).toHaveLength(3)
+it('moves a widget to an empty section and retains its settings', () => {
+  render(<Editor />)
+  fireEvent.change(screen.getByRole('combobox', { name: 'Mover CPU para' }), {
+    target: { value: 'right' }
   })
+  expect(
+    within(screen.getByRole('region', { name: 'Seção Direita' })).getByRole(
+      'checkbox',
+      { name: 'Ativar CPU' }
+    )
+  ).toBeChecked()
+  expect(
+    within(screen.getByRole('region', { name: 'Seção Esquerda' })).queryByRole(
+      'checkbox',
+      { name: 'Ativar CPU' }
+    )
+  ).not.toBeInTheDocument()
+})
+
+it('adds collision-free widget IDs with valid defaults, toggles and removes', () => {
+  render(<Editor />)
+  fireEvent.click(screen.getByLabelText('Adicionar widget em Centro'))
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Adicionar CPU em Centro' })
+  )
+  const center = screen.getByRole('region', { name: 'Seção Centro' })
+  expect(within(center).getByTitle('cpu-2')).toBeInTheDocument()
+  expect(
+    within(center).getByRole('checkbox', { name: 'Ativar CPU' })
+  ).toBeChecked()
+  expect(
+    configSchema.safeParse(
+      JSON.parse(screen.getByLabelText('Draft').textContent!)
+    ).success
+  ).toBe(true)
+  fireEvent.click(within(center).getByRole('checkbox', { name: 'Ativar CPU' }))
+  expect(
+    within(center).getByRole('checkbox', { name: 'Ativar CPU' })
+  ).not.toBeChecked()
+  fireEvent.click(within(center).getByRole('button', { name: 'Remover CPU' }))
+  expect(within(center).queryByTitle('cpu-2')).not.toBeInTheDocument()
+})
+
+it('reorders adjacent widgets using the drag handle keyboard controls', async () => {
+  const rect = vi
+    .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    .mockImplementation(function (this: HTMLElement) {
+      const item = this.closest('[data-widget]')
+      const index = item
+        ? Array.from(item.parentElement!.children).indexOf(item)
+        : 0
+      return {
+        x: 0,
+        y: index * 60,
+        top: index * 60,
+        left: 0,
+        right: 200,
+        bottom: index * 60 + 50,
+        width: 200,
+        height: 50,
+        toJSON() {}
+      }
+    })
+  try {
+    render(<Editor />)
+    const handle = screen.getByRole('button', {
+      name: 'Mover CPU'
+    })
+    handle.focus()
+    fireEvent.keyDown(handle, { code: 'Space' })
+    await waitFor(() => expect(handle).toHaveAttribute('aria-pressed', 'true'))
+    fireEvent.keyDown(handle, { code: 'ArrowDown' })
+    await act(async () => {})
+    fireEvent.keyDown(handle, { code: 'Space' })
+    await waitFor(() => {
+      const section = screen.getByRole('region', { name: 'Seção Esquerda' })
+      expect(
+        within(section)
+          .getAllByRole('checkbox')
+          .map((item) => item.getAttribute('aria-label'))
+      ).toEqual(['Ativar RAM', 'Ativar CPU'])
+    })
+  } finally {
+    rect.mockRestore()
+  }
 })

@@ -57,6 +57,8 @@ const widget = z.object({
   audio: audio.optional()
 })
 
+export { widget as widgetSchema }
+
 /** Audio settings of the first widget of a type in the layout. */
 export function widgetAudio(config: Config, type: WidgetType) {
   return [

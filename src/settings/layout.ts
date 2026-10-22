@@ -1,5 +1,6 @@
 import {
   types,
+  widgetSchema,
   type Config,
   type WidgetConfig,
   type WidgetType
@@ -80,10 +81,10 @@ export function moveWidget(
   const next = structuredClone(config)
   const [widget] = next.widgets[from.section].splice(from.index, 1)
   if (!widget) return config
-  const target =
-    from.section === to.section && from.index < to.index
-      ? Math.min(to.index - 1, next.widgets[to.section].length)
-      : Math.min(to.index, next.widgets[to.section].length)
+  const target = Math.max(
+    0,
+    Math.min(to.index, next.widgets[to.section].length)
+  )
   next.widgets[to.section].splice(target, 0, widget)
   return next
 }
@@ -95,7 +96,9 @@ export function addWidget(
   section: Section
 ): Config {
   const next = structuredClone(config)
-  next.widgets[section].push({ id: uniqueId(next, type), type })
+  next.widgets[section].push(
+    widgetSchema.parse({ id: uniqueId(next, type), type })
+  )
   return next
 }
 
