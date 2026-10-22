@@ -1,6 +1,3 @@
-import { useId } from 'react'
-import { Check } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Field,
@@ -13,8 +10,11 @@ import {
 } from '@/components/ui/field'
 import { Slider } from '@/components/ui/slider'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import type { AgentType } from '@/services/system/agents.generated'
+import { cn } from '@/lib/utils'
 import type { Config } from '@/services/configuration/config'
+import type { AgentType } from '@/services/system/agents.generated'
+import { Check } from 'lucide-react'
+import { useId } from 'react'
 import type { ConfigDraft } from './draft'
 import { ThemePreview } from './ThemePreview'
 
@@ -54,7 +54,7 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
         >
           {(
             [
-              { theme: 'system', label: 'System' },
+              { theme: 'system', label: 'Sistema' },
               { theme: 'dark', label: 'Escuro' },
               { theme: 'light', label: 'Claro' }
             ] as const
