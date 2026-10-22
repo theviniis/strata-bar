@@ -9,14 +9,6 @@ import {
   CardTitle
 } from '@/components/ui/card'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog'
-import {
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -26,10 +18,9 @@ import {
 import { Slider } from '@/components/ui/slider'
 import { Spinner } from '@/components/ui/spinner'
 import { WidgetItemOutput } from '@/components/widget-item'
-import { Check, Settings, Volume2, VolumeX } from 'lucide-react'
+import { Check, Volume2, VolumeX } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useSystemChannel } from '../../hooks/useSystemChannel'
-import { useVoicemeeterCapability } from '../../hooks/useVoicemeeterCapability'
 import { usePopupContext } from '../../popups/context'
 import {
   bridge,
@@ -37,7 +28,6 @@ import {
   type SystemEvent,
   type VolumeChange
 } from '../../services/system/bridge'
-import { VoicemeeterSettings } from '../audio/VoicemeeterSettings'
 
 type Outputs = ChannelData['audioOutputs']
 type Volume = ChannelData['volume']
@@ -228,33 +218,22 @@ function AudioOutputsContent({
   const level = draft ?? (volume.status === 'ready' ? volume.data.level : 0)
   const muted = volume.status === 'ready' && volume.data.muted
   const Icon = muted ? VolumeX : Volume2
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  // The Voicemeeter menu only exists in a native bar that detected the DLL.
-  const voicemeeter = useVoicemeeterCapability()
 
   return (
-    <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-      <div className="flex flex-col" hidden={settingsOpen}>
+    <>
+      <div className="flex flex-col">
         <CardHeader>
           <div className="flex items-center justify-between gap-2">
             <CardTitle>Saída de audio</CardTitle>
-            {voicemeeter && (
-              <DialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Configurações do Voicemeeter"
-                >
-                  <Settings size={16} aria-hidden="true" />
-                </Button>
-              </DialogTrigger>
-            )}
           </div>
           <CardDescription>
             Controle o volume e a saída de audio
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {volume.status === 'unavailable' && (
+            <p>Configure a fonte em Configurações → Saída de áudio.</p>
+          )}
           <div className="" aria-busy={pending !== null}>
             {outputs.status === 'loading' && <EmptyOutputItems />}
             {outputs.status === 'error' && (
@@ -324,20 +303,6 @@ function AudioOutputsContent({
           </WidgetItemOutput>
         </CardFooter>
       </div>
-      <DialogContent
-        inline
-        className="w-[320px] overflow-y-auto"
-        onKeyDown={(event) => event.stopPropagation()}
-      >
-        <DialogHeader>
-          <DialogTitle>Configurações do Voicemeeter</DialogTitle>
-          <DialogDescription>
-            Define se o mute e o slider controlam o Voicemeeter e qual faixa do
-            Voicemeeter eles controlam.
-          </DialogDescription>
-        </DialogHeader>
-        <VoicemeeterSettings type="volume" kind="bus" />
-      </DialogContent>
-    </Dialog>
+    </>
   )
 }

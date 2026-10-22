@@ -38,6 +38,8 @@ import {
   LayoutDashboard,
   Palette,
   Music2,
+  Mic,
+  Volume2,
   RotateCw,
   Save,
   Undo2,
@@ -46,6 +48,7 @@ import {
 import { motion } from 'motion/react'
 import { useMemo, useState, type CSSProperties } from 'react'
 import { AgentsSettings } from './AgentsSettings'
+import { AudioSettings } from './AudioSettings'
 import { BarSettings } from './BarSettings'
 import { createNativePersistence, useConfigEditor } from './draft'
 import { LayoutEditor } from './LayoutEditor'
@@ -195,6 +198,13 @@ function NativeSettingsView() {
                       />
                     </CardContent>
                   </Card>
+                ) : section === 'audio-input' || section === 'audio-output' ? (
+                  <AudioSettings
+                    key={section}
+                    type={section === 'audio-input' ? 'microphone' : 'volume'}
+                    draft={editor.form.getValues()}
+                    onChange={editor.replaceDraft}
+                  />
                 ) : (
                   <Field data-invalid={!!editor.error}>
                     <FieldLabel htmlFor="config-json">
@@ -336,6 +346,12 @@ function SettingsSidebar({
 
                     { id: 'agents', label: 'Agentes', icon: Bot },
                     { id: 'music', label: 'Player de música', icon: Music2 },
+                    { id: 'audio-input', label: 'Entrada de áudio', icon: Mic },
+                    {
+                      id: 'audio-output',
+                      label: 'Saída de áudio',
+                      icon: Volume2
+                    },
                     { id: 'json', label: 'JSON', icon: LayoutDashboard }
                   ] as const
                 ).map(({ id, label, icon: Icon }) => (

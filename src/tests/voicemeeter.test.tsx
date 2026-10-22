@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VoicemeeterData } from '../services/system/bridge'
 import { useAudioRouting } from '../hooks/useAudioRouting'
@@ -44,7 +44,6 @@ import { defaultConfig } from '../services/configuration/config'
 import { useConfig } from '../stores/config'
 import { Microphone } from '../features/microphone/Microphone'
 import { Volume } from '../features/volume/Volume'
-import { VoicemeeterSettings } from '../features/audio/VoicemeeterSettings'
 import { optionLabel } from '../features/audio/presentation'
 import { PopupHost } from '../popups/PopupHost'
 import { resetVoicemeeterCapability } from '../hooks/useVoicemeeterCapability'
@@ -192,155 +191,22 @@ it('hides the gear button when Voicemeeter was not detected', async () => {
   ).not.toBeInTheDocument()
 })
 
-it('opens the gear settings with the checkbox and the bus list', async () => {
-  render(<PopupHost id="audioOutputs" mode="native" close={() => {}} />)
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Configurações do Voicemeeter' })
-  )
-  expect(
-    screen.getByRole('heading', { name: 'Configurações do Voicemeeter' })
-  ).toBeInTheDocument()
-  expect(screen.getByRole('checkbox')).not.toBeChecked()
-  expect(screen.queryByRole('button', { name: 'B1' })).not.toBeInTheDocument()
-  expect(
-    screen.getByText('O mute e o slider agem no dispositivo padrão do Windows.')
-  ).toBeInTheDocument()
-})
-
-it('checking the box enables Voicemeeter routing on the first bus', () => {
-  render(<VoicemeeterSettings type="volume" kind="bus" />)
-  fireEvent.click(screen.getByRole('checkbox'))
-  expect(
-    useConfig.getState().config.widgets.right.find((w) => w.type === 'volume')!
-      .audio
-  ).toEqual({
-    source: 'voicemeeter',
-    target: { kind: 'bus', index: 0 },
-    label: 'A1 · ASIO4ALL v2'
-  })
-  expect(
-    screen.getByText('A1 · ASIO4ALL v2').closest('button')
-  ).toHaveAttribute('aria-pressed', 'true')
-  expect(screen.getByText('B1').closest('button')).toHaveAttribute(
-    'aria-pressed',
-    'false'
-  )
-})
-
-it('disabling the checkbox keeps the target but returns to Windows endpoints', () => {
-  seed('volume', {
-    source: 'voicemeeter',
-    target: { kind: 'bus', index: 0 },
-    label: 'A1'
-  })
-  render(<VoicemeeterSettings type="volume" kind="bus" />)
-  expect(screen.getByRole('checkbox')).toBeChecked()
-  fireEvent.click(screen.getByRole('checkbox'))
-  expect(
-    useConfig.getState().config.widgets.right.find((w) => w.type === 'volume')!
-      .audio
-  ).toEqual({
-    source: 'voicemeeter',
-    target: { kind: 'bus', index: 0 },
-    label: 'A1',
-    enabled: false
-  })
-  const persisted = JSON.parse(localStorage.getItem('strata.config.v1')!) as {
-    widgets: { right: Array<{ type: string; audio?: unknown }> }
+it.each(['audioOutputs', 'audioInputs'] as const)(
+  'keeps %s focused on daily controls without preference forms',
+  async (id) => {
+    host.payload.audioInputs = {
+      devices: [{ id: 'mic', name: 'Microfone' }],
+      defaultDeviceId: 'mic'
+    }
+    render(<PopupHost id={id} mode="native" close={() => {}} />)
+    await act(async () => {})
+    expect(
+      screen.queryByRole('button', { name: 'Configurações do Voicemeeter' })
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(screen.getByRole('slider', { name: 'Volume' })).toBeEnabled()
   }
-  const widget = persisted.widgets.right.find((w) => w.type === 'volume')!
-  expect(widget.audio).toEqual({
-    source: 'voicemeeter',
-    target: { kind: 'bus', index: 0 },
-    label: 'A1',
-    enabled: false
-  })
-})
-
-it('re-enabling keeps the previously configured target', () => {
-  seed('volume', {
-    source: 'voicemeeter',
-    target: { kind: 'bus', index: 3 }
-  })
-  render(<VoicemeeterSettings type="volume" kind="bus" />)
-  const checkbox = screen.getByRole('checkbox')
-  expect(checkbox).toBeChecked()
-  // Turn it off and back on; the target stays where it was.
-  fireEvent.click(checkbox)
-  fireEvent.click(checkbox)
-  expect(
-    useConfig.getState().config.widgets.right.find((w) => w.type === 'volume')!
-      .audio
-  ).toEqual({
-    source: 'voicemeeter',
-    target: { kind: 'bus', index: 3 },
-    label: 'B1',
-    enabled: true
-  })
-})
-
-it('buttons persist the selected bus and label', () => {
-  seed('volume', { source: 'voicemeeter', target: { kind: 'bus', index: 0 } })
-  render(<VoicemeeterSettings type="volume" kind="bus" />)
-  const group = screen.getByRole('group', {
-    name: 'Faixa de Voicemeeter controlando a saída'
-  })
-  fireEvent.click(screen.getByText('B1'))
-  expect(
-    useConfig.getState().config.widgets.right.find((w) => w.type === 'volume')!
-      .audio
-  ).toEqual({
-    source: 'voicemeeter',
-    target: { kind: 'bus', index: 3 },
-    label: 'B1'
-  })
-  expect(group).toBeInTheDocument()
-  expect(screen.getByText('B1').closest('button')).toHaveAttribute(
-    'aria-pressed',
-    'true'
-  )
-})
-
-it('enabling the microphone defaults to its first strip and a button changes it', () => {
-  render(<VoicemeeterSettings type="microphone" kind="strip" />)
-  fireEvent.click(screen.getByRole('checkbox'))
-  expect(
-    useConfig
-      .getState()
-      .config.widgets.right.find((w) => w.type === 'microphone')!.audio
-  ).toEqual({
-    source: 'voicemeeter',
-    target: { kind: 'strip', index: 0 },
-    label: 'Hardware 1 · Mic'
-  })
-  fireEvent.click(screen.getByText('V1 · Windows'))
-  expect(
-    useConfig
-      .getState()
-      .config.widgets.right.find((w) => w.type === 'microphone')!.audio
-  ).toEqual({
-    source: 'voicemeeter',
-    target: { kind: 'strip', index: 3 },
-    label: 'V1 · Windows'
-  })
-})
-
-it('warns for the current target without the engine running', () => {
-  seed('microphone', {
-    source: 'voicemeeter',
-    target: { kind: 'strip', index: 3 },
-    label: 'V1 · Windows'
-  })
-  render(<VoicemeeterSettings type="microphone" kind="strip" />)
-  const listener = host.listeners.get('voicemeeter')!
-  act(() =>
-    listener({ status: 'unavailable', data: null, timestamp: 0 } as never)
-  )
-  expect(
-    screen.getByText('Voicemeeter não está em execução.')
-  ).toBeInTheDocument()
-  expect(screen.getByText('Alvo atual: V1 · Windows.')).toBeInTheDocument()
-})
+)
 
 describe('config events push audio routing', () => {
   it('pushes routing for all audio widgets on config hydration (startup)', () => {
