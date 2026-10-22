@@ -1,3 +1,4 @@
+import { useResolvedTheme } from '@/hooks/useResolvedTheme'
 import { memo } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -13,6 +14,7 @@ export const WidgetPreview = memo(function WidgetPreview({
   widget: WidgetConfig
   theme: Config['bar']['theme']
 }) {
+  const resolved = useResolvedTheme(theme)
   return (
     <WidgetPreviewContext.Provider value={true}>
       <div
@@ -20,10 +22,10 @@ export const WidgetPreview = memo(function WidgetPreview({
         aria-hidden="true"
         title={widget.id}
         data-widget-preview={widget.type}
-        data-theme={theme}
+        data-theme={resolved}
         className={cn(
           'group w-full overflow-hidden rounded-md bg-background p-2 text-foreground',
-          theme === 'dark' ? 'dark' : 'light'
+          resolved
         )}
       >
         <TooltipProvider>

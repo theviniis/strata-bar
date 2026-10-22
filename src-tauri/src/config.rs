@@ -59,7 +59,7 @@ pub fn defaults() -> Config {
             position: BarPosition::Top,
             height: 36,
             spacing: 8.0,
-            theme: BarTheme::Dark,
+            theme: BarTheme::System,
             always_on_top: true,
         },
         widgets: WidgetSections {
@@ -773,7 +773,7 @@ mod tests {
         assert_eq!(config.version, SCHEMA_VERSION);
         assert_eq!(config.bar.height, 36);
         assert_eq!(config.bar.spacing, 8.0);
-        assert_eq!(config.bar.theme, BarTheme::Dark);
+        assert_eq!(config.bar.theme, BarTheme::System);
         assert_eq!(config.widgets.center[0].interval_ms, 2_000);
         assert_eq!(config.widgets.center[0].format, WidgetFormat::Label);
         assert!(config.widgets.center[0].tooltip);

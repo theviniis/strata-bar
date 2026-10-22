@@ -1,4 +1,5 @@
 import { SpotifySettings } from '../features/music/SpotifySettings'
+import { useResolvedTheme } from '@/hooks/useResolvedTheme'
 import { Logo } from '@/components/Logo'
 import { QueryProvider } from '@/components/QueryProvider'
 import { DemoReminderAlerts } from '../features/reminders/DemoReminderAlerts'
@@ -18,6 +19,7 @@ export default function App() {
   const config = useConfig((s) => s.config),
     error = useConfig((s) => s.error),
     apply = useConfig((s) => s.apply)
+  const theme = useResolvedTheme(config.bar.theme)
   const [draft, setDraft] = useState(''),
     [editing, setEditing] = useState(false)
   useEffect(() => {
@@ -30,7 +32,7 @@ export default function App() {
     <QueryProvider>
       <TooltipProvider delay={250}>
         <main
-          data-theme={config.bar.theme}
+          data-theme={theme}
           className="group mx-auto max-w-360 px-[7%] pt-8 max-[1000px]:px-[4%] max-[1000px]:pt-6"
         >
           <DemoReminderAlerts />
@@ -121,7 +123,7 @@ export default function App() {
               <label className="text-[11px] text-[#aeabb8]">
                 Appearance
                 <div className="mt-2.5 flex rounded-[7px] border border-[#30303c] bg-[#1a1b23] p-1">
-                  {(['dark', 'light'] as const).map((theme) => (
+                  {(['system', 'dark', 'light'] as const).map((theme) => (
                     <button
                       key={theme}
                       className={`flex-1 cursor-pointer touch-manipulation rounded-sm border-0 bg-transparent p-2 text-[11px] text-[#8f8d9b] capitalize aria-pressed:bg-[#35303f] aria-pressed:text-[#e8dcff] aria-pressed:shadow-[0_1px_3px_#0003] ${focusRing}`}

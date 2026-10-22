@@ -53,9 +53,9 @@
           "maximum": 32
         },
         "theme": {
-          "default": "dark",
+          "default": "system",
           "type": "string",
-          "enum": ["dark", "light"]
+          "enum": ["system", "dark", "light"]
         },
         "alwaysOnTop": { "default": true, "type": "boolean" }
       }
@@ -274,9 +274,9 @@
             "maximum": 32
           },
           "theme": {
-            "default": "dark",
+            "default": "system",
             "type": "string",
-            "enum": ["dark", "light"]
+            "enum": ["system", "dark", "light"]
           },
           "alwaysOnTop": { "default": true, "type": "boolean" }
         }

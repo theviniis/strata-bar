@@ -97,7 +97,7 @@ it('reverts by reloading the saved file and restores defaults through save', asy
   fireEvent.click(screen.getByRole('button', { name: 'Claro' }))
   fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
   await waitFor(() =>
-    expect(screen.getByRole('button', { name: 'Escuro' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'System' })).toHaveAttribute(
       'aria-pressed',
       'true'
     )
@@ -199,5 +199,27 @@ it('opens section navigation in a narrow window and closes it after selection', 
   expect(screen.getByRole('heading', { name: 'Aparência' })).toBeInTheDocument()
   await waitFor(() =>
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  )
+})
+
+it('defaults to System with both preview halves and saves the system preference', async () => {
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: /Apar/ }))
+  const system = screen.getByRole('button', { name: 'System' })
+  expect(system).toHaveAttribute('aria-pressed', 'true')
+  const preview = system.querySelector('[data-theme-preview="system"]')!
+  expect(preview).toHaveAttribute('inert')
+  expect(preview.children).toHaveLength(3)
+  expect(preview.children[0]).toHaveAttribute('data-theme', 'light')
+  expect(preview.children[1]).toHaveAttribute('data-theme', 'dark')
+  fireEvent.click(screen.getByRole('button', { name: 'Claro' }))
+  fireEvent.click(system)
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() =>
+    expect(bridge.configSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bar: expect.objectContaining({ theme: 'system' })
+      })
+    )
   )
 })

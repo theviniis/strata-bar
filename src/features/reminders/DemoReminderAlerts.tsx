@@ -1,3 +1,4 @@
+import { useResolvedTheme } from '@/hooks/useResolvedTheme'
 import { useEffect, useRef, useState } from 'react'
 import { PopupHost } from '@/popups/PopupHost'
 import { overlayTextClasses } from '@/overlay/typography'
@@ -12,7 +13,7 @@ import { Button } from '@/components/ui/button'
 export function DemoReminderAlerts() {
   const snapshot = useReminders((s) => s.snapshot)
   const source = useReminders((s) => s.source)
-  const theme = useConfig((s) => s.config.bar.theme)
+  const theme = useResolvedTheme(useConfig((s) => s.config.bar.theme))
   const seen = useRef(new Set<string>())
   const [closed, setClosed] = useState<string[]>([])
   const [silent, setSilent] = useState(false)

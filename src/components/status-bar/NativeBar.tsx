@@ -1,3 +1,4 @@
+import { useResolvedTheme } from '@/hooks/useResolvedTheme'
 import { useMemo, type ReactNode } from 'react'
 import type { Config, WidgetConfig } from '@/services/configuration/config'
 import { cn } from '@/lib/utils'
@@ -68,6 +69,7 @@ export function NativeBarSurface({
   preview?: boolean
   ariaLabel?: string
 }) {
+  const theme = useResolvedTheme(bar.theme)
   const sections = useMemo(
     () =>
       [
@@ -85,7 +87,7 @@ export function NativeBarSurface({
           utility below — including the nav's own colours — matches a descendant. On a single
           element the variant cannot select itself, which left the light theme unpainted.
         */}
-        <div data-theme={bar.theme} className="group h-full w-full">
+        <div data-theme={theme} className={cn('group h-full w-full', theme)}>
           <nav
             className={cn(
               !preview && 'native-bar',

@@ -47,13 +47,14 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
           value={[draft.bar.theme]}
           onValueChange={(values) => {
             const theme = values[0]
-            if (theme === 'dark' || theme === 'light') {
+            if (theme === 'system' || theme === 'dark' || theme === 'light') {
               onChange({ ...draft, bar: { ...draft.bar, theme } })
             }
           }}
         >
           {(
             [
+              { theme: 'system', label: 'System' },
               { theme: 'dark', label: 'Escuro' },
               { theme: 'light', label: 'Claro' }
             ] as const
