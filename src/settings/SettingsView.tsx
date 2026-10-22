@@ -35,6 +35,7 @@ import {
   LayoutDashboard,
   Palette
 } from 'lucide-react'
+import { motion } from 'motion/react'
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { Config } from '@/services/configuration/config'
 import { bridge } from '@/services/system/bridge'
@@ -116,7 +117,10 @@ export function SettingsView() {
             </header>
             <Separator />
 
-            <div className="min-h-0 flex-1 overflow-auto p-6">
+            <motion.div
+              layoutScroll
+              className="min-h-0 flex-1 overflow-auto p-6"
+            >
               <FieldSet disabled={editor.loading || editor.saving}>
                 {section === 'layout' ? (
                   <Card>
@@ -165,7 +169,7 @@ export function SettingsView() {
                   <AlertDescription>{editor.error.message}</AlertDescription>
                 </Alert>
               )}
-            </div>
+            </motion.div>
 
             <Separator />
             <footer className="px-6 py-4">

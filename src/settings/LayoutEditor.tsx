@@ -10,7 +10,13 @@ import {
 } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty'
-import { Item, ItemContent, ItemHeader, ItemTitle } from '@/components/ui/item'
+import {
+  Item,
+  ItemContent,
+  ItemFooter,
+  ItemHeader,
+  ItemTitle
+} from '@/components/ui/item'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { cn } from '@/lib/utils'
 import type { Config, WidgetConfig } from '@/services/configuration/config'
@@ -36,9 +42,9 @@ import {
   useSortable,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Trash2 } from 'lucide-react'
-import { useState, type ComponentProps } from 'react'
+import { useId, useState, type ComponentProps } from 'react'
+import { LayoutGroup, MotionConfig, motion } from 'motion/react'
 import { createPortal } from 'react-dom'
 import {
   addableTypes,
@@ -70,6 +76,7 @@ interface LayoutEditorProps {
  * paths; the tests drive those, never drag internals.
  */
 export function LayoutEditor({ draft, onChange, disabled }: LayoutEditorProps) {
+  const layoutId = useId()
   const [drag, setDrag] = useState<{ id: string; config: Config } | null>(null)
   const display = drag?.config ?? draft
   const location = drag ? findWidget(display, drag.id) : undefined
@@ -91,13 +98,7 @@ export function LayoutEditor({ draft, onChange, disabled }: LayoutEditorProps) {
     }
     if (active.id === over.id) return
     const overId = String(over.id)
-    const target = overId.startsWith('section:')
-      ? {
-          section: overId.slice('section:'.length) as Section,
-          index:
-            draft.widgets[overId.slice('section:'.length) as Section].length
-        }
-      : findWidget(draft, overId)
+    const target = dropTarget(draft, overId)
     if (!target) return
     const next = moveWidget(draft, String(active.id), target)
     if (next !== draft) onChange(next)
@@ -116,14 +117,7 @@ export function LayoutEditor({ draft, onChange, disabled }: LayoutEditorProps) {
       if (!current) return current
       const from = findWidget(current.config, String(active.id))
       const overId = String(over.id)
-      const target = overId.startsWith('section:')
-        ? {
-            section: overId.slice('section:'.length) as Section,
-            index:
-              current.config.widgets[overId.slice('section:'.length) as Section]
-                .length
-          }
-        : findWidget(current.config, overId)
+      const target = dropTarget(current.config, overId)
       if (!from || !target) return current
       let index = target.index
       if (
@@ -157,18 +151,22 @@ export function LayoutEditor({ draft, onChange, disabled }: LayoutEditorProps) {
       onDragMove={previewMove}
       onDragEnd={onDragEnd}
     >
-      <div className="grid gap-4 md:grid-cols-3">
-        {sections.map((section) => (
-          <SectionColumn
-            key={section}
-            section={section}
-            widgets={display.widgets[section]}
-            draft={display}
-            onChange={onChange}
-            disabled={disabled}
-          />
-        ))}
-      </div>
+      <MotionConfig reducedMotion="user">
+        <LayoutGroup id={layoutId}>
+          <div className="grid gap-4 md:grid-cols-3">
+            {sections.map((section) => (
+              <SectionColumn
+                key={section}
+                section={section}
+                widgets={display.widgets[section]}
+                draft={display}
+                onChange={onChange}
+                disabled={disabled}
+              />
+            ))}
+          </div>
+        </LayoutGroup>
+      </MotionConfig>
       {createPortal(
         <DragOverlay adjustScale={false} dropAnimation={null}>
           {activeWidget && (
@@ -190,6 +188,12 @@ export function LayoutEditor({ draft, onChange, disabled }: LayoutEditorProps) {
       )}
     </DndContext>
   )
+}
+
+function dropTarget(config: Config, id: string) {
+  if (!id.startsWith('section:')) return findWidget(config, id)
+  const section = id.slice('section:'.length) as Section
+  return { section, index: config.widgets[section].length }
 }
 
 // Pointer drops use the item or section actually under the cursor. Keyboard
@@ -282,21 +286,17 @@ function SortableWidget({
   onChange,
   disabled
 }: SortableWidgetProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging
-  } = useSortable({ id: widget.id, disabled })
+  const { attributes, listeners, setNodeRef, isDragging } = useSortable({
+    id: widget.id,
+    disabled
+  })
   return (
-    <li
+    <motion.li
       ref={setNodeRef}
-      style={{
-        transform: isDragging ? undefined : CSS.Transform.toString(transform),
-        transition
-      }}
+      layout={isDragging ? false : 'position'}
+      layoutId={isDragging ? undefined : widget.id}
+      initial={false}
+      transition={{ layout: { type: 'spring', stiffness: 450, damping: 38 } }}
       className={cn(isDragging && 'opacity-30')}
       data-widget={widget.id}
       data-dragging={isDragging || undefined}
@@ -308,7 +308,7 @@ function SortableWidget({
         disabled={disabled}
         dragHandleProps={{ ...attributes, ...listeners }}
       />
-    </li>
+    </motion.li>
   )
 }
 
@@ -363,6 +363,27 @@ function WidgetCard({
       <ItemContent className="min-w-0 basis-full">
         <WidgetPreview widget={widget} theme={draft.bar.theme} />
       </ItemContent>
+      <ItemFooter>
+        <NativeSelect
+          disabled={disabled}
+          aria-label={`Mover ${typeLabels[widget.type]} para`}
+          value={findWidget(draft, widget.id)?.section ?? 'left'}
+          onChange={(event) =>
+            onChange(
+              moveWidget(draft, widget.id, {
+                section: event.target.value as Section,
+                index: draft.widgets[event.target.value as Section].length
+              })
+            )
+          }
+        >
+          {sections.map((section) => (
+            <NativeSelectOption key={section} value={section}>
+              {sectionLabels[section]}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+      </ItemFooter>
     </Item>
   )
 }
