@@ -9,7 +9,7 @@ import { ClipboardPaste, Copy, ExternalLink } from 'lucide-react'
 const SPOTIFY_CALLBACK = 'http://127.0.0.1:43821/spotify/callback'
 const SPOTIFY_DASHBOARD = 'https://developer.spotify.com/dashboard/create'
 
-/** Spotify account settings, mounted while the music settings dialog is open. */
+/** Spotify account settings, owned by the Settings window. */
 export function SpotifySettings() {
   const inputId = useId()
   const inputRef = useRef<HTMLInputElement>(null)

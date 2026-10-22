@@ -226,14 +226,19 @@ async fn media_action(
         .await
         .map_err(|_| "Media worker failed")?
 }
+// Account configuration belongs to Settings; playback keeps its own caller policy.
+fn authorize_spotify_settings(label: &str) -> Result<(), String> {
+    if label != "settings" {
+        return Err("Spotify configuration requires the settings window".into());
+    }
+    Ok(())
+}
 #[tauri::command]
 fn spotify_status(
     window: tauri::WebviewWindow,
     state: tauri::State<media::Media>,
 ) -> Result<media_contract::SpotifyStatus, String> {
-    if !media::allowed_window(window.label()) {
-        return Err("Spotify settings require a bar or overlay".into());
-    }
+    authorize_spotify_settings(window.label())?;
     Ok(state.spotify.status())
 }
 #[tauri::command]
@@ -242,9 +247,7 @@ async fn spotify_connect(
     state: tauri::State<'_, media::Media>,
     client_id: String,
 ) -> Result<(), String> {
-    if !media::allowed_window(window.label()) {
-        return Err("Spotify settings require a bar or overlay".into());
-    }
+    authorize_spotify_settings(window.label())?;
     let spotify = state.spotify.clone();
     tauri::async_runtime::spawn_blocking(move || spotify.connect(client_id))
         .await
@@ -255,9 +258,7 @@ async fn spotify_disconnect(
     window: tauri::WebviewWindow,
     state: tauri::State<'_, media::Media>,
 ) -> Result<(), String> {
-    if !media::allowed_window(window.label()) {
-        return Err("Spotify settings require a bar or overlay".into());
-    }
+    authorize_spotify_settings(window.label())?;
     let spotify = state.spotify.clone();
     tauri::async_runtime::spawn_blocking(move || spotify.disconnect())
         .await
@@ -265,9 +266,7 @@ async fn spotify_disconnect(
 }
 #[tauri::command]
 fn spotify_open_dashboard(window: tauri::WebviewWindow) -> Result<(), String> {
-    if !media::allowed_window(window.label()) {
-        return Err("Spotify settings require a bar or overlay".into());
-    }
+    authorize_spotify_settings(window.label())?;
     spotify::open_dashboard()
 }
 #[tauri::command]
@@ -498,4 +497,19 @@ fn main() {
             instance.close();
         }
     });
+}
+
+#[cfg(test)]
+mod spotify_command_tests {
+    #[test]
+    fn spotify_configuration_is_restricted_to_settings() {
+        assert!(super::authorize_spotify_settings("settings").is_ok());
+        for caller in ["bar-0", "overlay", "main", "studio", "settings-other", ""] {
+            assert!(
+                super::authorize_spotify_settings(caller).is_err(),
+                "{caller}"
+            );
+        }
+        assert!(!crate::media::allowed_window("settings"));
+    }
 }

@@ -6,16 +6,7 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog'
 import { ScrollingText } from '@/components/ui/scrolling-text'
-import { SpotifySettings } from './SpotifySettings'
 
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
@@ -42,7 +33,6 @@ import {
   Play,
   Repeat,
   Repeat1,
-  Settings,
   Shuffle,
   SkipBack,
   SkipForward,
@@ -98,7 +88,6 @@ export function MusicPopupContent({
   onAction(request: MediaRequest): Promise<unknown>
   demo?: boolean
 }) {
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const media = event.status === 'ready' ? event.data : null
   return (
     <MusicPopupCard
@@ -107,8 +96,6 @@ export function MusicPopupContent({
       media={media}
       onAction={onAction}
       demo={demo}
-      settingsOpen={settingsOpen}
-      setSettingsOpen={setSettingsOpen}
     />
   )
 }
@@ -117,82 +104,56 @@ function MusicPopupCard({
   event,
   media,
   onAction,
-  demo,
-  settingsOpen,
-  setSettingsOpen
+  demo
 }: {
   event: SystemEvent<MediaData>
   media: MediaData | null
   onAction(request: MediaRequest): Promise<unknown>
   demo: boolean
-  settingsOpen: boolean
-  setSettingsOpen(open: boolean): void
 }) {
   const controls = useMusicPopupControls(media, onAction)
   const { volumeReady, muteReady, level, muted, pending, act, setVolumeDraft } =
     controls
   return (
-    <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-      <Card className="w-90">
-        <div className="w-full" hidden={settingsOpen}>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle>Player de música</CardTitle>
-              <DialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Configurações do Spotify"
-                >
-                  <Settings size={16} />
-                </Button>
-              </DialogTrigger>
-            </div>
-            <CardDescription>
-              {demo
-                ? 'Demonstração · Controle a sua mídia'
-                : 'Controle a sua mídia'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {media ? (
-              <MusicPopupContentData media={media} controls={controls} />
-            ) : (
-              <p role="status">
-                {event.status === 'loading'
-                  ? 'Carregando mídia…'
-                  : event.status === 'error'
-                    ? 'Mídia indisponível'
-                    : 'Nenhuma música tocando'}
-              </p>
-            )}
-          </CardContent>
-        </div>
-        <DialogContent
-          inline
-          className="w-full"
-          onKeyDown={(event) => event.stopPropagation()}
-        >
-          <DialogHeader>
-            <DialogTitle>Configurações do Spotify</DialogTitle>
-            <DialogDescription>
-              Conecte sua conta para gerenciar suas músicas favoritas.
-            </DialogDescription>
-          </DialogHeader>
-          <SpotifySettings />
-        </DialogContent>
-        {!settingsOpen && volumeReady && (
-          <MusicVolumeFooter
-            muteReady={muteReady}
-            level={level}
-            muted={muted}
-            pending={pending.volume}
-            act={act}
-            setVolumeDraft={setVolumeDraft}
-          />
+    <Card className="w-90">
+      <CardHeader>
+        <CardTitle>Player de música</CardTitle>
+        <CardDescription>
+          {demo
+            ? 'Demonstração · Controle a sua mídia'
+            : 'Controle a sua mídia'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {media ? (
+          <MusicPopupContentData media={media} controls={controls} />
+        ) : (
+          <p role="status">
+            {event.status === 'loading'
+              ? 'Carregando mídia…'
+              : event.status === 'error'
+                ? 'Mídia indisponível'
+                : 'Nenhuma música tocando'}
+          </p>
         )}
-      </Card>
-    </Dialog>
+        {((!media && event.status === 'unavailable') ||
+          media?.favorite.status === 'unauthenticated') && (
+          <p className="mt-4 text-xs text-muted-foreground">
+            Para conectar o Spotify, abra Configurações → Player de música.
+          </p>
+        )}
+      </CardContent>
+      {volumeReady && (
+        <MusicVolumeFooter
+          muteReady={muteReady}
+          level={level}
+          muted={muted}
+          pending={pending.volume}
+          act={act}
+          setVolumeDraft={setVolumeDraft}
+        />
+      )}
+    </Card>
   )
 }
 
