@@ -1,5 +1,3 @@
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import type { CodexSnapshot } from '@/services/system/agents.generated'
 import { AgentSessionList } from './AgentSessionList'
 
@@ -12,50 +10,25 @@ const labels = {
 
 export function CodexSessions({
   connection,
-  onConfigure,
   stale = false
 }: {
   connection: CodexSnapshot
-  onConfigure?: (enabled: boolean) => Promise<void>
   stale?: boolean
 }) {
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const enabled = connection.status !== 'disabled'
-  const configure = async () => {
-    if (!onConfigure || pending) return
-    setPending(true)
-    setError(null)
-    try {
-      await onConfigure(!enabled)
-    } catch (error) {
-      setError(error instanceof Error ? error.message : String(error))
-    } finally {
-      setPending(false)
-    }
-  }
   return (
     <div className="space-y-3">
       <p role="status" className="text-xs text-muted-foreground">
         {stale ? 'Estado da conexão indisponível' : labels[connection.status]}
       </p>
-      <p className="text-xs text-muted-foreground">
-        Ativar adiciona os hooks do Strata à configuração global do Codex,
-        preservando os demais. Revise e confie nas definições no Codex antes de
-        utilizá-las; o comando /hooks no CLI permite essa revisão. Reabra a
-        sessão para carregar os hooks.
-      </p>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => void configure()}
-        disabled={!onConfigure || pending}
-      >
-        {enabled ? 'Desativar hooks do Codex' : 'Ativar hooks do Codex'}
-      </Button>
-      {(error || connection.error) && (
+      {connection.status === 'disabled' && (
+        <p className="text-xs text-muted-foreground">
+          Configure esta integração em Configurações → Agentes.
+        </p>
+      )}
+      {connection.error && (
         <p role="alert" className="text-xs text-destructive">
-          {error || connection.error}
+          {connection.error}
         </p>
       )}
       <p className="text-xs text-muted-foreground">

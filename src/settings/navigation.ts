@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 const navigationSchema = z.object({
-  section: z.enum(['layout', 'appearance', 'json']),
+  section: z.enum(['layout', 'appearance', 'agents', 'json']),
   monitor: z
     .object({ id: z.string().min(1), connected: z.boolean() })
     .nullable()

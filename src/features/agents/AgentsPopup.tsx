@@ -1,7 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Settings2 } from 'lucide-react'
 import { useConfig } from '@/stores/config'
 import {
   CardContent,
@@ -19,7 +17,7 @@ import type {
   CreateAgentSessionResult
 } from '@/services/system/agents.generated'
 import { createAgentsStore, getAgentsStore } from '@/stores/agents'
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AgentAlerts } from './AgentAlerts'
 import { AntigravitySessions } from './AntigravitySessions'
 import { OpenCodeSessions } from './OpenCodeSessions'
@@ -38,9 +36,6 @@ function ConnectedAgentsPopup({ mode }: { mode: 'native' | 'demo' }) {
   )
   const snapshot = useStore((state) => state.snapshot)
   const error = useStore((state) => state.error)
-  const configureOpenCode = useStore((state) => state.configureOpenCode)
-  const configureAntigravity = useStore((state) => state.configureAntigravity)
-  const configureCodex = useStore((state) => state.configureCodex)
   const createOpenCode = useStore((state) => state.createOpenCode)
   const replyOpenCode = useStore((state) => state.replyOpenCode)
   const decideOpenCode = useStore((state) => state.decideOpenCode)
@@ -51,9 +46,6 @@ function ConnectedAgentsPopup({ mode }: { mode: 'native' | 'demo' }) {
       snapshot={snapshot}
       error={error}
       demo={mode === 'demo'}
-      onConfigureOpenCode={configureOpenCode}
-      onConfigureAntigravity={configureAntigravity}
-      onConfigureCodex={configureCodex}
       onCreateOpenCode={createOpenCode}
       onReplyOpenCode={replyOpenCode}
       onDecideOpenCode={decideOpenCode}
@@ -73,9 +65,6 @@ export function AgentsPopupContent({
   snapshot,
   error,
   demo = false,
-  onConfigureOpenCode,
-  onConfigureAntigravity,
-  onConfigureCodex,
   onCreateOpenCode,
   onReplyOpenCode,
   onDecideOpenCode,
@@ -84,9 +73,6 @@ export function AgentsPopupContent({
   snapshot: AgentsSnapshot | null
   error: string | null
   demo?: boolean
-  onConfigureOpenCode?: (enabled: boolean) => Promise<void>
-  onConfigureAntigravity?: (enabled: boolean) => Promise<void>
-  onConfigureCodex?: (enabled: boolean) => Promise<void>
   onCreateOpenCode?: (
     directory?: string,
     prompt?: string
@@ -97,10 +83,6 @@ export function AgentsPopupContent({
 }) {
   const discoveryError = error ?? snapshot?.error
   const visible = useConfig((state) => state.config.agents.visible)
-  const setAgentVisible = useConfig((state) => state.setAgentVisible)
-  const configError = useConfig((state) => state.error)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const settingsId = useId()
   const [selectedAgent, setSelectedAgent] = useState<AgentType>('chatgpt')
   const applications =
     snapshot?.applications.filter((app) => visible[app.agent]) ?? []
@@ -113,16 +95,6 @@ export function AgentsPopupContent({
       <CardHeader>
         <CardTitle>Agentes de IA</CardTitle>
         <CardDescription>Aplicativos neste Windows</CardDescription>
-        <Button
-          size="sm"
-          variant="outline"
-          aria-expanded={settingsOpen}
-          aria-controls={settingsId}
-          onClick={() => setSettingsOpen((open) => !open)}
-        >
-          <Settings2 aria-hidden="true" />
-          Selecionar agentes
-        </Button>
         {demo && (
           <p className="text-xs text-muted-foreground">
             Demo · sem acesso ao sistema
@@ -130,43 +102,6 @@ export function AgentsPopupContent({
         )}
       </CardHeader>
       <CardContent className="space-y-3">
-        {settingsOpen && (
-          <fieldset id={settingsId} className="space-y-2 rounded-md border p-3">
-            <legend className="px-1 text-sm font-medium">
-              Agentes visíveis
-            </legend>
-            {(Object.keys(labels) as AgentType[]).map((agent) => (
-              <label key={agent} className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  aria-label={`Mostrar ${labels[agent]}`}
-                  checked={visible[agent]}
-                  onCheckedChange={(checked) => {
-                    if (
-                      setAgentVisible(agent, checked === true) &&
-                      !checked &&
-                      activeAgent === agent
-                    ) {
-                      setSelectedAgent(
-                        applications.find((app) => app.agent !== agent)
-                          ?.agent ?? 'chatgpt'
-                      )
-                    }
-                  }}
-                />
-                {labels[agent]}
-              </label>
-            ))}
-            <p className="text-xs text-muted-foreground">
-              Controla a exibição das abas e dos alertas no Strata. As conexões
-              existentes continuam ativas.
-            </p>
-          </fieldset>
-        )}
-        {configError && (
-          <p role="alert" className="text-xs text-destructive">
-            Não foi possível salvar a seleção: {configError}
-          </p>
-        )}
         {discoveryError && (
           <p role="alert" className="text-sm text-destructive">
             Detecção indisponível: {discoveryError}
@@ -187,7 +122,8 @@ export function AgentsPopupContent({
         )}
         {snapshot && applications.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            Nenhum agente selecionado.
+            Nenhum agente selecionado. Escolha os agentes em Configurações →
+            Agentes.
           </p>
         )}
         {applications.length > 0 && (
@@ -229,7 +165,6 @@ export function AgentsPopupContent({
                   {application.agent === 'opencode' ? (
                     <OpenCodeSessions
                       connection={snapshot.opencode}
-                      onConfigure={onConfigureOpenCode}
                       stale={!!error}
                       onCreate={onCreateOpenCode}
                       onReply={onReplyOpenCode}
@@ -238,13 +173,11 @@ export function AgentsPopupContent({
                   ) : application.agent === 'antigravity' ? (
                     <AntigravitySessions
                       connection={snapshot.antigravity}
-                      onConfigure={onConfigureAntigravity}
                       stale={!!error}
                     />
                   ) : application.agent === 'codex' ? (
                     <CodexSessions
                       connection={snapshot.codex}
-                      onConfigure={onConfigureCodex}
                       stale={!!error}
                     />
                   ) : (
@@ -254,7 +187,7 @@ export function AgentsPopupContent({
                         Controle de sessões ainda não integrado. Um processo
                         aberto não informa o estado das conversas. Para sessões
                         locais como as do Codex, abra a seção Codex local neste
-                        painel e ative seus hooks.
+                        painel. Ative os hooks em Configurações → Agentes.
                       </p>
                       <div className="flex gap-2">
                         <Button size="sm" disabled>
