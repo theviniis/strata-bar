@@ -55,9 +55,11 @@ it('moves a widget to an empty section and retains its settings', () => {
 
 it('adds collision-free widget IDs with valid defaults, toggles and removes', () => {
   render(<Editor />)
-  fireEvent.click(screen.getByLabelText('Adicionar widget em Centro'))
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Adicionar CPU em Centro' })
+  fireEvent.change(
+    screen.getByRole('combobox', { name: 'Adicionar widget em Centro' }),
+    {
+      target: { value: 'cpu' }
+    }
   )
   const center = screen.getByRole('region', { name: 'Seção Centro' })
   expect(within(center).getByTitle('cpu-2')).toBeInTheDocument()

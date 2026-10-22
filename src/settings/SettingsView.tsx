@@ -1,6 +1,17 @@
 import { QueryProvider } from '@/components/QueryProvider'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card'
+import { FieldSet } from '@/components/ui/field'
+import { Separator } from '@/components/ui/separator'
+import { Spinner } from '@/components/ui/spinner'
 import { Settings2, Save, Undo2, RotateCw, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { Config } from '@/services/configuration/config'
@@ -42,7 +53,7 @@ export function SettingsView() {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background text-foreground">
         <div className="flex items-center gap-2 px-4 py-2">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          <Spinner aria-label="Carregando configurações" />
           <span>Carregando...</span>
         </div>
       </div>
@@ -53,9 +64,9 @@ export function SettingsView() {
     <QueryProvider>
       <TooltipProvider delay={250}>
         <main className="flex h-screen w-screen flex-col bg-background text-foreground">
-          <header className="flex h-14 items-center justify-between border-b px-6">
+          <header className="flex h-14 shrink-0 items-center justify-between px-6">
             <div className="flex items-center gap-2">
-              <Settings2 className="h-5 w-5" />
+              <Settings2 className="size-5" aria-hidden="true" />
               <h1 className="text-lg font-semibold">Configurações do Strata</h1>
             </div>
             <div className="flex items-center gap-2">
@@ -66,49 +77,63 @@ export function SettingsView() {
                 aria-label="Fechar"
                 title="Fechar"
               >
-                <X className="h-4 w-4" />
+                <X aria-hidden="true" />
               </Button>
             </div>
           </header>
+          <Separator />
 
           <div className="flex-1 overflow-auto p-6">
-            <fieldset disabled={editor.loading || editor.saving}>
-              <section className="mb-6">
-                <div className="mb-4 flex items-center gap-2">
-                  <Settings2 className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="text-sm font-medium">Editor de Layout</h2>
-                </div>
-                <LayoutEditor
-                  draft={editor.form.getValues()}
-                  onChange={editor.replaceDraft}
-                />
-              </section>
+            <FieldSet disabled={editor.loading || editor.saving}>
+              <Card>
+                <CardHeader>
+                  <CardTitle role="heading" aria-level={2}>
+                    Editor de Layout
+                  </CardTitle>
+                  <CardDescription>
+                    Organize os widgets nas três seções da barra.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <LayoutEditor
+                    disabled={editor.loading || editor.saving}
+                    draft={editor.form.getValues()}
+                    onChange={editor.replaceDraft}
+                  />
+                </CardContent>
+              </Card>
 
-              <section className="mb-6">
-                <div className="mb-4 flex items-center gap-2">
-                  <Settings2 className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="text-sm font-medium">Aparência</h2>
-                </div>
-                <BarSettings
-                  draft={editor.form.getValues()}
-                  onChange={editor.replaceDraft}
-                />
-              </section>
-            </fieldset>
+              <Card>
+                <CardHeader>
+                  <CardTitle role="heading" aria-level={2}>
+                    Aparência
+                  </CardTitle>
+                  <CardDescription>
+                    Escolha o tema, o espaçamento e os agentes visíveis.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <BarSettings
+                    disabled={editor.loading || editor.saving}
+                    draft={editor.form.getValues()}
+                    onChange={editor.replaceDraft}
+                  />
+                </CardContent>
+              </Card>
+            </FieldSet>
 
             {editor.error && (
-              <div
-                role="alert"
-                className="mb-4 rounded-md border border-red-500/20 bg-red-500/5 p-3"
-              >
-                <p className="text-sm text-red-600 dark:text-red-400">
-                  {editor.error.message}
-                </p>
-              </div>
+              <Alert variant="destructive" className="mt-6">
+                <AlertTitle>
+                  Não foi possível aplicar as configurações
+                </AlertTitle>
+                <AlertDescription>{editor.error.message}</AlertDescription>
+              </Alert>
             )}
           </div>
 
-          <footer className="border-t px-6 py-4">
+          <Separator />
+          <footer className="px-6 py-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <Button
@@ -117,7 +142,7 @@ export function SettingsView() {
                   disabled={editor.loading || editor.saving}
                   title="Restaurar configurações padrão"
                 >
-                  <RotateCw className="mr-2 h-4 w-4" />
+                  <RotateCw data-icon="inline-start" aria-hidden="true" />
                   Restaurar padrões
                 </Button>
                 <Button
@@ -126,7 +151,7 @@ export function SettingsView() {
                   disabled={editor.loading || editor.saving}
                   title="Descartar alterações e recarregar da configuração salva"
                 >
-                  <Undo2 className="mr-2 h-4 w-4" />
+                  <Undo2 data-icon="inline-start" aria-hidden="true" />
                   Reverter
                 </Button>
               </div>
@@ -140,7 +165,11 @@ export function SettingsView() {
                   disabled={!!editor.error || editor.loading || editor.saving}
                   title="Aplicar e salvar as alterações"
                 >
-                  <Save className="mr-2 h-4 w-4" />
+                  {editor.saving ? (
+                    <Spinner data-icon="inline-start" aria-label="Salvando" />
+                  ) : (
+                    <Save data-icon="inline-start" aria-hidden="true" />
+                  )}
                   {editor.saving ? 'Salvando...' : 'Aplicar'}
                 </Button>
               </div>

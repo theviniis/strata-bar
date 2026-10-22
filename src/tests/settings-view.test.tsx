@@ -11,6 +11,15 @@ import { bridge } from '../services/system/bridge'
 import { SettingsView } from '../settings/SettingsView'
 
 const close = vi.hoisted(() => vi.fn())
+// jsdom does not implement the browser geometry observer used by Slider.
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+)
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => ({ close })
 }))
