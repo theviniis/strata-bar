@@ -1,3 +1,4 @@
+import { CalendarSettings } from '@/features/reminders/CalendarSettings'
 import { Textarea } from '@/components/ui/textarea'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Logo } from '@/components/Logo'
@@ -121,6 +122,21 @@ function NativeSettingsView() {
                         draft={editor.form.getValues()}
                         onChange={editor.replaceDraft}
                       />
+                    </CardContent>
+                  </Card>
+                ) : section === 'reminders' ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle role="heading" aria-level={2}>
+                        Lembretes
+                      </CardTitle>
+                      <CardDescription>
+                        Conectar e desconectar Google Calendar têm efeito
+                        imediato. Reverter não desfaz essas operações externas.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <CalendarSettings />
                     </CardContent>
                   </Card>
                 ) : section === 'appearance' ? (
@@ -274,6 +290,11 @@ function SettingsSidebar({
                   [
                     { id: 'layout', label: 'Layout', icon: LayoutDashboard },
                     { id: 'appearance', label: 'Aparência', icon: Palette },
+                    {
+                      id: 'reminders',
+                      label: 'Lembretes',
+                      icon: LayoutDashboard
+                    },
                     { id: 'json', label: 'JSON', icon: LayoutDashboard }
                   ] as const
                 ).map(({ id, label, icon: Icon }) => (

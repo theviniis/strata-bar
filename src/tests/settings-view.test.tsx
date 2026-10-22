@@ -11,6 +11,13 @@ import { configSchema, defaultConfig } from '../services/configuration/config'
 import { bridge, connect } from '../services/system/bridge'
 import { SettingsView } from '../settings/SettingsView'
 
+const calendarAccount = vi.hoisted(() => ({
+  status: vi.fn(),
+  connect: vi.fn(),
+  disconnect: vi.fn()
+}))
+vi.mock('@/services/system/calendar', () => ({ calendar: calendarAccount }))
+
 const close = vi.hoisted(() => vi.fn())
 const monitorEvents = vi.hoisted(() => ({
   listener: undefined as
@@ -856,4 +863,64 @@ it('applies editable native bar geometry only after Apply', async () => {
       })
     )
   )
+})
+
+it('opens Calendar credentials in the Lembretes settings section', async () => {
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Lembretes' }))
+  expect(
+    await screen.findByLabelText('Client ID do Google')
+  ).toBeInTheDocument()
+  expect(screen.getByText(/Reverter não desfaz/)).toBeInTheDocument()
+  expect(bridge.configSave).not.toHaveBeenCalled()
+})
+
+it('connects and disconnects Calendar immediately while Reverter only reloads the Draft', async () => {
+  vi.stubGlobal('__TAURI_INTERNALS__', {})
+  calendarAccount.status.mockResolvedValue({
+    connected: false,
+    connecting: false,
+    error: null
+  })
+  calendarAccount.connect.mockResolvedValue({
+    connected: true,
+    connecting: false,
+    error: null
+  })
+  calendarAccount.disconnect.mockResolvedValue({
+    connected: false,
+    connecting: false,
+    error: null
+  })
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Lembretes' }))
+  fireEvent.change(await screen.findByLabelText('Client ID do Google'), {
+    target: { value: ' client.apps.googleusercontent.com ' }
+  })
+  fireEvent.change(
+    screen.getByLabelText('Client Secret (se fornecido pelo Google)'),
+    { target: { value: ' secret ' } }
+  )
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Conectar Google Calendar' })
+  )
+  const disconnect = await screen.findByRole('button', {
+    name: 'Desconectar Google'
+  })
+  expect(calendarAccount.connect).toHaveBeenCalledWith(
+    'client.apps.googleusercontent.com',
+    'secret'
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
+  await waitFor(() => expect(bridge.configLoad).toHaveBeenCalledTimes(2))
+  expect(calendarAccount.disconnect).not.toHaveBeenCalled()
+  expect(disconnect).toBeInTheDocument()
+  expect(bridge.configSave).not.toHaveBeenCalled()
+  fireEvent.click(disconnect)
+  await screen.findByRole('button', { name: 'Conectar Google Calendar' })
+  expect(calendarAccount.disconnect).toHaveBeenCalledOnce()
+  expect(
+    screen.getByLabelText('Client Secret (se fornecido pelo Google)')
+  ).toHaveValue('')
+  vi.unstubAllGlobals()
 })

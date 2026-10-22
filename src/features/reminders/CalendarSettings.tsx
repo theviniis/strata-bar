@@ -8,8 +8,8 @@ import { useEffect, useId, useState } from 'react'
 export function CalendarSettings({
   onConnected
 }: {
-  onConnected(connected: boolean): void
-}) {
+  onConnected?(connected: boolean): void
+} = {}) {
   const id = useId()
   const [status, setStatus] = useState<CalendarStatus | null>(null)
   const [clientId, setClientId] = useState('')
@@ -25,7 +25,7 @@ export function CalendarSettings({
       .then((value) => {
         if (cancelled) return
         setStatus(value)
-        onConnected(value.connected)
+        onConnected?.(value.connected)
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(String(e))
@@ -42,7 +42,7 @@ export function CalendarSettings({
         ? await calendar.connect(clientId.trim(), clientSecret.trim())
         : await calendar.disconnect()
       setStatus(value)
-      onConnected(value.connected)
+      onConnected?.(value.connected)
       setClientSecret('')
     } catch (e) {
       setError(String(e))

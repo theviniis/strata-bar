@@ -612,12 +612,31 @@ impl GoogleCalendar {
     }
 }
 
+fn authorize_caller(label: &str) -> Result<(), String> {
+    if label.starts_with("bar-") || label == "overlay" || label == "settings" {
+        Ok(())
+    } else {
+        Err("Calendar requires a bar, overlay or settings window".into())
+    }
+}
+
+fn publish_status(app: &tauri::AppHandle, status: &CalendarStatus) {
+    use tauri::{Emitter, Manager};
+    for (label, window) in app.webview_windows() {
+        if authorize_caller(&label).is_ok() {
+            if let Err(error) = window.emit("calendar:changed", status) {
+                eprintln!("Calendar status delivery failed: {error}");
+            }
+        }
+    }
+}
+
 #[tauri::command]
 pub fn calendar_status(
     window: tauri::WebviewWindow,
     state: tauri::State<GoogleCalendar>,
 ) -> Result<CalendarStatus, String> {
-    crate::reminders::authorize(&window)?;
+    authorize_caller(window.label())?;
     Ok(state.status())
 }
 
@@ -629,11 +648,14 @@ pub async fn calendar_connect(
     client_secret: String,
 ) -> Result<CalendarStatus, String> {
     use tauri::Manager;
-    crate::reminders::authorize(&window)?;
+    authorize_caller(window.label())?;
     tauri::async_runtime::spawn_blocking(move || {
         let calendar = app.state::<GoogleCalendar>();
-        calendar.connect(client_id.trim().into(), client_secret.trim().into())?;
-        Ok(calendar.status())
+        let result = calendar.connect(client_id.trim().into(), client_secret.trim().into());
+        let status = calendar.status();
+        publish_status(&app, &status);
+        result?;
+        Ok(status)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -642,16 +664,30 @@ pub async fn calendar_connect(
 #[tauri::command]
 pub fn calendar_disconnect(
     window: tauri::WebviewWindow,
+    app: tauri::AppHandle,
     state: tauri::State<GoogleCalendar>,
 ) -> Result<CalendarStatus, String> {
-    crate::reminders::authorize(&window)?;
+    authorize_caller(window.label())?;
     state.disconnect()?;
-    Ok(state.status())
+    let status = state.status();
+    publish_status(&app, &status);
+    Ok(status)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn calendar_callers_include_settings_without_exposing_reminder_mutations() {
+        for label in ["settings", "overlay", "bar-0"] {
+            assert!(authorize_caller(label).is_ok());
+        }
+        for label in ["main", "settings-other", "", "studio"] {
+            assert!(authorize_caller(label).is_err());
+        }
+    }
+
     use crate::reminders_contract::{ReminderMode, ReminderStatus};
 
     #[test]

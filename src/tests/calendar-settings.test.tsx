@@ -14,6 +14,16 @@ import { getRemindersStore } from '@/stores/reminders'
 const render = (ui: ReactNode) =>
   renderComponent(ui, { wrapper: QueryProvider })
 
+const events = vi.hoisted(() => ({
+  listener: undefined as undefined | (() => void)
+}))
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn(async (_event: string, listener: () => void) => {
+    events.listener = listener
+    return () => {}
+  })
+}))
+
 const account = vi.hoisted(() => ({
   status: vi.fn(),
   connect: vi.fn(),
@@ -97,20 +107,13 @@ it('loads the existing connection without opening settings so Calendar event cre
   expect(checkbox).toBeChecked()
   fireEvent.click(checkbox)
   expect(checkbox).not.toBeChecked()
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Configurações do Google Calendar' })
-  )
   expect(
-    await screen.findByRole('button', { name: 'Desconectar Google' })
-  ).toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: 'Fechar' }))
-  await waitFor(() =>
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  )
-  expect(checkbox).not.toBeChecked()
+    screen.queryByRole('button', { name: /Configurações do Google/ })
+  ).not.toBeInTheDocument()
+  expect(screen.queryByLabelText('Client ID do Google')).not.toBeInTheDocument()
 })
 
-it('checks event creation after connecting and clears it on disconnect', async () => {
+it('reflects external connection changes without mounting the old settings form', async () => {
   getRemindersStore().setState({
     source: 'native',
     snapshot: { version: 1, revision: 0, reminders: [] },
@@ -120,27 +123,22 @@ it('checks event creation after connecting and clears it on disconnect', async (
   const checkbox = screen.getByRole('checkbox', {
     name: 'Criar evento no Google Calendar'
   })
+  await screen.findByText(/Configurações → Lembretes/)
   expect(checkbox).toBeDisabled()
-  expect(checkbox).not.toBeChecked()
-  fireEvent.click(
-    screen.getByRole('button', { name: /Configura.*Google Calendar/ })
-  )
-  fireEvent.change(await screen.findByLabelText('Client ID do Google'), {
-    target: { value: 'client.apps.googleusercontent.com' }
+  account.status.mockResolvedValue({
+    connected: true,
+    connecting: false,
+    error: null
   })
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Conectar Google Calendar' })
-  )
-  const disconnect = await screen.findByRole('button', {
-    name: 'Desconectar Google'
+  await waitFor(() => expect(events.listener).toBeDefined())
+  events.listener?.()
+  await waitFor(() => expect(checkbox).toBeChecked())
+  account.status.mockResolvedValue({
+    connected: false,
+    connecting: false,
+    error: null
   })
-  expect(checkbox).toBeChecked()
-  fireEvent.click(disconnect)
-  await waitFor(() => expect(account.disconnect).toHaveBeenCalledOnce())
-  fireEvent.click(screen.getByRole('button', { name: 'Fechar' }))
-  await waitFor(() =>
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  )
-  expect(checkbox).toBeDisabled()
+  events.listener?.()
+  await waitFor(() => expect(checkbox).toBeDisabled())
   expect(checkbox).not.toBeChecked()
 })
