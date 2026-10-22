@@ -1,6 +1,6 @@
 import js from '@eslint/js'
-import betterTailwindcss from 'eslint-plugin-better-tailwindcss'
 import prettier from 'eslint-config-prettier'
+import betterTailwindcss from 'eslint-plugin-better-tailwindcss'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import globals from 'globals'
@@ -64,6 +64,9 @@ export default tseslint.config(
     // that the shadcn CLI regenerates verbatim.
     files: ['src/components/ui/**/*.tsx'],
     rules: { 'react-refresh/only-export-components': 'off' }
+  },
+  {
+    extends: ['plugin:react-hooks/recommended']
   },
   // Keep this last: it disables every rule that would fight the Prettier formatter.
   prettier
