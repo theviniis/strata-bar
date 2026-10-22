@@ -256,29 +256,52 @@
       "additionalProperties": {
         "type": "object",
         "properties": {
-          "position": {
-            "default": "top",
-            "type": "string",
-            "enum": ["top", "bottom"]
-          },
-          "height": {
-            "default": 36,
-            "type": "integer",
-            "minimum": 28,
-            "maximum": 80
-          },
-          "spacing": {
-            "default": 8,
-            "type": "number",
-            "minimum": 0,
-            "maximum": 32
-          },
-          "theme": {
-            "default": "system",
-            "type": "string",
-            "enum": ["system", "dark", "light"]
-          },
-          "alwaysOnTop": { "default": true, "type": "boolean" }
+          "position": { "type": "string", "enum": ["top", "bottom"] },
+          "height": { "type": "integer", "minimum": 28, "maximum": 80 },
+          "spacing": { "type": "number", "minimum": 0, "maximum": 32 },
+          "theme": { "type": "string", "enum": ["system", "dark", "light"] },
+          "alwaysOnTop": { "type": "boolean" },
+          "widgets": {
+            "type": "object",
+            "propertyNames": { "type": "string" },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "intervalMs": {
+                  "type": "integer",
+                  "minimum": 1000,
+                  "maximum": 60000
+                },
+                "format": { "type": "string", "enum": ["compact", "label"] },
+                "tooltip": { "type": "boolean" },
+                "audio": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "default": "windows",
+                      "type": "string",
+                      "enum": ["windows", "voicemeeter"]
+                    },
+                    "target": {
+                      "type": "object",
+                      "properties": {
+                        "kind": { "type": "string", "enum": ["strip", "bus"] },
+                        "index": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 7
+                        }
+                      },
+                      "required": ["kind", "index"]
+                    },
+                    "label": { "type": "string" },
+                    "enabled": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

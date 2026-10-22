@@ -89,8 +89,8 @@ pub fn normalize_monitor(key: &str) -> String {
 }
 
 /// The document one window renders: the shared configuration with that
-/// monitor's bar overrides merged in. Widget composition stays global, so every
-/// bar agrees on what exists; only the bar surface differs per monitor.
+/// monitor's bar and widget behavior overrides merged in. Widget IDs and section
+/// order stay global; individual monitors may hide or customize their widgets.
 pub fn project(config: &Config, monitor: Option<&str>) -> Config {
     let key = monitor.map(normalize_monitor).filter(|key| !key.is_empty());
     let Some(key) = key else {
@@ -119,6 +119,33 @@ pub fn project(config: &Config, monitor: Option<&str>) -> Config {
     }
     if let Some(value) = over.always_on_top {
         projected.bar.always_on_top = value;
+    }
+    if let Some(overrides) = &over.widgets {
+        for widget in projected
+            .widgets
+            .left
+            .iter_mut()
+            .chain(&mut projected.widgets.center)
+            .chain(&mut projected.widgets.right)
+        {
+            if let Some(value) = overrides.get(&widget.id) {
+                if let Some(enabled) = value.enabled {
+                    widget.enabled = enabled;
+                }
+                if let Some(interval) = value.interval_ms {
+                    widget.interval_ms = interval;
+                }
+                if let Some(format) = &value.format {
+                    widget.format = format.clone();
+                }
+                if let Some(tooltip) = value.tooltip {
+                    widget.tooltip = tooltip;
+                }
+                if let Some(audio) = &value.audio {
+                    widget.audio = Some(audio.clone());
+                }
+            }
+        }
     }
     projected
 }
@@ -204,6 +231,18 @@ pub fn validate(config: &Config) -> Result<(), String> {
                     ));
                 }
             }
+        }
+    }
+    for (monitor, over) in &config.monitors {
+        if let Some(widgets) = &over.widgets {
+            for id in widgets.keys() {
+                if !ids.contains(id) {
+                    return Err(format!("Monitor {monitor} references unknown widget {id}"));
+                }
+            }
+            let mut projected = project(config, Some(monitor));
+            projected.monitors.clear();
+            validate(&projected).map_err(|error| format!("Monitor {monitor}: {error}"))?;
         }
     }
     Ok(())
@@ -531,6 +570,34 @@ fn run_loop(app: AppHandle, rx: Receiver<notify::Result<notify::Event>>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn saved_widget_overrides_project_only_to_the_matching_monitor_and_reject_invalid_edits() {
+        let directory = Directory::new();
+        let store = ConfigStore::open(directory.path());
+        let mut value = serde_json::to_value(defaults()).unwrap();
+        value["monitors"] = serde_json::json!({"DISPLAY2": {"widgets": {"cpu": {"enabled": false, "intervalMs": 8000, "format": "compact", "tooltip": false}}}});
+        let config = parse(&value.to_string()).unwrap();
+        let saved = store.save(config).unwrap();
+        let secondary = project_snapshot(&saved, Some(r"\\.\DISPLAY2"));
+        let cpu = secondary
+            .config
+            .widgets
+            .right
+            .iter()
+            .find(|w| w.id == "cpu")
+            .unwrap();
+        assert!(!cpu.enabled);
+        assert_eq!(cpu.interval_ms, 8000);
+        assert_eq!(cpu.format, WidgetFormat::Compact);
+        assert!(!cpu.tooltip);
+        assert_eq!(
+            project(&saved.config, Some("DISPLAY1")).widgets,
+            defaults().widgets
+        );
+        value["monitors"]["DISPLAY2"]["widgets"]["cpu"]["intervalMs"] = serde_json::json!(999);
+        assert!(parse(&value.to_string()).is_err());
+        assert_eq!(store.snapshot().unwrap().config, saved.config);
+    }
 
     struct Directory(PathBuf);
     impl Directory {

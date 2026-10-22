@@ -117,6 +117,8 @@ export function removeWidget(config: Config, id: string): Config {
   if (!found) return config
   const next = structuredClone(config)
   next.widgets[found.section].splice(found.index, 1)
+  for (const monitor of Object.values(next.monitors))
+    delete monitor.widgets?.[id]
   return next
 }
 

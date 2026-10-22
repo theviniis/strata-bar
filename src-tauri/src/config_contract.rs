@@ -147,11 +147,28 @@ pub struct BarConfig {
     #[serde(default = "default_true")]
     pub always_on_top: bool,
 }
+/// Partial widget behavior; identity and section order remain global.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct WidgetOverride {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub interval_ms: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub format: Option<WidgetFormat>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tooltip: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub audio: Option<WidgetAudio>,
+}
 
 /// One monitor's partial override of the bar configuration.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct BarOverride {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub widgets: Option<std::collections::BTreeMap<String, WidgetOverride>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<BarPosition>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

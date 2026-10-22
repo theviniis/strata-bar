@@ -1,3 +1,4 @@
+import { MonitorWidgetInspector } from './MonitorWidgetInspector'
 import { WidgetPreview } from '@/components/status-bar/WidgetPreview'
 import { Button } from '@/components/ui/button'
 import {
@@ -70,6 +71,7 @@ interface LayoutEditorProps {
   disabled?: boolean
   draft: Config
   onChange(next: Config): void
+  onInspect?(id: string): void
 }
 
 /**
@@ -83,6 +85,11 @@ interface LayoutEditorProps {
  * paths; the tests drive those, never drag internals.
  */
 export function LayoutEditor({ draft, onChange, disabled }: LayoutEditorProps) {
+  const [selected, setSelected] = useState<string | null>(null)
+  const selectedLocation = selected ? findWidget(draft, selected) : undefined
+  const selectedWidget = selectedLocation
+    ? draft.widgets[selectedLocation.section][selectedLocation.index]
+    : undefined
   const layoutId = useId()
   const [drag, setDrag] = useState<{ id: string; config: Config } | null>(null)
   const display = drag?.config ?? draft
@@ -169,9 +176,20 @@ export function LayoutEditor({ draft, onChange, disabled }: LayoutEditorProps) {
                 draft={display}
                 onChange={onChange}
                 disabled={disabled}
+                onInspect={setSelected}
               />
             ))}
           </div>
+          {selectedWidget && (
+            <fieldset disabled={disabled} className="mt-6">
+              <MonitorWidgetInspector
+                key={selectedWidget.id}
+                widget={selectedWidget}
+                draft={draft}
+                onChange={onChange}
+              />
+            </fieldset>
+          )}
         </LayoutGroup>
       </MotionConfig>
       {createPortal(
@@ -241,7 +259,8 @@ function SectionColumn({
   widgets,
   draft,
   onChange,
-  disabled
+  disabled,
+  onInspect
 }: SectionColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `section:${section}` })
   const { over } = useDndContext()
@@ -278,6 +297,7 @@ function SectionColumn({
                 widget={widget}
                 draft={draft}
                 onChange={onChange}
+                onInspect={onInspect}
                 disabled={disabled}
               />
             ))}
@@ -312,7 +332,8 @@ function SortableWidget({
   widget,
   draft,
   onChange,
-  disabled
+  disabled,
+  onInspect
 }: SortableWidgetProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useSortable({
     id: widget.id,
@@ -336,6 +357,7 @@ function SortableWidget({
           draft={draft}
           onChange={onChange}
           disabled={disabled}
+          onInspect={onInspect}
           dragHandleProps={{ ...attributes, ...listeners }}
         />
       </motion.div>
@@ -348,7 +370,8 @@ function WidgetCard({
   draft,
   onChange,
   disabled,
-  dragHandleProps
+  dragHandleProps,
+  onInspect
 }: SortableWidgetProps & {
   dragHandleProps?: ComponentProps<typeof Button>
 }) {
@@ -395,6 +418,17 @@ function WidgetCard({
         <WidgetPreview widget={widget} theme={draft.bar.theme} />
       </ItemContent>
       <ItemFooter>
+        {onInspect && (
+          <Button
+            disabled={disabled}
+            variant="outline"
+            size="sm"
+            aria-label={`Configurar ${typeLabels[widget.type]}`}
+            onClick={() => onInspect(widget.id)}
+          >
+            Configurar
+          </Button>
+        )}
         <Select
           disabled={disabled}
           items={sections.map((section) => ({

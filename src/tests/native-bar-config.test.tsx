@@ -11,6 +11,7 @@ const native = vi.hoisted(() => ({
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
   /** Channels each native subscription asked for, in order. */
   connects: [] as { channel: string; intervalMs?: number }[],
+  disposes: [] as string[],
   loaded: vi.fn()
 }))
 
@@ -74,7 +75,9 @@ vi.mock('../services/system/bridge', () => ({
       }
     }
     onValue({ status: 'ready', data: data[channel] })
-    return () => {}
+    return () => {
+      native.disposes.push(channel)
+    }
   }
 }))
 
@@ -107,6 +110,7 @@ function install(config: Config, revision = 1) {
 }
 
 beforeEach(() => {
+  native.disposes.length = 0
   native.listeners.clear()
   native.loaded.mockReset()
   install(defaultConfig)
@@ -292,6 +296,7 @@ it('re-renders on a config event without remounting or resubscribing unrelated w
   const cpu = screen.getByLabelText('Uso da CPU')
   const memory = screen.getByLabelText('Uso da RAM')
   const connects = native.connects.length
+  const disposes = native.disposes.length
 
   // A theme edit changes presentation only: no widget remounts, no new subscription.
   const themed = structuredClone(defaultConfig)
@@ -306,6 +311,7 @@ it('re-renders on a config event without remounting or resubscribing unrelated w
   expect(screen.getByLabelText('Uso da CPU')).toBe(cpu)
   expect(screen.getByLabelText('Uso da RAM')).toBe(memory)
   expect(native.connects).toHaveLength(connects)
+  expect(native.disposes).toHaveLength(disposes)
 
   // An interval edit re-subscribes exactly that widget's channel.
   const interval = structuredClone(themed)
@@ -317,6 +323,7 @@ it('re-renders on a config event without remounting or resubscribing unrelated w
     })
   })
   expect(screen.getByLabelText('Uso da CPU')).toBe(cpu)
+  expect(native.disposes.slice(disposes)).toEqual(['cpu'])
   expect(native.connects.slice(connects)).toEqual([
     { channel: 'cpu', intervalMs: 5000 }
   ])

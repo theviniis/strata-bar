@@ -1,3 +1,5 @@
+import { Textarea } from '@/components/ui/textarea'
+import { Field, FieldLabel } from '@/components/ui/field'
 import { Logo } from '@/components/Logo'
 import { QueryProvider } from '@/components/QueryProvider'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -47,8 +49,7 @@ import {
   type ConfigPersistence
 } from './draft'
 import { LayoutEditor } from './LayoutEditor'
-
-type SettingsSection = 'layout' | 'appearance'
+type SettingsSection = 'layout' | 'appearance' | 'json'
 
 /**
  * The settings window: a plain captioned window hosting the draft editor.
@@ -138,7 +139,7 @@ export function SettingsView() {
                       />
                     </CardContent>
                   </Card>
-                ) : (
+                ) : section === 'appearance' ? (
                   <Card>
                     <CardHeader>
                       <CardTitle role="heading" aria-level={2}>
@@ -156,11 +157,30 @@ export function SettingsView() {
                       />
                     </CardContent>
                   </Card>
+                ) : (
+                  <Field data-invalid={!!editor.error}>
+                    <FieldLabel htmlFor="config-json">
+                      Configuração JSON
+                    </FieldLabel>
+                    <Textarea
+                      id="config-json"
+                      rows={24}
+                      spellCheck={false}
+                      aria-invalid={!!editor.error}
+                      aria-describedby={
+                        editor.error ? 'config-error' : undefined
+                      }
+                      value={editor.jsonText}
+                      onChange={(event) =>
+                        editor.replaceText(event.target.value)
+                      }
+                    />
+                  </Field>
                 )}
               </FieldSet>
 
               {editor.error && (
-                <Alert variant="destructive" className="mt-6">
+                <Alert id="config-error" variant="destructive" className="mt-6">
                   <AlertTitle>
                     Não foi possível aplicar as configurações
                   </AlertTitle>
@@ -260,7 +280,8 @@ function SettingsSidebar({
                 {(
                   [
                     { id: 'layout', label: 'Layout', icon: LayoutDashboard },
-                    { id: 'appearance', label: 'Aparência', icon: Palette }
+                    { id: 'appearance', label: 'Aparência', icon: Palette },
+                    { id: 'json', label: 'JSON', icon: LayoutDashboard }
                   ] as const
                 ).map(({ id, label, icon: Icon }) => (
                   <SidebarMenuItem key={id}>

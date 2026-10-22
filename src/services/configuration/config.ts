@@ -88,6 +88,21 @@ const bar = z.object({
 export type WidgetConfig = z.infer<typeof widget>
 export type BarConfig = z.infer<typeof bar>
 export type Config = z.infer<typeof configSchema>
+const widgetOverride = z.object({
+  enabled: widget.shape.enabled.removeDefault().optional(),
+  intervalMs: widget.shape.intervalMs.removeDefault().optional(),
+  format: widget.shape.format.removeDefault().optional(),
+  tooltip: widget.shape.tooltip.removeDefault().optional(),
+  audio: widget.shape.audio
+})
+const monitorOverride = z.object({
+  position: bar.shape.position.removeDefault().optional(),
+  height: bar.shape.height.removeDefault().optional(),
+  spacing: bar.shape.spacing.removeDefault().optional(),
+  theme: bar.shape.theme.removeDefault().optional(),
+  alwaysOnTop: bar.shape.alwaysOnTop.removeDefault().optional(),
+  widgets: z.record(z.string(), widgetOverride).optional()
+})
 
 const agentVisibility = z.object({
   chatgpt: z.boolean().default(true),
@@ -116,12 +131,22 @@ export const configSchema = z
       center: z.array(widget),
       right: z.array(widget)
     }),
-    monitors: z.record(z.string(), bar.partial()).default({})
+    monitors: z.record(z.string(), monitorOverride).default({})
   })
   .superRefine((c, ctx) => {
     const ids = Object.values(c.widgets)
       .flat()
       .map((w) => w.id)
+    for (const [monitor, override] of Object.entries(c.monitors)) {
+      for (const id of Object.keys(override.widgets ?? {})) {
+        if (!ids.includes(id))
+          ctx.addIssue({
+            code: 'custom',
+            path: ['monitors', monitor, 'widgets', id],
+            message: 'Unknown widget ID'
+          })
+      }
+    }
     if (new Set(ids).size !== ids.length)
       ctx.addIssue({ code: 'custom', message: 'Widget IDs must be unique' })
   })

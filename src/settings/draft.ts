@@ -72,7 +72,17 @@ export function draftFromText(text: string): ValidConfig | EditorError {
   } catch (error) {
     return {
       source: 'field',
-      message: error instanceof Error ? error.message : String(error)
+      message:
+        error instanceof z.ZodError
+          ? error.issues
+              .map(
+                (issue) =>
+                  `${issue.path.join('.') || 'config'}: ${issue.message}`
+              )
+              .join('\n')
+          : error instanceof Error
+            ? error.message
+            : String(error)
     }
   }
 }
@@ -103,6 +113,8 @@ export type ConfigEditor = {
   apply(): void
   revert(): void
   restoreDefaults(): void
+  jsonText: string
+  replaceText(text: string): void
   dismissError(): void
 }
 
@@ -117,6 +129,8 @@ export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
     mode: 'onChange',
     defaultValues: structuredClone(defaultConfig)
   })
+  const [rawText, setRawText] = useState<string | null>(null)
+  const [textError, setTextError] = useState<EditorError | null>(null)
   const [saved, setSaved] = useState<ValidConfig>(defaultConfig)
   const [error, setError] = useState<EditorError | null>(null)
   const [loading, setLoading] = useState(true)
@@ -126,6 +140,8 @@ export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
   const load = useCallback(async () => {
     try {
       const config = await persistence.load()
+      setRawText(null)
+      setTextError(null)
       setSaved(config)
       form.reset(config)
       setError(null)
@@ -144,19 +160,22 @@ export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
     (next: ValidConfig) => {
       // Layout moves are always schema-valid, but the resolver still runs so
       // field markers and the Apply state follow the draft immediately.
+      setRawText(null)
+      setTextError(null)
       form.reset(next, { keepDefaultValues: true })
       setError(null)
       void form.trigger()
     },
     [form]
   )
-
-  const apply = useCallback(() => {
+  const submit = useCallback(() => {
     void form.handleSubmit(
       async (values) => {
         setSaving(true)
         try {
           const config = await persistence.save(values)
+          setRawText(null)
+          setTextError(null)
           setSaved(config)
           form.reset(config)
           setError(null)
@@ -176,6 +195,9 @@ export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
       }
     )()
   }, [form, persistence])
+  const apply = useCallback(() => {
+    if (!textError) submit()
+  }, [submit, textError])
 
   const revert = useCallback(() => {
     // Re-read the file: an external edit made while the window was open must
@@ -187,20 +209,37 @@ export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
   const restoreDefaults = useCallback(() => {
     form.reset(structuredClone(defaultConfig))
     setError(null)
+    setRawText(null)
+    setTextError(null)
     // Restore flows through the same Apply path: never a silent local reset.
-    apply()
-  }, [apply, form])
+    submit()
+  }, [submit, form])
 
   return {
     form,
     saved,
-    error: fieldMessage ? { source: 'field', message: fieldMessage } : error,
+    error:
+      textError ??
+      (fieldMessage ? { source: 'field', message: fieldMessage } : error),
     loading,
     saving,
     replaceDraft,
     apply,
     revert,
     restoreDefaults,
+    jsonText: rawText ?? JSON.stringify(form.getValues(), null, 2),
+    replaceText: (text) => {
+      setRawText(text)
+      const result = draftFromText(text)
+      if ('source' in result) {
+        setTextError(result)
+        return
+      }
+      setTextError(null)
+      setError(null)
+      form.reset(result, { keepDefaultValues: true })
+      void form.trigger()
+    },
     dismissError: () => setError(null)
   }
 }

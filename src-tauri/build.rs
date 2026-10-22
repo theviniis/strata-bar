@@ -163,6 +163,7 @@ fn main() {
         config_contract::BarPosition::decl(),
         config_contract::BarTheme::decl(),
         config_contract::BarConfig::decl(),
+        config_contract::WidgetOverride::decl(),
         config_contract::BarOverride::decl(),
         config_contract::WidgetSections::decl(),
         config_contract::AgentVisibility::decl(),

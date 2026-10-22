@@ -223,3 +223,264 @@ it('defaults to System with both preview halves and saves the system preference'
     )
   )
 })
+
+it('edits widget behavior through the inspector before applying', async () => {
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Configurar CPU' }))
+  fireEvent.change(screen.getByLabelText('Intervalo (ms)'), {
+    target: { value: '5000' }
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Compacto' }))
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Mostrar tooltip' }))
+  expect(bridge.configSave).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() =>
+    expect(bridge.configSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        widgets: expect.objectContaining({
+          right: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'cpu',
+              intervalMs: 5000,
+              format: 'compact',
+              tooltip: false
+            })
+          ])
+        })
+      })
+    )
+  )
+})
+
+it('round-trips JSON through Apply and rejects invalid fields without saving', async () => {
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
+  const json = screen.getByRole('textbox', { name: 'Configuração JSON' })
+  const config = JSON.parse((json as HTMLTextAreaElement).value)
+  config.widgets.right[0].intervalMs = 999
+  fireEvent.change(json, { target: { value: JSON.stringify(config) } })
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'widgets.right.0.intervalMs'
+  )
+  expect(screen.getByRole('button', { name: 'Aplicar' })).toBeDisabled()
+  expect(bridge.configSave).not.toHaveBeenCalled()
+  config.widgets.right[0].intervalMs = 6000
+  fireEvent.change(json, { target: { value: JSON.stringify(config) } })
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() =>
+    expect(bridge.configSave).toHaveBeenCalledWith(configSchema.parse(config))
+  )
+  expect(JSON.parse((json as HTMLTextAreaElement).value)).toEqual(
+    configSchema.parse(config)
+  )
+})
+
+it('edits one monitor widget override without changing the global widget', async () => {
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Configurar CPU' }))
+  fireEvent.change(screen.getByLabelText('Monitor'), {
+    target: { value: 'DISPLAY2' }
+  })
+  fireEvent.click(
+    screen.getByRole('checkbox', { name: 'Personalizar neste monitor' })
+  )
+  fireEvent.change(screen.getByLabelText('Intervalo (ms)'), {
+    target: { value: '8000' }
+  })
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Ativo neste monitor' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() =>
+    expect(bridge.configSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        monitors: {
+          DISPLAY2: {
+            widgets: {
+              cpu: expect.objectContaining({ intervalMs: 8000, enabled: false })
+            }
+          }
+        },
+        widgets: expect.objectContaining({
+          right: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'cpu',
+              intervalMs: 2000,
+              enabled: true
+            })
+          ])
+        })
+      })
+    )
+  )
+})
+
+it('uses live Voicemeeter slot names and retains the target while Windows handling is active', async () => {
+  vi.mocked(connect).mockImplementation(
+    (_adapter, channel, _options, onValue) => {
+      if (channel === 'voicemeeter')
+        onValue({
+          status: 'ready',
+          data: {
+            application: 2,
+            strips: [],
+            buses: [
+              {
+                index: 2,
+                slot: 'A3',
+                name: 'Studio speakers',
+                physical: true,
+                gain: 0,
+                mute: false
+              }
+            ]
+          }
+        } as never)
+      return () => {}
+    }
+  )
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Configurar Volume' }))
+  fireEvent.click(screen.getByRole('combobox', { name: 'Fonte de áudio' }))
+  fireEvent.pointerDown(
+    await screen.findByRole('option', { name: 'Voicemeeter' })
+  )
+  fireEvent.click(screen.getByRole('option', { name: 'Voicemeeter' }))
+  fireEvent.click(screen.getByRole('combobox', { name: 'Alvo Voicemeeter' }))
+  fireEvent.pointerDown(
+    await screen.findByRole('option', { name: 'A3 · Studio speakers' })
+  )
+  fireEvent.click(screen.getByRole('option', { name: 'A3 · Studio speakers' }))
+  fireEvent.change(screen.getByLabelText('Rótulo de áudio'), {
+    target: { value: 'Desk' }
+  })
+  fireEvent.click(
+    screen.getByRole('checkbox', {
+      name: 'Usar endpoints do Windows mantendo o alvo'
+    })
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() =>
+    expect(bridge.configSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        widgets: expect.objectContaining({
+          right: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'volume',
+              audio: {
+                source: 'voicemeeter',
+                target: { kind: 'bus', index: 2 },
+                enabled: false,
+                label: 'Desk'
+              }
+            })
+          ])
+        })
+      })
+    )
+  )
+})
+
+it('offers bounded manual audio targets when the channel is unavailable', async () => {
+  vi.mocked(connect).mockImplementation(
+    (_adapter, _channel, _options, onValue) => {
+      onValue({ status: 'error', data: null, error: 'Voicemeeter unavailable' })
+      return () => {}
+    }
+  )
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Configurar Microfone' }))
+  fireEvent.click(screen.getByRole('combobox', { name: 'Fonte de áudio' }))
+  fireEvent.pointerDown(
+    await screen.findByRole('option', { name: 'Voicemeeter' })
+  )
+  fireEvent.click(screen.getByRole('option', { name: 'Voicemeeter' }))
+  expect(screen.getByText(/Lista ao vivo indisponível/)).toBeInTheDocument()
+  expect(
+    screen.queryByRole('combobox', { name: 'Alvo Voicemeeter' })
+  ).not.toBeInTheDocument()
+  const index = screen.getByLabelText('Índice do alvo')
+  expect(index).toHaveAttribute('min', '0')
+  expect(index).toHaveAttribute('max', '7')
+  fireEvent.change(index, { target: { value: '8' } })
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeDisabled()
+  )
+  expect(bridge.configSave).not.toHaveBeenCalled()
+  fireEvent.change(index, { target: { value: '7' } })
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() =>
+    expect(bridge.configSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        widgets: expect.objectContaining({
+          right: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'microphone',
+              audio: {
+                source: 'voicemeeter',
+                target: { kind: 'strip', index: 7 }
+              }
+            })
+          ])
+        })
+      })
+    )
+  )
+})
+
+it('applies per-agent visibility checkboxes through the normal save', async () => {
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
+  fireEvent.click(
+    screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() =>
+    expect(bridge.configSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agents: {
+          visible: {
+            chatgpt: true,
+            opencode: true,
+            antigravity: true,
+            codex: false
+          }
+        }
+      })
+    )
+  )
+})
+
+it('keeps invalid JSON across navigation, and restores defaults through save', async () => {
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
+  fireEvent.change(screen.getByLabelText('Configuração JSON'), {
+    target: { value: '{' }
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Layout' }))
+  expect(screen.getByRole('button', { name: 'Aplicar' })).toBeDisabled()
+  fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
+  expect(screen.getByLabelText('Configuração JSON')).toHaveValue('{')
+  fireEvent.click(screen.getByRole('button', { name: 'Restaurar padrões' }))
+  await waitFor(() =>
+    expect(bridge.configSave).toHaveBeenCalledWith(defaultConfig)
+  )
+  expect(
+    JSON.parse(
+      (screen.getByLabelText('Configuração JSON') as HTMLTextAreaElement).value
+    )
+  ).toEqual(defaultConfig)
+})
+
+it('keeps the settings window close action available with invalid JSON', async () => {
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
+  fireEvent.change(screen.getByLabelText('Configuração JSON'), {
+    target: { value: 'invalid' }
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Fechar' }))
+  await waitFor(() => expect(close).toHaveBeenCalledOnce())
+  expect(bridge.quit).not.toHaveBeenCalled()
+  expect(bridge.configSave).not.toHaveBeenCalled()
+})
