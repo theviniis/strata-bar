@@ -233,6 +233,7 @@ it('edits widget behavior through the inspector before applying', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Compacto' }))
   fireEvent.click(screen.getByRole('checkbox', { name: 'Mostrar tooltip' }))
   expect(bridge.configSave).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Concluir' }))
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
   await waitFor(() =>
     expect(bridge.configSave).toHaveBeenCalledWith(
@@ -288,6 +289,7 @@ it('edits one monitor widget override without changing the global widget', async
     target: { value: '8000' }
   })
   fireEvent.click(screen.getByRole('checkbox', { name: 'Ativo neste monitor' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Concluir' }))
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
   await waitFor(() =>
     expect(bridge.configSave).toHaveBeenCalledWith(
@@ -357,6 +359,7 @@ it('uses live Voicemeeter slot names and retains the target while Windows handli
       name: 'Usar endpoints do Windows mantendo o alvo'
     })
   )
+  fireEvent.click(screen.getByRole('button', { name: 'Concluir' }))
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
   await waitFor(() =>
     expect(bridge.configSave).toHaveBeenCalledWith(
@@ -402,14 +405,19 @@ it('offers bounded manual audio targets when the channel is unavailable', async 
   expect(index).toHaveAttribute('max', '7')
   fireEvent.change(index, { target: { value: '8' } })
   await waitFor(() =>
-    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Aplicar', hidden: true })
+    ).toBeDisabled()
   )
   expect(bridge.configSave).not.toHaveBeenCalled()
   fireEvent.change(index, { target: { value: '7' } })
   await waitFor(() =>
-    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: 'Aplicar', hidden: true })
+    ).toBeEnabled()
   )
-  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Concluir' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar', hidden: true }))
   await waitFor(() =>
     expect(bridge.configSave).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -502,3 +510,20 @@ it.each(['display2', String.raw`\\.\DISPLAY2`])(
     expect(bridge.configSave).not.toHaveBeenCalled()
   }
 )
+
+it('opens widget settings in a popup and returns to the layout on completion', async () => {
+  await openEditor()
+  const cpu = screen.getByRole('button', { name: 'Configurar CPU' })
+  fireEvent.click(cpu)
+  const popup = await screen.findByRole('dialog', { name: 'Configurar CPU' })
+  expect(within(popup).getByLabelText('Intervalo (ms)')).toBeVisible()
+  fireEvent.click(within(popup).getByRole('button', { name: 'Concluir' }))
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  )
+  expect(cpu).toHaveFocus()
+  fireEvent.click(screen.getByRole('button', { name: 'Configurar RAM' }))
+  expect(
+    await screen.findByRole('dialog', { name: 'Configurar RAM' })
+  ).toBeVisible()
+})
