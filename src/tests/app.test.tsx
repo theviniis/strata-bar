@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { it, expect, vi, beforeEach } from 'vitest'
 import App from '../app/App'
 
@@ -12,15 +12,24 @@ beforeEach(() => {
   )
 })
 
-it('renders the demo shell and applies visual preferences', () => {
+it('renders a labelled display-only demo without configuration editors', () => {
   render(<App />)
   expect(screen.getByText('BROWSER PREVIEW')).toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: 'bottom' }))
-  expect(screen.getByRole('button', { name: 'bottom' })).toHaveAttribute(
-    'aria-pressed',
-    'true'
-  )
+  expect(screen.getByText('DISPLAY-ONLY DEMO')).toBeInTheDocument()
   expect(
-    screen.getByRole('navigation', { name: 'Status bar' })
+    screen.getByRole('navigation', { name: 'Status bar', hidden: true })
   ).toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'bottom' })
+  ).not.toBeInTheDocument()
+  expect(screen.queryByText('Appearance')).not.toBeInTheDocument()
+  expect(screen.queryByText('On your bar')).not.toBeInTheDocument()
+  expect(screen.queryByText('Edit JSON configuration')).not.toBeInTheDocument()
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  expect(screen.queryByRole('slider')).not.toBeInTheDocument()
+  expect(
+    screen
+      .getByRole('navigation', { name: 'Status bar', hidden: true })
+      .closest('[inert]')
+  ).not.toBeNull()
 })

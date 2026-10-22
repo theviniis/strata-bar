@@ -37,9 +37,7 @@ pnpm install
 pnpm dev
 ```
 
-Browse <http://127.0.0.1:1420>. The JSON editor validates before saving to localStorage, and other tabs
-receive configuration updates. Native file persistence/watch is planned. `pnpm check` validates formatting,
-lint, types and tests; `pnpm build` validates the browser bundle.
+Browse <http://127.0.0.1:1420> for a labelled, display-only demo preview. The studio has no appearance, widget-layout or JSON editor. Any retained browser configuration in `localStorage` (`strata.config.v1`) belongs only to the browser demo and cannot configure native bars. `pnpm check` validates formatting, lint, types and tests; `pnpm build` validates the browser bundle.
 
 ### Native desktop bars
 
@@ -51,6 +49,11 @@ pnpm desktop
 
 This starts the native bars with development tooling. Close with the × at the right of either bar; this
 exits all bars and releases desktop reservations.
+
+Open **Settings** from the Windows tray to edit the native configuration. Its visual controls and JSON
+tab share one draft; **Apply** validates and atomically saves `config.json` in the Tauri app configuration
+directory. The native store publishes configuration snapshots to the bars, overlay and settings window.
+Invalid edits or failed saves retain the last good configuration. Browser storage never enters this path.
 
 ## Scripts
 
@@ -105,15 +108,15 @@ Validate the native bar on Windows:
 Current native defaults: top, 36 logical pixels, dark theme, all monitors, CPU/GPU/RAM every 2 seconds,
 event-driven audio.
 
-- The browser JSON editor does not yet configure the native host; native configuration editing, bottom
-  placement, light theme, transparency/backdrops and autostart are not part of this increment.
+- Native Settings edits content configuration, including theme and widget layout. Native geometry changes
+  (height, position and always-on-top), transparency/backdrops and autostart remain separate follow-ups.
 - CPU uses `GetSystemTimes` elapsed CPU time and can differ from Task Manager's frequency-adjusted utility.
 - GPU utilisation and dedicated/shared memory come from DXGI + PDH and stay available without extra
   software; temperature, power draw and fan speed come from the read-only MSI Afterburner mapping and are
   reported independently unavailable when it is not running. GPU overclocking/tuning and per-process GPU
   attribution are out of scope (`docs/plans/gpu-popup.md`).
 - Music ships under the authorized [media exception](docs/plans/music-widget.md), with GSMTC playback, application volume and an independent Spotify account connection.
-- Network, tray cloning, native settings/hot reload and autostart are deferred until the core
+- Network, tray cloning and autostart are deferred until the core
   MVP passes its acceptance gates.
 
 ## Project layout

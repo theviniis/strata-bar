@@ -29,7 +29,6 @@ import {
 } from '@/components/ui/sidebar'
 import { Spinner } from '@/components/ui/spinner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import type { Config } from '@/services/configuration/config'
 import { bridge } from '@/services/system/bridge'
 import { cn } from 'cn'
 import {
@@ -41,13 +40,9 @@ import {
   X
 } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { BarSettings } from './BarSettings'
-import {
-  createNativePersistence,
-  useConfigEditor,
-  type ConfigPersistence
-} from './draft'
+import { createNativePersistence, useConfigEditor } from './draft'
 import { LayoutEditor } from './LayoutEditor'
 import {
   readNavigation,
@@ -56,44 +51,20 @@ import {
 } from './navigation'
 type SettingsSection = SettingsNavigation['section']
 
-/**
- * The settings window: a plain captioned window hosting the draft editor.
- * Native mode persists through `config_load`/`config_save`; the browser studio
- * falls back to a localStorage persistence so the page stays previewable.
- */
+/** The native settings window edits the file-backed configuration only. */
 export function SettingsView() {
-  const [demoConfig, setDemoConfig] = useState<Config | null>(null)
+  if (bridge.mode !== 'native')
+    return <p>Open Settings from the Windows tray to configure Strata.</p>
+  return <NativeSettingsView />
+}
+
+function NativeSettingsView() {
   const [section, setSection] = useState<SettingsSection>(
     () => readNavigation().section
   )
 
-  useEffect(() => {
-    if (bridge.mode === 'native') return
-    void import('@/stores/config').then(({ useConfig }) => {
-      setDemoConfig(useConfig.getState().config)
-    })
-  }, [])
-
-  const persistence = useMemo<ConfigPersistence | null>(() => {
-    if (bridge.mode === 'native') return createNativePersistence()
-    if (!demoConfig) return null
-    return createDemoPersistence(demoConfig)
-  }, [demoConfig])
-
-  // The hook must run unconditionally; while demo config is still loading the
-  // persistence is a no-op stub that keeps the form on the defaults.
-  const editor = useConfigEditor(persistence ?? STUB_PERSISTENCE)
-
-  if (!persistence) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background text-foreground">
-        <div className="flex items-center gap-2 px-4 py-2">
-          <Spinner aria-label="Carregando configurações" />
-          <span>Carregando...</span>
-        </div>
-      </div>
-    )
-  }
+  const persistence = useMemo(() => createNativePersistence(), [])
+  const editor = useConfigEditor(persistence)
 
   return (
     <QueryProvider>
@@ -331,32 +302,3 @@ function SettingsSidebar({
 }
 
 export default SettingsView
-
-/**
- * Placeholder so the editor hook runs while the demo config loads. Module-level
- * because a fresh identity per render would re-trigger the load effect.
- */
-const STUB_PERSISTENCE: ConfigPersistence = {
-  async load() {
-    throw new Error('Carregando configuração do navegador...')
-  },
-  async save(config) {
-    return config
-  }
-}
-
-/** Browser studio persistence: localStorage is the source of truth. */
-function createDemoPersistence(initial: Config): ConfigPersistence {
-  const key = 'strata.config.v1'
-  return {
-    async load() {
-      const stored = localStorage.getItem(key)
-      if (!stored) return structuredClone(initial)
-      return JSON.parse(stored) as Config
-    },
-    async save(config) {
-      localStorage.setItem(key, JSON.stringify(config))
-      return structuredClone(config)
-    }
-  }
-}
