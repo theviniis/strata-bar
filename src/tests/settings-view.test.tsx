@@ -97,7 +97,7 @@ it('reverts by reloading the saved file and restores defaults through save', asy
   fireEvent.click(screen.getByRole('button', { name: 'Claro' }))
   fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
   await waitFor(() =>
-    expect(screen.getByRole('button', { name: 'System' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Sistema' })).toHaveAttribute(
       'aria-pressed',
       'true'
     )
@@ -205,7 +205,7 @@ it('opens section navigation in a narrow window and closes it after selection', 
 it('defaults to System with both preview halves and saves the system preference', async () => {
   await openEditor()
   fireEvent.click(screen.getByRole('button', { name: /Apar/ }))
-  const system = screen.getByRole('button', { name: 'System' })
+  const system = screen.getByRole('button', { name: 'Sistema' })
   expect(system).toHaveAttribute('aria-pressed', 'true')
   const preview = system.querySelector('[data-theme-preview="system"]')!
   expect(preview).toHaveAttribute('inert')
