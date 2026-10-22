@@ -1,3 +1,4 @@
+import { viewConfig } from './monitor-layout'
 import { StudioBar } from '@/components/status-bar/StudioBar'
 import type { Config } from '@/services/configuration/config'
 import { cn } from '@/lib/utils'
@@ -49,7 +50,10 @@ function PreviewSurface({
       className={cn('h-full w-full bg-muted', theme, className)}
     >
       <StudioBar
-        config={{ ...config, bar: { ...config.bar, theme } }}
+        config={{
+          ...viewConfig(config, null, []),
+          bar: { ...config.bar, theme }
+        }}
         staticPreview
       />
     </div>

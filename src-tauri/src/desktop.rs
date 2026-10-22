@@ -35,6 +35,7 @@ const OVERLAY_TITLE: &str = "Strata overlay";
 pub const SETTINGS: &str = "settings";
 pub const SETTINGS_TITLE: &str = "Configurações do Strata";
 
+static RELEASING: AtomicBool = AtomicBool::new(false);
 static RECONCILE_PENDING: AtomicBool = AtomicBool::new(false);
 static FULLSCREEN_APP: AtomicBool = AtomicBool::new(false);
 static COUNTS: [AtomicU64; 4] = [const { AtomicU64::new(0) }; 4];
@@ -257,9 +258,8 @@ unsafe extern "system" fn procedure(
     if msg == WM_DISPLAYCHANGE || msg == WM_DPICHANGED {
         if !RECONCILE_PENDING.swap(true, Ordering::AcqRel) {
             let app = state.app.clone();
-            let job = app.clone();
-            let _ = app.run_on_main_thread(move || {
-                if let Err(e) = reconcile(&job) {
+            std::thread::spawn(move || {
+                if let Err(e) = reconcile(&app) {
                     eprintln!("Monitor change: {e}");
                 }
                 RECONCILE_PENDING.store(false, Ordering::Release);
@@ -288,13 +288,44 @@ fn top_strip(monitor: RECT, height: i32) -> RECT {
     }
 }
 pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    // Dynamic WebView construction must run off the UI thread on Windows.
+    static SERIAL: Mutex<()> = Mutex::new(());
+    let _serial = SERIAL.lock().map_err(|e| e.to_string())?;
+    if RELEASING.load(Ordering::Acquire) {
+        return Ok(());
+    }
     // A stale anchor must never survive a monitor/DPI change.
     REMINDER_ANCHORS.lock().unwrap().clear();
     overlay_hide(app);
+    let connected = crate::monitors::list()?;
+    let store = app.state::<crate::config::ConfigStore>();
+    let mut snapshot = store.snapshot()?;
+    if crate::monitors::migrate(&mut snapshot.config, &connected) {
+        snapshot = store.save(snapshot.config)?;
+    }
+    let _ = app.emit_to(SETTINGS, "monitors:changed", &connected);
     let monitors = app.available_monitors()?;
     let mut desired = Vec::new();
     for m in monitors {
-        let signature = fingerprint(&m);
+        if RELEASING.load(Ordering::Acquire) {
+            return Ok(());
+        }
+        let device = m.name().map(String::as_str).unwrap_or("");
+        let identity = connected
+            .iter()
+            .find(|monitor| {
+                crate::config::normalize_monitor(&monitor.device_name)
+                    == crate::config::normalize_monitor(device)
+            })
+            .map(|monitor| monitor.id.as_str())
+            .unwrap_or(device);
+        if !crate::config::project(&snapshot.config, Some(identity))
+            .bar
+            .enabled
+        {
+            continue;
+        }
+        let signature = format!("{identity}|{}", fingerprint(&m));
         let mut hash = DefaultHasher::new();
         signature.hash(&mut hash);
         let label = format!("bar-{:x}", hash.finish());
@@ -325,6 +356,7 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         .always_on_top(true)
         .shadow(false)
         .visible(false)
+        .focused(false)
         .background_color(BAR_BACKGROUND)
         .inner_size(m.size().width as f64 / m.scale_factor(), 36.)
         .position(
@@ -332,47 +364,7 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             m.position().y as f64 / m.scale_factor(),
         )
         .build()?;
-        unsafe {
-            let hwnd = HWND(window.hwnd()?.0);
-            let owner = Box::new(Reservation {
-                app: app.clone(),
-                rect: RECT {
-                    left: m.position().x,
-                    top: m.position().y,
-                    right: m.position().x + m.size().width as i32,
-                    bottom: m.position().y + m.size().height as i32,
-                },
-                height,
-                busy: Cell::new(false),
-                applied: Cell::new(None),
-                taskbar_message: RegisterWindowMessageW(w!("TaskbarCreated")),
-            });
-            let pointer = Box::into_raw(owner);
-            if !SetWindowSubclass(hwnd, Some(procedure), SUBCLASS, pointer as usize).as_bool() {
-                drop(Box::from_raw(pointer));
-                window.destroy()?;
-                return Err("Cannot install AppBar window handler".into());
-            }
-            let mut d = data(hwnd);
-            if SHAppBarMessage(ABM_NEW, &mut d) == 0 {
-                window.destroy()?;
-                return Err("Windows rejected AppBar registration".into());
-            }
-            position(hwnd, &*pointer);
-        }
-        window.show()?;
-        unsafe {
-            enforce_floating_frame(HWND(window.hwnd()?.0));
-        }
-        // ShowWindow/DPI initialization must finish before the final placement.
-        unsafe {
-            SendMessageW(
-                HWND(window.hwnd()?.0),
-                REFRESH_GEOMETRY,
-                Some(WPARAM(0)),
-                Some(LPARAM(0)),
-            );
-        }
+        activate_bar(app, window, m, height)?;
     }
     for (label, w) in app.webview_windows() {
         if label.starts_with("bar-") && !desired.contains(&label) {
@@ -389,7 +381,75 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     }
     Ok(())
 }
+
+/// WebView creation is thread-safe, but Win32 subclass installation belongs to its owner.
+fn activate_bar(
+    app: &AppHandle,
+    window: WebviewWindow,
+    m: tauri::Monitor,
+    height: i32,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let (tx, rx) = std::sync::mpsc::sync_channel(1);
+    let job = app.clone();
+    app.run_on_main_thread(move || {
+        let result = (|| -> Result<(), String> {
+            if RELEASING.load(Ordering::Acquire) {
+                let _ = window.destroy();
+                return Err("AppBar creation cancelled during shutdown".into());
+            }
+            unsafe {
+                let hwnd = HWND(window.hwnd().map_err(|e| e.to_string())?.0);
+                let owner = Box::new(Reservation {
+                    app: job.clone(),
+                    rect: RECT {
+                        left: m.position().x,
+                        top: m.position().y,
+                        right: m.position().x + m.size().width as i32,
+                        bottom: m.position().y + m.size().height as i32,
+                    },
+                    height,
+                    busy: Cell::new(false),
+                    applied: Cell::new(None),
+                    taskbar_message: RegisterWindowMessageW(w!("TaskbarCreated")),
+                });
+                let pointer = Box::into_raw(owner);
+                if !SetWindowSubclass(hwnd, Some(procedure), SUBCLASS, pointer as usize).as_bool() {
+                    drop(Box::from_raw(pointer));
+                    window.destroy().map_err(|e| e.to_string())?;
+                    return Err("Cannot install AppBar window handler".into());
+                }
+                let mut d = data(hwnd);
+                if SHAppBarMessage(ABM_NEW, &mut d) == 0 {
+                    window.destroy().map_err(|e| e.to_string())?;
+                    return Err("Windows rejected AppBar registration".into());
+                }
+                position(hwnd, &*pointer);
+            }
+            unsafe {
+                let hwnd = HWND(window.hwnd().map_err(|e| e.to_string())?.0);
+                // tao clears its initial don't-focus marker before a hidden window is shown.
+                // Use the same show policy as the floating overlay, without WS_EX_NOACTIVATE.
+                let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+                enforce_floating_frame(hwnd);
+            }
+            // ShowWindow/DPI initialization must finish before the final placement.
+            unsafe {
+                SendMessageW(
+                    HWND(window.hwnd().map_err(|e| e.to_string())?.0),
+                    REFRESH_GEOMETRY,
+                    Some(WPARAM(0)),
+                    Some(LPARAM(0)),
+                );
+            }
+            Ok(())
+        })();
+        let _ = tx.send(result);
+    })?;
+    rx.recv()??;
+    Ok(())
+}
 pub fn release_all(app: &AppHandle) {
+    RELEASING.store(true, Ordering::Release);
     overlay_hide(app);
     for (label, w) in app.webview_windows() {
         // Only AppBar windows own a reservation; the overlay must never remove one.
@@ -619,7 +679,18 @@ fn monitor_rect(hwnd: HWND) -> Option<RECT> {
 /// current monitor. Configuration overrides are keyed by this name because it
 /// survives moves, scale changes and reboots, unlike a positional fingerprint.
 pub fn monitor_name(window: &WebviewWindow) -> Option<String> {
-    monitor_device(HWND(window.hwnd().ok()?.0))
+    let device = monitor_device(HWND(window.hwnd().ok()?.0))?;
+    Some(
+        crate::monitors::list()
+            .ok()?
+            .into_iter()
+            .find(|monitor| {
+                crate::config::normalize_monitor(&monitor.device_name)
+                    == crate::config::normalize_monitor(&device)
+            })
+            .map(|monitor| monitor.id)
+            .unwrap_or(device),
+    )
 }
 
 fn monitor_device(hwnd: HWND) -> Option<String> {
@@ -668,7 +739,7 @@ pub fn open_settings(app: &AppHandle) -> Result<WebviewWindow, String> {
         WebviewUrl::App("index.html?view=settings".into()),
     )
     .title(SETTINGS_TITLE)
-    .inner_size(880., 720.)
+    .inner_size(1280., 800.)
     .min_inner_size(640., 480.)
     .resizable(true)
     .decorations(true)
@@ -1446,7 +1517,7 @@ pub fn bar_snapshot() -> serde_json::Value {
                 let style = GetWindowLongPtrW(hwnd, GWL_STYLE) as u32;
                 let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
                 let values = &mut *(param.0 as *mut Vec<serde_json::Value>);
-                values.push(serde_json::json!({"title":title,"rect":[rect.left,rect.top,rect.right,rect.bottom],"client":[client.right,client.bottom],"visible":IsWindowVisible(hwnd).as_bool(),"toolWindow":ex & WS_EX_TOOLWINDOW.0 != 0,"topmost":ex & WS_EX_TOPMOST.0 != 0,"komorebiEligible":komorebi_eligible(style,ex)}));
+                values.push(serde_json::json!({"title":title,"rect":[rect.left,rect.top,rect.right,rect.bottom],"client":[client.right,client.bottom],"visible":IsWindowVisible(hwnd).as_bool(),"toolWindow":ex & WS_EX_TOOLWINDOW.0 != 0,"topmost":ex & WS_EX_TOPMOST.0 != 0,"noActivate":ex & WS_EX_NOACTIVATE.0 != 0,"komorebiEligible":komorebi_eligible(style,ex)}));
             }
         }
         true.into()

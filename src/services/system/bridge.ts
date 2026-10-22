@@ -1,3 +1,4 @@
+import type { SettingsMonitor } from './config.generated'
 import type { MediaData, MediaRequest, SpotifyStatus } from './media.generated'
 import { demoMedia, mediaPosition, parseMediaEvent } from './media'
 import type { MemoryData } from './memory.generated'
@@ -143,6 +144,7 @@ export interface Subscribable<D extends Record<Channel, unknown>> {
 }
 
 export interface AdapterBase {
+  settingsMonitors?(): Promise<SettingsMonitor[]>
   mediaAction?(request: MediaRequest): Promise<unknown>
   /** Native-only: the configuration file is the desktop runtime's, not the studio's. */
   configLoad?(): Promise<ConfigSnapshot>
@@ -429,6 +431,10 @@ export function createNativeBridge(): NativeBridge {
     async mediaAction(request) {
       const { invoke } = await import('@tauri-apps/api/core')
       return invoke('media_action', { request })
+    },
+    async settingsMonitors() {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke<SettingsMonitor[]>('settings_monitors')
     },
     async configLoad() {
       const { invoke } = await import('@tauri-apps/api/core')

@@ -8,10 +8,12 @@ export type WidgetFormat = "compact" | "label";
 export type WidgetConfig = { id: string, type: WidgetKind, enabled: boolean, intervalMs: number, format: WidgetFormat, tooltip: boolean, audio?: WidgetAudio | null, };
 export type BarPosition = "top" | "bottom";
 export type BarTheme = "system" | "dark" | "light";
-export type BarConfig = { position: BarPosition, height: number, spacing: number, theme: BarTheme, alwaysOnTop: boolean, };
+export type BarConfig = { enabled: boolean, position: BarPosition, height: number, spacing: number, theme: BarTheme, alwaysOnTop: boolean, };
 export type WidgetOverride = { enabled?: boolean | null, intervalMs?: number | null, format?: WidgetFormat | null, tooltip?: boolean | null, audio?: WidgetAudio | null, };
-export type BarOverride = { widgets?: { [key in string]?: WidgetOverride } | null, position?: BarPosition | null, height?: number | null, spacing?: number | null, theme?: BarTheme | null, alwaysOnTop?: boolean | null, };
+export type BarOverride = { enabled?: boolean | null, layout?: WidgetLayout | null, widgets?: { [key in string]?: WidgetOverride } | null, position?: BarPosition | null, height?: number | null, spacing?: number | null, theme?: BarTheme | null, alwaysOnTop?: boolean | null, };
 export type WidgetSections = { left: Array<WidgetConfig>, center: Array<WidgetConfig>, right: Array<WidgetConfig>, };
+export type WidgetLayout = { left: Array<string>, center: Array<string>, right: Array<string>, };
+export type SettingsMonitor = { id: string, deviceName: string, name: string, width: number, height: number, primary: boolean, };
 export type AgentVisibility = { chatgpt: boolean, opencode: boolean, antigravity: boolean, codex: boolean, };
 export type AgentsConfig = { visible: AgentVisibility, };
 export type Config = { 
@@ -21,5 +23,5 @@ export type Config = {
  * serialize: documents written before it existed stay valid, and a save
  * preserves whatever the author put there.
  */
-$schema?: string | null, version: number, agents: AgentsConfig, bar: BarConfig, widgets: WidgetSections, monitors: { [key in string]?: BarOverride }, };
+$schema?: string | null, version: number, agents: AgentsConfig, bar: BarConfig, widgets: WidgetSections, layout?: WidgetLayout | null, monitors: { [key in string]?: BarOverride }, };
 export type ConfigSnapshot = { revision: number, config: Config, error: string | null, };

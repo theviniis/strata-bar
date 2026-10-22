@@ -53,41 +53,113 @@ it('moves a widget to an empty section and retains its settings', async () => {
   ).not.toBeInTheDocument()
 })
 
-it('adds collision-free widget IDs with valid defaults, toggles and removes', async () => {
+it('adds from the preview catalog, hides without removal and excludes existing types', async () => {
   render(<Editor />)
+  const catalog = screen.getByRole('complementary', {
+    name: 'Widgets disponíveis'
+  })
+  expect(
+    within(catalog).queryByRole('button', { name: 'Adicionar CPU' })
+  ).not.toBeInTheDocument()
   fireEvent.click(
-    screen.getByRole('combobox', { name: 'Adicionar widget em Centro' })
+    within(catalog).getByRole('button', { name: 'Adicionar Volume' })
   )
-  fireEvent.pointerDown(await screen.findByRole('option', { name: 'CPU' }))
-  fireEvent.click(screen.getByRole('option', { name: 'CPU' }))
-  await waitFor(() =>
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Adicionar Volume em Centro' })
   )
   const center = screen.getByRole('region', { name: 'Seção Centro' })
-  expect(within(center).getByTitle('cpu-2')).toBeInTheDocument()
+  expect(within(center).getByTitle('volume')).toBeInTheDocument()
+  fireEvent.click(
+    within(center).getByRole('checkbox', { name: 'Ativar Volume' })
+  )
   expect(
-    within(center).getByRole('checkbox', { name: 'Ativar CPU' })
-  ).toBeChecked()
+    within(center).getByRole('checkbox', { name: 'Ativar Volume' })
+  ).not.toBeChecked()
+  expect(
+    within(catalog).queryByRole('button', { name: 'Adicionar Volume' })
+  ).not.toBeInTheDocument()
   expect(
     configSchema.safeParse(
       JSON.parse(screen.getByLabelText('Draft').textContent!)
     ).success
   ).toBe(true)
-  fireEvent.click(within(center).getByRole('checkbox', { name: 'Ativar CPU' }))
-  expect(
-    within(center).getByRole('checkbox', { name: 'Ativar CPU' })
-  ).not.toBeChecked()
-  fireEvent.click(within(center).getByRole('button', { name: 'Remover CPU' }))
-  expect(within(center).queryByTitle('cpu-2')).not.toBeInTheDocument()
   fireEvent.click(
-    screen.getByRole('combobox', { name: 'Adicionar widget em Centro' })
+    within(center).getByRole('button', {
+      name: 'Excluir definitivamente Volume'
+    })
   )
-  fireEvent.pointerDown(await screen.findByRole('option', { name: 'CPU' }))
-  fireEvent.click(screen.getByRole('option', { name: 'CPU' }))
-  await waitFor(() =>
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
-  )
-  expect(within(center).getByTitle('cpu-2')).toBeInTheDocument()
+  expect(within(center).queryByTitle('volume')).not.toBeInTheDocument()
+  expect(
+    within(catalog).getByRole('button', { name: 'Adicionar Volume' })
+  ).toBeInTheDocument()
+})
+
+it.each(['drop', 'cancel'] as const)(
+  'drags a catalog preview into a column and handles %s',
+  async (finish) => {
+    const cleanup = mockPointerLayout()
+    try {
+      render(<Editor />)
+      const before = screen.getByLabelText('Draft').textContent
+      const handle = screen.getByRole('button', {
+        name: 'Arrastar Volume do catálogo'
+      })
+      fireEvent.pointerDown(handle, { button: 0, clientX: 20, clientY: 100 })
+      fireEvent.pointerMove(document, { clientX: 30, clientY: 100 })
+      await act(async () => {})
+      fireEvent.pointerMove(document, { clientX: 350, clientY: 110 })
+      expect(
+        await screen.findByRole('img', { name: 'Movendo Volume' })
+      ).toBeVisible()
+      expect(screen.getByLabelText('Draft').textContent).toBe(before)
+      if (finish === 'cancel') fireEvent.keyDown(document, { code: 'Escape' })
+      else fireEvent.pointerUp(document)
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('img', { name: 'Movendo Volume' })
+        ).not.toBeInTheDocument()
+      )
+      if (finish === 'cancel')
+        expect(screen.getByLabelText('Draft').textContent).toBe(before)
+      else {
+        const center = screen.getByRole('region', { name: 'Seção Centro' })
+        expect(within(center).getByTitle('volume')).toBeInTheDocument()
+        expect(
+          configSchema.safeParse(
+            JSON.parse(screen.getByLabelText('Draft').textContent!)
+          ).success
+        ).toBe(true)
+      }
+    } finally {
+      cleanup()
+    }
+  }
+)
+
+it('adds a catalog widget with the keyboard drag handle', async () => {
+  const cleanup = mockPointerLayout()
+  try {
+    render(<Editor />)
+    const handle = screen.getByRole('button', {
+      name: 'Arrastar Volume do catálogo'
+    })
+    handle.focus()
+    fireEvent.keyDown(handle, { code: 'Space' })
+    await screen.findByRole('img', { name: 'Movendo Volume' })
+    fireEvent.keyDown(handle, { code: 'ArrowRight' })
+    await act(async () => {})
+    fireEvent.keyDown(document, { code: 'Space' })
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('img', { name: 'Movendo Volume' })
+      ).not.toBeInTheDocument()
+    )
+    expect(
+      JSON.parse(screen.getByLabelText('Draft').textContent!).layout.center
+    ).toContain('volume')
+  } finally {
+    cleanup()
+  }
 })
 
 it('reorders adjacent widgets using the drag handle keyboard controls', async () => {

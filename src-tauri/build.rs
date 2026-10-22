@@ -166,6 +166,8 @@ fn main() {
         config_contract::WidgetOverride::decl(),
         config_contract::BarOverride::decl(),
         config_contract::WidgetSections::decl(),
+        config_contract::WidgetLayout::decl(),
+        config_contract::SettingsMonitor::decl(),
         config_contract::AgentVisibility::decl(),
         config_contract::AgentsConfig::decl(),
         config_contract::Config::decl(),

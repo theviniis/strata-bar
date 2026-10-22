@@ -21,7 +21,22 @@ import type { WidgetConfig } from '@/services/configuration/config'
 import { useSystemChannel } from '@/hooks/useSystemChannel'
 import { bridge } from '@/services/system/bridge'
 import { optionLabel } from '@/features/audio/presentation'
-import { useId } from 'react'
+import { useContext, createContext, useId } from 'react'
+import { valueAt } from './monitor-layout'
+
+const EditingContext = createContext<{
+  values: WidgetConfig[]
+  patch?: (path: string, value: unknown) => void
+} | null>(null)
+function useMixed(path: string) {
+  const editing = useContext(EditingContext)
+  const values = editing?.values ?? []
+  return values.some(
+    (value) =>
+      JSON.stringify(valueAt(value, path)) !==
+      JSON.stringify(valueAt(values[0], path))
+  )
+}
 
 export function Choice({
   label,
@@ -45,7 +60,7 @@ export function Choice({
         }}
       >
         <SelectTrigger aria-label={label}>
-          <SelectValue />
+          <SelectValue placeholder="Valores diferentes" />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
@@ -63,63 +78,89 @@ export function Choice({
 
 export function WidgetInspector({
   widget,
-  onChange
+  onChange,
+  values = [widget],
+  onPatch
 }: {
   widget: WidgetConfig
   onChange(next: WidgetConfig): void
+  values?: WidgetConfig[]
+  onPatch?(path: string, value: unknown): void
 }) {
   const id = useId()
+  const mixed = (path: string) =>
+    values.some(
+      (value) =>
+        JSON.stringify(valueAt(value, path)) !==
+        JSON.stringify(valueAt(values[0], path))
+    )
+  const update = (path: 'intervalMs' | 'format' | 'tooltip', value: unknown) =>
+    onPatch ? onPatch(path, value) : onChange({ ...widget, [path]: value })
   return (
-    <FieldSet>
-      <FieldLegend>Configurar {widget.id}</FieldLegend>
-      <FieldGroup>
-        <Field>
-          <FieldLabel htmlFor={`${id}-interval`}>Intervalo (ms)</FieldLabel>
-          <Input
-            id={`${id}-interval`}
-            type="number"
-            min={1000}
-            max={60000}
-            step={1}
-            value={Number.isNaN(widget.intervalMs) ? '' : widget.intervalMs}
-            onChange={(event) =>
-              onChange({ ...widget, intervalMs: event.target.valueAsNumber })
-            }
-          />
-          <FieldDescription>
-            1000–60000 ms. Canais orientados a eventos mantêm sua própria
-            cadência.
-          </FieldDescription>
-        </Field>
-        <Field>
-          <FieldLabel>Formato</FieldLabel>
-          <ToggleGroup
-            variant="outline"
-            value={[widget.format]}
-            onValueChange={([format]) => {
-              if (format === 'compact' || format === 'label')
-                onChange({ ...widget, format })
-            }}
-          >
-            <ToggleGroupItem value="compact">Compacto</ToggleGroupItem>
-            <ToggleGroupItem value="label">Com rótulo</ToggleGroupItem>
-          </ToggleGroup>
-        </Field>
-        <Field orientation="horizontal">
-          <Checkbox
-            id={`${id}-tooltip`}
-            checked={widget.tooltip}
-            onCheckedChange={(checked) =>
-              onChange({ ...widget, tooltip: checked === true })
-            }
-          />
-          <FieldLabel htmlFor={`${id}-tooltip`}>Mostrar tooltip</FieldLabel>
-        </Field>
-        {(widget.type === 'volume' || widget.type === 'microphone') && (
-          <AudioInspector widget={widget} onChange={onChange} />
-        )}
-      </FieldGroup>
-    </FieldSet>
+    <EditingContext.Provider value={{ values, patch: onPatch }}>
+      <FieldSet>
+        <FieldLegend>Configurar {widget.id}</FieldLegend>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor={`${id}-interval`}>Intervalo (ms)</FieldLabel>
+            <Input
+              id={`${id}-interval`}
+              type="number"
+              min={1000}
+              max={60000}
+              step={1}
+              placeholder={
+                mixed('intervalMs') ? 'Valores diferentes' : undefined
+              }
+              aria-label={
+                mixed('intervalMs')
+                  ? 'Intervalo (ms) — Valores diferentes'
+                  : undefined
+              }
+              value={
+                mixed('intervalMs') || Number.isNaN(widget.intervalMs)
+                  ? ''
+                  : widget.intervalMs
+              }
+              onChange={(event) =>
+                update('intervalMs', event.target.valueAsNumber)
+              }
+            />
+            <FieldDescription>
+              1000–60000 ms. Canais orientados a eventos mantêm sua própria
+              cadência.
+            </FieldDescription>
+          </Field>
+          <Field>
+            <FieldLabel>
+              Formato{mixed('format') ? ' — Valores diferentes' : ''}
+            </FieldLabel>
+            <ToggleGroup
+              variant="outline"
+              value={mixed('format') ? [] : [widget.format]}
+              onValueChange={([format]) => {
+                if (format === 'compact' || format === 'label')
+                  update('format', format)
+              }}
+            >
+              <ToggleGroupItem value="compact">Compacto</ToggleGroupItem>
+              <ToggleGroupItem value="label">Com rótulo</ToggleGroupItem>
+            </ToggleGroup>
+          </Field>
+          <Field orientation="horizontal">
+            <Checkbox
+              id={`${id}-tooltip`}
+              checked={mixed('tooltip') ? 'indeterminate' : widget.tooltip}
+              onCheckedChange={(checked) => update('tooltip', checked === true)}
+            />
+            <FieldLabel htmlFor={`${id}-tooltip`}>Mostrar tooltip</FieldLabel>
+          </Field>
+          {(widget.type === 'volume' || widget.type === 'microphone') && (
+            <AudioInspector widget={widget} onChange={onChange} />
+          )}
+        </FieldGroup>
+      </FieldSet>
+    </EditingContext.Provider>
   )
 }
 
@@ -161,6 +202,12 @@ function AudioFields({
   voice?: import('@/services/system/bridge').VoicemeeterData
 }) {
   const id = useId()
+  const editing = useContext(EditingContext)
+  const sourceMixed = useMixed('audio.source')
+  const labelMixed = useMixed('audio.label')
+  const kindMixed = useMixed('audio.target.kind')
+  const indexMixed = useMixed('audio.target.index')
+  const enabledMixed = useMixed('audio.enabled')
   const audio = widget.audio ?? { source: 'windows' as const }
   const target = audio.target ?? {
     kind: widget.type === 'volume' ? ('bus' as const) : ('strip' as const),
@@ -171,52 +218,68 @@ function AudioFields({
       ? voice.buses
       : voice.strips
     : []
-  const update = (patch: Partial<typeof audio>) =>
-    onChange({ ...widget, audio: { ...audio, ...patch } })
+  const update = (path: string, value: unknown) => {
+    if (editing?.patch) editing.patch(`audio.${path}`, value)
+    else if (path.startsWith('target.'))
+      onChange({
+        ...widget,
+        audio: { ...audio, target: { ...target, [path.slice(7)]: value } }
+      })
+    else
+      onChange({
+        ...widget,
+        audio: {
+          ...audio,
+          [path]: value,
+          ...(path === 'source' && value === 'voicemeeter' ? { target } : {})
+        }
+      })
+  }
   return (
     <FieldSet>
       <FieldLegend>Áudio</FieldLegend>
       <FieldGroup>
         <Choice
           label="Fonte de áudio"
-          value={audio.source}
+          value={sourceMixed ? '' : audio.source}
           options={[
             { value: 'windows', label: 'Windows' },
             { value: 'voicemeeter', label: 'Voicemeeter' }
           ]}
           onChange={(source) => {
             if (source === 'windows' || source === 'voicemeeter')
-              update({ source, ...(source === 'voicemeeter' && { target }) })
+              update('source', source)
           }}
         />
         <Field>
           <FieldLabel htmlFor={`${id}-label`}>Rótulo de áudio</FieldLabel>
           <Input
             id={`${id}-label`}
-            value={audio.label ?? ''}
+            placeholder={labelMixed ? 'Valores diferentes' : undefined}
+            value={labelMixed ? '' : (audio.label ?? '')}
             onChange={(event) =>
-              update({ label: event.target.value || undefined })
+              update('label', event.target.value || undefined)
             }
           />
         </Field>
-        {audio.source === 'voicemeeter' && (
+        {(audio.source === 'voicemeeter' || sourceMixed) && (
           <>
             <Choice
               label="Tipo de alvo"
-              value={target.kind}
+              value={kindMixed ? '' : target.kind}
               options={[
                 { value: 'strip', label: 'Strip' },
                 { value: 'bus', label: 'Bus' }
               ]}
               onChange={(kind) => {
                 if (kind === 'strip' || kind === 'bus')
-                  update({ target: { kind, index: 0 } })
+                  update('target.kind', kind)
               }}
             />
             {voice && items.length > 0 ? (
               <Choice
                 label="Alvo Voicemeeter"
-                value={String(target.index)}
+                value={indexMixed ? '' : String(target.index)}
                 options={[
                   ...(!items.some((item) => item.index === target.index)
                     ? [
@@ -231,9 +294,7 @@ function AudioFields({
                     label: optionLabel(item)
                   }))
                 ]}
-                onChange={(index) =>
-                  update({ target: { ...target, index: Number(index) } })
-                }
+                onChange={(index) => update('target.index', Number(index))}
               />
             ) : (
               <Field>
@@ -244,11 +305,12 @@ function AudioFields({
                   min={0}
                   max={7}
                   step={1}
-                  value={Number.isNaN(target.index) ? '' : target.index}
+                  placeholder={indexMixed ? 'Valores diferentes' : undefined}
+                  value={
+                    indexMixed || Number.isNaN(target.index) ? '' : target.index
+                  }
                   onChange={(event) =>
-                    update({
-                      target: { ...target, index: event.target.valueAsNumber }
-                    })
+                    update('target.index', event.target.valueAsNumber)
                   }
                 />
                 <FieldDescription>
@@ -260,9 +322,11 @@ function AudioFields({
             <Field orientation="horizontal">
               <Checkbox
                 id={`${id}-windows`}
-                checked={audio.enabled === false}
+                checked={
+                  enabledMixed ? 'indeterminate' : audio.enabled === false
+                }
                 onCheckedChange={(checked) =>
-                  update({ enabled: checked !== true })
+                  update('enabled', checked !== true)
                 }
               />
               <FieldLabel htmlFor={`${id}-windows`}>

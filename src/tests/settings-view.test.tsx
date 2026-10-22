@@ -6,11 +6,27 @@ import {
   within
 } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest'
+import type { SettingsMonitor } from '../services/system/config.generated'
 import { configSchema, defaultConfig } from '../services/configuration/config'
 import { bridge, connect } from '../services/system/bridge'
 import { SettingsView } from '../settings/SettingsView'
 
 const close = vi.hoisted(() => vi.fn())
+const monitorEvents = vi.hoisted(() => ({
+  listener: undefined as
+    undefined | ((event: { payload: SettingsMonitor[] }) => void)
+}))
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn(
+    async (
+      event: string,
+      listener: (event: { payload: SettingsMonitor[] }) => void
+    ) => {
+      if (event === 'monitors:changed') monitorEvents.listener = listener
+      return () => {}
+    }
+  )
+}))
 // jsdom does not implement the browser geometry observer used by Slider.
 vi.stubGlobal(
   'ResizeObserver',
@@ -30,12 +46,32 @@ vi.mock('../services/system/bridge', async (importOriginal) => ({
     mode: 'native',
     configLoad: vi.fn(),
     configSave: vi.fn(),
+    settingsMonitors: vi.fn(),
     quit: vi.fn()
   }
 }))
 
 beforeEach(() => {
   vi.clearAllMocks()
+  monitorEvents.listener = undefined
+  vi.mocked(bridge.settingsMonitors!).mockResolvedValue([
+    {
+      id: 'screen-a',
+      deviceName: 'DISPLAY1',
+      name: 'Main',
+      width: 1920,
+      height: 1080,
+      primary: true
+    },
+    {
+      id: 'screen-b',
+      deviceName: 'DISPLAY2',
+      name: 'Side',
+      width: 2560,
+      height: 1440,
+      primary: false
+    }
+  ])
   vi.stubGlobal(
     'matchMedia',
     vi.fn().mockReturnValue({
@@ -62,6 +98,156 @@ async function openEditor() {
     expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
   )
 }
+
+it('removes a widget only from the selected monitor and restores it through the preview catalog', async () => {
+  await openEditor()
+  expect(screen.getByRole('tab', { name: 'Todos' })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+  fireEvent.click(await screen.findByRole('tab', { name: /Monitor 2/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'Remover CPU' }))
+  const catalog = screen.getByRole('complementary', {
+    name: 'Widgets disponíveis'
+  })
+  expect(within(catalog).getByTitle('cpu')).toBeInTheDocument()
+  fireEvent.change(
+    within(catalog).getByRole('textbox', { name: 'Buscar widgets' }),
+    { target: { value: 'cpu' } }
+  )
+  fireEvent.click(
+    within(catalog).getByRole('button', { name: 'Adicionar CPU' })
+  )
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Adicionar CPU em Centro' })
+  )
+  expect(
+    within(catalog).queryByRole('button', { name: 'Adicionar CPU' })
+  ).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() => expect(bridge.configSave).toHaveBeenCalled())
+  const saved = vi.mocked(bridge.configSave!).mock.calls[0][0]
+  expect(saved.monitors['screen-b']!.layout?.center).toEqual(['time', 'cpu'])
+  expect(saved.widgets.right.filter((w) => w.type === 'cpu')).toHaveLength(1)
+  expect(saved.monitors['screen-a']).toBeUndefined()
+})
+
+it('edits mixed widget fields globally without overwriting unrelated monitor values', async () => {
+  const config = structuredClone(defaultConfig)
+  config.monitors = {
+    'screen-a': { widgets: { cpu: { intervalMs: 4000, tooltip: false } } },
+    'screen-b': { widgets: { cpu: { intervalMs: 8000, tooltip: true } } },
+    offline: { widgets: { cpu: { intervalMs: 12000, tooltip: false } } }
+  }
+  vi.mocked(bridge.configLoad!).mockResolvedValue({
+    config,
+    revision: 1,
+    error: null
+  })
+  await openEditor()
+  await screen.findByRole('tab', { name: /Monitor 2/ })
+  fireEvent.click(screen.getByRole('button', { name: 'Configurar CPU' }))
+  expect(
+    screen.getByRole('checkbox', { name: 'Mostrar tooltip' })
+  ).toHaveAttribute('data-state', 'indeterminate')
+  const interval = screen.getByLabelText('Intervalo (ms)')
+  expect(interval).toHaveValue(null)
+  fireEvent.change(interval, { target: { value: '6000' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Concluir' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() => expect(bridge.configSave).toHaveBeenCalled())
+  const saved = vi.mocked(bridge.configSave!).mock.calls[0][0]
+  expect(saved.monitors['screen-a']!.widgets!.cpu).toEqual({
+    intervalMs: 6000,
+    tooltip: false
+  })
+  expect(saved.monitors['screen-b']!.widgets!.cpu).toEqual({
+    intervalMs: 6000,
+    tooltip: true
+  })
+  expect(saved.monitors.offline).toEqual(config.monitors.offline)
+})
+
+it('disables bars independently and globally while retaining the widget configuration', async () => {
+  await openEditor()
+  fireEvent.click(await screen.findByRole('tab', { name: /Monitor 2/ }))
+  fireEvent.click(
+    screen.getByRole('switch', { name: 'Habilitar barra neste monitor' })
+  )
+  expect(screen.getByRole('button', { name: 'Configurar CPU' })).toBeEnabled()
+  fireEvent.click(screen.getByRole('tab', { name: 'Todos' }))
+  expect(screen.getByText('Alguns monitores habilitados')).toBeInTheDocument()
+  fireEvent.click(
+    screen.getByRole('switch', {
+      name: 'Habilitar barra em todos os monitores'
+    })
+  )
+  fireEvent.click(
+    screen.getByRole('switch', {
+      name: 'Habilitar barra em todos os monitores'
+    })
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() => expect(bridge.configSave).toHaveBeenCalled())
+  const saved = vi.mocked(bridge.configSave!).mock.calls[0][0]
+  expect(saved.bar.enabled).toBe(false)
+  expect(saved.monitors['screen-a']!.enabled).toBe(false)
+  expect(saved.monitors['screen-b']!.enabled).toBe(false)
+  expect(saved.widgets).toEqual(defaultConfig.widgets)
+})
+
+it('returns to Todos after a selected connected monitor disappears and preserves its draft', async () => {
+  await openEditor()
+  fireEvent.click(await screen.findByRole('tab', { name: /Monitor 2/ }))
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Ativar CPU' }))
+  await waitFor(() => expect(monitorEvents.listener).toBeDefined())
+  const { act } = await import('@testing-library/react')
+  await act(async () =>
+    monitorEvents.listener!({
+      payload: [
+        {
+          id: 'screen-a',
+          deviceName: 'DISPLAY1',
+          name: 'Main',
+          width: 1920,
+          height: 1080,
+          primary: true
+        }
+      ]
+    })
+  )
+  expect(screen.getByRole('tab', { name: 'Todos' })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+  expect(
+    screen.getByText(/O monitor selecionado foi desconectado/)
+  ).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() => expect(bridge.configSave).toHaveBeenCalled())
+  expect(
+    vi.mocked(bridge.configSave!).mock.calls[0][0].monitors['screen-b']!
+      .widgets!.cpu!.enabled
+  ).toBe(false)
+})
+
+it('retries failed native monitor discovery without substituting demo monitors', async () => {
+  vi.mocked(bridge.settingsMonitors!).mockRejectedValueOnce(
+    new Error('Display query failed')
+  )
+  await openEditor()
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Display query failed'
+  )
+  expect(
+    screen.queryByRole('tab', { name: /Demonstração/ })
+  ).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
+  expect(
+    await screen.findByRole('tab', { name: /Monitor 2/ })
+  ).toBeInTheDocument()
+  expect(bridge.configSave).not.toHaveBeenCalled()
+})
 
 it('loads the saved configuration and applies the edited layout through native save', async () => {
   await openEditor()
@@ -278,28 +464,19 @@ it('round-trips JSON through Apply and rejects invalid fields without saving', a
 
 it('edits one monitor widget override without changing the global widget', async () => {
   await openEditor()
+  fireEvent.click(await screen.findByRole('tab', { name: /Monitor 2/ }))
   fireEvent.click(screen.getByRole('button', { name: 'Configurar CPU' }))
-  fireEvent.change(screen.getByLabelText('Monitor'), {
-    target: { value: 'DISPLAY2' }
-  })
-  fireEvent.click(
-    screen.getByRole('checkbox', { name: 'Personalizar neste monitor' })
-  )
   fireEvent.change(screen.getByLabelText('Intervalo (ms)'), {
     target: { value: '8000' }
   })
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Ativo neste monitor' }))
   fireEvent.click(screen.getByRole('button', { name: 'Concluir' }))
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Ativar CPU' }))
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
   await waitFor(() =>
     expect(bridge.configSave).toHaveBeenCalledWith(
       expect.objectContaining({
         monitors: {
-          DISPLAY2: {
-            widgets: {
-              cpu: expect.objectContaining({ intervalMs: 8000, enabled: false })
-            }
-          }
+          'screen-b': { widgets: { cpu: { intervalMs: 8000, enabled: false } } }
         },
         widgets: expect.objectContaining({
           right: expect.arrayContaining([
