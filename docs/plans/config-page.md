@@ -1,6 +1,7 @@
 # Configuration page: settings window and the native content loop
 
-Status: planned. The design below was fixed in a grilling session on 2026-10-20
+Status: implemented; acceptance recorded on 2026-10-22 for issue #12.
+The design below was fixed in a grilling session on 2026-10-20
 and should be executed as written; every checkbox is ticked as the work lands.
 Deferred follow-ups are tracked as issues #2 (export/import), #3 (native
 geometry) and #4 (bar-level `activeMonitors`).
@@ -54,92 +55,105 @@ Decisions already taken:
 
 ## 1. Native config store (`src-tauri/`)
 
-- [ ] Add `src-tauri/src/config.rs`: Rust-side re-validation of the schema-v1
+- [x] Add `src-tauri/src/config.rs`: Rust-side re-validation of the schema-v1
       payload (structure plus the paths that other commands already re-check,
       e.g. audio `Target::parse`), file at the Tauri `app_config_dir()`
       (final file name fixed at implementation), atomic write, directory watch
       → config event.
-- [ ] Register `config_load` / `config_save` in `main.rs`
+- [x] Register `config_load` / `config_save` in `main.rs`
       (`generate_handler!`); save failure leaves the previous file intact.
-- [ ] Deliver the config event to `bar-*`, `overlay` and settings windows in
+- [x] Deliver the config event to `bar-*`, `overlay` and settings windows in
       `setup()`; delivery failure never falls back to demo values — bars keep
       rendering their in-memory config and the error surfaces in the editor.
-- [ ] Rust unit tests: save/load round-trip, invalid payloads rejected,
+- [x] Rust unit tests: save/load round-trip, invalid payloads rejected,
       atomic write leaves no temp file behind, watch event observed, bounds
       re-validated against the documented ranges.
 
 ## 2. Settings surface
 
-- [ ] `?view=settings` view (lazy entry alongside `src/views.tsx`), a normal
+- [x] `?view=settings` view (lazy entry alongside `src/views.tsx`), a normal
       captioned window created on demand from the tray; a second request
       focuses the existing instance instead of creating a duplicate.
-- [ ] Tray entry wired in `tray.rs`; the window owns no AppBar reservation,
+- [x] Tray entry wired in `tray.rs`; the window owns no AppBar reservation,
       no click-through styles and no `WS_EX_NOACTIVATE`.
-- [ ] Teardown on close is clean; no state references outlive the window.
+- [x] Teardown on close is clean; no state references outlive the window.
 
 ## 3. Editor implementation
 
-- [ ] Shared editor component: Visual tab plus JSON tab; `useForm` +
+- [x] Shared editor component: Visual tab plus JSON tab; `useForm` +
       `zodResolver` over the existing schema; draft state only.
-- [ ] Apply serializes the draft and calls `config_save`; Revert reloads the
+- [x] Apply serializes the draft and calls `config_save`; Revert reloads the
       saved config; Restore defaults flows through the same Apply path.
-- [ ] Native rejection is surfaced exactly like a field-invalid draft.
-- [ ] Three sortable columns (`@dnd-kit/core`/`@dnd-kit/sortable`), drag
+- [x] Native rejection is surfaced exactly like a field-invalid draft.
+- [x] Three sortable columns (`@dnd-kit/core`/`@dnd-kit/sortable`), drag
       within and across `left`/`center`/`right`, add-widget Select, remove
       per widget, collision-checked `type`-derived IDs.
-- [ ] Widget inspector: `enabled`, `intervalMs` (1000–60000), `format`,
+- [x] Widget inspector: `enabled`, `intervalMs` (1000–60000), `format`,
       `tooltip` and, for audio widgets, the source/target controls and
       `label`/`enabled` per recorded decision, with the numeric bounded
       fallback when `voicemeeter` is `unavailable`.
-- [ ] Per-widget monitor override editor (`monitors`).
-- [ ] `agents` visibility checkboxes.
-- [ ] Bar section: `theme`/`spacing` editable; `height`/`position`/
+- [x] Per-widget monitor override editor (`monitors`).
+- [x] `agents` visibility checkboxes.
+- [x] Bar section: `theme`/`spacing` editable; `height`/`position`/
       `alwaysOnTop` rendered disabled with a pointer to #3.
 
 ## 4. Content loop (native bars obey config)
 
-- [ ] Rewrite `NativeBar.tsx` to render from config: widget presence and
+- [x] Rewrite `NativeBar.tsx` to render from config: widget presence and
       order per `left`/`center`/`right`, `enabled`, `intervalMs`,
       `format`, `tooltip`, `bar.theme`, `bar.spacing` and `agents`
       visibility.
-- [ ] Project per-widget `monitors` overrides per `bar-*` window following
+- [x] Project per-widget `monitors` overrides per `bar-*` window following
       the komorebi one-payload-per-window pattern.
-- [ ] Audio routing follows config through the existing
+- [x] Audio routing follows config through the existing
       `set_channel_source` / `set_audio_input` / `set_audio_output`
       machinery, preserving last-write-wins semantics.
-- [ ] `bar.position`-derived popup placement (reminders and friends) reads
+- [x] `bar.position`-derived popup placement (reminders and friends) reads
       the same config identity.
-- [ ] Re-subscription on config events relies on the existing `connect()`
+- [x] Re-subscription on config events relies on the existing `connect()`
       idempotent dispose paths (no widget remount storms).
 
 ## 5. Studio demotion and persistence boundaries
 
-- [ ] Delete `App.tsx` inline Appearance/Position/Height controls, widget
+- [x] Delete `App.tsx` inline Appearance/Position/Height controls, widget
       chips and JSON textarea; the studio keeps hero + live demo preview,
       clearly labelled.
-- [ ] `loadConfig` / `watchConfig` keep serving the browser demo only;
+- [x] `loadConfig` / `watchConfig` keep serving the browser demo only;
       native never reads localStorage; document the boundary in
       `docs/architecture.md` and README.
 
 ## 6. Tests
 
-- [ ] Editor suite: render, draft/Apply/Revert/Restore-defaults, field-error
+- [x] Editor suite: render, draft/Apply/Revert/Restore-defaults, field-error
       blocking, dnd composition and add/remove, audio picker live and
       fallback paths, monitor overrides, JSON tab round-trip.
-- [ ] Views: settings window render/config event handling.
-- [ ] Native bar: config-driven rendering and per-monitor projection tests
+- [x] Views: settings window render/config event handling.
+- [x] Native bar: config-driven rendering and per-monitor projection tests
       (replacing the hardcoded `NativeBar.tsx` expectations).
-- [ ] Store: extend `config.test.ts` patterns for the save command path.
-- [ ] Keep the seven pre-existing failures documented in AGENTS.md visible;
-      they are separate work and must not regress further.
+- [x] Store: extend `config.test.ts` patterns for the save command path.
+- [x] The seven pre-existing failures documented in AGENTS.md were resolved
+      separately in issue #8; the final suite must remain green.
 
 ## 7. Verification and documentation
 
-- [ ] `cargo test --manifest-path src-tauri/Cargo.toml`,
+- [x] `cargo test --manifest-path src-tauri/Cargo.toml`,
       `pnpm format:check`/`lint`/`typecheck`/`test` (`pnpm check`).
-- [ ] Record a native acceptance run under `docs/evidence/` (new file):
+- [x] Record a native acceptance run under `docs/evidence/` (new file):
       settings apply visibly changes the real bars on both monitors, no demo
       fallback occurred, `scripts/test-live-geometry.ps1` behavior noted.
-- [ ] Close out with doc updates: `docs/architecture.md`, README, and
+- [x] Close out with doc updates: `docs/architecture.md`, README, and
       GLOSSARY terms (draft, apply, content loop, settings window) as the
       code terms settle.
+
+## Close-out evidence (issue #12)
+
+The acceptance record is [config-acceptance-issue12-2026-10-22.json](../evidence/config-acceptance-issue12-2026-10-22.json).
+It separates the two-monitor content Apply and automated checks from the legacy
+geometry script result: that script failed its topmost assertion. It ran from a
+temporary evidence directory so historical JSON was never overwritten.
+
+Implementation tickets #6, #7, #9, #10, #11 and #13 are closed; #8 resolved
+the test baseline. Spec #5 remains the parent. Its original tiler-managed
+settings-window wording is superseded by the 2026-10-22 decision above.
+The existing editor also exposes per-monitor hosting and layouts, overlapping
+the still-open follow-up #4; closing that broader follow-up is outside #12.

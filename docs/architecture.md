@@ -1,6 +1,6 @@
 # Architecture decision: Tauri 2, provisional
 
-Implementation update: the native executable now opens actual per-monitor AppBars with CPU, physical RAM, GPU and Core Audio integration. Rust/MSVC are installed and native tests run. See `native-mvp-validation.md` for current evidence; earlier toolchain unavailability below describes the initial decision environment. The native MVP fixes sampling at 2000 ms; configurable interval scheduling remains future work.
+Implementation update: the native executable now opens actual per-monitor AppBars with CPU, physical RAM, GPU and Core Audio integration. Rust/MSVC are installed and native tests run. See `native-mvp-validation.md` for current evidence; earlier toolchain unavailability below describes the initial decision environment. Polling channels use configured subscription intervals (default 2000 ms); event-driven channels retain their own scheduling.
 
 | Criterion           | Tauri                                                | Electron                                         |
 | ------------------- | ---------------------------------------------------- | ------------------------------------------------ |
@@ -60,6 +60,19 @@ Per-metric status is independent: `ready`, `error` (previously known value, fail
 ## Configuration and security
 
 JSON schema version 1; unique widget IDs, known feature types, enabled state, update interval, display format, tooltip. Last-known-good config survives invalid edits. The native Settings window, opened from the tray, is the single configuration page: visual controls and the JSON tab edit one draft, and Apply calls the native `config_save` command. The native store re-validates, atomically writes `config.json` in the Tauri app configuration directory and watches the directory for external edits. `config_load` and revision-ordered `config` events hydrate bars, overlay and settings; failed saves and invalid files retain the last good configuration. Content edits do not change AppBar geometry.
+
+The settings window remains captioned, resizable and focusable, but its
+`WS_EX_DLGMODALFRAME` style excludes it from komorebi tiling. This supersedes
+the original tiler-managed wording in spec #5, as recorded in the
+[configuration plan](plans/config-page.md). It has no AppBar reservation and
+does not use `floating_frame_style` or `WS_EX_NOACTIVATE`.
+
+The [2026-10-22 acceptance run](evidence/config-acceptance-issue12-2026-10-22.json)
+records Apply on two real monitors with user-confirmed live readings, rejection
+of an invalid JSON draft, unchanged persisted bytes after rejection and exact
+restoration after the run. The unmodified legacy geometry script failed its
+topmost assertion; that observation is retained separately from content-loop
+acceptance and does not establish a full geometry pass.
 
 The browser studio is a labelled, display-only demo with no inline appearance controls, widget chips, account settings or JSON editor. Its preview is inert, so widget popups cannot expose a second editing path. The settings view also refuses to mount the editor outside native mode, including direct browser requests to `?view=settings`; there is no demo settings persistence adapter. The retained `strata.config.v1` localStorage persistence and storage-event reload belong only to browser demo routes: `loadConfig` and `watchConfig` return without reading or installing listeners when Tauri internals are present, and native hydration never writes browser storage. The demo bridge has no native configuration load/save commands. Native windows connect to the native store through `connectConfig`; browser persistence cannot feed native bars. Per-monitor overrides merge with validated defaults. CSP restricts content to bundled resources; no remote executable content or arbitrary user JS in MVP.
 

@@ -5,6 +5,27 @@ popups. Memory terminology follows Windows concepts.
 
 ## Language
 
+**Draft**:
+The settings window's local candidate configuration, shared by the visual and
+JSON editors. Editing a draft does not change the native configuration or bars.
+Revert reloads the saved configuration and discards unapplied edits.
+
+**Apply**:
+The explicit action that validates a draft and sends it to native `config_save`.
+Native validation and an atomic write must succeed before configuration events
+update the bars. A rejected draft or failed save preserves the saved document.
+
+**Content loop**:
+The path from a settings draft through Apply, native persistence and per-window
+configuration events to the real bars' rendered content. It includes widget
+composition and presentation; native geometry remains tracked separately in #3.
+
+**Settings window**:
+The single-instance native configuration editor opened from the tray at
+`?view=settings`. It is captioned, resizable and focusable, with no AppBar
+reservation or floating-frame styling. A dialog-frame style excludes it from
+komorebi tiling; a second open request focuses the existing window.
+
 **CPU utilization**:
 The percentage of aggregate processor time occupied during an observation interval.
 _Avoid_: Processor Utility as an equivalent definition
