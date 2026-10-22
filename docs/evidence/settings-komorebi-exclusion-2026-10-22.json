@@ -1,0 +1,21 @@
+{
+  "capturedAt": "2026-10-22T17:26:26.0792046+00:00",
+  "method": "Native --probe against the running rebuilt development host; settings window visually inspected with Computer Use",
+  "komorebiVersion": "0.1.41",
+  "settings": {
+    "present": true,
+    "windows": [
+      {
+        "captioned": true,
+        "clickThrough": false,
+        "dialogFrame": true,
+        "komorebiEligible": false,
+        "noActivate": false,
+        "title": "Configurações do Strata",
+        "toolWindow": false,
+        "topmost": false
+      }
+    ]
+  },
+  "validation": "205 native tests passed, 21 ignored, 0 failed; includes a real Win32 HWND style-reapplication regression test"
+}

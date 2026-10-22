@@ -12,9 +12,14 @@ its reflection alone is not an acceptance gate.
 Decisions already taken:
 
 - One config page, owned by the desktop runtime: a single-instance settings
-  window at `?view=settings`, opened from the tray. It is an ordinary, tiler
-  managed (captioned) window — never an AppBar, never a floating frame, so
-  `floating_frame_style` and `WS_EX_NOACTIVATE` stay out of it.
+  window at `?view=settings`, opened from the tray. It keeps its caption,
+  resizing and taskbar entry, but is excluded from komorebi tiling with
+  `WS_EX_DLGMODALFRAME` before showing it and on subsequent style changes.
+  `WS_EX_WINDOWEDGE` is also cleared, but Windows may restore it for captioned,
+  resizable windows; it is not a sufficient exclusion by itself.
+  This supersedes the original tiler-managed decision (2026-10-22). It is never
+  an AppBar or a topmost tool window; `floating_frame_style` and
+  `WS_EX_NOACTIVATE` stay out of it.
 - Storage: JSON schema v1 at the Tauri `app_config_dir()`, atomically written
   (temp + rename) and watched by a new native `config` module; no SQLite, no
   migration machinery. New commands `config_load` / `config_save` re-validate

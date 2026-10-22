@@ -20,6 +20,7 @@ const CALLBACK: u32 = WM_APP + 42;
 const REFRESH_GEOMETRY: u32 = WM_APP + 43;
 const SUBCLASS: usize = 0x53545241;
 const OVERLAY_SUBCLASS: usize = 0x5354524F;
+const SETTINGS_SUBCLASS: usize = 0x53545253;
 /// `#171821` — the bar colour in `styles.css`. The window paints it before the
 /// webview has any content, so a starting bar is never white.
 const BAR_BACKGROUND: tauri::window::Color = tauri::window::Color(23, 24, 33, 255);
@@ -102,10 +103,10 @@ fn floating_frame_style(style: u32, ex: u32) -> (u32, u32) {
     )
 }
 
-/// Mirror of komorebi's `window_is_eligible` caption requirement, used as a
-/// regression guard and reported by `bar_snapshot`.
+/// Mirror of komorebi's default frame eligibility (without user rule overrides),
+/// used as a regression guard and reported by the window snapshots.
 fn komorebi_eligible(style: u32, ex: u32) -> bool {
-    style & WS_CAPTION.0 != 0 && ex & WS_EX_WINDOWEDGE.0 != 0
+    style & WS_CAPTION.0 != 0 && ex & WS_EX_WINDOWEDGE.0 != 0 && ex & WS_EX_DLGMODALFRAME.0 == 0
 }
 
 unsafe fn enforce_floating_frame(hwnd: HWND) {
@@ -718,12 +719,12 @@ fn monitor_device(hwnd: HWND) -> Option<String> {
 
 /// Opens the single settings window, or focuses the one that already exists.
 ///
-/// This is the one window in the app that is deliberately *not* a floating
-/// surface: it keeps its caption and `WS_EX_WINDOWEDGE`, so the user's tiling
-/// window manager manages it like any other window. It never registers an
-/// AppBar, never calls `floating_frame_style`, is never click-through and never
-/// carries `WS_EX_NOACTIVATE`; closing it simply drops the webview (its React
-/// state dies with it) and releases nothing, because it reserved nothing.
+/// Keeps the normal caption, resizing and taskbar entry, but removes
+/// `WS_EX_WINDOWEDGE` and sets `WS_EX_DLGMODALFRAME` so komorebi cannot tile it.
+/// Windows can restore WINDOWEDGE on captioned, resizable windows; the dialog
+/// frame is the explicit exclusion in komorebi's default eligibility check.
+/// Unlike the bar/overlay frame
+/// policy, this does not make it a topmost tool window. It reserves no AppBar.
 pub fn open_settings(app: &AppHandle) -> Result<WebviewWindow, String> {
     if let Some(window) = app.get_webview_window(SETTINGS) {
         // A tray click while the window is minimised must restore it, and a
@@ -745,15 +746,60 @@ pub fn open_settings(app: &AppHandle) -> Result<WebviewWindow, String> {
     .decorations(true)
     .skip_taskbar(false)
     .always_on_top(false)
-    .focused(true)
-    .visible(true)
+    .focused(false)
+    .visible(false)
     .build()
     .map_err(|e| e.to_string())?;
+    unsafe {
+        let hwnd = HWND(window.hwnd().map_err(|e| e.to_string())?.0);
+        if !SetWindowSubclass(hwnd, Some(settings_procedure), SETTINGS_SUBCLASS, 0).as_bool() {
+            let _ = window.destroy();
+            return Err("Cannot install the settings window handler".into());
+        }
+        let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
+        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, settings_extended_style(ex) as isize);
+        SetWindowPos(
+            hwnd,
+            None,
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    window.show().map_err(|e| e.to_string())?;
+    window.set_focus().map_err(|e| e.to_string())?;
     Ok(window)
 }
 
+fn settings_extended_style(ex: u32) -> u32 {
+    (ex & !WS_EX_WINDOWEDGE.0) | WS_EX_DLGMODALFRAME.0
+}
+
+unsafe extern "system" fn settings_procedure(
+    hwnd: HWND,
+    msg: u32,
+    wp: WPARAM,
+    lp: LPARAM,
+    _: usize,
+    _: usize,
+) -> LRESULT {
+    // tao restores its extended styles on visibility/state changes. Filter the
+    // proposed style before Windows applies it, including on show and restore.
+    if msg == WM_STYLECHANGING && wp.0 == GWL_EXSTYLE.0 as usize {
+        let styles = &mut *(lp.0 as *mut STYLESTRUCT);
+        styles.styleNew = settings_extended_style(styles.styleNew);
+    }
+    if msg == WM_NCDESTROY {
+        let _ = RemoveWindowSubclass(hwnd, Some(settings_procedure), SETTINGS_SUBCLASS);
+    }
+    DefSubclassProc(hwnd, msg, wp, lp)
+}
+
 /// What `--probe` and `diagnostics` report about the settings window: whether it
-/// exists and whether it stayed an ordinary, tiler-owned window.
+/// exists and whether it stayed captioned and excluded from tiling.
 pub fn settings_snapshot() -> serde_json::Value {
     unsafe extern "system" fn collect(hwnd: HWND, param: LPARAM) -> windows::core::BOOL {
         let mut title = [0u16; 256];
@@ -766,6 +812,7 @@ pub fn settings_snapshot() -> serde_json::Value {
             values.push(serde_json::json!({
                 "title": title,
                 "captioned": style & WS_CAPTION.0 != 0,
+                "dialogFrame": ex & WS_EX_DLGMODALFRAME.0 != 0,
                 "komorebiEligible": komorebi_eligible(style, ex),
                 "toolWindow": ex & WS_EX_TOOLWINDOW.0 != 0,
                 "topmost": ex & WS_EX_TOPMOST.0 != 0,
@@ -1660,6 +1707,76 @@ mod geometry_tests {
             54,
         );
         assert_eq!([r.left, r.top, r.right, r.bottom], [-2560, 120, 0, 174]);
+    }
+    #[test]
+    fn settings_stays_activatable_and_in_the_taskbar_without_komorebi_tiling() {
+        let style = WS_CAPTION.0 | WS_THICKFRAME.0 | WS_SYSMENU.0;
+        let ex = WS_EX_WINDOWEDGE.0 | WS_EX_APPWINDOW.0 | WS_EX_ACCEPTFILES.0;
+        assert!(komorebi_eligible(style, ex));
+        let ex = settings_extended_style(ex);
+        assert!(!komorebi_eligible(style, ex));
+        assert_eq!(
+            ex,
+            WS_EX_APPWINDOW.0 | WS_EX_ACCEPTFILES.0 | WS_EX_DLGMODALFRAME.0
+        );
+        // Windows may restore WINDOWEDGE for a captioned/resizable frame.
+        assert!(!komorebi_eligible(style, ex | WS_EX_WINDOWEDGE.0));
+        assert_eq!(settings_extended_style(ex), ex);
+    }
+    #[test]
+    fn settings_native_frame_exclusion_survives_style_reapplication() {
+        unsafe {
+            let hwnd = CreateWindowExW(
+                WS_EX_APPWINDOW,
+                w!("STATIC"),
+                w!("Strata settings frame regression test"),
+                WS_OVERLAPPEDWINDOW,
+                0,
+                0,
+                640,
+                480,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+            assert!(
+                SetWindowSubclass(hwnd, Some(settings_procedure), SETTINGS_SUBCLASS, 0).as_bool()
+            );
+            for _ in 0..3 {
+                // The same style reset tao performs when showing/restoring.
+                SetWindowLongPtrW(
+                    hwnd,
+                    GWL_EXSTYLE,
+                    (WS_EX_APPWINDOW.0 | WS_EX_WINDOWEDGE.0) as isize,
+                );
+                SetWindowPos(
+                    hwnd,
+                    None,
+                    0,
+                    0,
+                    0,
+                    0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+                )
+                .unwrap();
+                let style = GetWindowLongPtrW(hwnd, GWL_STYLE) as u32;
+                let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
+                assert!(!komorebi_eligible(style, ex), "style={style:x}, ex={ex:x}");
+                assert_eq!(style & WS_OVERLAPPEDWINDOW.0, WS_OVERLAPPEDWINDOW.0);
+                assert_ne!(ex & WS_EX_APPWINDOW.0, 0);
+                assert_ne!(ex & WS_EX_DLGMODALFRAME.0, 0);
+                assert_eq!(
+                    ex & (WS_EX_TOOLWINDOW.0
+                        | WS_EX_TOPMOST.0
+                        | WS_EX_NOACTIVATE.0
+                        | WS_EX_TRANSPARENT.0),
+                    0
+                );
+            }
+            DestroyWindow(hwnd).unwrap();
+        }
     }
     #[test]
     fn floating_frame_styles_make_the_window_ineligible_for_komorebi() {
