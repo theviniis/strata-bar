@@ -108,6 +108,7 @@ export type ConfigEditor = {
   error: EditorError | null
   loading: boolean
   saving: boolean
+  reverted: boolean
   /** Install a new draft without touching native. */
   replaceDraft(next: ValidConfig): void
   apply(): void
@@ -135,25 +136,31 @@ export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
   const [error, setError] = useState<EditorError | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [reverted, setReverted] = useState(false)
   const fieldMessage = firstError(form.formState.errors)
 
-  const load = useCallback(async () => {
-    try {
-      const config = await persistence.load()
-      setRawText(null)
-      setTextError(null)
-      setSaved(config)
-      form.reset(config)
-      setError(null)
-    } catch (e) {
-      setError({ source: 'native', message: messageOf(e) })
-    } finally {
-      setLoading(false)
-    }
-  }, [form, persistence])
+  const load = useCallback(
+    async (reverting = false) => {
+      setReverted(false)
+      try {
+        const config = await persistence.load()
+        setRawText(null)
+        setTextError(null)
+        setSaved(config)
+        setReverted(reverting)
+        form.reset(config)
+        setError(null)
+      } catch (e) {
+        setError({ source: 'native', message: messageOf(e) })
+      } finally {
+        setLoading(false)
+      }
+    },
+    [form, persistence]
+  )
 
   useEffect(() => {
-    void Promise.resolve().then(load)
+    void Promise.resolve().then(() => load())
   }, [load])
 
   const replaceDraft = useCallback(
@@ -177,6 +184,7 @@ export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
           setRawText(null)
           setTextError(null)
           setSaved(config)
+          setReverted(false)
           form.reset(config)
           setError(null)
         } catch (e) {
@@ -203,7 +211,7 @@ export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
     // Re-read the file: an external edit made while the window was open must
     // be what Revert restores, not a stale in-memory copy.
     setLoading(true)
-    void load()
+    void load(true)
   }, [load])
 
   const restoreDefaults = useCallback(() => {
@@ -223,6 +231,7 @@ export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
       (fieldMessage ? { source: 'field', message: fieldMessage } : error),
     loading,
     saving,
+    reverted,
     replaceDraft,
     apply,
     revert,

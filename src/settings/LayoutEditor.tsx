@@ -3,6 +3,11 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
 import { ManagerContext, type ColumnMoveFocus } from './manager-context'
 import { useMonitors } from './useMonitors'
+import {
+  readNavigation,
+  rememberNavigation,
+  type SettingsNavigation
+} from './navigation'
 import { WidgetCatalog } from './WidgetCatalog'
 import {
   aggregateIds,
@@ -76,6 +81,7 @@ import { LayoutGroup, motion, MotionConfig } from 'motion/react'
 import {
   useContext,
   useId,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -112,15 +118,18 @@ export function LayoutEditor({
   onChange: commit,
   disabled
 }: LayoutEditorProps) {
-  const { monitors, error, refresh } = useMonitors()
-  const [selection, setSelection] = useState<{
-    id: string
-    connected: boolean
-  } | null>(null)
+  const { monitors, error, refresh, loading } = useMonitors()
+  const [selection, setSelection] = useState<SettingsNavigation['monitor']>(
+    () => readNavigation().monitor
+  )
   const [disconnectedNotice, setDisconnectedNotice] = useState(false)
+  useEffect(() => {
+    if (!loading && !error) rememberNavigation({ monitor: selection })
+  }, [selection, loading, error])
   const selected = selection?.id ?? null
   if (
     selection?.connected &&
+    !loading &&
     !monitors.some((m) => m.id === selection.id) &&
     !error
   ) {

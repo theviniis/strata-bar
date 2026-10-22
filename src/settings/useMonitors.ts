@@ -4,6 +4,7 @@ import type { SettingsMonitor } from '@/services/system/config.generated'
 
 export function useMonitors() {
   const [monitors, setMonitors] = useState<SettingsMonitor[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const refresh = useCallback(async () => {
     if (bridge.mode === 'demo') {
@@ -18,6 +19,7 @@ export function useMonitors() {
         }
       ])
       setMonitors(demo)
+      setLoading(false)
       return
     }
     try {
@@ -27,6 +29,8 @@ export function useMonitors() {
       setError(null)
     } catch (reason) {
       setError(String(reason))
+    } finally {
+      setLoading(false)
     }
   }, [])
   useEffect(() => {
@@ -53,5 +57,5 @@ export function useMonitors() {
       unlisten?.()
     }
   }, [refresh])
-  return { monitors, error, refresh }
+  return { monitors, error, refresh, loading }
 }

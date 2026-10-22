@@ -52,6 +52,7 @@ vi.mock('../services/system/bridge', async (importOriginal) => ({
 }))
 
 beforeEach(() => {
+  localStorage.clear()
   vi.clearAllMocks()
   monitorEvents.listener = undefined
   vi.mocked(bridge.settingsMonitors!).mockResolvedValue([
@@ -98,6 +99,79 @@ async function openEditor() {
     expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
   )
 }
+
+it('restores the last menu and monitor after reopening without saving the draft', async () => {
+  const first = render(<SettingsView />)
+  fireEvent.click(await screen.findByRole('tab', { name: /Monitor 1/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
+  first.unmount()
+
+  const second = render(<SettingsView />)
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
+  )
+  expect(screen.getByRole('heading', { name: 'Aparência' })).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Layout' }))
+  expect(await screen.findByRole('tab', { name: /Monitor 1/ })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+  second.unmount()
+
+  await openEditor()
+  expect(await screen.findByRole('tab', { name: /Monitor 1/ })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+  expect(bridge.configSave).not.toHaveBeenCalled()
+})
+
+it('remembers JSON and an explicit Todos selection across reopens', async () => {
+  const first = render(<SettingsView />)
+  fireEvent.click(await screen.findByRole('tab', { name: /Monitor 1/ }))
+  fireEvent.click(screen.getByRole('tab', { name: 'Todos' }))
+  fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
+  first.unmount()
+  await openEditor()
+  expect(
+    screen.getByRole('textbox', { name: 'Configuração JSON' })
+  ).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Layout' }))
+  await screen.findByRole('tab', { name: /Monitor 1/ })
+  expect(screen.getByRole('tab', { name: 'Todos' })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+})
+
+it('retains the remembered monitor through a failed discovery and restores it on retry', async () => {
+  const first = render(<SettingsView />)
+  fireEvent.click(await screen.findByRole('tab', { name: /Monitor 1/ }))
+  first.unmount()
+  vi.mocked(bridge.settingsMonitors!).mockRejectedValueOnce(
+    new Error('Display query failed')
+  )
+  const second = render(<SettingsView />)
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Display query failed'
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
+  expect(await screen.findByRole('tab', { name: /Monitor 1/ })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+  second.unmount()
+  vi.mocked(bridge.settingsMonitors!).mockResolvedValue([])
+  await openEditor()
+  expect(
+    await screen.findByText(/O monitor selecionado foi desconectado/)
+  ).toBeInTheDocument()
+  expect(screen.getByRole('tab', { name: 'Todos' })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+  expect(bridge.configSave).not.toHaveBeenCalled()
+})
 
 it('removes a widget only from the selected monitor and restores it through the preview catalog', async () => {
   await openEditor()
@@ -328,6 +402,21 @@ it('reverts by reloading the saved file and restores defaults through save', asy
   fireEvent.click(screen.getByRole('button', { name: 'Restaurar padrões' }))
   await waitFor(() =>
     expect(bridge.configSave).toHaveBeenCalledWith(defaultConfig)
+  )
+})
+
+it('explains that Revert did not save and clears the notice after Apply', async () => {
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
+  const notice = await screen.findByText(/Nenhuma alteração foi salva/)
+  expect(notice).toHaveTextContent('Clique em Aplicar para salvar e aplicar')
+  expect(bridge.configSave).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() => expect(bridge.configSave).toHaveBeenCalledOnce())
+  await waitFor(() =>
+    expect(
+      screen.queryByText(/Nenhuma alteração foi salva/)
+    ).not.toBeInTheDocument()
   )
 })
 
