@@ -32,6 +32,7 @@ const account = vi.hoisted(() => ({
 vi.mock('@/services/system/calendar', () => ({ calendar: account }))
 
 beforeEach(() => {
+  events.listener = undefined
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -43,19 +44,22 @@ beforeEach(() => {
   account.status
     .mockReset()
     .mockResolvedValue({ connected: false, connecting: false, error: null })
-  account.connect
-    .mockReset()
-    .mockResolvedValue({ connected: true, connecting: false, error: null })
-  account.disconnect
-    .mockReset()
-    .mockResolvedValue({ connected: false, connecting: false, error: null })
+  account.connect.mockReset().mockImplementation(async () => {
+    const value = { connected: true, connecting: false, error: null }
+    account.status.mockResolvedValue(value)
+    return value
+  })
+  account.disconnect.mockReset().mockImplementation(async () => {
+    const value = { connected: false, connecting: false, error: null }
+    account.status.mockResolvedValue(value)
+    return value
+  })
   vi.stubGlobal('__TAURI_INTERNALS__', {})
 })
 afterEach(() => vi.unstubAllGlobals())
 
 it('connects from settings with trimmed credentials and disconnects without losing local reminders', async () => {
-  const connected = vi.fn()
-  render(<CalendarSettings onConnected={connected} />)
+  render(<CalendarSettings />)
   fireEvent.change(screen.getByLabelText('Client ID do Google'), {
     target: { value: ' client.apps.googleusercontent.com ' }
   })
@@ -75,13 +79,11 @@ it('connects from settings with trimmed credentials and disconnects without losi
   const disconnect = await screen.findByRole('button', {
     name: 'Desconectar Google'
   })
-  expect(connected).toHaveBeenLastCalledWith(true)
   fireEvent.click(disconnect)
   await waitFor(() => expect(account.disconnect).toHaveBeenCalledOnce())
   expect(
     await screen.findByLabelText('Client Secret (se fornecido pelo Google)')
   ).toHaveValue('')
-  expect(connected).toHaveBeenLastCalledWith(false)
 })
 
 it('loads the existing connection without opening settings so Calendar event creation stays available', async () => {

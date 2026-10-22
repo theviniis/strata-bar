@@ -18,15 +18,15 @@ import {
 } from '@/components/ui/popover'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PopupContext } from '@/popups/context'
-import { calendar } from '@/services/system/calendar'
 import { prepareDemoReminderSound } from '@/services/system/reminder-sound'
 import { useConfig } from '@/stores/config'
 import { getRemindersStore, useReminders } from '@/stores/reminders'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { ChevronDown } from 'lucide-react'
 import { useContext, useEffect, useId, useRef, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useCalendarStatus } from './useCalendarStatus'
 import { ActiveReminders } from './ActiveReminders'
 import { reminderFormSchema, type ReminderFormValues } from './form'
 import { scheduledDateTime } from './presentation'
@@ -41,39 +41,7 @@ export function RemindersPopup() {
   const error = useReminders((s) => s.error)
   const create = useReminders((s) => s.create)
   const source = useReminders((s) => s.source)
-  const calendarStatus = useQuery({
-    queryKey: ['calendar', 'status', source],
-    queryFn: calendar.status,
-    enabled: source === 'native',
-    networkMode: 'always',
-    retry: false,
-    refetchOnWindowFocus: true
-  })
-  useEffect(() => {
-    if (source !== 'native') return
-    let cancelled = false
-    let dispose: (() => void) | undefined
-    void import('@tauri-apps/api/event')
-      .then(({ listen }) =>
-        listen('calendar:changed', () => {
-          void calendarStatus.refetch()
-        })
-      )
-      .then((unlisten) => {
-        if (cancelled) unlisten()
-        else {
-          dispose = unlisten
-          void calendarStatus.refetch()
-        }
-      })
-      .catch(() => {
-        /* The status request still reports native failures. */
-      })
-    return () => {
-      cancelled = true
-      dispose?.()
-    }
-  }, [source, calendarStatus.refetch])
+  const calendarStatus = useCalendarStatus(source === 'native')
   const {
     register,
     control,

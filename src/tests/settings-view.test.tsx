@@ -19,6 +19,9 @@ const calendarAccount = vi.hoisted(() => ({
 vi.mock('@/services/system/calendar', () => ({ calendar: calendarAccount }))
 
 const close = vi.hoisted(() => vi.fn())
+const calendarEvents = vi.hoisted(() => ({
+  listener: undefined as undefined | (() => void)
+}))
 const monitorEvents = vi.hoisted(() => ({
   listener: undefined as
     undefined | ((event: { payload: SettingsMonitor[] }) => void)
@@ -30,6 +33,8 @@ vi.mock('@tauri-apps/api/event', () => ({
       listener: (event: { payload: SettingsMonitor[] }) => void
     ) => {
       if (event === 'monitors:changed') monitorEvents.listener = listener
+      if (event === 'calendar:changed')
+        calendarEvents.listener = () => listener({ payload: [] })
       return () => {}
     }
   )
@@ -62,6 +67,7 @@ beforeEach(() => {
   localStorage.clear()
   vi.clearAllMocks()
   monitorEvents.listener = undefined
+  calendarEvents.listener = undefined
   vi.mocked(bridge.settingsMonitors!).mockResolvedValue([
     {
       id: 'screen-a',
@@ -882,15 +888,15 @@ it('connects and disconnects Calendar immediately while Reverter only reloads th
     connecting: false,
     error: null
   })
-  calendarAccount.connect.mockResolvedValue({
-    connected: true,
-    connecting: false,
-    error: null
+  calendarAccount.connect.mockImplementation(async () => {
+    const value = { connected: true, connecting: false, error: null }
+    calendarAccount.status.mockResolvedValue(value)
+    return value
   })
-  calendarAccount.disconnect.mockResolvedValue({
-    connected: false,
-    connecting: false,
-    error: null
+  calendarAccount.disconnect.mockImplementation(async () => {
+    const value = { connected: false, connecting: false, error: null }
+    calendarAccount.status.mockResolvedValue(value)
+    return value
   })
   await openEditor()
   fireEvent.click(screen.getByRole('button', { name: 'Lembretes' }))
@@ -922,5 +928,36 @@ it('connects and disconnects Calendar immediately while Reverter only reloads th
   expect(
     screen.getByLabelText('Client Secret (se fornecido pelo Google)')
   ).toHaveValue('')
+  vi.unstubAllGlobals()
+})
+
+it('receives OAuth completion after navigating away and returning while connecting', async () => {
+  vi.stubGlobal('__TAURI_INTERNALS__', {})
+  calendarAccount.status.mockResolvedValue({
+    connected: false,
+    connecting: true,
+    error: null
+  })
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Lembretes' }))
+  await screen.findByRole('button', {
+    name: 'Aguardando autorização no navegador…'
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Lembretes' }))
+  expect(
+    await screen.findByRole('button', {
+      name: 'Aguardando autorização no navegador…'
+    })
+  ).toBeDisabled()
+  calendarAccount.status.mockResolvedValue({
+    connected: true,
+    connecting: false,
+    error: null
+  })
+  calendarEvents.listener?.()
+  expect(
+    await screen.findByRole('button', { name: 'Desconectar Google' })
+  ).toBeEnabled()
   vi.unstubAllGlobals()
 })
