@@ -88,6 +88,15 @@ const bar = z.object({
 export type WidgetConfig = z.infer<typeof widget>
 export type BarConfig = z.infer<typeof bar>
 export type Config = z.infer<typeof configSchema>
+/** Windows device prefix and case are aliases for the same monitor. */
+export function normalizeMonitorName(name: string): string {
+  return name
+    .trim()
+    .replace(/^\\\\\.\\/, '')
+    .trim()
+    .toUpperCase()
+}
+
 const widgetOverride = z.object({
   enabled: widget.shape.enabled.removeDefault().optional(),
   intervalMs: widget.shape.intervalMs.removeDefault().optional(),
@@ -137,7 +146,22 @@ export const configSchema = z
     const ids = Object.values(c.widgets)
       .flat()
       .map((w) => w.id)
+    const monitors = new Set<string>()
     for (const [monitor, override] of Object.entries(c.monitors)) {
+      const normalized = normalizeMonitorName(monitor)
+      if (!normalized)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['monitors', monitor],
+          message: 'Monitor name must not be empty'
+        })
+      if (monitors.has(normalized))
+        ctx.addIssue({
+          code: 'custom',
+          path: ['monitors', monitor],
+          message: 'Duplicate monitor name'
+        })
+      monitors.add(normalized)
       for (const id of Object.keys(override.widgets ?? {})) {
         if (!ids.includes(id))
           ctx.addIssue({

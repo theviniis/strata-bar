@@ -484,3 +484,21 @@ it('keeps the settings window close action available with invalid JSON', async (
   expect(bridge.quit).not.toHaveBeenCalled()
   expect(bridge.configSave).not.toHaveBeenCalled()
 })
+
+it.each(['display2', String.raw`\\.\DISPLAY2`])(
+  'rejects duplicate monitor alias %s in JSON with field context',
+  async (alias) => {
+    await openEditor()
+    fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
+    const config = structuredClone(defaultConfig)
+    config.monitors = { DISPLAY2: {}, [alias]: {} }
+    fireEvent.change(screen.getByLabelText('Configuração JSON'), {
+      target: { value: JSON.stringify(config) }
+    })
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      `monitors.${alias}: Duplicate monitor name`
+    )
+    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeDisabled()
+    expect(bridge.configSave).not.toHaveBeenCalled()
+  }
+)

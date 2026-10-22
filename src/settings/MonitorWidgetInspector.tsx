@@ -7,7 +7,11 @@ import {
   FieldLabel
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import type { Config, WidgetConfig } from '@/services/configuration/config'
+import {
+  normalizeMonitorName,
+  type Config,
+  type WidgetConfig
+} from '@/services/configuration/config'
 import { WidgetInspector } from './WidgetInspector'
 
 export function MonitorWidgetInspector({
@@ -21,13 +25,10 @@ export function MonitorWidgetInspector({
 }) {
   const [monitor, setMonitor] = useState('')
   const id = useId()
-  const key = monitor
-    .trim()
-    .replace(/^\\\\\.\\/, '')
-    .toUpperCase()
+  const key = normalizeMonitorName(monitor)
   const storedKey =
     Object.keys(draft.monitors).find(
-      (name) => name.replace(/^\\\\\.\\/, '').toUpperCase() === key
+      (name) => normalizeMonitorName(name) === key
     ) ?? key
   const override = draft.monitors[storedKey]?.widgets?.[widget.id]
   const effective = { ...widget, ...override }

@@ -163,7 +163,7 @@ pub struct WidgetOverride {
     pub audio: Option<WidgetAudio>,
 }
 
-/// One monitor's partial override of the bar configuration.
+/// One monitor's partial override of bar appearance and widget behavior.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct BarOverride {

@@ -183,7 +183,15 @@ pub fn validate(config: &Config) -> Result<(), String> {
         ));
     }
     validate_bar(&config.bar)?;
+    let mut monitors = std::collections::HashSet::new();
     for (monitor, over) in &config.monitors {
+        let normalized = normalize_monitor(monitor);
+        if normalized.is_empty() {
+            return Err("Monitor name must not be empty".into());
+        }
+        if !monitors.insert(normalized) {
+            return Err(format!("Monitor {monitor} duplicates another monitor name"));
+        }
         if let Some(height) = over.height {
             if !(MIN_HEIGHT..=MAX_HEIGHT).contains(&height) {
                 return Err(format!("Monitor {monitor} bar height is out of range"));
@@ -597,6 +605,25 @@ mod tests {
         value["monitors"]["DISPLAY2"]["widgets"]["cpu"]["intervalMs"] = serde_json::json!(999);
         assert!(parse(&value.to_string()).is_err());
         assert_eq!(store.snapshot().unwrap().config, saved.config);
+    }
+
+    #[test]
+    fn save_rejects_duplicate_monitor_aliases_without_mutating_the_document() {
+        let directory = Directory::new();
+        let store = ConfigStore::open(directory.path());
+        let before = store.snapshot().unwrap();
+        let mut value = serde_json::to_value(defaults()).unwrap();
+        value["monitors"] = serde_json::json!({
+            "DISPLAY2": {"widgets": {"cpu": {"intervalMs": 2000}}},
+            "display2": {"widgets": {"cpu": {"intervalMs": 999}}}
+        });
+        let invalid: Config = serde_json::from_value(value).unwrap();
+        assert!(store.save(invalid).is_err());
+        assert_eq!(store.snapshot().unwrap(), before);
+        assert_eq!(
+            parse(&fs::read_to_string(directory.path()).unwrap()).unwrap(),
+            before.config
+        );
     }
 
     struct Directory(PathBuf);
