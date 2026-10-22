@@ -58,13 +58,15 @@ export function NativeBarSurface({
   bar,
   error = null,
   renderWidget,
-  preview = false
+  preview = false,
+  ariaLabel = 'Barra de status Strata'
 }: {
   widgets: Config['widgets']
   bar: Config['bar']
   error?: string | null
   renderWidget?: (widget: WidgetConfig) => ReactNode
   preview?: boolean
+  ariaLabel?: string
 }) {
   const sections = useMemo(
     () =>
@@ -89,7 +91,7 @@ export function NativeBarSurface({
               !preview && 'native-bar',
               "relative grid h-full w-full grid-cols-[1fr_max-content_1fr] items-center border-b border-[#ffffff12] bg-background px-3.5 font-['Segoe_UI',sans-serif] text-[11px] leading-[normal] text-[#e4e5ed] tabular-nums select-none group-data-[theme=light]:bg-[#f8f5f2] group-data-[theme=light]:text-[#302a3e]"
             )}
-            aria-label="Barra de status Strata"
+            aria-label={ariaLabel}
             style={{ gap: bar.spacing }}
           >
             {sections.map(([name, widgets]) => (
