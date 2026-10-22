@@ -55,6 +55,11 @@ tab share one draft; **Apply** validates and atomically saves `config.json` in t
 directory. The native store publishes configuration snapshots to the bars, overlay and settings window.
 Invalid edits or failed saves retain the last good configuration. Browser storage never enters this path.
 
+The recorded [configuration acceptance run](docs/evidence/config-acceptance-issue12-2026-10-22.json)
+includes a settings Apply observed on both real monitors, invalid-draft rejection and restoration of the
+original configuration. The legacy geometry script failed its topmost check during this run; see the
+record for the exact observation. It is not a claim that all native geometry gates passed.
+
 ## Scripts
 
 | Command                | Description                                        |

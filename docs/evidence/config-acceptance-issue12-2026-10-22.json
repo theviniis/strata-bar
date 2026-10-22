@@ -1,0 +1,398 @@
+{
+  "issue": "https://github.com/theviniis/strata-bar/issues/12",
+  "spec": "https://github.com/theviniis/strata-bar/issues/5",
+  "date": "2026-10-22",
+  "timezone": "America/Sao_Paulo",
+  "baseCommit": "c2cc0811d57624ad19aec2f36bdeb0ee47ddcd39",
+  "branch": "codex/issue-12-config-acceptance",
+  "scope": "Acceptance and documentation only; no application behavior changed.",
+  "runtime": {
+    "platform": "Windows",
+    "mode": "Tauri native development host with Vite",
+    "executable": "src-tauri/target/debug/strata-bar.exe",
+    "sha256": "F91D145DEEA42B2C51D53B0CD4E35CA8E449B98F54FCC99ADCF9D5C0A80A92B5",
+    "binaryLastWriteTime": "2026-10-22T14:34:59.3821097-03:00",
+    "settingsUrl": "http://localhost:1420/index.html?view=settings",
+    "probeMethod": "Existing --probe executable reads Win32 rectangles of running bars. Its config and metrics come from a separate probe process, not the running UI store; probe revision is not treated as an Apply revision."
+  },
+  "steps": [
+    {
+      "action": "Preserve persisted configuration and existing window-local JSON draft",
+      "result": "Saved temporary copies before acceptance edits."
+    },
+    {
+      "action": "Edit JSON tab in the native settings window",
+      "changes": [
+        "bar.theme=light",
+        "Enable both existing monitor entries; retain their layouts and widget overrides"
+      ],
+      "result": "Draft installed using the native window accessibility API."
+    },
+    {
+      "action": "Click Aplicar",
+      "result": "Native config.json persisted theme light and enabled both monitors; --probe reported two visible bars."
+    },
+    {
+      "action": "User observes both physical monitors",
+      "confirmation": "Sim, as duas ficaram claras e mostram leituras reais",
+      "provenance": "User reply in this Codex chat after Apply; no AppBar screenshot was available through the window capture API."
+    },
+    {
+      "action": "Enter malformed JSON in the same native editor",
+      "input": "{ invalid acceptance draft",
+      "observedAt": "2026-10-22T14:40:44.655-03:00",
+      "result": "Validation error displayed; Aplicar disabled; persisted file SHA-256 unchanged.",
+      "error": "Expected property name or '}' in JSON at position 2 (line 1 column 3)"
+    },
+    {
+      "action": "Restore original saved configuration through JSON tab and Aplicar",
+      "result": "Persisted file SHA-256 exactly matches backup; secondary bar disabled again. Original unapplied draft restored in editor without another Apply."
+    }
+  ],
+  "noDemoFallback": {
+    "result": "passed within the recorded scope",
+    "liveEvidence": "User confirmed real readings on both bars; invalid editor draft blocked Apply and preserved native persisted bytes.",
+    "automatedEvidence": [
+      "native-config-isolation.test.ts: native hydration ignores browser persistence and storage events",
+      "native-bar-config.test.tsx: rejected document retains last good rendered bar",
+      "config-hydration.test.ts: error snapshots retain accepted configuration",
+      "Rust config tests: invalid payload/save and corrupt reload preserve accepted state"
+    ],
+    "limitations": "No collector outage or filesystem write failure was induced during the live run. Those failure paths are covered by automated tests, not claimed as live fault injection."
+  },
+  "geometryScript": {
+    "command": "scripts/test-live-geometry.ps1 -Executable <absolute debug executable>",
+    "workingDirectory": "Temporary directory with its own docs/evidence; repository historical files untouched",
+    "exitCode": 1,
+    "error": "The bar is not topmost.",
+    "observedAtLine": 18,
+    "result": "failed",
+    "interpretation": "Legacy geometry failure recorded as required by issue #12; not fixed or relabelled as a geometry pass. Initial post-Apply probe had both bars topmost=true; later script probe observed topmost=false.",
+    "probe": {
+      "bars": [
+        {
+          "client": [3440, 36],
+          "komorebiEligible": false,
+          "noActivate": false,
+          "rect": [0, 0, 3440, 36],
+          "title": "Strata · \\\\.\\DISPLAY1",
+          "toolWindow": true,
+          "topmost": true,
+          "visible": true
+        },
+        {
+          "client": [1920, 36],
+          "komorebiEligible": false,
+          "noActivate": false,
+          "rect": [724, -1080, 2644, -1044],
+          "title": "Strata · \\\\.\\DISPLAY2",
+          "toolWindow": true,
+          "topmost": false,
+          "visible": true
+        }
+      ],
+      "monitors": [
+        {
+          "monitor": [0, 0, 3440, 1440],
+          "workArea": [0, 36, 3440, 1440]
+        },
+        {
+          "monitor": [724, -1080, 2644, 0],
+          "workArea": [724, -1044, 2644, 0]
+        }
+      ],
+      "overlay": {
+        "counters": {
+          "hides": 0,
+          "positions": 0,
+          "shows": 0
+        },
+        "present": true,
+        "window": {
+          "clickThrough": true,
+          "komorebiEligible": false,
+          "rect": [156, 192, 292, 231],
+          "toolWindow": true,
+          "topmost": true,
+          "visible": false
+        }
+      },
+      "settings": {
+        "present": true,
+        "windows": [
+          {
+            "captioned": true,
+            "clickThrough": false,
+            "dialogFrame": true,
+            "komorebiEligible": false,
+            "noActivate": false,
+            "title": "Configurações do Strata",
+            "toolWindow": false,
+            "topmost": false
+          }
+        ]
+      },
+      "nativeConfig": {
+        "loaded": true,
+        "error": null,
+        "widgets": 13
+      },
+      "memory": {
+        "totalBytes": 34254831616.0,
+        "usedBytes": 21291790336.0,
+        "percent": 62.157042763143735
+      },
+      "timestamp": 1792690805468
+    }
+  },
+  "before": {
+    "bars": [
+      {
+        "client": [3440, 36],
+        "komorebiEligible": false,
+        "noActivate": false,
+        "rect": [0, 0, 3440, 36],
+        "title": "Strata · \\\\.\\DISPLAY1",
+        "toolWindow": true,
+        "topmost": false,
+        "visible": true
+      }
+    ],
+    "monitors": [
+      {
+        "monitor": [0, 0, 3440, 1440],
+        "workArea": [0, 36, 3440, 1440]
+      },
+      {
+        "monitor": [724, -1080, 2644, 0],
+        "workArea": [724, -1080, 2644, 0]
+      }
+    ],
+    "overlay": {
+      "counters": {
+        "hides": 0,
+        "positions": 0,
+        "shows": 0
+      },
+      "present": true,
+      "window": {
+        "clickThrough": true,
+        "komorebiEligible": false,
+        "rect": [156, 192, 292, 231],
+        "toolWindow": true,
+        "topmost": true,
+        "visible": false
+      }
+    },
+    "settings": {
+      "present": true,
+      "windows": [
+        {
+          "captioned": true,
+          "clickThrough": false,
+          "dialogFrame": true,
+          "komorebiEligible": false,
+          "noActivate": false,
+          "title": "Configurações do Strata",
+          "toolWindow": false,
+          "topmost": false
+        }
+      ]
+    },
+    "nativeConfig": {
+      "loaded": true,
+      "error": null,
+      "widgets": 13
+    },
+    "memory": {
+      "totalBytes": 34254831616.0,
+      "usedBytes": 21936066560.0,
+      "percent": 64.03787589997651
+    },
+    "timestamp": 1792690739013
+  },
+  "afterApply": {
+    "bars": [
+      {
+        "client": [3440, 36],
+        "komorebiEligible": false,
+        "noActivate": false,
+        "rect": [0, 0, 3440, 36],
+        "title": "Strata · \\\\.\\DISPLAY1",
+        "toolWindow": true,
+        "topmost": true,
+        "visible": true
+      },
+      {
+        "client": [1920, 36],
+        "komorebiEligible": false,
+        "noActivate": false,
+        "rect": [724, -1080, 2644, -1044],
+        "title": "Strata · \\\\.\\DISPLAY2",
+        "toolWindow": true,
+        "topmost": true,
+        "visible": true
+      }
+    ],
+    "monitors": [
+      {
+        "monitor": [0, 0, 3440, 1440],
+        "workArea": [0, 36, 3440, 1440]
+      },
+      {
+        "monitor": [724, -1080, 2644, 0],
+        "workArea": [724, -1044, 2644, 0]
+      }
+    ],
+    "overlay": {
+      "counters": {
+        "hides": 0,
+        "positions": 0,
+        "shows": 0
+      },
+      "present": true,
+      "window": {
+        "clickThrough": true,
+        "komorebiEligible": false,
+        "rect": [156, 192, 292, 231],
+        "toolWindow": true,
+        "topmost": true,
+        "visible": false
+      }
+    },
+    "settings": {
+      "present": true,
+      "windows": [
+        {
+          "captioned": true,
+          "clickThrough": false,
+          "dialogFrame": true,
+          "komorebiEligible": false,
+          "noActivate": false,
+          "title": "Configurações do Strata",
+          "toolWindow": false,
+          "topmost": false
+        }
+      ]
+    },
+    "nativeConfig": {
+      "loaded": true,
+      "error": null,
+      "widgets": 13
+    },
+    "memory": {
+      "totalBytes": 34254831616.0,
+      "usedBytes": 21287669760.0,
+      "percent": 62.145013581257246
+    },
+    "timestamp": 1792690779921
+  },
+  "afterRestore": {
+    "bars": [
+      {
+        "client": [3440, 36],
+        "komorebiEligible": false,
+        "noActivate": false,
+        "rect": [0, 0, 3440, 36],
+        "title": "Strata · \\\\.\\DISPLAY1",
+        "toolWindow": true,
+        "topmost": true,
+        "visible": true
+      }
+    ],
+    "monitors": [
+      {
+        "monitor": [0, 0, 3440, 1440],
+        "workArea": [0, 36, 3440, 1440]
+      },
+      {
+        "monitor": [724, -1080, 2644, 0],
+        "workArea": [724, -1080, 2644, 0]
+      }
+    ],
+    "overlay": {
+      "counters": {
+        "hides": 0,
+        "positions": 0,
+        "shows": 0
+      },
+      "present": true,
+      "window": {
+        "clickThrough": true,
+        "komorebiEligible": false,
+        "rect": [156, 192, 292, 231],
+        "toolWindow": true,
+        "topmost": true,
+        "visible": false
+      }
+    },
+    "settings": {
+      "present": true,
+      "windows": [
+        {
+          "captioned": true,
+          "clickThrough": false,
+          "dialogFrame": true,
+          "komorebiEligible": false,
+          "noActivate": false,
+          "title": "Configurações do Strata",
+          "toolWindow": false,
+          "topmost": false
+        }
+      ]
+    },
+    "nativeConfig": {
+      "loaded": true,
+      "error": null,
+      "widgets": 13
+    },
+    "memory": {
+      "totalBytes": 34254831616.0,
+      "usedBytes": 21200494592.0,
+      "percent": 61.890523443990645
+    },
+    "timestamp": 1792690898867
+  },
+  "restoration": {
+    "originalSha256": "ECFB670BAB031AD9F231800FFCA76990CDE897D61F9651800AE6D1AEF5903540",
+    "restoredSha256": "ECFB670BAB031AD9F231800FFCA76990CDE897D61F9651800AE6D1AEF5903540",
+    "identical": true
+  },
+  "checks": {
+    "cargo": {
+      "command": "cargo test --manifest-path src-tauri/Cargo.toml",
+      "passed": 205,
+      "failed": 0,
+      "ignored": 21,
+      "result": "passed"
+    },
+    "focusedFrontend": {
+      "files": [
+        "native-bar-config.test.tsx",
+        "native-config-isolation.test.ts",
+        "config-hydration.test.ts",
+        "settings-view.test.tsx"
+      ],
+      "passed": 42,
+      "failed": 0,
+      "result": "passed"
+    },
+    "typecheck": {
+      "command": "pnpm typecheck",
+      "exitCode": 0,
+      "result": "passed"
+    },
+    "frontend": {
+      "command": "pnpm check",
+      "exitCode": 0,
+      "format": "passed",
+      "eslint": "passed",
+      "typescript": "passed",
+      "testFilesPassed": 55,
+      "testsPassed": 349,
+      "testsFailed": 0,
+      "durationSeconds": 121.54,
+      "result": "passed"
+    }
+  }
+}
