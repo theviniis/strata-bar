@@ -251,6 +251,7 @@ it('retries failed native monitor discovery without substituting demo monitors',
 
 it('loads the saved configuration and applies the edited layout through native save', async () => {
   await openEditor()
+  await screen.findByRole('tab', { name: /Monitor 2/ })
   fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
   fireEvent.click(screen.getByRole('button', { name: 'Claro' }))
   expect(screen.getByRole('button', { name: 'Claro' })).toHaveAttribute(
@@ -258,9 +259,11 @@ it('loads the saved configuration and applies the edited layout through native s
     'true'
   )
   fireEvent.click(screen.getByRole('button', { name: 'Layout' }))
-  fireEvent.click(screen.getByRole('combobox', { name: 'Mover CPU para' }))
-  fireEvent.pointerDown(await screen.findByRole('option', { name: 'Esquerda' }))
-  fireEvent.click(screen.getByRole('option', { name: 'Esquerda' }))
+  await screen.findByRole('tab', { name: /Monitor 2/ })
+  fireEvent.click(screen.getByRole('button', { name: 'Mover CPU para Centro' }))
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Mover CPU para Esquerda' })
+  )
   expect(
     within(screen.getByRole('region', { name: 'Seção Esquerda' })).getByRole(
       'checkbox',
@@ -269,12 +272,44 @@ it('loads the saved configuration and applies the edited layout through native s
   ).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
   await waitFor(() => expect(bridge.configSave).toHaveBeenCalledOnce())
+  const saved = vi.mocked(bridge.configSave!).mock.calls[0][0]
+  expect(saved.monitors['screen-a']!.layout!.left).toContain('cpu')
+  expect(saved.monitors['screen-b']!.layout!.left).toContain('cpu')
   expect(vi.mocked(bridge.configSave!).mock.calls[0][0]).toMatchObject({
     bar: { theme: 'light' },
     widgets: {
       left: expect.arrayContaining([expect.objectContaining({ id: 'cpu' })])
     }
   })
+})
+
+it('moves with an arrow only in the selected monitor until Apply', async () => {
+  await openEditor()
+  fireEvent.click(await screen.findByRole('tab', { name: /Monitor 2/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'Mover CPU para Centro' }))
+  expect(
+    screen.getByRole('button', { name: 'Mover CPU para Esquerda' })
+  ).toHaveFocus()
+  expect(bridge.configSave).not.toHaveBeenCalled()
+  expect(
+    within(screen.getByRole('region', { name: 'Seção Centro' })).getByRole(
+      'checkbox',
+      { name: 'Ativar CPU' }
+    )
+  ).toBeChecked()
+  fireEvent.click(screen.getByRole('tab', { name: /Monitor 1/ }))
+  expect(
+    within(screen.getByRole('region', { name: 'Seção Direita' })).getByRole(
+      'checkbox',
+      { name: 'Ativar CPU' }
+    )
+  ).toBeChecked()
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() => expect(bridge.configSave).toHaveBeenCalledOnce())
+  const saved = vi.mocked(bridge.configSave!).mock.calls[0][0]
+  expect(saved.widgets).toEqual(defaultConfig.widgets)
+  expect(saved.monitors['screen-b']!.layout!.center).toEqual(['time', 'cpu'])
+  expect(saved.monitors['screen-a']).toBeUndefined()
 })
 
 it('reverts by reloading the saved file and restores defaults through save', async () => {
@@ -344,9 +379,10 @@ it('closes only the settings window', async () => {
 
 it('previews the draft NativeBar layout in both themes without native subscriptions', async () => {
   await openEditor()
-  fireEvent.click(screen.getByRole('combobox', { name: 'Mover CPU para' }))
-  fireEvent.pointerDown(await screen.findByRole('option', { name: 'Esquerda' }))
-  fireEvent.click(screen.getByRole('option', { name: 'Esquerda' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Mover CPU para Centro' }))
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Mover CPU para Esquerda' })
+  )
   fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
   for (const name of ['Escuro', 'Claro']) {
     const choice = screen.getByRole('button', { name })

@@ -34,23 +34,50 @@ function Editor({ centerTypes = [] }: { centerTypes?: WidgetType[] }) {
   )
 }
 
-it('moves a widget to an empty section and retains its settings', async () => {
-  render(<Editor />)
-  fireEvent.click(screen.getByRole('combobox', { name: 'Mover CPU para' }))
-  fireEvent.pointerDown(await screen.findByRole('option', { name: 'Direita' }))
-  fireEvent.click(screen.getByRole('option', { name: 'Direita' }))
+it('moves through adjacent columns with arrows, appends and preserves settings and keyboard focus', async () => {
+  render(<Editor centerTypes={['gpu']} />)
+  const before = JSON.parse(screen.getByLabelText('Draft').textContent!).widgets
+    .left[0]
   expect(
-    within(screen.getByRole('region', { name: 'Seção Direita' })).getByRole(
-      'checkbox',
-      { name: 'Ativar CPU' }
-    )
-  ).toBeChecked()
+    screen.getByRole('button', { name: 'Mover CPU para a esquerda' })
+  ).toBeDisabled()
+  const right = screen.getByRole('button', { name: 'Mover CPU para Centro' })
+  right.focus()
+  fireEvent.click(right)
+  const center = screen.getByRole('region', { name: 'Seção Centro' })
   expect(
-    within(screen.getByRole('region', { name: 'Seção Esquerda' })).queryByRole(
-      'checkbox',
-      { name: 'Ativar CPU' }
-    )
-  ).not.toBeInTheDocument()
+    within(center)
+      .getAllByRole('checkbox')
+      .map((checkbox) => checkbox.getAttribute('aria-label'))
+  ).toEqual(['Ativar GPU', 'Ativar CPU'])
+  expect(
+    screen.getByRole('button', { name: 'Mover CPU para Direita' })
+  ).toHaveFocus()
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Mover CPU para Direita' })
+  )
+  expect(
+    screen.getByRole('button', { name: 'Mover CPU para a direita' })
+  ).toBeDisabled()
+  expect(
+    screen.getByRole('button', { name: 'Mover CPU para Centro' })
+  ).toHaveFocus()
+  expect(
+    JSON.parse(screen.getByLabelText('Draft').textContent!).widgets.right[0]
+  ).toEqual(before)
+  fireEvent.click(screen.getByRole('button', { name: 'Mover CPU para Centro' }))
+  expect(
+    screen.getByRole('button', { name: 'Mover CPU para Esquerda' })
+  ).toHaveFocus()
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Mover CPU para Esquerda' })
+  )
+  expect(
+    screen.getByRole('button', { name: 'Mover CPU para Centro' })
+  ).toHaveFocus()
+  expect(
+    screen.getByRole('button', { name: 'Mover CPU para a esquerda' })
+  ).toBeDisabled()
 })
 
 it('adds from the preview catalog, hides without removal and excludes existing types', async () => {

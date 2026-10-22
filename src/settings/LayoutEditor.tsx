@@ -1,7 +1,7 @@
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
-import { ManagerContext } from './manager-context'
+import { ManagerContext, type ColumnMoveFocus } from './manager-context'
 import { useMonitors } from './useMonitors'
 import { WidgetCatalog } from './WidgetCatalog'
 import {
@@ -47,14 +47,6 @@ import {
   ItemHeader,
   ItemTitle
 } from '@/components/ui/item'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import type { Config, WidgetConfig } from '@/services/configuration/config'
 import {
@@ -79,9 +71,16 @@ import {
   useSortable,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable'
-import { GripVertical, Trash2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, GripVertical, Trash2 } from 'lucide-react'
 import { LayoutGroup, motion, MotionConfig } from 'motion/react'
-import { useContext, useId, useState, type ComponentProps } from 'react'
+import {
+  useContext,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentProps
+} from 'react'
 import { createPortal } from 'react-dom'
 import {
   findWidget,
@@ -105,7 +104,7 @@ interface LayoutEditorProps {
  * Cancel restores the original layout. Generated IDs are checked across all
  * three columns before use.
  *
- * The keyboard sensor and the explicit "Mover para" select are the accessible
+ * The keyboard sensor and the explicit column arrow buttons are the accessible
  * paths; the tests drive those, never drag internals.
  */
 export function LayoutEditor({
@@ -138,6 +137,30 @@ export function LayoutEditor({
       ? selected
       : null
   const draft = viewConfig(source, scope, monitors)
+  const editorRef = useRef<HTMLDivElement>(null)
+  const pendingMoveFocus = useRef<ColumnMoveFocus | null>(null)
+  useLayoutEffect(() => {
+    const request = pendingMoveFocus.current
+    if (
+      !request ||
+      findWidget(draft, request.widgetId)?.section !== request.target
+    )
+      return
+    const buttons = Array.from(
+      editorRef.current?.querySelectorAll<HTMLButtonElement>(
+        'button[data-column-move]'
+      ) ?? []
+    ).filter(
+      (button) =>
+        button.dataset.columnWidget === request.widgetId && !button.disabled
+    )
+    const target =
+      buttons.find(
+        (button) => button.dataset.columnMove === request.direction
+      ) ?? buttons[0]
+    target?.focus()
+    pendingMoveFocus.current = null
+  }, [draft])
   const commitLayout = (next: Config) =>
     commit(
       setLayout(source, scope, monitors, {
@@ -228,9 +251,17 @@ export function LayoutEditor({
 
   return (
     <ManagerContext.Provider
-      value={{ config: source, scope, monitors, onChange: commit }}
+      value={{
+        config: source,
+        scope,
+        monitors,
+        onChange: commit,
+        requestMoveFocus: (move) => {
+          pendingMoveFocus.current = move
+        }
+      }}
     >
-      <div className="flex flex-col gap-4">
+      <div ref={editorRef} className="flex flex-col gap-4">
         <Tabs
           className="min-w-0"
           value={scope ?? 'all'}
@@ -669,37 +700,69 @@ function WidgetCard({
             </Button>
           </PopoverContent>
         </Popover>
-        <Select
-          disabled={disabled}
-          items={sections.map((section) => ({
-            value: section,
-            label: sectionLabels[section]
-          }))}
-          value={findWidget(draft, widget.id)?.section ?? 'left'}
-          onValueChange={(value) => {
-            const section = sections.find((section) => section === value)
-            if (section)
-              onChange(
-                moveWidget(draft, widget.id, {
-                  section,
-                  index: draft.widgets[section].length
-                })
-              )
-          }}
+        <div
+          className="flex items-center gap-1"
+          role="group"
+          aria-label={`Mover ${typeLabels[widget.type]} entre colunas`}
         >
-          <SelectTrigger aria-label={`Mover ${typeLabels[widget.type]} para`}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {sections.map((section) => (
-                <SelectItem key={section} value={section}>
-                  {sectionLabels[section]}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+          {(
+            [
+              {
+                direction: 'left',
+                offset: -1,
+                Icon: ArrowLeft,
+                edge: 'esquerda'
+              },
+              {
+                direction: 'right',
+                offset: 1,
+                Icon: ArrowRight,
+                edge: 'direita'
+              }
+            ] as const
+          ).map(({ direction, offset, Icon, edge }) => {
+            const current = findWidget(draft, widget.id)?.section
+            const target = current
+              ? sections[sections.indexOf(current) + offset]
+              : undefined
+            const label = target
+              ? `Mover ${typeLabels[widget.type]} para ${sectionLabels[target]}`
+              : `Mover ${typeLabels[widget.type]} para a ${edge}`
+            return (
+              <Button
+                key={direction}
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                disabled={disabled || !target}
+                aria-label={label}
+                title={
+                  target
+                    ? label
+                    : `Já está na coluna ${current ? sectionLabels[current] : edge}`
+                }
+                data-column-widget={widget.id}
+                data-column-move={direction}
+                onClick={() => {
+                  if (!target) return
+                  manager.requestMoveFocus({
+                    widgetId: widget.id,
+                    direction,
+                    target
+                  })
+                  onChange(
+                    moveWidget(draft, widget.id, {
+                      section: target,
+                      index: draft.widgets[target].length
+                    })
+                  )
+                }}
+              >
+                <Icon aria-hidden="true" />
+              </Button>
+            )
+          })}
+        </div>
       </ItemFooter>
     </Item>
   )
