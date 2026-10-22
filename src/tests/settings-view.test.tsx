@@ -1298,7 +1298,7 @@ it('edits one audio instance on a saved monitor without losing the other target 
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
   await waitFor(() => expect(bridge.configSave).toHaveBeenCalled())
   const saved = vi.mocked(bridge.configSave!).mock.calls[0][0]
-  expect(saved.monitors['screen-a']!.widgets!.volume.audio).toEqual({
+  expect(saved.monitors['screen-a']!.widgets!.volume!.audio).toEqual({
     source: 'windows',
     target: { kind: 'bus', index: 2 },
     label: 'Updated desk',
