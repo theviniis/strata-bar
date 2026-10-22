@@ -5,7 +5,7 @@ import NativeBar from './components/status-bar/NativeBar'
 import { Spinner } from './components/ui/spinner'
 import { connectConfig, loadConfig, watchConfig } from './stores/config'
 import { getRemindersStore } from './stores/reminders'
-import { OverlayView, PopupCheckView, StudioView } from './views'
+import { OverlayView, PopupCheckView, SettingsView, StudioView } from './views'
 
 // `?view=` is set by the native host: `bar` for AppBar strips, `overlay` for the
 // shared floating surface. The browser studio arrives without a view and without
@@ -55,6 +55,8 @@ createRoot(document.getElementById('root')!).render(
     >
       {view === 'overlay' ? (
         <OverlayView />
+      ) : view === 'settings' ? (
+        <SettingsView />
       ) : import.meta.env.DEV &&
         new URLSearchParams(window.location.search).has('popup-check') ? (
         <PopupCheckView />

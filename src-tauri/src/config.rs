@@ -472,10 +472,13 @@ pub fn snapshot_for(
     ))
 }
 
-/// Only surfaces that render configuration consume the event. The settings
-/// window joins this set when ticket 05 adds it to the event capability.
+/// Only surfaces that render configuration consume the event: the bars (each
+/// with its monitor's projection), the overlay, and the settings window, whose
+/// draft must follow external edits so Apply never silently reverts them.
 fn accepts_config(label: &str) -> bool {
-    label.starts_with("bar-") || label == crate::desktop::OVERLAY
+    label.starts_with("bar-")
+        || label == crate::desktop::OVERLAY
+        || label == crate::desktop::SETTINGS
 }
 
 pub fn open_store(app: &AppHandle) -> Result<ConfigStore, String> {
@@ -908,5 +911,17 @@ mod tests {
         assert_eq!(projected.config.bar.height, 48);
         // Widget composition is global: a monitor override never edits widgets.
         assert_eq!(projected.config.widgets, snapshot.config.widgets);
+    }
+
+    #[test]
+    fn the_settings_window_receives_the_shared_document() {
+        // The editor's draft must follow external edits, or the next Apply
+        // would silently overwrite a hand edit made while it was open. It is
+        // not mounted on a monitor, so it never receives a projection.
+        assert!(accepts_config(crate::desktop::SETTINGS));
+        assert!(accepts_config("bar-1"));
+        assert!(accepts_config(crate::desktop::OVERLAY));
+        assert!(!accepts_config("studio"));
+        assert!(!accepts_config("popup-check"));
     }
 }
