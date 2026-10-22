@@ -72,9 +72,9 @@ it('loads the saved configuration and applies the edited layout through native s
     'true'
   )
   fireEvent.click(screen.getByRole('button', { name: 'Layout' }))
-  fireEvent.change(screen.getByRole('combobox', { name: 'Mover CPU para' }), {
-    target: { value: 'left' }
-  })
+  fireEvent.click(screen.getByRole('combobox', { name: 'Mover CPU para' }))
+  fireEvent.pointerDown(await screen.findByRole('option', { name: 'Esquerda' }))
+  fireEvent.click(screen.getByRole('option', { name: 'Esquerda' }))
   expect(
     within(screen.getByRole('region', { name: 'Seção Esquerda' })).getByRole(
       'checkbox',
@@ -158,9 +158,9 @@ it('closes only the settings window', async () => {
 
 it('previews the draft NativeBar layout in both themes without native subscriptions', async () => {
   await openEditor()
-  fireEvent.change(screen.getByRole('combobox', { name: 'Mover CPU para' }), {
-    target: { value: 'left' }
-  })
+  fireEvent.click(screen.getByRole('combobox', { name: 'Mover CPU para' }))
+  fireEvent.pointerDown(await screen.findByRole('option', { name: 'Esquerda' }))
+  fireEvent.click(screen.getByRole('option', { name: 'Esquerda' }))
   fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
   for (const name of ['Escuro', 'Claro']) {
     const choice = screen.getByRole('button', { name })

@@ -34,11 +34,11 @@ function Editor({ centerTypes = [] }: { centerTypes?: WidgetType[] }) {
   )
 }
 
-it('moves a widget to an empty section and retains its settings', () => {
+it('moves a widget to an empty section and retains its settings', async () => {
   render(<Editor />)
-  fireEvent.change(screen.getByRole('combobox', { name: 'Mover CPU para' }), {
-    target: { value: 'right' }
-  })
+  fireEvent.click(screen.getByRole('combobox', { name: 'Mover CPU para' }))
+  fireEvent.pointerDown(await screen.findByRole('option', { name: 'Direita' }))
+  fireEvent.click(screen.getByRole('option', { name: 'Direita' }))
   expect(
     within(screen.getByRole('region', { name: 'Seção Direita' })).getByRole(
       'checkbox',
@@ -53,13 +53,15 @@ it('moves a widget to an empty section and retains its settings', () => {
   ).not.toBeInTheDocument()
 })
 
-it('adds collision-free widget IDs with valid defaults, toggles and removes', () => {
+it('adds collision-free widget IDs with valid defaults, toggles and removes', async () => {
   render(<Editor />)
-  fireEvent.change(
-    screen.getByRole('combobox', { name: 'Adicionar widget em Centro' }),
-    {
-      target: { value: 'cpu' }
-    }
+  fireEvent.click(
+    screen.getByRole('combobox', { name: 'Adicionar widget em Centro' })
+  )
+  fireEvent.pointerDown(await screen.findByRole('option', { name: 'CPU' }))
+  fireEvent.click(screen.getByRole('option', { name: 'CPU' }))
+  await waitFor(() =>
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   )
   const center = screen.getByRole('region', { name: 'Seção Centro' })
   expect(within(center).getByTitle('cpu-2')).toBeInTheDocument()
@@ -77,6 +79,15 @@ it('adds collision-free widget IDs with valid defaults, toggles and removes', ()
   ).not.toBeChecked()
   fireEvent.click(within(center).getByRole('button', { name: 'Remover CPU' }))
   expect(within(center).queryByTitle('cpu-2')).not.toBeInTheDocument()
+  fireEvent.click(
+    screen.getByRole('combobox', { name: 'Adicionar widget em Centro' })
+  )
+  fireEvent.pointerDown(await screen.findByRole('option', { name: 'CPU' }))
+  fireEvent.click(screen.getByRole('option', { name: 'CPU' }))
+  await waitFor(() =>
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  )
+  expect(within(center).getByTitle('cpu-2')).toBeInTheDocument()
 })
 
 it('reorders adjacent widgets using the drag handle keyboard controls', async () => {

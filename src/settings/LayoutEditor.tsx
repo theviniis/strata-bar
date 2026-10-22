@@ -17,7 +17,14 @@ import {
   ItemHeader,
   ItemTitle
 } from '@/components/ui/item'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import type { Config, WidgetConfig } from '@/services/configuration/config'
 import {
@@ -43,8 +50,8 @@ import {
   verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 import { GripVertical, Trash2 } from 'lucide-react'
+import { LayoutGroup, motion, MotionConfig } from 'motion/react'
 import { useId, useState, type ComponentProps } from 'react'
-import { LayoutGroup, MotionConfig, motion } from 'motion/react'
 import { createPortal } from 'react-dom'
 import {
   addableTypes,
@@ -286,6 +293,7 @@ function SectionColumn({
       </CardContent>
       <CardFooter>
         <AddWidget
+          disabled={disabled}
           label={`Adicionar widget em ${sectionLabels[section]}`}
           section={section}
           draft={draft}
@@ -387,25 +395,37 @@ function WidgetCard({
         <WidgetPreview widget={widget} theme={draft.bar.theme} />
       </ItemContent>
       <ItemFooter>
-        <NativeSelect
+        <Select
           disabled={disabled}
-          aria-label={`Mover ${typeLabels[widget.type]} para`}
+          items={sections.map((section) => ({
+            value: section,
+            label: sectionLabels[section]
+          }))}
           value={findWidget(draft, widget.id)?.section ?? 'left'}
-          onChange={(event) =>
-            onChange(
-              moveWidget(draft, widget.id, {
-                section: event.target.value as Section,
-                index: draft.widgets[event.target.value as Section].length
-              })
-            )
-          }
+          onValueChange={(value) => {
+            const section = sections.find((section) => section === value)
+            if (section)
+              onChange(
+                moveWidget(draft, widget.id, {
+                  section,
+                  index: draft.widgets[section].length
+                })
+              )
+          }}
         >
-          {sections.map((section) => (
-            <NativeSelectOption key={section} value={section}>
-              {sectionLabels[section]}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+          <SelectTrigger aria-label={`Mover ${typeLabels[widget.type]} para`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {sections.map((section) => (
+                <SelectItem key={section} value={section}>
+                  {sectionLabels[section]}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
       </ItemFooter>
     </Item>
   )
@@ -415,25 +435,34 @@ function AddWidget({
   label,
   section,
   draft,
-  onChange
+  onChange,
+  disabled
 }: LayoutEditorProps & { label: string; section: Section }) {
   return (
-    <NativeSelect
-      aria-label={label}
-      value=""
-      onChange={(event) => {
-        const type = addableTypes().find((type) => type === event.target.value)
+    <Select
+      disabled={disabled}
+      items={addableTypes().map((type) => ({
+        value: type,
+        label: typeLabels[type]
+      }))}
+      value={null}
+      onValueChange={(value) => {
+        const type = addableTypes().find((type) => type === value)
         if (type) onChange(addWidget(draft, type, section))
       }}
     >
-      <NativeSelectOption value="" disabled>
-        Adicionar widget…
-      </NativeSelectOption>
-      {addableTypes().map((type) => (
-        <NativeSelectOption key={type} value={type}>
-          {typeLabels[type]}
-        </NativeSelectOption>
-      ))}
-    </NativeSelect>
+      <SelectTrigger aria-label={label}>
+        <SelectValue placeholder="Adicionar widget..." />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          {addableTypes().map((type) => (
+            <SelectItem key={type} value={type}>
+              {typeLabels[type]}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   )
 }
