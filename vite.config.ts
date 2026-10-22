@@ -59,6 +59,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // Avoid contention between full editor trees in concurrent Windows workers.
+    maxWorkers: 2,
     setupFiles: ['./src/tests/setup.ts'],
     testTimeout: 10000
   }

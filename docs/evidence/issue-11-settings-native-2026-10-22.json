@@ -1,0 +1,48 @@
+{
+  "capturedAt": "2026-10-22T05:20:47.2709190Z",
+  "sourceHead": "29ae3de14a7c6c7394901cd60c9b5a356851a294",
+  "binary": "src-tauri/target/debug/strata-bar.exe",
+  "method": "Existing native --probe and test-live-geometry.ps1; direct Win32 rectangle reads",
+  "geometryPassed": true,
+  "settings": {
+    "present": false,
+    "windows": []
+  },
+  "monitors": [
+    {
+      "monitor": [0, 0, 3440, 1440],
+      "workArea": [0, 36, 3440, 1440]
+    },
+    {
+      "monitor": [724, -1080, 2644, 0],
+      "workArea": [724, -1044, 2644, 0]
+    }
+  ],
+  "bars": [
+    {
+      "client": [1920, 36],
+      "komorebiEligible": false,
+      "rect": [724, -1080, 2644, -1044],
+      "title": "Strata · \\\\.\\DISPLAY2",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "client": [3440, 36],
+      "komorebiEligible": false,
+      "rect": [0, 0, 3440, 36],
+      "title": "Strata · \\\\.\\DISPLAY1",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    }
+  ],
+  "manualAcceptance": {
+    "source": "User confirmation in this implementation conversation on 2026-10-22",
+    "trayOpensSingleWindowAndDuplicateFocuses": true,
+    "applyUpdatesBothMonitorBarsWithoutRestart": true,
+    "closingSettingsKeepsBarsRunning": true,
+    "automationClaim": "Manual confirmation; these UI interactions were not automated"
+  }
+}

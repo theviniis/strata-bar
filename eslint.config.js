@@ -65,9 +65,6 @@ export default tseslint.config(
     files: ['src/components/ui/**/*.tsx'],
     rules: { 'react-refresh/only-export-components': 'off' }
   },
-  {
-    extends: ['plugin:react-hooks/recommended']
-  },
   // Keep this last: it disables every rule that would fight the Prettier formatter.
   prettier
 )
