@@ -829,3 +829,31 @@ it('opens widget settings in a popup and returns to the layout on completion', a
     await screen.findByRole('dialog', { name: 'Configurar RAM' })
   ).toBeVisible()
 })
+
+it('applies editable native bar geometry only after Apply', async () => {
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
+  fireEvent.keyDown(screen.getByRole('slider', { name: 'Altura da barra' }), {
+    key: 'End'
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Inferior' }))
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Sempre no topo' }))
+  fireEvent.keyDown(
+    screen.getByRole('slider', { name: 'Espaçamento entre widgets' }),
+    { key: 'End' }
+  )
+  expect(bridge.configSave).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() =>
+    expect(bridge.configSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bar: expect.objectContaining({
+          height: 80,
+          position: 'bottom',
+          alwaysOnTop: false,
+          spacing: 32
+        })
+      })
+    )
+  )
+})
