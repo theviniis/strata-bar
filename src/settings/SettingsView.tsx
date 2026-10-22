@@ -1,3 +1,5 @@
+import { Textarea } from '@/components/ui/textarea'
+import { Field, FieldLabel } from '@/components/ui/field'
 import { Logo } from '@/components/Logo'
 import { QueryProvider } from '@/components/QueryProvider'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -47,8 +49,12 @@ import {
   type ConfigPersistence
 } from './draft'
 import { LayoutEditor } from './LayoutEditor'
-
-type SettingsSection = 'layout' | 'appearance'
+import {
+  readNavigation,
+  rememberNavigation,
+  type SettingsNavigation
+} from './navigation'
+type SettingsSection = SettingsNavigation['section']
 
 /**
  * The settings window: a plain captioned window hosting the draft editor.
@@ -57,7 +63,9 @@ type SettingsSection = 'layout' | 'appearance'
  */
 export function SettingsView() {
   const [demoConfig, setDemoConfig] = useState<Config | null>(null)
-  const [section, setSection] = useState<SettingsSection>('layout')
+  const [section, setSection] = useState<SettingsSection>(
+    () => readNavigation().section
+  )
 
   useEffect(() => {
     if (bridge.mode === 'native') return
@@ -94,7 +102,13 @@ export function SettingsView() {
           className="h-screen min-h-0"
           style={{ '--sidebar-width': '12rem' } as CSSProperties}
         >
-          <SettingsSidebar section={section} onSelect={setSection} />
+          <SettingsSidebar
+            section={section}
+            onSelect={(next) => {
+              setSection(next)
+              rememberNavigation({ section: next })
+            }}
+          />
           <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background text-foreground">
             <header className="flex h-14 shrink-0 items-center justify-between px-6">
               <div className="flex items-center gap-2">
@@ -138,7 +152,7 @@ export function SettingsView() {
                       />
                     </CardContent>
                   </Card>
-                ) : (
+                ) : section === 'appearance' ? (
                   <Card>
                     <CardHeader>
                       <CardTitle role="heading" aria-level={2}>
@@ -156,11 +170,30 @@ export function SettingsView() {
                       />
                     </CardContent>
                   </Card>
+                ) : (
+                  <Field data-invalid={!!editor.error}>
+                    <FieldLabel htmlFor="config-json">
+                      Configuração JSON
+                    </FieldLabel>
+                    <Textarea
+                      id="config-json"
+                      rows={24}
+                      spellCheck={false}
+                      aria-invalid={!!editor.error}
+                      aria-describedby={
+                        editor.error ? 'config-error' : undefined
+                      }
+                      value={editor.jsonText}
+                      onChange={(event) =>
+                        editor.replaceText(event.target.value)
+                      }
+                    />
+                  </Field>
                 )}
               </FieldSet>
 
               {editor.error && (
-                <Alert variant="destructive" className="mt-6">
+                <Alert id="config-error" variant="destructive" className="mt-6">
                   <AlertTitle>
                     Não foi possível aplicar as configurações
                   </AlertTitle>
@@ -170,7 +203,16 @@ export function SettingsView() {
             </motion.div>
 
             <Separator />
-            <footer className="px-6 py-4">
+            <footer className="flex flex-col gap-3 px-6 py-4">
+              {editor.reverted && (
+                <Alert role="status">
+                  <AlertTitle>Configurações recarregadas no editor</AlertTitle>
+                  <AlertDescription>
+                    Nenhuma alteração foi salva. Clique em Aplicar para salvar e
+                    aplicar as configurações.
+                  </AlertDescription>
+                </Alert>
+              )}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   <Button
@@ -260,7 +302,8 @@ function SettingsSidebar({
                 {(
                   [
                     { id: 'layout', label: 'Layout', icon: LayoutDashboard },
-                    { id: 'appearance', label: 'Aparência', icon: Palette }
+                    { id: 'appearance', label: 'Aparência', icon: Palette },
+                    { id: 'json', label: 'JSON', icon: LayoutDashboard }
                   ] as const
                 ).map(({ id, label, icon: Icon }) => (
                   <SidebarMenuItem key={id}>

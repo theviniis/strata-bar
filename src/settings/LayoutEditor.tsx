@@ -1,10 +1,10 @@
 import { WidgetPreview } from '@/components/status-bar/WidgetPreview'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
@@ -18,15 +18,19 @@ import {
   ItemTitle
 } from '@/components/ui/item'
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover'
+import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import type { Config, WidgetConfig } from '@/services/configuration/config'
+import {
+  normalizeMonitorName,
+  widgetSchema,
+  type WidgetType
+} from '@/services/configuration/config'
 import {
   closestCenter,
   DndContext,
@@ -49,22 +53,55 @@ import {
   useSortable,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable'
-import { GripVertical, Trash2 } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  GripVertical,
+  Settings,
+  Trash2
+} from 'lucide-react'
 import { LayoutGroup, motion, MotionConfig } from 'motion/react'
-import { useId, useState, type ComponentProps } from 'react'
+import {
+  useContext,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentProps
+} from 'react'
 import { createPortal } from 'react-dom'
 import {
-  addableTypes,
-  addWidget,
   findWidget,
   moveWidget,
-  removeWidget,
   sectionLabels,
   sections,
-  toggleWidget,
   typeLabels,
   type Section
 } from './layout'
+import { ManagerContext, type ColumnMoveFocus } from './manager-context'
+import {
+  addToScope,
+  aggregateIds,
+  barEnabled,
+  displayedLayout,
+  effectiveWidget,
+  layoutFor,
+  patchWidget,
+  removeFromScope,
+  scopedIds,
+  setBarEnabled,
+  setLayout,
+  viewConfig
+} from './monitor-layout'
+import { MonitorWidgetInspector } from './MonitorWidgetInspector'
+import {
+  readNavigation,
+  rememberNavigation,
+  type SettingsNavigation
+} from './navigation'
+import { useMonitors } from './useMonitors'
+import { WidgetCatalog } from './WidgetCatalog'
 
 interface LayoutEditorProps {
   disabled?: boolean
@@ -79,10 +116,79 @@ interface LayoutEditorProps {
  * Cancel restores the original layout. Generated IDs are checked across all
  * three columns before use.
  *
- * The keyboard sensor and the explicit "Mover para" select are the accessible
+ * The keyboard sensor and the explicit column arrow buttons are the accessible
  * paths; the tests drive those, never drag internals.
  */
-export function LayoutEditor({ draft, onChange, disabled }: LayoutEditorProps) {
+export function LayoutEditor({
+  draft: source,
+  onChange: commit,
+  disabled
+}: LayoutEditorProps) {
+  const { monitors, error, refresh, loading } = useMonitors()
+  const [selection, setSelection] = useState<SettingsNavigation['monitor']>(
+    () => readNavigation().monitor
+  )
+  const [disconnectedNotice, setDisconnectedNotice] = useState(false)
+  useEffect(() => {
+    if (!loading && !error) rememberNavigation({ monitor: selection })
+  }, [selection, loading, error])
+  const selected = selection?.id ?? null
+  if (
+    selection?.connected &&
+    !loading &&
+    !monitors.some((m) => m.id === selection.id) &&
+    !error
+  ) {
+    setSelection(null)
+    setDisconnectedNotice(true)
+  }
+  const connectedIds = new Set(monitors.map((m) => normalizeMonitorName(m.id)))
+  const disconnected = Object.keys(source.monitors).filter(
+    (id) => !connectedIds.has(normalizeMonitorName(id))
+  )
+  const scope =
+    selected &&
+    (monitors.some((m) => m.id === selected) || disconnected.includes(selected))
+      ? selected
+      : null
+  const draft = viewConfig(source, scope, monitors)
+  const editorRef = useRef<HTMLDivElement>(null)
+  const pendingMoveFocus = useRef<ColumnMoveFocus | null>(null)
+  useLayoutEffect(() => {
+    const request = pendingMoveFocus.current
+    if (
+      !request ||
+      findWidget(draft, request.widgetId)?.section !== request.target
+    )
+      return
+    const buttons = Array.from(
+      editorRef.current?.querySelectorAll<HTMLButtonElement>(
+        'button[data-column-move]'
+      ) ?? []
+    ).filter(
+      (button) =>
+        button.dataset.columnWidget === request.widgetId && !button.disabled
+    )
+    const target =
+      buttons.find(
+        (button) => button.dataset.columnMove === request.direction
+      ) ?? buttons[0]
+    target?.focus()
+    pendingMoveFocus.current = null
+  }, [draft])
+  const commitLayout = (next: Config) =>
+    commit(
+      setLayout(source, scope, monitors, {
+        left: next.widgets.left.map((w) => w.id),
+        center: next.widgets.center.map((w) => w.id),
+        right: next.widgets.right.map((w) => w.id)
+      })
+    )
+  const onChange = commitLayout
+  const targets = aggregateIds(scope, monitors)
+  const activation = targets.map((id) => barEnabled(source, id))
+  const mixedBar = activation.some((v) => v !== activation[0])
+  const [catalogType, setCatalogType] = useState<WidgetType | null>(null)
   const layoutId = useId()
   const [drag, setDrag] = useState<{ id: string; config: Config } | null>(null)
   const display = drag?.config ?? draft
@@ -98,7 +204,20 @@ export function LayoutEditor({ draft, onChange, disabled }: LayoutEditorProps) {
   function onDragEnd(event: DragEndEvent) {
     setDrag(null)
     const { active, over } = event
-    if (!over || !drag) return
+    if (!over || !drag) {
+      setCatalogType(null)
+      return
+    }
+    if (catalogType) {
+      const target =
+        event.activatorEvent instanceof KeyboardEvent
+          ? dropTarget(drag.config, String(over.id))
+          : findWidget(drag.config, String(active.id))
+      if (target)
+        commit(addToScope(source, scope, monitors, catalogType, target))
+      setCatalogType(null)
+      return
+    }
     if (!(event.activatorEvent instanceof KeyboardEvent)) {
       if (drag.config !== draft) onChange(drag.config)
       return
@@ -107,7 +226,7 @@ export function LayoutEditor({ draft, onChange, disabled }: LayoutEditorProps) {
     const overId = String(over.id)
     const target = dropTarget(draft, overId)
     if (!target) return
-    const next = moveWidget(draft, String(active.id), target)
+    const next = moveWidget(drag.config, String(active.id), target)
     if (next !== draft) onChange(next)
   }
 
@@ -146,54 +265,188 @@ export function LayoutEditor({ draft, onChange, disabled }: LayoutEditorProps) {
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={layoutCollision}
-      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-      onDragStart={({ active }) =>
-        setDrag({ id: String(active.id), config: draft })
-      }
-      onDragCancel={() => setDrag(null)}
-      onDragOver={previewMove}
-      onDragMove={previewMove}
-      onDragEnd={onDragEnd}
+    <ManagerContext.Provider
+      value={{
+        config: source,
+        scope,
+        monitors,
+        onChange: commit,
+        requestMoveFocus: (move) => {
+          pendingMoveFocus.current = move
+        }
+      }}
     >
-      <MotionConfig reducedMotion="user">
-        <LayoutGroup id={layoutId}>
-          <div className="grid gap-4 md:grid-cols-3">
-            {sections.map((section) => (
-              <SectionColumn
-                key={section}
-                section={section}
-                widgets={display.widgets[section]}
-                draft={display}
-                onChange={onChange}
-                disabled={disabled}
-              />
+      <div ref={editorRef} className="flex flex-col gap-4">
+        <Tabs
+          className="min-w-0"
+          value={scope ?? 'all'}
+          onValueChange={(value) => {
+            setSelection(
+              value === 'all'
+                ? null
+                : {
+                    id: String(value),
+                    connected: monitors.some((m) => m.id === value)
+                  }
+            )
+            setDisconnectedNotice(false)
+          }}
+        >
+          <TabsList
+            className="h-auto w-full min-w-0 max-w-full justify-start overflow-x-auto"
+            aria-label="Monitores"
+          >
+            <TabsTrigger value="all">Todos</TabsTrigger>
+            {monitors.map((monitor, index) => (
+              <TabsTrigger
+                key={monitor.id}
+                value={monitor.id}
+                title={`${monitor.name} · ${monitor.deviceName}`}
+              >
+                Monitor {index + 1} · {monitor.width}×{monitor.height}
+                {monitor.primary ? ' · Principal' : ''}
+                {monitor.id === 'studio-demo' ? ' · Demonstração' : ''}
+              </TabsTrigger>
             ))}
-          </div>
-        </LayoutGroup>
-      </MotionConfig>
-      {createPortal(
-        <DragOverlay adjustScale={false} dropAnimation={null}>
-          {activeWidget && (
-            <div
-              role="img"
-              aria-label={`Movendo ${typeLabels[activeWidget.type]}`}
-              className="rounded-md bg-card shadow-lg"
-            >
-              <WidgetCard
-                widget={activeWidget}
-                draft={display}
-                onChange={onChange}
-                disabled
-              />
-            </div>
+            {disconnected.map((id, index) => (
+              <TabsTrigger key={id} value={id} title={id}>
+                Salvo {index + 1} · Desconectado
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        {disconnectedNotice && (
+          <Alert role="status">
+            <AlertDescription>
+              O monitor selecionado foi desconectado. Exibindo Todos; suas
+              configurações foram preservadas.
+            </AlertDescription>
+          </Alert>
+        )}
+        {error && (
+          <Alert>
+            <AlertDescription>
+              {error}
+              <Button variant="outline" onClick={() => void refresh()}>
+                Tentar novamente
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        {!monitors.length && !error && (
+          <p>
+            Nenhum monitor disponível.{' '}
+            <Button variant="outline" onClick={() => void refresh()}>
+              Atualizar monitores
+            </Button>
+          </p>
+        )}
+        <div className="flex items-center justify-between gap-4">
+          <label htmlFor={`${layoutId}-enabled`}>
+            {scope
+              ? 'Habilitar barra neste monitor'
+              : 'Habilitar barra em todos os monitores'}
+          </label>
+          {mixedBar && <p role="status">Alguns monitores habilitados</p>}
+          <Switch
+            id={`${layoutId}-enabled`}
+            disabled={disabled}
+            checked={activation.every(Boolean)}
+            onCheckedChange={(enabled) =>
+              commit(setBarEnabled(source, scope, monitors, enabled))
+            }
+          />
+        </div>
+        {!scope && (
+          <Alert role="note">
+            <AlertDescription>
+              Arrastar aplica a organização a todos os monitores conectados e ao
+              padrão para novos monitores.
+              {monitors.some(
+                (m) =>
+                  JSON.stringify(layoutFor(source, m.id)) !==
+                  JSON.stringify(layoutFor(source, null))
+              ) &&
+                ' Organizações diferentes: exibindo a ordem padrão com os widgets adicionais.'}
+            </AlertDescription>
+          </Alert>
+        )}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={layoutCollision}
+          measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+          onDragStart={({ active }) => {
+            const id = String(active.id)
+            if (id.startsWith('catalog:')) {
+              const type = id.slice(8) as WidgetType
+              setCatalogType(type)
+              const preview = structuredClone(draft)
+              preview.widgets.right.push(widgetSchema.parse({ id, type }))
+              setDrag({ id, config: preview })
+            } else setDrag({ id, config: draft })
+          }}
+          onDragCancel={() => {
+            setDrag(null)
+            setCatalogType(null)
+          }}
+          onDragOver={previewMove}
+          onDragMove={previewMove}
+          onDragEnd={onDragEnd}
+        >
+          <MotionConfig reducedMotion="user">
+            <LayoutGroup id={layoutId}>
+              <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
+                <div className="grid min-w-0 gap-4 md:grid-cols-3">
+                  {sections.map((section) => (
+                    <SectionColumn
+                      key={section}
+                      section={section}
+                      widgets={display.widgets[section]}
+                      draft={display}
+                      onChange={onChange}
+                      disabled={disabled}
+                    />
+                  ))}
+                </div>
+                <WidgetCatalog
+                  config={source}
+                  display={draft}
+                  disabled={disabled}
+                  onAdd={(type, section) =>
+                    commit(
+                      addToScope(source, scope, monitors, type, {
+                        section,
+                        index: displayedLayout(source, scope, monitors)[section]
+                          .length
+                      })
+                    )
+                  }
+                />
+              </div>
+            </LayoutGroup>
+          </MotionConfig>
+          {createPortal(
+            <DragOverlay adjustScale={false} dropAnimation={null}>
+              {activeWidget && (
+                <div
+                  role="img"
+                  aria-label={`Movendo ${typeLabels[activeWidget.type]}`}
+                  className="rounded-md bg-card shadow-lg"
+                >
+                  <WidgetCard
+                    widget={activeWidget}
+                    draft={display}
+                    onChange={onChange}
+                    disabled
+                  />
+                </div>
+              )}
+            </DragOverlay>,
+            document.body
           )}
-        </DragOverlay>,
-        document.body
-      )}
-    </DndContext>
+        </DndContext>
+      </div>
+    </ManagerContext.Provider>
   )
 }
 
@@ -291,15 +544,6 @@ function SectionColumn({
           </Empty>
         )}
       </CardContent>
-      <CardFooter>
-        <AddWidget
-          disabled={disabled}
-          label={`Adicionar widget em ${sectionLabels[section]}`}
-          section={section}
-          draft={draft}
-          onChange={onChange}
-        />
-      </CardFooter>
     </Card>
   )
 }
@@ -352,6 +596,16 @@ function WidgetCard({
 }: SortableWidgetProps & {
   dragHandleProps?: ComponentProps<typeof Button>
 }) {
+  const [inspectorOpen, setInspectorOpen] = useState(false)
+  const manager = useContext(ManagerContext)!
+  const values = aggregateIds(manager.scope, manager.monitors).map((monitor) =>
+    Object.values(layoutFor(manager.config, monitor)).flat().includes(widget.id)
+      ? effectiveWidget(manager.config, widget.id, monitor).enabled
+      : false
+  )
+  const checked = values.some((value) => value !== values[0])
+    ? 'indeterminate'
+    : values[0]
   return (
     <Item variant="outline" size="sm">
       <ItemHeader>
@@ -370,8 +624,33 @@ function WidgetCard({
           <Checkbox
             disabled={disabled}
             aria-label={`Ativar ${typeLabels[widget.type]}`}
-            checked={widget.enabled}
-            onCheckedChange={() => onChange(toggleWidget(draft, widget.id))}
+            checked={checked}
+            onCheckedChange={(value) => {
+              let next = manager.config
+              if (value === true) {
+                const where = findWidget(draft, widget.id)!
+                for (const monitor of scopedIds(
+                  manager.scope,
+                  manager.monitors
+                ).reverse()) {
+                  const layout = structuredClone(layoutFor(next, monitor))
+                  if (!Object.values(layout).flat().includes(widget.id)) {
+                    layout[where.section].push(widget.id)
+                    next = setLayout(next, monitor, [], layout)
+                  }
+                }
+              }
+              manager.onChange(
+                patchWidget(
+                  next,
+                  manager.scope,
+                  manager.monitors,
+                  widget.id,
+                  'enabled',
+                  value === true
+                )
+              )
+            }}
           />
           <ItemTitle
             className="block max-w-full truncate"
@@ -385,8 +664,17 @@ function WidgetCard({
           size="icon-xs"
           variant="ghost"
           disabled={disabled}
-          aria-label={`Remover ${typeLabels[widget.type]}`}
-          onClick={() => onChange(removeWidget(draft, widget.id))}
+          aria-label={`${manager.scope ? 'Remover' : 'Excluir definitivamente'} ${typeLabels[widget.type]}`}
+          onClick={() =>
+            manager.onChange(
+              removeFromScope(
+                manager.config,
+                manager.scope,
+                manager.monitors,
+                widget.id
+              )
+            )
+          }
         >
           <Trash2 aria-hidden="true" />
         </Button>
@@ -394,75 +682,103 @@ function WidgetCard({
       <ItemContent className="min-w-0 basis-full">
         <WidgetPreview widget={widget} theme={draft.bar.theme} />
       </ItemContent>
-      <ItemFooter>
-        <Select
-          disabled={disabled}
-          items={sections.map((section) => ({
-            value: section,
-            label: sectionLabels[section]
-          }))}
-          value={findWidget(draft, widget.id)?.section ?? 'left'}
-          onValueChange={(value) => {
-            const section = sections.find((section) => section === value)
-            if (section)
-              onChange(
-                moveWidget(draft, widget.id, {
-                  section,
-                  index: draft.widgets[section].length
-                })
-              )
-          }}
+      <ItemFooter className="flex-wrap">
+        <Popover open={inspectorOpen} onOpenChange={setInspectorOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              disabled={disabled}
+              variant="outline"
+              size="icon"
+              aria-label={`Configurar ${typeLabels[widget.type]}`}
+            >
+              <Settings />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            side="right"
+            collisionPadding={16}
+            aria-label={`Configurar ${typeLabels[widget.type]}`}
+            className="w-[min(24rem,calc(100vw-2rem))] max-w-none max-h-[min(36rem,var(--radix-popover-content-available-height))] overflow-y-auto overscroll-contain"
+          >
+            <fieldset disabled={disabled}>
+              <MonitorWidgetInspector
+                widget={widget}
+                draft={manager.config}
+                onChange={manager.onChange}
+                scope={manager.scope}
+                monitors={manager.monitors}
+              />
+            </fieldset>
+            <Button className="mt-4" onClick={() => setInspectorOpen(false)}>
+              Concluir
+            </Button>
+          </PopoverContent>
+        </Popover>
+        <div
+          className="flex items-center gap-1"
+          role="group"
+          aria-label={`Mover ${typeLabels[widget.type]} entre colunas`}
         >
-          <SelectTrigger aria-label={`Mover ${typeLabels[widget.type]} para`}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {sections.map((section) => (
-                <SelectItem key={section} value={section}>
-                  {sectionLabels[section]}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+          {(
+            [
+              {
+                direction: 'left',
+                offset: -1,
+                Icon: ChevronLeft,
+                edge: 'esquerda'
+              },
+              {
+                direction: 'right',
+                offset: 1,
+                Icon: ChevronRight,
+                edge: 'direita'
+              }
+            ] as const
+          ).map(({ direction, offset, Icon, edge }) => {
+            const current = findWidget(draft, widget.id)?.section
+            const target = current
+              ? sections[sections.indexOf(current) + offset]
+              : undefined
+            const label = target
+              ? `Mover ${typeLabels[widget.type]} para ${sectionLabels[target]}`
+              : `Mover ${typeLabels[widget.type]} para a ${edge}`
+            return (
+              <Button
+                key={direction}
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                disabled={disabled || !target}
+                aria-label={label}
+                title={
+                  target
+                    ? label
+                    : `Já está na coluna ${current ? sectionLabels[current] : edge}`
+                }
+                data-column-widget={widget.id}
+                data-column-move={direction}
+                onClick={() => {
+                  if (!target) return
+                  manager.requestMoveFocus({
+                    widgetId: widget.id,
+                    direction,
+                    target
+                  })
+                  onChange(
+                    moveWidget(draft, widget.id, {
+                      section: target,
+                      index: draft.widgets[target].length
+                    })
+                  )
+                }}
+              >
+                <Icon aria-hidden="true" />
+              </Button>
+            )
+          })}
+        </div>
       </ItemFooter>
     </Item>
-  )
-}
-
-function AddWidget({
-  label,
-  section,
-  draft,
-  onChange,
-  disabled
-}: LayoutEditorProps & { label: string; section: Section }) {
-  return (
-    <Select
-      disabled={disabled}
-      items={addableTypes().map((type) => ({
-        value: type,
-        label: typeLabels[type]
-      }))}
-      value={null}
-      onValueChange={(value) => {
-        const type = addableTypes().find((type) => type === value)
-        if (type) onChange(addWidget(draft, type, section))
-      }}
-    >
-      <SelectTrigger aria-label={label}>
-        <SelectValue placeholder="Adicionar widget..." />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          {addableTypes().map((type) => (
-            <SelectItem key={type} value={type}>
-              {typeLabels[type]}
-            </SelectItem>
-          ))}
-        </SelectGroup>
-      </SelectContent>
-    </Select>
   )
 }

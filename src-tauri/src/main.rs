@@ -29,6 +29,9 @@ mod cpu;
 mod cpu_contract;
 mod cpu_windows;
 mod desktop;
+mod monitors;
+#[cfg(debug_assertions)]
+mod monitor_check;
 mod disk;
 mod disk_contract;
 mod disk_windows;
@@ -169,6 +172,10 @@ fn overlay_resize(
     desktop::overlay_resize(&app, &window, &session, &size)
 }
 #[tauri::command]
+fn settings_monitors() -> Result<Vec<config_contract::SettingsMonitor>, String> {
+    monitors::list()
+}
+#[tauri::command]
 fn config_load(
     window: tauri::WebviewWindow,
     store: tauri::State<config::ConfigStore>,
@@ -182,12 +189,18 @@ fn config_save(
     store: tauri::State<config::ConfigStore>,
     config: config_contract::Config,
 ) -> Result<config_contract::ConfigSnapshot, String> {
+    let mut config = config;
+    monitors::migrate(&mut config, &monitors::list()?);
     let snapshot = store.save(config)?;
     config::publish(&app, &snapshot);
-    Ok(config::project_snapshot(
-        &snapshot,
-        crate::desktop::monitor_name(&window).as_deref(),
-    ))
+    if window.label().starts_with("bar-") {
+        Ok(config::project_snapshot(
+            &snapshot,
+            crate::desktop::monitor_name(&window).as_deref(),
+        ))
+    } else {
+        Ok(snapshot)
+    }
 }
 #[tauri::command]
 fn settings_open(app: tauri::AppHandle) -> Result<(), String> {
@@ -410,6 +423,7 @@ fn main() {
             komorebi_action,
             config_load,
             config_save,
+            settings_monitors,
             settings_open,
             overlay_show,
             overlay_hide,
@@ -420,7 +434,19 @@ fn main() {
         ])
         .setup(|app| {
             tray::setup(app.handle())?;
-            let store = config::open_store(app.handle())?;
+            #[cfg(debug_assertions)]
+            let monitor_check = std::env::args().any(|arg| arg == "--check-monitor-manager");
+            #[cfg(not(debug_assertions))]
+            let monitor_check = false;
+            let store = if monitor_check {
+                config::ConfigStore::open(
+                    std::env::temp_dir()
+                        .join(format!("strata-monitor-check-{}", std::process::id()))
+                        .join("config.json"),
+                )
+            } else {
+                config::open_store(app.handle())?
+            };
             config::watch(app.handle().clone(), &store)?;
             app.manage(store);
             app.manage(google_calendar::GoogleCalendar::start());
@@ -431,7 +457,12 @@ fn main() {
             app.manage(agents::Agents::start(app.handle().clone())?);
             app.manage(metrics::Metrics::start(app.handle().clone()));
             app.manage(komorebi::Komorebi::start(app.handle().clone()));
+            monitors::observe(app.handle())?;
             desktop::reconcile(app.handle())?;
+            #[cfg(debug_assertions)]
+            if monitor_check {
+                monitor_check::start(app.handle().clone());
+            }
             // One warm surface for every tooltip and, later, widget popup.
             desktop::ensure_overlay(app.handle())?;
             app.manage(reminders::ReminderScheduler::start(app.handle().clone()));

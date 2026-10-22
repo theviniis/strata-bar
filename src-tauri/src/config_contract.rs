@@ -136,6 +136,8 @@ impl Default for BarTheme {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct BarConfig {
+    #[serde(default = "default_true")]
+    pub enabled: bool,
     #[serde(default)]
     pub position: BarPosition,
     #[serde(default = "default_height")]
@@ -147,11 +149,32 @@ pub struct BarConfig {
     #[serde(default = "default_true")]
     pub always_on_top: bool,
 }
+/// Partial widget behavior; identity is shared, membership and order are separate.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct WidgetOverride {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub interval_ms: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub format: Option<WidgetFormat>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tooltip: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub audio: Option<WidgetAudio>,
+}
 
-/// One monitor's partial override of the bar configuration.
+/// One monitor's partial override of bar appearance and widget behavior.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct BarOverride {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layout: Option<WidgetLayout>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub widgets: Option<std::collections::BTreeMap<String, WidgetOverride>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<BarPosition>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -217,6 +240,8 @@ pub struct Config {
     pub agents: AgentsConfig,
     pub bar: BarConfig,
     pub widgets: WidgetSections,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layout: Option<WidgetLayout>,
     #[serde(default)]
     pub monitors: std::collections::BTreeMap<String, BarOverride>,
 }
@@ -232,4 +257,24 @@ pub struct ConfigSnapshot {
     pub config: Config,
     #[serde(default)]
     pub error: Option<String>,
+}
+
+/// Ordered membership, separate from widget definitions and visibility.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct WidgetLayout {
+    pub left: Vec<String>,
+    pub center: Vec<String>,
+    pub right: Vec<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct SettingsMonitor {
+    pub id: String,
+    pub device_name: String,
+    pub name: String,
+    pub width: u32,
+    pub height: u32,
+    pub primary: bool,
 }

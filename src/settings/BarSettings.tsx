@@ -1,3 +1,4 @@
+import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Field,
@@ -128,41 +129,32 @@ function AgentVisibility({ draft, onChange, disabled }: BarSettingsProps) {
       <FieldDescription id={`${id}-description`}>
         Escolha quais agentes aparecem na barra.
       </FieldDescription>
-      <ToggleGroup
-        multiple
-        disabled={disabled}
-        aria-labelledby={id}
-        aria-describedby={`${id}-description`}
-        variant="outline"
-        className="flex-wrap"
-        value={agents
-          .filter(({ key }) => draft.agents.visible[key])
-          .map(({ key }) => key)}
-        onValueChange={(values) =>
-          onChange({
-            ...draft,
-            agents: {
-              ...draft.agents,
-              visible: {
-                ...draft.agents.visible,
-                ...Object.fromEntries(
-                  agents.map(({ key }) => [key, values.includes(key)])
-                )
-              }
-            }
-          })
-        }
-      >
+      <FieldGroup>
         {agents.map(({ key, label }) => (
-          <ToggleGroupItem
-            key={key}
-            value={key}
-            aria-label={`Mostrar ${label} na barra`}
-          >
-            {label}
-          </ToggleGroupItem>
+          <Field key={key} orientation="horizontal" data-disabled={disabled}>
+            <Checkbox
+              id={`${id}-${key}`}
+              disabled={disabled}
+              checked={draft.agents.visible[key]}
+              onCheckedChange={(checked) =>
+                onChange({
+                  ...draft,
+                  agents: {
+                    ...draft.agents,
+                    visible: {
+                      ...draft.agents.visible,
+                      [key]: checked === true
+                    }
+                  }
+                })
+              }
+            />
+            <FieldLabel htmlFor={`${id}-${key}`}>
+              Mostrar {label} na barra
+            </FieldLabel>
+          </Field>
         ))}
-      </ToggleGroup>
+      </FieldGroup>
     </FieldSet>
   )
 }

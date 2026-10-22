@@ -78,6 +78,7 @@ export function voicemeeterLabel(audio: AudioSourceConfig): string {
 }
 
 const bar = z.object({
+  enabled: z.boolean().default(true),
   position: z.enum(['top', 'bottom']).default('top'),
   height: z.number().int().min(28).max(80).default(36),
   spacing: z.number().min(0).max(32).default(8),
@@ -88,6 +89,38 @@ const bar = z.object({
 export type WidgetConfig = z.infer<typeof widget>
 export type BarConfig = z.infer<typeof bar>
 export type Config = z.infer<typeof configSchema>
+/** Windows device prefix and case are aliases for the same monitor. */
+export function normalizeMonitorName(name: string): string {
+  return name
+    .trim()
+    .replace(/^\\\\\.\\/, '')
+    .trim()
+    .toUpperCase()
+}
+
+const widgetOverride = z.object({
+  enabled: widget.shape.enabled.removeDefault().optional(),
+  intervalMs: widget.shape.intervalMs.removeDefault().optional(),
+  format: widget.shape.format.removeDefault().optional(),
+  tooltip: widget.shape.tooltip.removeDefault().optional(),
+  audio: widget.shape.audio
+})
+export const widgetLayoutSchema = z.object({
+  left: z.array(z.string()),
+  center: z.array(z.string()),
+  right: z.array(z.string())
+})
+export type WidgetLayout = z.infer<typeof widgetLayoutSchema>
+const monitorOverride = z.object({
+  enabled: z.boolean().optional(),
+  layout: widgetLayoutSchema.optional(),
+  position: bar.shape.position.removeDefault().optional(),
+  height: bar.shape.height.removeDefault().optional(),
+  spacing: bar.shape.spacing.removeDefault().optional(),
+  theme: bar.shape.theme.removeDefault().optional(),
+  alwaysOnTop: bar.shape.alwaysOnTop.removeDefault().optional(),
+  widgets: z.record(z.string(), widgetOverride).optional()
+})
 
 const agentVisibility = z.object({
   chatgpt: z.boolean().default(true),
@@ -116,12 +149,56 @@ export const configSchema = z
       center: z.array(widget),
       right: z.array(widget)
     }),
-    monitors: z.record(z.string(), bar.partial()).default({})
+    layout: widgetLayoutSchema.optional(),
+    monitors: z.record(z.string(), monitorOverride).default({})
   })
   .superRefine((c, ctx) => {
     const ids = Object.values(c.widgets)
       .flat()
       .map((w) => w.id)
+    for (const [path, layout] of [
+      [['layout'], c.layout],
+      ...Object.entries(c.monitors).map(
+        ([key, value]) => [['monitors', key, 'layout'], value.layout] as const
+      )
+    ] as const) {
+      if (!layout) continue
+      const seen = new Set<string>()
+      for (const id of Object.values(layout).flat()) {
+        if (!ids.includes(id) || seen.has(id))
+          ctx.addIssue({
+            code: 'custom',
+            path: [...path],
+            message: `Unknown or repeated widget ${id}`
+          })
+        seen.add(id)
+      }
+    }
+    const monitors = new Set<string>()
+    for (const [monitor, override] of Object.entries(c.monitors)) {
+      const normalized = normalizeMonitorName(monitor)
+      if (!normalized)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['monitors', monitor],
+          message: 'Monitor name must not be empty'
+        })
+      if (monitors.has(normalized))
+        ctx.addIssue({
+          code: 'custom',
+          path: ['monitors', monitor],
+          message: 'Duplicate monitor name'
+        })
+      monitors.add(normalized)
+      for (const id of Object.keys(override.widgets ?? {})) {
+        if (!ids.includes(id))
+          ctx.addIssue({
+            code: 'custom',
+            path: ['monitors', monitor, 'widgets', id],
+            message: 'Unknown widget ID'
+          })
+      }
+    }
     if (new Set(ids).size !== ids.length)
       ctx.addIssue({ code: 'custom', message: 'Widget IDs must be unique' })
   })

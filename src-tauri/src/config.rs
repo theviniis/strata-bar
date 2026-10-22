@@ -52,10 +52,12 @@ pub fn defaults() -> Config {
         ("agents", WidgetKind::Agents),
     ];
     Config {
+        layout: None,
         schema: Some(SCHEMA_URL.to_string()),
         version: SCHEMA_VERSION,
         agents: AgentsConfig::default(),
         bar: BarConfig {
+            enabled: true,
             position: BarPosition::Top,
             height: 36,
             spacing: 8.0,
@@ -89,22 +91,47 @@ pub fn normalize_monitor(key: &str) -> String {
 }
 
 /// The document one window renders: the shared configuration with that
-/// monitor's bar overrides merged in. Widget composition stays global, so every
-/// bar agrees on what exists; only the bar surface differs per monitor.
+/// monitor's bar, membership, order and widget behavior overrides merged in.
+/// Definitions stay global; each monitor independently arranges and shows them.
 pub fn project(config: &Config, monitor: Option<&str>) -> Config {
-    let key = monitor.map(normalize_monitor).filter(|key| !key.is_empty());
-    let Some(key) = key else {
-        return config.clone();
-    };
-    let Some(over) = config
-        .monitors
-        .iter()
-        .find(|(name, _)| normalize_monitor(name) == key)
-        .map(|(_, over)| over)
-    else {
-        return config.clone();
-    };
     let mut projected = config.clone();
+    let key = monitor.map(normalize_monitor);
+    let over = key.and_then(|key| {
+        config
+            .monitors
+            .iter()
+            .find(|(name, _)| normalize_monitor(name) == key)
+            .map(|(_, over)| over)
+    });
+    let layout = over
+        .and_then(|o| o.layout.as_ref())
+        .or(config.layout.as_ref());
+    if let Some(layout) = layout {
+        let definitions: BTreeMap<_, _> = config
+            .widgets
+            .left
+            .iter()
+            .chain(&config.widgets.center)
+            .chain(&config.widgets.right)
+            .map(|widget| (widget.id.as_str(), widget))
+            .collect();
+        let resolve = |ids: &[String]| {
+            ids.iter()
+                .filter_map(|id| definitions.get(id.as_str()).map(|w| (*w).clone()))
+                .collect()
+        };
+        projected.widgets = WidgetSections {
+            left: resolve(&layout.left),
+            center: resolve(&layout.center),
+            right: resolve(&layout.right),
+        };
+    }
+    let Some(over) = over else {
+        return projected;
+    };
+    if let Some(enabled) = over.enabled {
+        projected.bar.enabled = enabled;
+    }
     if let Some(value) = &over.position {
         projected.bar.position = value.clone();
     }
@@ -120,15 +147,46 @@ pub fn project(config: &Config, monitor: Option<&str>) -> Config {
     if let Some(value) = over.always_on_top {
         projected.bar.always_on_top = value;
     }
+    if let Some(overrides) = &over.widgets {
+        for widget in projected
+            .widgets
+            .left
+            .iter_mut()
+            .chain(&mut projected.widgets.center)
+            .chain(&mut projected.widgets.right)
+        {
+            if let Some(value) = overrides.get(&widget.id) {
+                if let Some(enabled) = value.enabled {
+                    widget.enabled = enabled;
+                }
+                if let Some(interval) = value.interval_ms {
+                    widget.interval_ms = interval;
+                }
+                if let Some(format) = &value.format {
+                    widget.format = format.clone();
+                }
+                if let Some(tooltip) = value.tooltip {
+                    widget.tooltip = tooltip;
+                }
+                if let Some(audio) = &value.audio {
+                    widget.audio = Some(audio.clone());
+                }
+            }
+        }
+    }
     projected
 }
 
 /// One monitor's projection of a snapshot, carrying the revision and any
 /// rejection reason unchanged so every window reports the same document state.
 pub fn project_snapshot(snapshot: &ConfigSnapshot, monitor: Option<&str>) -> ConfigSnapshot {
+    let mut config = project(&snapshot.config, monitor);
+    // A bar receives a render document, never a catalog with references to absent widgets.
+    config.layout = None;
+    config.monitors.clear();
     ConfigSnapshot {
         revision: snapshot.revision,
-        config: project(&snapshot.config, monitor),
+        config,
         error: snapshot.error.clone(),
     }
 }
@@ -156,7 +214,48 @@ pub fn validate(config: &Config) -> Result<(), String> {
         ));
     }
     validate_bar(&config.bar)?;
+    let mut monitors = std::collections::HashSet::new();
+    let ids: std::collections::HashSet<_> = config
+        .widgets
+        .left
+        .iter()
+        .chain(&config.widgets.center)
+        .chain(&config.widgets.right)
+        .map(|w| w.id.as_str())
+        .collect();
+    let check_layout = |layout: &WidgetLayout| -> Result<(), String> {
+        let mut seen = std::collections::HashSet::new();
+        for id in layout
+            .left
+            .iter()
+            .chain(&layout.center)
+            .chain(&layout.right)
+        {
+            if !ids.contains(id.as_str()) {
+                return Err(format!("Layout references unknown widget {id}"));
+            }
+            if !seen.insert(id) {
+                return Err(format!("Layout repeats widget {id}"));
+            }
+        }
+        Ok(())
+    };
+    if let Some(layout) = &config.layout {
+        check_layout(layout)?;
+    }
+    for over in config.monitors.values() {
+        if let Some(layout) = &over.layout {
+            check_layout(layout)?;
+        }
+    }
     for (monitor, over) in &config.monitors {
+        let normalized = normalize_monitor(monitor);
+        if normalized.is_empty() {
+            return Err("Monitor name must not be empty".into());
+        }
+        if !monitors.insert(normalized) {
+            return Err(format!("Monitor {monitor} duplicates another monitor name"));
+        }
         if let Some(height) = over.height {
             if !(MIN_HEIGHT..=MAX_HEIGHT).contains(&height) {
                 return Err(format!("Monitor {monitor} bar height is out of range"));
@@ -204,6 +303,24 @@ pub fn validate(config: &Config) -> Result<(), String> {
                     ));
                 }
             }
+        }
+    }
+    for (monitor, over) in &config.monitors {
+        if let Some(widgets) = &over.widgets {
+            for id in widgets.keys() {
+                if !ids.contains(id) {
+                    return Err(format!("Monitor {monitor} references unknown widget {id}"));
+                }
+            }
+            let mut all = config.clone();
+            all.layout = None;
+            for over in all.monitors.values_mut() {
+                over.layout = None;
+            }
+            let mut projected = project(&all, Some(monitor));
+            projected.monitors.clear();
+            projected.layout = None;
+            validate(&projected).map_err(|error| format!("Monitor {monitor}: {error}"))?;
         }
     }
     Ok(())
@@ -440,6 +557,24 @@ pub fn apply_external_change(app: &AppHandle) {
 /// projection to every bar and the last one would win. `emit_to` addresses a
 /// single window, which is what a per-monitor projection requires.
 pub fn publish(app: &AppHandle, snapshot: &ConfigSnapshot) {
+    let app = app.clone();
+    let snapshot = snapshot.clone();
+    std::thread::spawn(move || {
+        if let Err(error) = crate::desktop::reconcile(&app) {
+            eprintln!("Config reconcile: {error}");
+        }
+        let current = app.state::<ConfigStore>().snapshot().unwrap_or(snapshot);
+        publish_windows(&app, &current);
+    });
+}
+
+fn publish_windows(app: &AppHandle, snapshot: &ConfigSnapshot) {
+    static SENT: std::sync::LazyLock<Mutex<BTreeMap<String, serde_json::Value>>> =
+        std::sync::LazyLock::new(|| Mutex::new(BTreeMap::new()));
+    let windows = app.webview_windows();
+    SENT.lock()
+        .unwrap()
+        .retain(|label, _| windows.contains_key(label));
     for (label, window) in app.webview_windows() {
         if !accepts_config(&label) {
             continue;
@@ -450,6 +585,18 @@ pub fn publish(app: &AppHandle, snapshot: &ConfigSnapshot) {
             snapshot.clone()
         };
         let payload = serde_json::to_value(&projected).expect("Config snapshot serializes");
+        if label.starts_with("bar-") {
+            let rendered = serde_json::json!({"bar": projected.config.bar, "widgets": projected.config.widgets, "agents": projected.config.agents, "error": projected.error});
+            if SENT
+                .lock()
+                .unwrap()
+                .insert(label.clone(), rendered.clone())
+                .as_ref()
+                == Some(&rendered)
+            {
+                continue;
+            }
+        }
         if let Err(e) = window.emit_to(&label, EVENT, payload) {
             eprintln!("Emit config to {label}: {e}");
         }
@@ -531,6 +678,135 @@ fn run_loop(app: AppHandle, rx: Receiver<notify::Result<notify::Event>>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn monitor_layout_and_disabled_bar_survive_save_and_restart() {
+        let directory = Directory::new();
+        let store = ConfigStore::open(directory.path());
+        let mut value = serde_json::to_value(defaults()).unwrap();
+        value["monitors"] = serde_json::json!({"DISPLAY2": {
+            "enabled": false,
+            "layout": {"left": ["cpu"], "center": [], "right": []},
+            "widgets": {"cpu": {"tooltip": false}}
+        }});
+        store.save(parse(&value.to_string()).unwrap()).unwrap();
+        let restored = ConfigStore::open(directory.path()).snapshot().unwrap();
+        let secondary = serde_json::to_value(project(&restored.config, Some("DISPLAY2"))).unwrap();
+        assert_eq!(secondary["bar"]["enabled"], false);
+        assert_eq!(secondary["widgets"]["left"][0]["id"], "cpu");
+        assert_eq!(secondary["widgets"]["left"][0]["tooltip"], false);
+        assert_eq!(secondary["widgets"]["right"], serde_json::json!([]));
+        assert_eq!(
+            project(&restored.config, Some("DISPLAY1")).widgets,
+            defaults().widgets
+        );
+    }
+    #[test]
+    fn invalid_layouts_and_hidden_widget_settings_never_replace_the_saved_document() {
+        let directory = Directory::new();
+        let store = ConfigStore::open(directory.path());
+        let original = store.snapshot().unwrap().config;
+        for layout in [
+            serde_json::json!({"left":["missing"],"center":[],"right":[]}),
+            serde_json::json!({"left":["cpu"],"center":["cpu"],"right":[]}),
+        ] {
+            let mut value = serde_json::to_value(&original).unwrap();
+            value["monitors"]["DISPLAY2"] = serde_json::json!({"layout":layout});
+            assert!(parse(&value.to_string()).is_err());
+        }
+        let mut value = serde_json::to_value(&original).unwrap();
+        value["monitors"]["DISPLAY2"] = serde_json::json!({"layout":{"left":[],"center":[],"right":[]},"widgets":{"cpu":{"intervalMs":999}}});
+        assert!(parse(&value.to_string()).is_err());
+        assert_eq!(store.snapshot().unwrap().config, original);
+    }
+
+    #[test]
+    fn stable_monitor_settings_survive_ordinal_changes_and_legacy_migration_is_idempotent() {
+        let directory = Directory::new();
+        let store = ConfigStore::open(directory.path());
+        let mut value = serde_json::to_value(defaults()).unwrap();
+        value["monitors"] = serde_json::json!({"DISPLAY2":{"enabled":false,"widgets":{"cpu":{"intervalMs":8000}}},"offline":{"height":48}});
+        let mut config = parse(&value.to_string()).unwrap();
+        let monitor = |device: &str| SettingsMonitor {
+            id: "hardware-b".into(),
+            device_name: device.into(),
+            name: "Panel".into(),
+            width: 1920,
+            height: 1080,
+            primary: false,
+        };
+        assert!(crate::monitors::migrate(
+            &mut config,
+            &[monitor("DISPLAY2")]
+        ));
+        assert!(!crate::monitors::migrate(
+            &mut config,
+            &[monitor("DISPLAY1")]
+        ));
+        store.save(config).unwrap();
+        let restored = ConfigStore::open(directory.path()).snapshot().unwrap();
+        assert!(!project(&restored.config, Some("hardware-b")).bar.enabled);
+        assert_eq!(
+            project(&restored.config, Some("hardware-b")).widgets.right[0].interval_ms,
+            8000
+        );
+        assert_eq!(restored.config.monitors["offline"].height, Some(48));
+        let mut ambiguous = restored.config.clone();
+        ambiguous
+            .monitors
+            .insert("DISPLAY2".into(), BarOverride::default());
+        assert!(!crate::monitors::migrate(
+            &mut ambiguous,
+            &[monitor("DISPLAY2")]
+        ));
+        assert!(ambiguous.monitors.contains_key("DISPLAY2"));
+    }
+    #[test]
+    fn saved_widget_overrides_project_only_to_the_matching_monitor_and_reject_invalid_edits() {
+        let directory = Directory::new();
+        let store = ConfigStore::open(directory.path());
+        let mut value = serde_json::to_value(defaults()).unwrap();
+        value["monitors"] = serde_json::json!({"DISPLAY2": {"widgets": {"cpu": {"enabled": false, "intervalMs": 8000, "format": "compact", "tooltip": false}}}});
+        let config = parse(&value.to_string()).unwrap();
+        let saved = store.save(config).unwrap();
+        let secondary = project_snapshot(&saved, Some(r"\\.\DISPLAY2"));
+        let cpu = secondary
+            .config
+            .widgets
+            .right
+            .iter()
+            .find(|w| w.id == "cpu")
+            .unwrap();
+        assert!(!cpu.enabled);
+        assert_eq!(cpu.interval_ms, 8000);
+        assert_eq!(cpu.format, WidgetFormat::Compact);
+        assert!(!cpu.tooltip);
+        assert_eq!(
+            project(&saved.config, Some("DISPLAY1")).widgets,
+            defaults().widgets
+        );
+        value["monitors"]["DISPLAY2"]["widgets"]["cpu"]["intervalMs"] = serde_json::json!(999);
+        assert!(parse(&value.to_string()).is_err());
+        assert_eq!(store.snapshot().unwrap().config, saved.config);
+    }
+
+    #[test]
+    fn save_rejects_duplicate_monitor_aliases_without_mutating_the_document() {
+        let directory = Directory::new();
+        let store = ConfigStore::open(directory.path());
+        let before = store.snapshot().unwrap();
+        let mut value = serde_json::to_value(defaults()).unwrap();
+        value["monitors"] = serde_json::json!({
+            "DISPLAY2": {"widgets": {"cpu": {"intervalMs": 2000}}},
+            "display2": {"widgets": {"cpu": {"intervalMs": 999}}}
+        });
+        let invalid: Config = serde_json::from_value(value).unwrap();
+        assert!(store.save(invalid).is_err());
+        assert_eq!(store.snapshot().unwrap(), before);
+        assert_eq!(
+            parse(&fs::read_to_string(directory.path()).unwrap()).unwrap(),
+            before.config
+        );
+    }
 
     struct Directory(PathBuf);
     impl Directory {
