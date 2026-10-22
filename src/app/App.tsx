@@ -1,9 +1,10 @@
 import { SpotifySettings } from '../features/music/SpotifySettings'
+import { Logo } from '@/components/Logo'
 import { QueryProvider } from '@/components/QueryProvider'
 import { DemoReminderAlerts } from '../features/reminders/DemoReminderAlerts'
 
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { ArrowUpRight, Check, Layers3, Settings2 } from 'lucide-react'
+import { ArrowUpRight, Check, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { StudioBar } from '../components/status-bar/StudioBar'
 import type { BarConfig, WidgetConfig } from '../services/configuration/config'
@@ -38,7 +39,7 @@ export default function App() {
               className={`flex cursor-pointer touch-manipulation items-center gap-2.5 text-[23px] font-[650] tracking-[-1px] text-inherit no-underline ${focusRing}`}
               href="#"
             >
-              <Layers3 size={23} className="text-[#b5a1f4]" />
+              <Logo alt="" />
               strata
               <span className="ml-3.5 text-[13px] font-normal tracking-normal text-[#858694] max-[1000px]:hidden">
                 {' '}

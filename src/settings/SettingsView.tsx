@@ -1,3 +1,4 @@
+import { Logo } from '@/components/Logo'
 import { QueryProvider } from '@/components/QueryProvider'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -33,7 +34,6 @@ import {
   Palette,
   RotateCw,
   Save,
-  Settings2,
   Undo2,
   X
 } from 'lucide-react'
@@ -241,7 +241,7 @@ function SettingsSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<div />}>
-              <Settings2 aria-hidden="true" />
+              <Logo alt="" />
               <span>Strata</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
