@@ -78,7 +78,16 @@ export function moveWidget(
 ): Config {
   const from = findWidget(config, id)
   if (!from) return config
-  const next = structuredClone(config)
+  const next = {
+    ...config,
+    widgets: {
+      ...config.widgets,
+      [from.section]: [...config.widgets[from.section]],
+      ...(from.section !== to.section && {
+        [to.section]: [...config.widgets[to.section]]
+      })
+    }
+  }
   const [widget] = next.widgets[from.section].splice(from.index, 1)
   if (!widget) return config
   const target = Math.max(

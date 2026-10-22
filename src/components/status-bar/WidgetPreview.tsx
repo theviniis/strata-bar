@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { Config, WidgetConfig } from '@/services/configuration/config'
@@ -5,7 +6,7 @@ import { Widget } from './Widget'
 import { WidgetPreviewContext } from './widget-preview-context'
 
 /** The actual widget tree, with sample data and all native effects disabled. */
-export function WidgetPreview({
+export const WidgetPreview = memo(function WidgetPreview({
   widget,
   theme
 }: {
@@ -31,4 +32,4 @@ export function WidgetPreview({
       </div>
     </WidgetPreviewContext.Provider>
   )
-}
+})

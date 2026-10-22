@@ -282,3 +282,33 @@ it.each(['drop', 'cancel', 'outside'] as const)(
     }
   }
 )
+
+it('keeps an insertion between cards stable while moving through their gap', async () => {
+  const cleanup = mockPointerLayout()
+  try {
+    render(<Editor centerTypes={['gpu', 'volume']} />)
+    const handle = screen.getByRole('button', { name: 'Mover CPU' })
+    fireEvent.pointerDown(handle, { button: 0, clientX: 20, clientY: 100 })
+    fireEvent.pointerMove(document, { clientX: 30, clientY: 100 })
+    await act(async () => {})
+    const center = screen.getByRole('region', { name: /Centro$/ })
+    for (const clientY of [155, 156, 154, 155]) {
+      fireEvent.pointerMove(document, { clientX: 350, clientY })
+      await waitFor(() =>
+        expect(
+          within(center)
+            .getAllByRole('checkbox')
+            .map((item) => item.getAttribute('aria-label'))
+        ).toEqual(['Ativar GPU', 'Ativar CPU', 'Ativar Volume'])
+      )
+    }
+    fireEvent.pointerUp(document)
+    expect(
+      JSON.parse(
+        screen.getByLabelText('Draft').textContent!
+      ).widgets.center.map((widget: { id: string }) => widget.id)
+    ).toEqual(['gpu', 'cpu', 'volume'])
+  } finally {
+    cleanup()
+  }
+})

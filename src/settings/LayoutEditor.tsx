@@ -202,7 +202,26 @@ const layoutCollision: CollisionDetection = (args) => {
   if (!args.pointerCoordinates) return closestCenter(args)
   const hits = pointerWithin(args)
   const items = hits.filter(({ id }) => !String(id).startsWith('section:'))
-  return items.length ? items : hits
+  if (items.length) return items
+  const section = hits[0]
+  if (!section) return []
+  // Gaps and column padding use the nearest item, not an implicit append.
+  const candidates = args.droppableContainers.flatMap((container) => {
+    if (container.data.current?.sortable?.containerId !== section.id) return []
+    const rect = args.droppableRects.get(container.id)
+    return rect
+      ? [
+          {
+            id: container.id,
+            distance: Math.abs(
+              args.pointerCoordinates!.y - (rect.top + rect.height / 2)
+            )
+          }
+        ]
+      : []
+  })
+  candidates.sort((a, b) => a.distance - b.distance)
+  return candidates.length ? [{ id: candidates[0].id }] : hits
 }
 
 interface SectionColumnProps extends LayoutEditorProps {
@@ -241,6 +260,7 @@ function SectionColumn({
       </CardHeader>
       <CardContent>
         <SortableContext
+          id={`section:${section}`}
           items={widgets.map((widget) => widget.id)}
           strategy={verticalListSortingStrategy}
         >
@@ -291,24 +311,27 @@ function SortableWidget({
     disabled
   })
   return (
-    <motion.li
+    <li
       ref={setNodeRef}
-      layout={isDragging ? false : 'position'}
-      layoutId={isDragging ? undefined : widget.id}
-      initial={false}
-      transition={{ layout: { type: 'spring', stiffness: 450, damping: 38 } }}
       className={cn(isDragging && 'opacity-30')}
       data-widget={widget.id}
       data-dragging={isDragging || undefined}
     >
-      <WidgetCard
-        widget={widget}
-        draft={draft}
-        onChange={onChange}
-        disabled={disabled}
-        dragHandleProps={{ ...attributes, ...listeners }}
-      />
-    </motion.li>
+      {/* Keep the measured drop target stationary while its contents animate. */}
+      <motion.div
+        layout={isDragging ? false : 'position'}
+        initial={false}
+        transition={{ layout: { duration: 0.16, ease: 'easeOut' } }}
+      >
+        <WidgetCard
+          widget={widget}
+          draft={draft}
+          onChange={onChange}
+          disabled={disabled}
+          dragHandleProps={{ ...attributes, ...listeners }}
+        />
+      </motion.div>
+    </li>
   )
 }
 
