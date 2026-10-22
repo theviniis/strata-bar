@@ -29,6 +29,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import type { Config } from '@/services/configuration/config'
 import { bridge } from '@/services/system/bridge'
+import { cn } from 'cn'
 import {
   LayoutDashboard,
   Palette,
@@ -234,15 +235,18 @@ function SettingsSidebar({
   section: SettingsSection
   onSelect(section: SettingsSection): void
 }) {
-  const { setOpenMobile } = useSidebar()
+  const { setOpenMobile, open } = useSidebar()
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<div />}>
-              <Logo alt="" />
-              <span>Strata</span>
+            <SidebarMenuButton
+              size="lg"
+              className={cn(!open && 'grid place-content-center')}
+            >
+              <Logo alt={open ? '' : 'Strata'} background={false} />
+              {open && <span>Strata</span>}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

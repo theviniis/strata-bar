@@ -12,7 +12,6 @@ import {
   FieldTitle
 } from '@/components/ui/field'
 import { Slider } from '@/components/ui/slider'
-import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { AgentType } from '@/services/system/agents.generated'
 import type { Config } from '@/services/configuration/config'
@@ -123,33 +122,46 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
 function AgentVisibility({ draft, onChange, disabled }: BarSettingsProps) {
   const id = useId()
   return (
-    <FieldSet>
-      <FieldLegend>Agentes visíveis</FieldLegend>
-      <FieldDescription>
+    <FieldSet data-disabled={disabled}>
+      <FieldLegend id={id}>Agentes visíveis</FieldLegend>
+      <FieldDescription id={`${id}-description`}>
         Escolha quais agentes aparecem na barra.
       </FieldDescription>
-      <FieldGroup>
-        {agents.map(({ key, label }) => (
-          <Field key={key} orientation="horizontal" data-disabled={disabled}>
-            <FieldLabel htmlFor={`${id}-${key}`}>{label}</FieldLabel>
-            <Switch
-              disabled={disabled}
-              id={`${id}-${key}`}
-              aria-label={`Mostrar ${label} na barra`}
-              checked={draft.agents.visible[key]}
-              onCheckedChange={(visible) =>
-                onChange({
-                  ...draft,
-                  agents: {
-                    ...draft.agents,
-                    visible: { ...draft.agents.visible, [key]: visible }
-                  }
-                })
+      <ToggleGroup
+        multiple
+        disabled={disabled}
+        aria-labelledby={id}
+        aria-describedby={`${id}-description`}
+        variant="outline"
+        className="flex-wrap"
+        value={agents
+          .filter(({ key }) => draft.agents.visible[key])
+          .map(({ key }) => key)}
+        onValueChange={(values) =>
+          onChange({
+            ...draft,
+            agents: {
+              ...draft.agents,
+              visible: {
+                ...draft.agents.visible,
+                ...Object.fromEntries(
+                  agents.map(({ key }) => [key, values.includes(key)])
+                )
               }
-            />
-          </Field>
+            }
+          })
+        }
+      >
+        {agents.map(({ key, label }) => (
+          <ToggleGroupItem
+            key={key}
+            value={key}
+            aria-label={`Mostrar ${label} na barra`}
+          >
+            {label}
+          </ToggleGroupItem>
         ))}
-      </FieldGroup>
+      </ToggleGroup>
     </FieldSet>
   )
 }
