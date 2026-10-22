@@ -1,6 +1,16 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { it, expect } from 'vitest'
+import { it, expect, vi, beforeEach } from 'vitest'
 import App from '../app/App'
+
+beforeEach(() => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+    }
+  )
+})
 
 it('renders the demo shell and applies visual preferences', () => {
   render(<App />)

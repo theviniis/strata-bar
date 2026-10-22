@@ -54,7 +54,8 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root {
+:root,
+.light {
   /* Light Mode */
   --background: oklch(1 0 0);
   --foreground: oklch(0.285 0.024 282.8);

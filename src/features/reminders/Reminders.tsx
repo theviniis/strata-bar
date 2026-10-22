@@ -12,15 +12,17 @@ import { nextReminder } from '@/services/system/reminders'
 import { useReminders } from '@/stores/reminders'
 import { useWidgetView } from '@/components/status-bar/widget-view'
 import { showLabel } from '@/components/status-bar/presentation'
+import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
 
 import { useReminderAnchor } from './useReminderAnchor'
 import { formatCountdown } from './presentation'
 
 export function Reminders() {
+  const preview = useWidgetPreview()
   const view = useWidgetView()
   const anchor = useReminderAnchor()
-  const snapshot = useReminders((s) => s.snapshot)
-  const error = useReminders((s) => s.error)
+  const snapshot = useReminders((s) => (preview ? null : s.snapshot))
+  const error = useReminders((s) => (preview ? null : s.error))
   const [now, setNow] = useState(Date.now)
   const active =
     snapshot?.reminders.some((r) => r.status === 'scheduled') ?? false

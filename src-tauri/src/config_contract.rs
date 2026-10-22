@@ -122,13 +122,14 @@ impl Default for BarPosition {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum BarTheme {
+    System,
     Dark,
     Light,
 }
 
 impl Default for BarTheme {
     fn default() -> Self {
-        Self::Dark
+        Self::System
     }
 }
 

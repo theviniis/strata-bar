@@ -22,7 +22,7 @@ import {
   Bot,
   type LucideIcon
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { create } from 'zustand'
 import { DiskBar } from '../../features/disk/Disk'
 import { localVolumes } from '../../features/disk/presentation'
@@ -33,6 +33,7 @@ import type {
 } from '../../services/configuration/config'
 import {
   bridge,
+  demoChannelData,
   connect,
   type Channel,
   type DemoBridge,
@@ -115,9 +116,29 @@ function Clock({ format }: { format: WidgetConfig['format'] }) {
  * payloads. The native bar renders the real feature widgets instead (`Widget`),
  * so a preview-only path never leaks into the Windows runtime.
  */
-export function DemoWidget({ widget }: { widget: WidgetConfig }) {
-  const sample = useMetrics((s) => s[widget.id])
+export function DemoWidget({
+  widget,
+  staticPreview = false
+}: {
+  widget: WidgetConfig
+  staticPreview?: boolean
+}) {
+  const liveSample = useMetrics((s) => s[widget.id])
+  const staticValues = useMemo(
+    () => (staticPreview ? demoChannelData() : null),
+    [staticPreview]
+  )
+  const previewType = widget.type
+  const sample: PreviewSnapshot | undefined = staticPreview
+    ? previewType === 'clock' ||
+      previewType === 'music' ||
+      previewType === 'agents' ||
+      previewType === 'reminders'
+      ? undefined
+      : { status: 'ready', data: staticValues![previewType] }
+    : liveSample
   useEffect(() => {
+    if (staticPreview) return
     const type = widget.type
     if (
       type === 'clock' ||
@@ -136,7 +157,28 @@ export function DemoWidget({ widget }: { widget: WidgetConfig }) {
           [widget.id]: { status: 'error', data: null, error: String(error) }
         })
     )
-  }, [widget.id, widget.type, widget.intervalMs])
+  }, [widget.id, widget.type, widget.intervalMs, staticPreview])
+  if (
+    staticPreview &&
+    (previewType === 'clock' ||
+      previewType === 'music' ||
+      previewType === 'agents' ||
+      previewType === 'reminders')
+  ) {
+    const Icon = meta[previewType].icon
+    return (
+      <span className="flex items-center gap-1.5 px-1">
+        <Icon size={14} />
+        {previewType === 'clock'
+          ? '09:41'
+          : previewType === 'music'
+            ? staticValues!.media.title
+            : widget.format === 'label'
+              ? meta[previewType].label
+              : null}
+      </span>
+    )
+  }
   if (widget.type === 'music') return <DemoMusic />
   if (widget.type === 'reminders') return <Reminders />
   if (widget.type === 'agents') return <Agents />

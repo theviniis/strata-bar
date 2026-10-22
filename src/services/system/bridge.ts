@@ -182,9 +182,8 @@ export interface NativeBridge extends AdapterBase, Subscribable<ChannelData> {
 
 export type Bridge = DemoBridge | NativeBridge
 
-export function createMockBridge(): DemoBridge {
-  const mediaListeners = new Set<(event: SystemEvent<MediaData>) => void>()
-  const values: DemoChannelData = {
+export function demoChannelData(): DemoChannelData {
+  return {
     media: demoMedia(),
     cpu: 17,
     memory: 46,
@@ -253,6 +252,11 @@ export function createMockBridge(): DemoBridge {
       ]
     }
   }
+}
+
+export function createMockBridge(): DemoBridge {
+  const mediaListeners = new Set<(event: SystemEvent<MediaData>) => void>()
+  const values = demoChannelData()
   return {
     mode: 'demo',
     async subscribe<C extends Channel>(

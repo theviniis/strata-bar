@@ -18,7 +18,7 @@ fn show_error(message: &str) {
 }
 
 pub fn setup(app: &tauri::AppHandle) -> tauri::Result<()> {
-    let settings = MenuItem::with_id(app, "tray-settings", "Configurações", false, None::<&str>)?;
+    let settings = MenuItem::with_id(app, "tray-settings", "Configurações", true, None::<&str>)?;
     let startup = app.autolaunch().is_enabled();
     let startup_available = !cfg!(debug_assertions) && startup.is_ok();
     if !cfg!(debug_assertions) {
@@ -87,6 +87,12 @@ pub fn setup(app: &tauri::AppHandle) -> tauri::Result<()> {
                 }
             }
             "tray-restart" => app.request_restart(),
+            "tray-settings" => {
+                // One settings window: a second click focuses the open one.
+                if let Err(error) = crate::desktop::open_settings(app) {
+                    show_error(&format!("Não foi possível abrir as configurações: {error}"));
+                }
+            }
             "tray-quit" => crate::quit(app.clone()),
             _ => {}
         })

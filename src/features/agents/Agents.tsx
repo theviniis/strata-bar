@@ -11,18 +11,26 @@ import { WidgetPopup } from '@/popups/WidgetPopup'
 import { getAgentsStore } from '@/stores/agents'
 import { useConfig } from '@/stores/config'
 import { useWidgetView } from '@/components/status-bar/widget-view'
+import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
 
 export function Agents() {
+  const preview = useWidgetPreview()
   const view = useWidgetView()
   const [useStore] = useState(getAgentsStore)
   const visible = useConfig((state) => state.config.agents.visible)
-  const count = useStore(
-    (state) =>
-      state.snapshot?.alerts.items.filter((alert) => visible[alert.agent])
-        .length ?? 0
+  const count = useStore((state) =>
+    !preview
+      ? (state.snapshot?.alerts.items.filter((alert) => visible[alert.agent])
+          .length ?? 0)
+      : 0
   )
-  const paused = useStore((state) => state.snapshot?.alerts.paused ?? false)
-  useEffect(() => useStore.getState().connect(), [useStore])
+  const paused = useStore(
+    (state) => !preview && (state.snapshot?.alerts.paused ?? false)
+  )
+  useEffect(
+    () => (preview ? undefined : useStore.getState().connect()),
+    [useStore, preview]
+  )
   const text = paused
     ? 'Agentes de IA · novos alertas pausados'
     : count > 0

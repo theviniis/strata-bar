@@ -1,5 +1,7 @@
-import { useMemo } from 'react'
-import type { WidgetConfig } from '@/services/configuration/config'
+import { useResolvedTheme } from '@/hooks/useResolvedTheme'
+import { useMemo, type ReactNode } from 'react'
+import type { Config, WidgetConfig } from '@/services/configuration/config'
+import { cn } from '@/lib/utils'
 import { useConfig } from '@/stores/config'
 import { BarVerticalSeparator } from '../ui/bar-vertical-separator'
 import { QueryProvider } from '../QueryProvider'
@@ -48,6 +50,26 @@ export default function NativeBar() {
   // per channel, so the order in the config array determines priority.
   useAudioRouting([widgets.left, widgets.center, widgets.right])
 
+  return <NativeBarSurface widgets={widgets} bar={bar} error={error} />
+}
+
+/** Shared geometry and styling for the real AppBar and its inert studio previews. */
+export function NativeBarSurface({
+  widgets,
+  bar,
+  error = null,
+  renderWidget,
+  preview = false,
+  ariaLabel = 'Barra de status Strata'
+}: {
+  widgets: Config['widgets']
+  bar: Config['bar']
+  error?: string | null
+  renderWidget?: (widget: WidgetConfig) => ReactNode
+  preview?: boolean
+  ariaLabel?: string
+}) {
+  const theme = useResolvedTheme(bar.theme)
   const sections = useMemo(
     () =>
       [
@@ -65,10 +87,13 @@ export default function NativeBar() {
           utility below — including the nav's own colours — matches a descendant. On a single
           element the variant cannot select itself, which left the light theme unpainted.
         */}
-        <div data-theme={bar.theme} className="group h-full w-full">
+        <div data-theme={theme} className={cn('group h-full w-full', theme)}>
           <nav
-            className="native-bar relative grid h-full w-full grid-cols-[1fr_max-content_1fr] items-center border-b border-[#ffffff12] px-3.5 font-['Segoe_UI',sans-serif] text-[11px] leading-[normal] text-[#e4e5ed] tabular-nums select-none group-data-[theme=light]:bg-[#f8f5f2] group-data-[theme=light]:text-[#302a3e]"
-            aria-label="Barra de status Strata"
+            className={cn(
+              !preview && 'native-bar',
+              "relative grid h-full w-full grid-cols-[1fr_max-content_1fr] items-center border-b border-[#ffffff12] bg-background px-3.5 font-['Segoe_UI',sans-serif] text-[11px] leading-[normal] text-[#e4e5ed] tabular-nums select-none group-data-[theme=light]:bg-[#f8f5f2] group-data-[theme=light]:text-[#302a3e]"
+            )}
+            aria-label={ariaLabel}
             style={{ gap: bar.spacing }}
           >
             {sections.map(([name, widgets]) => (
@@ -91,7 +116,11 @@ export default function NativeBar() {
                     style={{ gap: bar.spacing }}
                   >
                     {index > 0 && <BarVerticalSeparator />}
-                    <Widget widget={widget} />
+                    {renderWidget ? (
+                      renderWidget(widget)
+                    ) : (
+                      <Widget widget={widget} />
+                    )}
                   </div>
                 ))}
                 {name === 'right' && error && <ConfigWarning message={error} />}

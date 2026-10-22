@@ -13,3 +13,4 @@ export const PopupCheckView = lazy(() =>
     default: module.PopupCheckBar
   }))
 )
+export const SettingsView = lazy(() => import('./settings/SettingsView'))

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
+import { widgetPreviewEvent } from '@/services/system/widget-preview'
 import {
   bridge,
   connect,
@@ -22,21 +24,20 @@ export function useSystemChannel<C extends Channel>(
   revision = 0,
   intervalMs = 2000
 ) {
+  const preview = useWidgetPreview()
   const [value, setValue] = useState<SystemEvent<ChannelData[C]>>({
     status: 'loading',
     data: null
   })
-  useEffect(
-    () =>
-      connect<ChannelData, C>(
-        native,
-        channel,
-        { intervalMs },
-        setValue,
-        (error) =>
-          setValue({ status: 'error', data: null, error: String(error) })
-      ),
-    [channel, revision, intervalMs]
-  )
-  return value
+  useEffect(() => {
+    if (preview) return
+    return connect<ChannelData, C>(
+      native,
+      channel,
+      { intervalMs },
+      setValue,
+      (error) => setValue({ status: 'error', data: null, error: String(error) })
+    )
+  }, [channel, revision, intervalMs, preview])
+  return preview ? widgetPreviewEvent(channel) : value
 }

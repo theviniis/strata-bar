@@ -1,0 +1,6 @@
+{
+  "identifier": "settings",
+  "description": "Allow the settings window to close itself",
+  "windows": ["settings"],
+  "permissions": ["core:window:allow-close"]
+}

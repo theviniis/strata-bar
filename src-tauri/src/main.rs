@@ -190,12 +190,16 @@ fn config_save(
     ))
 }
 #[tauri::command]
+fn settings_open(app: tauri::AppHandle) -> Result<(), String> {
+    desktop::open_settings(&app).map(|_| ())
+}
+#[tauri::command]
 fn diagnostics(
     app: tauri::AppHandle,
     metrics: tauri::State<metrics::Metrics>,
     komorebi: tauri::State<komorebi::Komorebi>,
 ) -> Value {
-    json!({"metrics":metrics.diagnostics(),"komorebi":komorebi.diagnostics(),"overlay":desktop::overlay_snapshot(),"profile":desktop::profile(),"config":config::diagnostics(&app),"bars":app.webview_windows().keys().collect::<Vec<_>>()})
+    json!({"metrics":metrics.diagnostics(),"komorebi":komorebi.diagnostics(),"overlay":desktop::overlay_snapshot(),"settings":desktop::settings_snapshot(),"profile":desktop::profile(),"config":config::diagnostics(&app),"bars":app.webview_windows().keys().collect::<Vec<_>>()})
 }
 #[tauri::command]
 async fn media_action(
@@ -347,7 +351,7 @@ fn main() {
     }
     if std::env::args().any(|v| v == "--probe") {
         let probe_context = tauri::generate_context!();
-        let result = json!({"metrics":metrics::probe(),"komorebi":komorebi::probe(),"overlay":desktop::overlay_snapshot(),"monitors":desktop::monitor_snapshot(),"bars":desktop::bar_snapshot(),"config":config::probe(&probe_context)});
+        let result = json!({"metrics":metrics::probe(),"komorebi":komorebi::probe(),"overlay":desktop::overlay_snapshot(),"settings":desktop::settings_snapshot(),"monitors":desktop::monitor_snapshot(),"bars":desktop::bar_snapshot(),"config":config::probe(&probe_context)});
         let file = std::env::temp_dir().join("strata-native-probe.json");
         std::fs::write(&file, serde_json::to_string_pretty(&result).unwrap()).unwrap();
         println!("{}", serde_json::to_string(&result).unwrap());
@@ -406,6 +410,7 @@ fn main() {
             komorebi_action,
             config_load,
             config_save,
+            settings_open,
             overlay_show,
             overlay_hide,
             overlay_resize,

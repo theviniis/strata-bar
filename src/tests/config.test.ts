@@ -12,6 +12,18 @@ describe('configuration', () => {
     localStorage.clear()
     useConfig.setState({ config: defaultConfig, error: null })
   })
+  it('uses the system theme by default and preserves explicit choices', () => {
+    expect(defaultConfig.bar.theme).toBe('system')
+    for (const theme of ['system', 'dark', 'light']) {
+      expect(
+        parseConfig(JSON.stringify({ ...defaultConfig, bar: { theme } })).bar
+          .theme
+      ).toBe(theme)
+    }
+    expect(
+      parseConfig(JSON.stringify({ ...defaultConfig, bar: {} })).bar.theme
+    ).toBe('system')
+  })
   it('normalizes defaults', () =>
     expect(parseConfig(JSON.stringify(defaultConfig)).bar.height).toBe(36))
   it('accepts the document the native store writes unchanged', () => {

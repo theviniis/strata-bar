@@ -57,6 +57,8 @@ const widget = z.object({
   audio: audio.optional()
 })
 
+export { widget as widgetSchema }
+
 /** Audio settings of the first widget of a type in the layout. */
 export function widgetAudio(config: Config, type: WidgetType) {
   return [
@@ -79,7 +81,7 @@ const bar = z.object({
   position: z.enum(['top', 'bottom']).default('top'),
   height: z.number().int().min(28).max(80).default(36),
   spacing: z.number().min(0).max(32).default(8),
-  theme: z.enum(['dark', 'light']).default('dark'),
+  theme: z.enum(['system', 'dark', 'light']).default('system'),
   alwaysOnTop: z.boolean().default(true)
 })
 

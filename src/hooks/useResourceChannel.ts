@@ -1,4 +1,9 @@
 import { useEffect, useState } from 'react'
+import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
+import {
+  PREVIEW_TIME,
+  widgetPreviewEvent
+} from '@/services/system/widget-preview'
 import {
   bridge,
   connect,
@@ -12,6 +17,7 @@ export function useResourceChannel<C extends 'cpu' | 'gpu' | 'memory' | 'disk'>(
   channel: C,
   intervalMs = 2000
 ) {
+  const preview = useWidgetPreview()
   const [reading, setReading] = useState<{
     channel: C
     event: SystemEvent<ChannelData[C]>
@@ -19,6 +25,7 @@ export function useResourceChannel<C extends 'cpu' | 'gpu' | 'memory' | 'disk'>(
   }>({ channel, event: { status: 'loading' } })
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
+    if (preview) return
     return connect<ChannelData, C>(
       bridge as NativeBridge,
       channel,
@@ -42,11 +49,18 @@ export function useResourceChannel<C extends 'cpu' | 'gpu' | 'memory' | 'disk'>(
           event: { status: 'error', error: String(error) }
         }))
     )
-  }, [channel, intervalMs])
+  }, [channel, intervalMs, preview])
   useEffect(() => {
+    if (preview) return
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)
-  }, [])
+  }, [preview])
+  if (preview)
+    return {
+      event: widgetPreviewEvent(channel),
+      lastData: undefined,
+      now: PREVIEW_TIME
+    }
   return {
     ...(reading.channel === channel
       ? reading
