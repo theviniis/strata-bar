@@ -1,5 +1,4 @@
 import { Checkbox } from '@/components/ui/checkbox'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Field,
   FieldDescription,
@@ -32,10 +31,13 @@ interface BarSettingsProps {
   onChange(next: ConfigDraft): void
 }
 
-/** Presentation settings; Windows geometry remains read-only until issue #3. */
+/** Presentation and native AppBar settings, applied together through config_save. */
 export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
   const themeId = useId()
   const spacingId = useId()
+  const heightId = useId()
+  const positionId = useId()
+  const topmostId = useId()
   return (
     <FieldGroup>
       <Field data-disabled={disabled}>
@@ -103,19 +105,65 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
           }
         />
       </Field>
-      <Alert role="note">
-        <AlertTitle>Geometria do Windows (somente leitura)</AlertTitle>
-        <AlertDescription>
-          <p>
-            Altura {draft.bar.height}px · posição{' '}
-            {draft.bar.position === 'top' ? 'superior' : 'inferior'} · sempre no
-            topo {draft.bar.alwaysOnTop ? 'sim' : 'não'}
-          </p>
-          <p>
-            A geometria é hospedada nativamente; editá-la chega com a issue #3.
-          </p>
-        </AlertDescription>
-      </Alert>
+      <Field data-disabled={disabled}>
+        <FieldLabel htmlFor={heightId}>
+          Altura da barra ({draft.bar.height}px)
+        </FieldLabel>
+        <Slider
+          disabled={disabled}
+          id={heightId}
+          aria-label="Altura da barra"
+          min={28}
+          max={80}
+          step={1}
+          value={[draft.bar.height]}
+          onValueChange={([height]) =>
+            onChange({ ...draft, bar: { ...draft.bar, height } })
+          }
+        />
+      </Field>
+      <Field data-disabled={disabled}>
+        <FieldTitle id={positionId}>Posição da barra</FieldTitle>
+        <ToggleGroup
+          disabled={disabled}
+          aria-labelledby={positionId}
+          variant="outline"
+          value={[draft.bar.position]}
+          onValueChange={(values) => {
+            const position = values[0]
+            if (position === 'top' || position === 'bottom') {
+              onChange({ ...draft, bar: { ...draft.bar, position } })
+            }
+          }}
+        >
+          <ToggleGroupItem value="top">Superior</ToggleGroupItem>
+          <ToggleGroupItem value="bottom">Inferior</ToggleGroupItem>
+        </ToggleGroup>
+        <FieldDescription>
+          Ao aplicar, o Windows atualiza a área reservada para a barra.{' '}
+          <a
+            href="https://github.com/theviniis/strata-bar/issues/3"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Detalhes da geometria
+          </a>
+        </FieldDescription>
+      </Field>
+      <Field orientation="horizontal" data-disabled={disabled}>
+        <Checkbox
+          id={topmostId}
+          disabled={disabled}
+          checked={draft.bar.alwaysOnTop}
+          onCheckedChange={(checked) =>
+            onChange({
+              ...draft,
+              bar: { ...draft.bar, alwaysOnTop: checked === true }
+            })
+          }
+        />
+        <FieldLabel htmlFor={topmostId}>Sempre no topo</FieldLabel>
+      </Field>
       <AgentVisibility draft={draft} onChange={onChange} disabled={disabled} />
     </FieldGroup>
   )

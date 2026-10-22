@@ -283,3 +283,132 @@ pub fn start(app: AppHandle) {
         app.exit(if report["passed"] == true { 0 } else { 1 });
     });
 }
+
+/// Exercises the settings Apply path and live AppBar negotiation using an isolated config.
+pub fn start_geometry(app: AppHandle) {
+    std::thread::spawn(move || {
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| -> Value {
+            let monitors = crate::monitors::list().unwrap();
+            assert!(
+                monitors.len() >= 2,
+                "Geometry acceptance requires two monitors"
+            );
+            main_thread(&app, |app| crate::desktop::open_settings(&app).unwrap());
+            ready(&app, "[...document.querySelectorAll('button')].some(b=>b.textContent==='Aplicar' && !b.disabled)");
+            let labels = main_thread(&app, |app| {
+                let mut labels: Vec<_> = app
+                    .webview_windows()
+                    .keys()
+                    .filter(|l| l.starts_with("bar-"))
+                    .cloned()
+                    .collect();
+                labels.sort();
+                labels
+            });
+            script(&app, "[...document.querySelectorAll('button')].find(b=>b.textContent==='Aparência').click()");
+            ready(
+                &app,
+                "document.querySelector('[role=slider][aria-label=\"Altura da barra\"]')",
+            );
+            let mut phases = Vec::new();
+            for (height, position, spacing, topmost, key) in [
+                (80, "bottom", 32, false, "End"),
+                (28, "top", 0, true, "Home"),
+            ] {
+                phase(position);
+                script(&app, &format!("document.querySelector('[role=slider][aria-label=\"Altura da barra\"]').dispatchEvent(new KeyboardEvent('keydown',{{key:'{key}',bubbles:true}}));"));
+                script(&app, &format!("document.querySelector('[role=slider][aria-label=\"Espaçamento entre widgets\"]').dispatchEvent(new KeyboardEvent('keydown',{{key:'{key}',bubbles:true}}));"));
+                let label = if position == "top" {
+                    "Superior"
+                } else {
+                    "Inferior"
+                };
+                script(&app, &format!("[...document.querySelectorAll('button')].find(b=>b.textContent==='{label}').click();"));
+                script(&app, "[...document.querySelectorAll('label')].find(l=>l.textContent==='Sempre no topo').click()");
+                // An unapplied draft must not alter native config.
+                assert_ne!(
+                    app.state::<crate::config::ConfigStore>()
+                        .snapshot()
+                        .unwrap()
+                        .config
+                        .bar
+                        .height,
+                    height
+                );
+                script(&app, "[...document.querySelectorAll('button')].find(b=>b.textContent==='Aplicar').click()");
+                wait(&app, |app| {
+                    let bar = app
+                        .state::<crate::config::ConfigStore>()
+                        .snapshot()
+                        .unwrap()
+                        .config
+                        .bar;
+                    bar.height == height
+                        && bar.spacing == spacing as f64
+                        && bar.always_on_top == topmost
+                });
+                // Measure rendered content as well as the direct Win32 rectangle.
+                wait(&app, |app| {
+                    main_thread(app, move |app| {
+                        let mut complete = true;
+                        for (name, window) in app.webview_windows() {
+                            if !name.starts_with("bar-") {
+                                continue;
+                            }
+                            window.eval(&format!("if(document.querySelector('nav') && getComputedStyle(document.querySelector('nav')).gap==='{spacing}px') location.hash='geometry-{height}';")).unwrap();
+                            complete &= window.url().unwrap().fragment()
+                                == Some(format!("geometry-{height}").as_str());
+                        }
+                        complete
+                    })
+                });
+                // The same HWND owners survive every edit (no content/subscription remount).
+                let unchanged = main_thread(&app, |app| {
+                    let mut labels: Vec<_> = app
+                        .webview_windows()
+                        .keys()
+                        .filter(|l| l.starts_with("bar-"))
+                        .cloned()
+                        .collect();
+                    labels.sort();
+                    labels
+                });
+                assert_eq!(labels, unchanged);
+                use std::os::windows::process::CommandExt;
+                let output = std::process::Command::new("powershell")
+                    .args([
+                        "-NoProfile",
+                        "-File",
+                        "scripts/test-live-geometry.ps1",
+                        "-Executable",
+                    ])
+                    .arg(std::env::current_exe().unwrap())
+                    .args([
+                        "-Height",
+                        &height.to_string(),
+                        "-Position",
+                        position,
+                        "-Topmost",
+                        if topmost { "true" } else { "false" },
+                    ])
+                    .creation_flags(0x08000000)
+                    .output()
+                    .unwrap();
+                assert!(
+                    output.status.success(),
+                    "Live geometry script: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
+                phases.push(json!({"height":height,"position":position,"spacing":spacing,"alwaysOnTop":topmost,"bars":main_thread(&app, |_| crate::desktop::bar_snapshot()),"monitors":main_thread(&app, |_| crate::desktop::monitor_snapshot()),"scriptPassed":true,"renderedSpacing":true,"sameWindows":true}));
+            }
+            json!({"passed":true,"phases":phases,"settingsApply":true,"monitors":monitors})
+        }));
+        let report = result.unwrap_or_else(|error| json!({"passed":false,"phase":PHASE.lock().unwrap().clone(),"error":error.downcast_ref::<String>().cloned().or_else(|| error.downcast_ref::<&str>().map(|s|s.to_string())).unwrap_or_default()}));
+        std::fs::write(
+            std::env::temp_dir().join("strata-bar-geometry-check.json"),
+            serde_json::to_string_pretty(&report).unwrap(),
+        )
+        .unwrap();
+        app.exit(if report["passed"] == true { 0 } else { 1 });
+    });
+}

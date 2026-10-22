@@ -1,0 +1,22 @@
+[
+  {
+    "title": "Strata · \\\\.\\DISPLAY1",
+    "monitor": [0, 0, 3440, 1440],
+    "actualWindow": [0, 1360, 3440, 1440],
+    "workArea": [0, 0, 3440, 1360],
+    "komorebiEligible": false,
+    "toolWindow": true,
+    "topmost": false,
+    "passed": true
+  },
+  {
+    "title": "Strata · \\\\.\\DISPLAY2",
+    "monitor": [724, -1080, 2644, 0],
+    "actualWindow": [724, -80, 2644, 0],
+    "workArea": [724, -1080, 2644, -80],
+    "komorebiEligible": false,
+    "toolWindow": true,
+    "topmost": false,
+    "passed": true
+  }
+]

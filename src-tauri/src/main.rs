@@ -435,7 +435,7 @@ fn main() {
         .setup(|app| {
             tray::setup(app.handle())?;
             #[cfg(debug_assertions)]
-            let monitor_check = std::env::args().any(|arg| arg == "--check-monitor-manager");
+            let monitor_check = std::env::args().any(|arg| arg == "--check-monitor-manager" || arg == "--check-bar-geometry");
             #[cfg(not(debug_assertions))]
             let monitor_check = false;
             let store = if monitor_check {
@@ -461,7 +461,11 @@ fn main() {
             desktop::reconcile(app.handle())?;
             #[cfg(debug_assertions)]
             if monitor_check {
-                monitor_check::start(app.handle().clone());
+                if std::env::args().any(|arg| arg == "--check-bar-geometry") {
+                    monitor_check::start_geometry(app.handle().clone());
+                } else {
+                    monitor_check::start(app.handle().clone());
+                }
             }
             // One warm surface for every tooltip and, later, widget popup.
             desktop::ensure_overlay(app.handle())?;

@@ -157,3 +157,34 @@ the test baseline. Spec #5 remains the parent. Its original tiler-managed
 settings-window wording is superseded by the 2026-10-22 decision above.
 The existing editor also exposes per-monitor hosting and layouts, overlapping
 the still-open follow-up #4; closing that broader follow-up is outside #12.
+
+## Native geometry follow-up (issue #3)
+
+`reconcile` now applies each monitor's projected height, position and topmost
+policy to its existing AppBar on the owner thread. Height is converted from CSS
+pixels using the monitor scale; edge changes negotiate through
+`ABM_QUERYPOS` / `ABM_SETPOS` and placement still reads `GetWindowRect`.
+Spacing retains its existing meaning: the rendered gap between widgets.
+The settings Appearance panel edits these fields through draft / Apply.
+
+Run the isolated native acceptance scenario with a debug build:
+
+```sh
+pnpm exec tauri build --debug --no-bundle
+src-tauri/target/debug/strata-bar.exe --check-bar-geometry
+```
+
+The scenario uses a temporary configuration, edits the actual settings controls,
+and runs `scripts/test-live-geometry.ps1` for both top and bottom placement. The
+script accepts `-Height`, `-Position` and `-Topmost` expectations and writes new,
+timestamped evidence files instead of overwriting historical measurements.
+
+The [2026-10-22 acceptance record](../evidence/config-native-geometry-2026-10-22.json)
+passed on two physical monitors: DISPLAY1 3440×1440 at (0, 0), DISPLAY2
+1920×1080 at (724, −1080), both at 100% scale. Apply changed both bars to bottom /
+80 px / spacing 32 / topmost false, then top / 28 px / spacing 0 / topmost true.
+Direct native rectangles and desktop work areas matched both configurations;
+rendered spacing and stable bar window identities passed. After normal exit,
+there were no remaining bars and both desktop work areas matched their baseline,
+confirming reservation cleanup. Scaled placement and per-monitor projection are
+covered by Rust tests; mixed-DPI hardware was not exercised in this run.

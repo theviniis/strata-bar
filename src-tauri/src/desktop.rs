@@ -13,7 +13,7 @@ use windows::{
     Win32::{
         Foundation::*,
         Graphics::Gdi::*,
-        UI::{Shell::*, WindowsAndMessaging::*},
+        UI::{HiDpi::GetDpiForWindow, Shell::*, WindowsAndMessaging::*},
     },
 };
 const CALLBACK: u32 = WM_APP + 42;
@@ -64,10 +64,48 @@ static OVERLAY_OWNER: Mutex<Option<String>> = Mutex::new(None);
 static OVERLAY_PLACING: AtomicBool = AtomicBool::new(false);
 static OVERLAY_SESSION: AtomicU64 = AtomicU64::new(0);
 
+/// Physical AppBar policy, built from the validated per-monitor projection.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct BarGeometry {
+    height: i32,
+    bottom: bool,
+    always_on_top: bool,
+}
+impl BarGeometry {
+    fn from_config(bar: &crate::config_contract::BarConfig, scale: f64) -> Self {
+        Self {
+            height: (bar.height as f64 * scale).round() as i32,
+            bottom: bar.position == crate::config_contract::BarPosition::Bottom,
+            always_on_top: bar.always_on_top,
+        }
+    }
+    fn edge(self) -> u32 {
+        if self.bottom {
+            ABE_BOTTOM
+        } else {
+            ABE_TOP
+        }
+    }
+    fn topmost(self) -> bool {
+        self.always_on_top && !FULLSCREEN_APP.load(Ordering::Relaxed)
+    }
+    fn strip(self, monitor: RECT) -> RECT {
+        let height = self.height.clamp(1, (monitor.bottom - monitor.top).max(1));
+        if self.bottom {
+            RECT {
+                top: monitor.bottom - height,
+                ..monitor
+            }
+        } else {
+            top_strip(monitor, height)
+        }
+    }
+}
+
 struct Reservation {
     app: AppHandle,
     rect: RECT,
-    height: i32,
+    geometry: Cell<BarGeometry>,
     busy: Cell<bool>,
     applied: Cell<Option<[i32; 4]>>,
     taskbar_message: u32,
@@ -110,9 +148,16 @@ fn komorebi_eligible(style: u32, ex: u32) -> bool {
 }
 
 unsafe fn enforce_floating_frame(hwnd: HWND) {
+    enforce_frame(hwnd, true);
+}
+
+unsafe fn enforce_frame(hwnd: HWND, topmost: bool) {
     let style = GetWindowLongPtrW(hwnd, GWL_STYLE) as u32;
     let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
-    let (want_style, want_ex) = floating_frame_style(style, ex);
+    let (want_style, mut want_ex) = floating_frame_style(style, ex);
+    if !topmost {
+        want_ex &= !WS_EX_TOPMOST.0;
+    }
     if want_style == style && want_ex == ex {
         return;
     }
@@ -125,7 +170,11 @@ unsafe fn enforce_floating_frame(hwnd: HWND) {
     // SWP_FRAMECHANGED recomputes the non-client area so the client fills the window.
     if let Err(e) = SetWindowPos(
         hwnd,
-        Some(HWND_TOPMOST),
+        Some(if topmost {
+            HWND_TOPMOST
+        } else {
+            HWND_NOTOPMOST
+        }),
         0,
         0,
         0,
@@ -137,15 +186,21 @@ unsafe fn enforce_floating_frame(hwnd: HWND) {
 }
 
 unsafe fn position(hwnd: HWND, state: &Reservation) {
-    // tao re-applies its own styles on visible/always-on-top changes; re-assert.
-    enforce_floating_frame(hwnd);
     if state.busy.replace(true) {
         return;
     }
+    let geometry = state.geometry.get();
+    // tao re-applies its own frame and stacking styles on visibility changes.
+    enforce_frame(hwnd, geometry.topmost());
     let mut d = data(hwnd);
-    d.rc = top_strip(state.rect, state.height);
+    d.uEdge = geometry.edge();
+    d.rc = geometry.strip(state.rect);
     SHAppBarMessage(ABM_QUERYPOS, &mut d);
-    d.rc.bottom = d.rc.top + state.height;
+    if geometry.bottom {
+        d.rc.top = d.rc.bottom - geometry.height;
+    } else {
+        d.rc.bottom = d.rc.top + geometry.height;
+    }
     let proposed = [d.rc.left, d.rc.top, d.rc.right, d.rc.bottom];
     // ABM_SETPOS itself broadcasts ABN_POSCHANGED. Do not answer an echoed
     // notification by setting the same rectangle again (an asynchronous loop).
@@ -165,7 +220,11 @@ unsafe fn position(hwnd: HWND, state: &Reservation) {
     if !matches {
         if let Err(e) = SetWindowPos(
             hwnd,
-            Some(HWND_TOPMOST),
+            Some(if geometry.topmost() {
+                HWND_TOPMOST
+            } else {
+                HWND_NOTOPMOST
+            }),
             d.rc.left,
             d.rc.top,
             d.rc.right - d.rc.left,
@@ -211,7 +270,7 @@ unsafe extern "system" fn procedure(
         return LRESULT(0);
     }
     if msg == WM_STYLECHANGED {
-        enforce_floating_frame(hwnd);
+        enforce_frame(hwnd, state.geometry.get().topmost());
         return LRESULT(0);
     }
     if msg == WM_NCDESTROY {
@@ -233,7 +292,7 @@ unsafe extern "system" fn procedure(
                 retry_active_reminder(&state.app);
                 overlay_hide(&state.app);
             }
-            let top = if lp.0 != 0 {
+            let top = if !state.geometry.get().topmost() {
                 HWND_NOTOPMOST
             } else {
                 HWND_TOPMOST
@@ -320,10 +379,8 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             })
             .map(|monitor| monitor.id.as_str())
             .unwrap_or(device);
-        if !crate::config::project(&snapshot.config, Some(identity))
-            .bar
-            .enabled
-        {
+        let projected = crate::config::project(&snapshot.config, Some(identity));
+        if !projected.bar.enabled {
             continue;
         }
         let signature = format!("{identity}|{}", fingerprint(&m));
@@ -331,10 +388,11 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         signature.hash(&mut hash);
         let label = format!("bar-{:x}", hash.finish());
         desired.push(label.clone());
-        if app.get_webview_window(&label).is_some() {
+        let geometry = BarGeometry::from_config(&projected.bar, m.scale_factor());
+        if let Some(window) = app.get_webview_window(&label) {
+            configure_geometry(app, window, geometry)?;
             continue;
         }
-        let height = (36. * m.scale_factor()).round() as i32;
         let window = WebviewWindowBuilder::new(
             app,
             &label,
@@ -354,18 +412,21 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         .decorations(false)
         .resizable(false)
         .skip_taskbar(true)
-        .always_on_top(true)
+        .always_on_top(projected.bar.always_on_top)
         .shadow(false)
         .visible(false)
         .focused(false)
         .background_color(BAR_BACKGROUND)
-        .inner_size(m.size().width as f64 / m.scale_factor(), 36.)
+        .inner_size(
+            m.size().width as f64 / m.scale_factor(),
+            projected.bar.height as f64,
+        )
         .position(
             m.position().x as f64 / m.scale_factor(),
             m.position().y as f64 / m.scale_factor(),
         )
         .build()?;
-        activate_bar(app, window, m, height)?;
+        activate_bar(app, window, m, geometry)?;
     }
     for (label, w) in app.webview_windows() {
         if label.starts_with("bar-") && !desired.contains(&label) {
@@ -383,12 +444,43 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// Reservation state belongs to the HWND's thread; never mutate it from the worker.
+fn configure_geometry(
+    app: &AppHandle,
+    window: WebviewWindow,
+    geometry: BarGeometry,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let (tx, rx) = std::sync::mpsc::sync_channel(1);
+    app.run_on_main_thread(move || {
+        let result = (|| -> Result<(), String> {
+            let hwnd = HWND(window.hwnd().map_err(|e| e.to_string())?.0);
+            unsafe {
+                let mut reference = 0;
+                if !GetWindowSubclass(hwnd, Some(procedure), SUBCLASS, Some(&mut reference))
+                    .as_bool()
+                {
+                    return Err("AppBar reservation handler is missing".into());
+                }
+                let state = &*(reference as *const Reservation);
+                if state.geometry.replace(geometry) != geometry {
+                    state.applied.set(None);
+                    position(hwnd, state);
+                }
+            }
+            Ok(())
+        })();
+        let _ = tx.send(result);
+    })?;
+    rx.recv()??;
+    Ok(())
+}
+
 /// WebView creation is thread-safe, but Win32 subclass installation belongs to its owner.
 fn activate_bar(
     app: &AppHandle,
     window: WebviewWindow,
     m: tauri::Monitor,
-    height: i32,
+    geometry: BarGeometry,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let (tx, rx) = std::sync::mpsc::sync_channel(1);
     let job = app.clone();
@@ -408,7 +500,7 @@ fn activate_bar(
                         right: m.position().x + m.size().width as i32,
                         bottom: m.position().y + m.size().height as i32,
                     },
-                    height,
+                    geometry: Cell::new(geometry),
                     busy: Cell::new(false),
                     applied: Cell::new(None),
                     taskbar_message: RegisterWindowMessageW(w!("TaskbarCreated")),
@@ -431,7 +523,7 @@ fn activate_bar(
                 // tao clears its initial don't-focus marker before a hidden window is shown.
                 // Use the same show policy as the floating overlay, without WS_EX_NOACTIVATE.
                 let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
-                enforce_floating_frame(hwnd);
+                enforce_frame(hwnd, geometry.topmost());
             }
             // ShowWindow/DPI initialization must finish before the final placement.
             unsafe {
@@ -1564,7 +1656,7 @@ pub fn bar_snapshot() -> serde_json::Value {
                 let style = GetWindowLongPtrW(hwnd, GWL_STYLE) as u32;
                 let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
                 let values = &mut *(param.0 as *mut Vec<serde_json::Value>);
-                values.push(serde_json::json!({"title":title,"rect":[rect.left,rect.top,rect.right,rect.bottom],"client":[client.right,client.bottom],"visible":IsWindowVisible(hwnd).as_bool(),"toolWindow":ex & WS_EX_TOOLWINDOW.0 != 0,"topmost":ex & WS_EX_TOPMOST.0 != 0,"noActivate":ex & WS_EX_NOACTIVATE.0 != 0,"komorebiEligible":komorebi_eligible(style,ex)}));
+                values.push(serde_json::json!({"title":title,"dpi":GetDpiForWindow(hwnd),"rect":[rect.left,rect.top,rect.right,rect.bottom],"client":[client.right,client.bottom],"visible":IsWindowVisible(hwnd).as_bool(),"toolWindow":ex & WS_EX_TOOLWINDOW.0 != 0,"topmost":ex & WS_EX_TOPMOST.0 != 0,"noActivate":ex & WS_EX_NOACTIVATE.0 != 0,"komorebiEligible":komorebi_eligible(style,ex)}));
             }
         }
         true.into()
@@ -1677,6 +1769,49 @@ mod geometry_tests {
             overlay_position(bar, monitor, (400, 1060), -1900, OverlaySide::Bottom),
             (-1920, -180)
         );
+    }
+
+    #[test]
+    fn configured_geometry_uses_projected_height_edge_and_stacking() {
+        let mut config = crate::config::defaults();
+        config.monitors.insert(
+            "DISPLAY2".into(),
+            crate::config_contract::BarOverride {
+                height: Some(64),
+                position: Some(crate::config_contract::BarPosition::Bottom),
+                spacing: Some(32.0),
+                always_on_top: Some(false),
+                ..Default::default()
+            },
+        );
+        let projected = crate::config::project(&config, Some("DISPLAY2"));
+        assert_eq!(projected.bar.spacing, 32.0);
+        let geometry = BarGeometry::from_config(&projected.bar, 1.25);
+        let rect = geometry.strip(RECT {
+            left: -2560,
+            top: -1440,
+            right: 0,
+            bottom: 0,
+        });
+        assert_eq!(
+            [rect.left, rect.top, rect.right, rect.bottom],
+            [-2560, -80, 0, 0]
+        );
+        assert_eq!(geometry.edge(), ABE_BOTTOM);
+        assert!(!geometry.topmost());
+        config.bar.position = crate::config_contract::BarPosition::Top;
+        let geometry = BarGeometry::from_config(&config.bar, 1.5);
+        let rect = geometry.strip(RECT {
+            left: 724,
+            top: -1080,
+            right: 2644,
+            bottom: 0,
+        });
+        assert_eq!(
+            [rect.left, rect.top, rect.right, rect.bottom],
+            [724, -1080, 2644, -1026]
+        );
+        assert_eq!(geometry.edge(), ABE_TOP);
     }
 
     #[test]
