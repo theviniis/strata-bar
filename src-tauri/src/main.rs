@@ -159,6 +159,14 @@ fn overlay_hide(app: tauri::AppHandle, window: tauri::WebviewWindow, session: Op
     }
 }
 #[tauri::command]
+fn overlay_exit_complete(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    session: String,
+) -> Result<(), String> {
+    desktop::overlay_exit_complete(&app, &window, &session)
+}
+#[tauri::command]
 fn overlay_ready(window: tauri::WebviewWindow) -> Result<Value, String> {
     desktop::overlay_ready(&window)
 }
@@ -428,6 +436,7 @@ fn main() {
             overlay_hide,
             overlay_resize,
             overlay_ready,
+            overlay_exit_complete,
             diagnostics,
             quit
         ])

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { Agents } from '@/features/agents/Agents'
 import { AgentsController } from '@/features/agents/AgentsController'
@@ -142,7 +142,7 @@ it('uses supplied alert times and only dismisses displayed IDs', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Dispensar exibidos' }))
   expect(dismiss).toHaveBeenCalledWith(['alert_demo'])
 })
-it('keeps the agent tab controlled by props', () => {
+it('keeps the agent tab controlled by props', async () => {
   const snapshot = agentsFixture()
   const select = vi.fn()
   const props = {
@@ -163,7 +163,9 @@ it('keeps the agent tab controlled by props', () => {
     'true'
   )
   view.rerender(<AgentsPopup {...props} activeAgent="opencode" />)
-  expect(screen.getByText('Conteúdo OpenCode')).toBeVisible()
+  await waitFor(() => {
+    expect(screen.getByText('Conteúdo OpenCode')).toBeVisible()
+  })
 })
 it('connects once per active controller and disposes on unmount', () => {
   const view = render(<AgentsController />)

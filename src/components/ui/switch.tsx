@@ -1,7 +1,11 @@
-import * as React from 'react'
 import * as SwitchPrimitives from '@radix-ui/react-switch'
+import { motion } from 'motion/react' // ou 'framer-motion'
+import * as React from 'react'
 
 import { cn } from '@/lib/utils'
+
+// Criamos uma versão animada do Thumb do Radix
+const MotionThumb = motion.create(SwitchPrimitives.Thumb)
 
 const Switch = React.forwardRef<
   React.ElementRef<typeof SwitchPrimitives.Root>,
@@ -15,9 +19,20 @@ const Switch = React.forwardRef<
     {...props}
     ref={ref}
   >
-    <SwitchPrimitives.Thumb
+    <MotionThumb
+      // O Motion lê automaticamente o data-[state=checked] do Radix para alternar o estado animate
+      animate={{
+        x: props.checked || props.defaultChecked ? 16 : 0 // 16px é a distância equivalente ao translate-x-4
+      }}
+      // Se você estiver usando o switch de forma controlada/não controlada, o seletor de atributos do CSS/Motion também funciona perfeitamente:
+      initial={false}
+      transition={{
+        type: 'spring',
+        stiffness: 500, // Rigidez alta para um movimento rápido
+        damping: 12 // Amortecimento baixo para criar o efeito elástico (bounce)
+      }}
       className={cn(
-        'pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-4 data-[state=unchecked]:translate-x-0'
+        'pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0'
       )}
     />
   </SwitchPrimitives.Root>

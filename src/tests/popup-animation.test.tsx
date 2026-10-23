@@ -1,161 +1,215 @@
 import { act, render } from '@testing-library/react'
-import { afterEach, expect, it, vi } from 'vitest'
+import { useRef } from 'react'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+const motion = vi.hoisted(() => ({ animate: vi.fn() }))
+vi.mock('motion/react', () => ({
+  useAnimate: () => [useRef(null), motion.animate]
+}))
 import { PopupSurface } from '../popups/PopupSurface'
+import {
+  popupDockKeyframes,
+  popupOpenKeyframes,
+  POPUP_ENTER_MS
+} from '../popups/motion'
 import { overlay } from '../services/system/overlay'
 
-afterEach(() => vi.restoreAllMocks())
-
-it('animates the shared surface once and cancels on unmount', () => {
-  const cancel = vi.fn()
-  const pause = vi.fn()
-  const play = vi.fn()
-  const animate = vi.fn(() => ({ cancel, pause, play }) as unknown as Animation)
-  const frame = vi.spyOn(window, 'requestAnimationFrame')
-  frame.mockImplementation(() => 1)
+beforeEach(() => {
+  motion.animate.mockReset()
+  motion.animate.mockImplementation(() => ({
+    stop: vi.fn(),
+    complete: vi.fn(),
+    then: vi.fn()
+  }))
+  vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1)
   vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
-  const original = HTMLElement.prototype.animate
-  HTMLElement.prototype.animate = animate
-  try {
-    const { rerender, unmount } = render(
-      <PopupSurface mode="demo" label="Popup" close={() => {}}>
-        Content
-      </PopupSurface>
-    )
-    expect(pause).toHaveBeenCalledOnce()
-    expect(play).not.toHaveBeenCalled()
-    act(() => frame.mock.calls[0][0](0))
-    expect(play).not.toHaveBeenCalled()
-    act(() => frame.mock.calls[1][0](16))
-    expect(play).toHaveBeenCalledOnce()
-    expect(animate).toHaveBeenCalledWith(
-      [
-        {
-          opacity: 0,
-          transform: 'translateY(-12px) scale(0.12, 0.04)',
-          borderRadius: '32px',
-          filter: 'blur(3px)'
-        },
-        {
-          opacity: 1,
-          transform: 'translateY(0) scale(1)',
-          borderRadius: '12px',
-          filter: 'blur(0px)'
-        }
-      ],
-      { duration: 420, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
-    )
-    rerender(
-      <PopupSurface mode="demo" label="Popup" close={() => {}}>
-        Updated content
-      </PopupSurface>
-    )
-    expect(animate).toHaveBeenCalledTimes(1)
-    unmount()
-    expect(cancel).toHaveBeenCalledOnce()
-  } finally {
-    HTMLElement.prototype.animate = original
-  }
+})
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
-it('keeps the native animation paused until the first resize reveals the window', async () => {
-  let reveal!: (size: { arrowX: number }) => void
+it('prepares a hidden panel and opens only after two presentation frames', () => {
+  const { rerender, unmount } = render(
+    <PopupSurface mode="demo" label="Popup" close={() => {}}>
+      Content
+    </PopupSurface>
+  )
+  const frame = vi.mocked(window.requestAnimationFrame)
+  expect(motion.animate).toHaveBeenCalledTimes(1)
+  expect(motion.animate.mock.calls[0][1]).toMatchObject({ opacity: 0 })
+  act(() => frame.mock.calls[0][0](0))
+  expect(motion.animate).toHaveBeenCalledTimes(1)
+  act(() => frame.mock.calls[1][0](16))
+  expect(motion.animate.mock.calls[1][1]).toMatchObject({
+    opacity: [0, 1, 1, 1, 1],
+    scaleX: expect.arrayContaining([0.74, 0.96, 1]),
+    scaleY: expect.arrayContaining([0.74, 0.96, 1])
+  })
+  rerender(
+    <PopupSurface mode="demo" label="Popup" close={() => {}}>
+      Updated
+    </PopupSurface>
+  )
+  expect(motion.animate).toHaveBeenCalledTimes(2)
+  const controls = motion.animate.mock.results[1].value
+  unmount()
+  expect(controls.stop).toHaveBeenCalled()
+})
+
+it('waits for native placement before opening and uses the widget dimensions', async () => {
+  let reveal!: (size: {
+    arrowX: number
+    anchorSize: { width: number; height: number }
+  }) => void
   vi.spyOn(overlay, 'resize').mockReturnValue(
     new Promise((resolve) => {
       reveal = resolve
     })
   )
-  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
-    width: 320,
-    height: 200
-  } as DOMRect)
-  const pause = vi.fn()
-  const play = vi.fn()
-  const cancel = vi.fn()
-  const original = HTMLElement.prototype.animate
-  HTMLElement.prototype.animate = vi.fn(
-    () => ({ pause, play, cancel }) as unknown as Animation
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
+    new DOMRect(0, 0, 320, 200)
   )
-  const frame = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1)
-  try {
-    const { unmount } = render(
-      <PopupSurface
-        mode="native"
-        session="opening"
-        label="Popup"
-
-        close={() => {}}
-      >
-        Content
-      </PopupSurface>
-    )
-    expect(pause).toHaveBeenCalledOnce()
-    expect(frame).not.toHaveBeenCalled()
-    await act(async () => reveal({ arrowX: 160 }))
-    expect(play).not.toHaveBeenCalled()
-    act(() => frame.mock.calls[0][0](0))
-    act(() => frame.mock.calls[1][0](16))
-    expect(play).toHaveBeenCalledOnce()
-    unmount()
-    expect(cancel).toHaveBeenCalledOnce()
-  } finally {
-    HTMLElement.prototype.animate = original
+  const props = {
+    mode: 'native' as const,
+    session: 'opening',
+    label: 'Popup',
+    close: () => {}
   }
+  const { rerender, container } = render(
+    <PopupSurface {...props}>Content</PopupSurface>
+  )
+  expect(window.requestAnimationFrame).not.toHaveBeenCalled()
+  await act(async () =>
+    reveal({ arrowX: 280, anchorSize: { width: 80, height: 28 } })
+  )
+  expect(window.requestAnimationFrame).toHaveBeenCalledOnce()
+  rerender(
+    <PopupSurface {...props} closing>
+      Content
+    </PopupSurface>
+  )
+  expect(container.querySelector('[style*="transform-origin"]')).toHaveStyle({
+    transformOrigin: '280px 0%'
+  })
+  expect(motion.animate.mock.lastCall![1]).toMatchObject({
+    scaleX: [null, 0.42, 0.25, 0.215]
+  })
 })
 
-it('contracts toward the widget before unmount and disables interaction during exit', () => {
-  const original = HTMLElement.prototype.animate
-  const cancel = vi.fn()
-  const animate = vi.fn(
-    () => ({ pause: vi.fn(), play: vi.fn(), cancel }) as unknown as Animation
+it('keeps content inert during travel and reports docking only after completion', () => {
+  const onExited = vi.fn()
+  const { rerender, container, unmount } = render(
+    <PopupSurface
+      mode="demo"
+      label="Popup"
+      close={() => {}}
+      onExited={onExited}
+    >
+      Content
+    </PopupSurface>
   )
-  HTMLElement.prototype.animate = animate
-  vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1)
-  try {
-    const { rerender, container, unmount } = render(
-      <PopupSurface
-        mode="demo"
-        label="Popup"
+  rerender(
+    <PopupSurface
+      mode="demo"
+      closing
+      label="Popup"
+      close={() => {}}
+      onExited={onExited}
+    >
+      Content
+    </PopupSurface>
+  )
+  expect(container.textContent).toBe('Content')
+  expect(container.querySelector('[inert]')).not.toBeNull()
+  expect(onExited).not.toHaveBeenCalled()
+  const exit = motion.animate.mock.results.at(-1)!.value
+  const finish = exit.then.mock.calls[0][0]
+  act(() => finish())
+  expect(onExited).toHaveBeenCalledOnce()
+  unmount()
+  act(() => finish())
+  expect(onExited).toHaveBeenCalledOnce()
+})
 
-        arrowX={280}
-        close={() => {}}
-      >
-        Content
-      </PopupSurface>
-    )
-    rerender(
-      <PopupSurface
-        mode="demo"
-        closing
-        label="Popup"
+it('does not restart opening if closed before the presentation frames', () => {
+  const { rerender } = render(
+    <PopupSurface mode="demo" label="Popup" close={() => {}}>
+      Content
+    </PopupSurface>
+  )
+  const frame = vi.mocked(window.requestAnimationFrame)
+  act(() => frame.mock.calls[0][0](0))
+  rerender(
+    <PopupSurface mode="demo" closing label="Popup" close={() => {}}>
+      Content
+    </PopupSurface>
+  )
+  const calls = motion.animate.mock.calls.length
+  act(() => frame.mock.calls[1][0](16))
+  expect(motion.animate).toHaveBeenCalledTimes(calls)
+})
 
-        arrowX={280}
-        close={() => {}}
-      >
-        Content
-      </PopupSurface>
-    )
-    expect(container.textContent).toBe('Content')
-    expect(container.querySelector('[inert]')).not.toBeNull()
-    expect(container.querySelector('[style*="transform-origin"]')).toHaveStyle({
-      transformOrigin: '280px 0%'
-    })
-    expect(animate).toHaveBeenLastCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          opacity: 0,
-          transform: 'translateY(-12px) scale(0.12, 0.04)'
-        })
-      ]),
-      {
-        duration: 220,
-        easing: 'cubic-bezier(0.4, 0, 0.7, 0.2)',
-        fill: 'forwards'
-      }
-    )
-    expect(cancel).toHaveBeenCalledOnce()
-    unmount()
-    expect(cancel).toHaveBeenCalledTimes(3)
-  } finally {
-    HTMLElement.prototype.animate = original
-  }
+it('skips travel and completes immediately for reduced motion', () => {
+  vi.stubGlobal('matchMedia', () => ({ matches: true }))
+  const onExited = vi.fn()
+  render(
+    <PopupSurface
+      mode="demo"
+      closing
+      label="Popup"
+      close={() => {}}
+      onExited={onExited}
+    >
+      Content
+    </PopupSurface>
+  )
+  expect(motion.animate).not.toHaveBeenCalled()
+  expect(onExited).toHaveBeenCalledOnce()
+})
+
+it('mirrors the docking trajectory for bottom bars', () => {
+  const size = { width: 320, height: 200 }
+  const top = popupDockKeyframes('bottom', size)
+  const bottom = popupDockKeyframes('top', size)
+  expect(bottom.scaleX).toEqual(top.scaleX)
+  expect(bottom.y).toEqual(top.y.map((y) => (y === null ? null : -y)))
+  expect(top.opacity).toEqual([null, 1, 1, 0])
+})
+
+it('emerges from the widget, travels outward and settles without overshoot', () => {
+  const size = { width: 320, height: 200 }
+  const anchor = { width: 80, height: 28 }
+  const opening = popupOpenKeyframes('bottom', size, anchor)
+  expect(opening.scaleX[0]).toBe(0.25)
+  expect(opening.scaleY[0]).toBe(0.14)
+  expect(opening.y.slice(0, 3)).toEqual([-12, 18, 12])
+  expect(opening.y.at(-1)).toBe(0)
+  expect(Math.max(...opening.scaleX)).toBe(1)
+  expect(opening.opacity).toEqual([0, 1, 1, 1, 1])
+  expect(opening.clipPath[0]).toBe('inset(0px round 160px)')
+  expect(POPUP_ENTER_MS).toBe(500)
+  const mirrored = popupOpenKeyframes('top', size, anchor)
+  expect(mirrored.y).toEqual(opening.y.map((y) => (y === 0 ? 0 : -y)))
+})
+
+it('removes the entry clip after settling and never restores it during exit', () => {
+  const { rerender } = render(
+    <PopupSurface mode="demo" label="Popup" close={() => {}}>
+      Content
+    </PopupSurface>
+  )
+  const frame = vi.mocked(window.requestAnimationFrame)
+  act(() => frame.mock.calls[0][0](0))
+  act(() => frame.mock.calls[1][0](16))
+  const finish = motion.animate.mock.results[1].value.then.mock.calls[0][0]
+  act(() => finish())
+  expect(motion.animate.mock.lastCall![1]).toEqual({ clipPath: 'none' })
+  rerender(
+    <PopupSurface mode="demo" closing label="Popup" close={() => {}}>
+      Content
+    </PopupSurface>
+  )
+  const calls = motion.animate.mock.calls.length
+  act(() => finish())
+  expect(motion.animate).toHaveBeenCalledTimes(calls)
 })

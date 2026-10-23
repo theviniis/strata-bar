@@ -91,6 +91,15 @@ export default function Overlay() {
             params={render.params}
             mode="native"
             closing={closing !== null && closing === render.popup_session}
+            onExited={() => {
+              void import('@tauri-apps/api/core')
+                .then(({ invoke }) =>
+                  invoke('overlay_exit_complete', {
+                    session: render.popup_session
+                  })
+                )
+                .catch(console.error)
+            }}
             close={() => {
               void overlay.hide(render.popup_session).catch(console.error)
             }}

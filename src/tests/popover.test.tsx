@@ -3,11 +3,14 @@ import { beforeEach, expect, it, vi } from 'vitest'
 const host = vi.hoisted(() => ({
   show: vi.fn(),
   hide: vi.fn(),
-  closed: null as null | ((event: { payload: { session: string } }) => void)
+  bounce: vi.fn(),
+  closed: null as
+    null | ((event: { payload: { session: string; docked?: boolean } }) => void)
 }))
 vi.mock('../services/system/overlay', () => ({
   overlay: { mode: 'native', show: host.show, hide: host.hide }
 }))
+vi.mock('../popups/motion', () => ({ bouncePopupAnchor: host.bounce }))
 vi.mock('@tauri-apps/api/event', () => ({
   listen: async (_name: string, handler: typeof host.closed) => {
     host.closed = handler
@@ -77,4 +80,37 @@ it('closes on Escape and outside pointer input', async () => {
   )
   fireEvent.pointerDown(document.body)
   expect(screen.getByRole('button')).toHaveAttribute('aria-expanded', 'false')
+})
+
+it('bounces only after the matching closing session docks, including a bar-initiated close', async () => {
+  render(<Trigger />)
+  await waitFor(() => expect(host.closed).not.toBeNull())
+  fireEvent.click(screen.getByRole('button'))
+  await waitFor(() => expect(host.show).toHaveBeenCalledOnce())
+  const session = host.show.mock.calls[0][0].session
+  fireEvent.keyDown(window, { key: 'Escape' })
+  // Repeated dismissal must not lose the session awaiting docking.
+  fireEvent.keyDown(window, { key: 'Escape' })
+  expect(host.bounce).not.toHaveBeenCalled()
+  act(() => host.closed!({ payload: { session: 'stale', docked: true } }))
+  expect(host.bounce).not.toHaveBeenCalled()
+  act(() => host.closed!({ payload: { session, docked: true } }))
+  expect(host.bounce).toHaveBeenCalledOnce()
+  act(() => host.closed!({ payload: { session, docked: true } }))
+  expect(host.bounce).toHaveBeenCalledOnce()
+})
+
+it('does not bounce on forced cleanup or when a newer popup has opened', async () => {
+  render(<Trigger />)
+  await waitFor(() => expect(host.closed).not.toBeNull())
+  fireEvent.click(screen.getByRole('button'))
+  await waitFor(() => expect(host.show).toHaveBeenCalledOnce())
+  const session = host.show.mock.calls[0][0].session
+  act(() => host.closed!({ payload: { session, docked: false } }))
+  expect(host.bounce).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button'))
+  await waitFor(() => expect(host.show).toHaveBeenCalledTimes(2))
+  act(() => host.closed!({ payload: { session, docked: true } }))
+  expect(host.bounce).not.toHaveBeenCalled()
+  expect(screen.getByRole('button')).toHaveAttribute('aria-expanded', 'true')
 })

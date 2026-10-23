@@ -1,4 +1,3 @@
-import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import {
@@ -18,6 +17,7 @@ import {
   PopoverTrigger
 } from '@/components/ui/popover'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ChevronDown } from 'lucide-react'
 import type { RemindersPopupProps } from './RemindersPopupController'
 
 export function RemindersPopup({

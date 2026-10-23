@@ -96,6 +96,15 @@ vi.mock('../services/system/bridge', () => ({
 }))
 import NativeBar from '../components/status-bar/NativeBar'
 
+it('paints the hover highlight inside the positioned bar above its background', () => {
+  render(<NativeBar />)
+  const bar = screen.getByRole('navigation')
+  const highlight = bar.querySelector('[data-sliding-highlight]')
+  expect(highlight).not.toBeNull()
+  expect(highlight?.parentElement).toBe(bar)
+  expect(bar).toHaveClass('relative', 'isolate')
+})
+
 it('renders real adapter snapshots and the audio popup trigger', () => {
   render(<NativeBar />)
   expect(screen.getByLabelText('Uso da CPU')).toHaveTextContent(/^23.4%?$/)

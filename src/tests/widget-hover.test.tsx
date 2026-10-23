@@ -1,14 +1,66 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { WidgetHoverGroup } from '../components/widget-hover'
+import { SlidingHighlight } from '../components/ui/sliding-highlight'
 import { WidgetItem } from '../components/widget-item'
+import type { ComponentProps } from 'react'
+
+// Assert measured targets here; real Motion interpolation is checked in-browser.
+vi.mock('motion/react', () => ({
+  useReducedMotion: () => false,
+  motion: {
+    span: ({
+      animate,
+      initial,
+      transition,
+      ...props
+    }: ComponentProps<'span'> & {
+      animate: ComponentProps<'span'>['style']
+      initial: boolean
+      transition: unknown
+    }) => {
+      void initial
+      void transition
+      return <span {...props} style={animate} />
+    }
+  }
+}))
 
 afterEach(() => vi.restoreAllMocks())
+
+it('works with plain elements and keeps nested groups independent', () => {
+  const { container } = render(
+    <SlidingHighlight highlightClassName="rounded-full bg-accent/20">
+      <div>
+        <button data-sliding-highlight-item>Outer</button>
+        <SlidingHighlight>
+          <div>
+            <button data-sliding-highlight-item>Inner</button>
+          </div>
+        </SlidingHighlight>
+      </div>
+    </SlidingHighlight>
+  )
+  const outer = container.querySelector('[data-sliding-highlight-group]')!
+  const inner = screen.getByRole('button', { name: 'Inner' })
+  vi.spyOn(inner, 'getBoundingClientRect').mockReturnValue(
+    new DOMRect(10, 10, 60, 28)
+  )
+  fireEvent.pointerMove(inner)
+  const outerHighlight = outer.querySelector(
+    ':scope > [data-sliding-highlight]'
+  )!
+  const innerHighlight = inner.parentElement!.querySelector(
+    '[data-sliding-highlight]'
+  )!
+  expect(outerHighlight).toHaveStyle({ opacity: '0' })
+  expect(outerHighlight).toHaveClass('rounded-full', 'bg-accent/20')
+  expect(innerHighlight).toHaveStyle({ opacity: '1', width: '60px' })
+})
 
 function fixture() {
   const clicked = vi.fn()
   const { container, unmount } = render(
-    <WidgetHoverGroup>
+    <SlidingHighlight>
       <nav className="relative" aria-label="Bar">
         <WidgetItem onClick={clicked}>
           <span>CPU</span>
@@ -16,7 +68,7 @@ function fixture() {
         <WidgetItem>Memory</WidgetItem>
         <WidgetItem disabled>Disabled</WidgetItem>
       </nav>
-    </WidgetHoverGroup>
+    </SlidingHighlight>
   )
   const bar = screen.getByRole('navigation')
   vi.spyOn(bar, 'getBoundingClientRect').mockReturnValue(
@@ -30,7 +82,7 @@ function fixture() {
     screen.getByRole('button', { name: 'Memory' }),
     'getBoundingClientRect'
   ).mockReturnValue(new DOMRect(100, 24, 90, 28))
-  const highlight = container.querySelector('[data-widget-hover-highlight]')!
+  const highlight = container.querySelector('[data-sliding-highlight]')!
   return { bar, highlight, clicked, unmount }
 }
 
@@ -51,7 +103,7 @@ it('slides a single background between whole widgets, including across gaps', ()
   fireEvent.pointerMove(screen.getByText('Memory'))
   expect(highlight).toHaveStyle({ left: '90px', width: '90px', opacity: '1' })
   expect(highlight).toHaveAttribute('data-moving', 'true')
-  expect(bar.querySelectorAll('[data-widget-hover-highlight]')).toHaveLength(1)
+  expect(bar.querySelectorAll('[data-sliding-highlight]')).toHaveLength(1)
   fireEvent.pointerLeave(bar)
   expect(highlight).toHaveStyle({ opacity: '0' })
 })

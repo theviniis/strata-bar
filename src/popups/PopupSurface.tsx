@@ -1,10 +1,18 @@
+import { useAnimate } from 'motion/react'
 import { Card } from '@/components/ui/card'
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { tooltipArrowClasses } from '../components/ui/tooltip-classes'
 import { cn } from '../lib/utils'
 import { overlay, type OverlaySide } from '../services/system/overlay'
 import { POPUP_GAP } from './constants'
-import { POPUP_EXIT_MS } from './motion'
+import {
+  POPUP_ENTER_MS,
+  POPUP_ENTER_TIMES,
+  POPUP_EXIT_MS,
+  popupMotionEnabled,
+  popupDockKeyframes,
+  popupOpenKeyframes
+} from './motion'
 
 export interface PopupSurfaceProps {
   label: string
@@ -16,6 +24,8 @@ export interface PopupSurfaceProps {
   closing?: boolean
   closeOnEscape?: boolean
   autoFocus?: boolean
+  onExited?(): void
+  anchorSize?: { width: number; height: number }
   close(): void
   children: ReactNode
 }
@@ -31,66 +41,88 @@ export function PopupSurface({
   closing = false,
   closeOnEscape = true,
   autoFocus = true,
+  onExited,
+  anchorSize,
   close,
   children
 }: PopupSurfaceProps) {
   const root = useRef<HTMLDivElement>(null)
   const surface = useRef<HTMLDivElement>(null)
-  const visual = useRef<HTMLDivElement>(null)
+  const [visual, animate] = useAnimate<HTMLDivElement>()
+  const exitCallback = useRef(onExited)
+  const closingRef = useRef(closing)
+  const targetSize = useRef(anchorSize)
   const openingFrame = useRef<number | undefined>(undefined)
-  const motion = useRef<Animation | undefined>(undefined)
+  const motion = useRef<ReturnType<typeof animate> | undefined>(undefined)
   const [placedArrowX, setPlacedArrowX] = useState(arrowX)
   useLayoutEffect(() => {
+    exitCallback.current = onExited
+    closingRef.current = closing
+    targetSize.current = anchorSize ?? targetSize.current
+  }, [onExited, closing, anchorSize])
+  useLayoutEffect(() => {
     const node = surface.current
-    let animation: Animation | undefined
-    // Prepare before the native window is revealed, so its first paint is
-    // already transparent. Layout measurements use the untransformed wrapper.
-    if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      animation = visual.current?.animate?.(
-        [
-          {
-            opacity: 0,
-            transform: `translateY(${side === 'bottom' ? -POPUP_GAP : POPUP_GAP}px) scale(0.12, 0.04)`,
-            borderRadius: '32px',
-            filter: 'blur(3px)'
-          },
-          {
-            opacity: 1,
-            transform: 'translateY(0) scale(1)',
-            borderRadius: '12px',
-            filter: 'blur(0px)'
-          }
-        ],
-        {
-          duration: 420,
-          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-          fill: 'both'
-        }
-      )
-      motion.current = animation
-      animation?.pause()
-      if (animation) animation.currentTime = 0
+    let cancelled = false
+    const enabled = popupMotionEnabled()
+    const hidden = {
+      opacity: 0,
+      y: side === 'bottom' ? -POPUP_GAP : POPUP_GAP,
+      scaleX: 0.18,
+      scaleY: 0.08,
+      filter: 'blur(3px)',
+      clipPath: 'inset(0px round 160px)'
+    }
+    if (enabled && visual.current) {
+      motion.current = animate(visual.current, hidden, { duration: 0 })
+      motion.current.complete()
     }
     const animateOpen = () => {
-      if (!animation) return
-      // A resize reply can precede WebView presentation. Give the visible
-      // window a frame before advancing the prepared animation.
+      if (!enabled) return
       openingFrame.current = requestAnimationFrame(() => {
-        openingFrame.current = requestAnimationFrame(() => animation?.play())
+        openingFrame.current = requestAnimationFrame(() => {
+          if (closingRef.current || !visual.current) return
+          motion.current = animate(
+            visual.current,
+            popupOpenKeyframes(
+              side,
+              node!.getBoundingClientRect(),
+              targetSize.current
+            ),
+            {
+              duration: POPUP_ENTER_MS / 1000,
+              times: POPUP_ENTER_TIMES,
+              ease: [
+                [0.32, 0, 0.67, 0],
+                [0.2, 0.65, 0.3, 1],
+                [0.16, 1, 0.3, 1],
+                [0.16, 1, 0.3, 1]
+              ]
+            }
+          )
+          void motion.current.then(() => {
+            // Restore the resting shadow and arrow after the capsule opens.
+            if (!cancelled && !closingRef.current && visual.current)
+              animate(
+                visual.current,
+                { clipPath: 'none' },
+                { duration: 0 }
+              ).complete()
+          })
+        })
       })
     }
     const stopAnimation = () => {
+      cancelled = true
       if (openingFrame.current !== undefined)
         cancelAnimationFrame(openingFrame.current)
-      animation?.cancel()
+      motion.current?.stop()
     }
     if (mode === 'demo') {
       if (autoFocus) root.current?.focus()
       animateOpen()
       return stopAnimation
     }
-    if (!session || !node) return
-    let cancelled = false
+    if (!session || !node) return stopAnimation
     let previous = ''
     let generation = 0
     let focused = false
@@ -108,6 +140,7 @@ export function PopupSurface({
         .resize(session, size)
         .then((size) => {
           if (cancelled || generation !== current) return
+          targetSize.current = size.anchorSize ?? targetSize.current
           setPlacedArrowX(size.arrowX)
           if (!focused) {
             focused = true
@@ -130,41 +163,54 @@ export function PopupSurface({
       stopAnimation()
       observer?.disconnect()
     }
-  }, [mode, session, side, autoFocus])
+  }, [mode, session, side, autoFocus, animate, visual])
   useLayoutEffect(() => {
     const node = visual.current
-    if (
-      !closing ||
-      !node ||
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    )
-      return
+    if (!closing || !node) return
     if (openingFrame.current !== undefined)
       cancelAnimationFrame(openingFrame.current)
-    const current = getComputedStyle(node)
-    const start = {
-      opacity: current.opacity,
-      transform: current.transform,
-      filter: current.filter
+    motion.current?.stop()
+    let cancelled = false
+    if (!popupMotionEnabled()) {
+      exitCallback.current?.()
+      return
     }
-    motion.current?.cancel()
-    const exit = node.animate?.(
-      [
-        start,
-        {
-          opacity: 0,
-          transform: `translateY(${side === 'bottom' ? -POPUP_GAP : POPUP_GAP}px) scale(0.12, 0.04)`,
-          filter: 'blur(3px)'
-        }
-      ],
+    animate(node, { clipPath: 'none' }, { duration: 0 }).complete()
+    const rect = surface.current!.getBoundingClientRect()
+    const rounding = root.current
+      ? animate(
+          root.current,
+          { borderRadius: [null, '48px', '96px', '160px'] },
+          {
+            duration: POPUP_EXIT_MS / 1000,
+            times: [0, 0.4, 0.76, 1],
+            ease: 'easeInOut'
+          }
+        )
+      : undefined
+    const exit = animate(
+      node,
+      popupDockKeyframes(side, rect, targetSize.current),
       {
-        duration: POPUP_EXIT_MS,
-        easing: 'cubic-bezier(0.4, 0, 0.7, 0.2)',
-        fill: 'forwards'
+        duration: POPUP_EXIT_MS / 1000,
+        times: [0, 0.4, 0.76, 1],
+        ease: [
+          [0.32, 0, 0.67, 0],
+          [0.2, 0.65, 0.3, 1],
+          [0.4, 0, 1, 1]
+        ]
       }
     )
-    return () => exit?.cancel()
-  }, [closing, side])
+    motion.current = exit
+    void exit.then(() => {
+      if (!cancelled) exitCallback.current?.()
+    })
+    return () => {
+      cancelled = true
+      rounding?.stop()
+      exit.stop()
+    }
+  }, [closing, side, animate, visual])
   return (
     <div ref={surface} className="w-max" inert={closing || undefined}>
       <div
@@ -189,6 +235,7 @@ export function PopupSurface({
           tabIndex={-1}
           className={cn(
             'bg-popover text-[12px] shadow-lg outline-none *:max-w-full',
+            closing && 'overflow-hidden',
             className
           )}
           onKeyDown={(event) => {

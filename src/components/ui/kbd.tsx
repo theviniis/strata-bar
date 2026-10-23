@@ -9,7 +9,7 @@ const kbdVariants = cva(
         default:
           'bg-muted text-muted-foreground [slot=tooltip-content]:text-background in-data-[slot=tooltip-content]:bg-background/20 dark:in-data-[slot=tooltip-content]:bg-background/10',
         primary:
-          'bg-[color-mix(in_srgb,var(--primary)_90%,black)] text-primary-foreground shadow-sm [slot=tooltip-content]:text-primary-foreground in-data-[slot=tooltip-content]:bg-primary/20'
+          'bg-muted/20 text-primary-foreground shadow-sm [slot=tooltip-content]:text-primary-foreground in-data-[slot=tooltip-content]:bg-primary/20'
       }
     },
     defaultVariants: {

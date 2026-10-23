@@ -33,6 +33,8 @@ export interface PopupHostProps {
   side?: OverlaySide
   arrowX?: number
   closing?: boolean
+  onExited?(): void
+  anchorSize?: { width: number; height: number }
   close(): void
 }
 

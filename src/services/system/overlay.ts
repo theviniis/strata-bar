@@ -67,7 +67,10 @@ export interface OverlayAdapter {
   readonly mode: OverlayMode
   show(request: OverlayRequest): Promise<void>
   hide(session?: string): Promise<void>
-  resize(session: string, size: OverlaySize): Promise<{ arrowX: number }>
+  resize(
+    session: string,
+    size: OverlaySize
+  ): Promise<{ arrowX: number; anchorSize?: OverlaySize }>
 }
 
 export function createNativeOverlay(): OverlayAdapter {

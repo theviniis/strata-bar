@@ -1,4 +1,3 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import {
   CardContent,
@@ -6,6 +5,7 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type {
   AgentType,
   AgentsSnapshot
@@ -69,7 +69,6 @@ export function AgentsPopup({
           <Tabs
             value={activeAgent}
             onValueChange={(value) => onAgentChange(value)}
-            size="sm"
           >
             <TabsList aria-label="Agentes de IA" className="flex w-full">
               {applications.map((application) => (

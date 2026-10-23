@@ -16,7 +16,7 @@ export function WidgetItem({
 
   return (
     <Comp
-      data-widget-hover=""
+      data-sliding-highlight-item=""
       className={cn(
         'flex items-center gap-1 px-2 py-1 rounded focus-visible:outline-accent',
         className

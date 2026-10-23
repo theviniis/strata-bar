@@ -1,0 +1,90 @@
+import { Meta, Canvas, Controls } from '@storybook/addon-docs/blocks'
+import * as SlidingHighlightStories from '../components/ui/sliding-highlight.stories'
+
+<Meta of={SlidingHighlightStories} />
+
+# SlidingHighlight
+
+Fundo único que acompanha o **hover** entre itens usando Motion.
+Posição e tamanho interpolam com uma mola; a primeira entrada aparece no próprio
+item e a saída esmaece. Não altera seleção, foco, cliques ou semântica dos filhos.
+
+## Uso
+
+`children` deve ser um único elemento que encaminhe ref, className e eventos
+até o DOM. O componente aplica `relative isolate` nesse elemento e insere nele
+o destaque decorativo, atrás do conteúdo e acima do fundo. Mantenha os itens
+transparentes para que o destaque apareça.
+
+```tsx
+import { SlidingHighlight } from '@/components/ui/sliding-highlight'
+
+<SlidingHighlight>
+  <div className="flex gap-2 rounded-lg bg-background p-2">
+    <button data-sliding-highlight-item className="rounded px-3 py-2">
+      Primeiro
+    </button>
+    <button data-sliding-highlight-item className="rounded px-3 py-2">
+      Segundo
+    </button>
+  </div>
+</SlidingHighlight>
+```
+
+Marque cada alvo com `data-sliding-highlight-item`. `WidgetItem` já inclui
+esse atributo e a barra usa um único `SlidingHighlight` para todas as seções.
+Não há dependência de dados, popups ou APIs nativas.
+
+## Comportamento e personalização
+
+- `highlightClassName`: cor e arredondamento; padrão `rounded bg-muted`.
+- `spring`: ajusta `stiffness`, `damping` e `mass`; padrões 500, 38 e 0.8.
+- Funciona em linhas, colunas, tamanhos variáveis e previews com escala.
+- Recalcula geometria em alterações de conteúdo e redimensionamento.
+- Ignora touch, itens desabilitados e ancestrais `inert`.
+- Respeita `prefers-reduced-motion`, aplicando mudanças sem animação.
+- Não indica item selecionado: estados de seleção continuam sob responsabilidade
+  do componente que usa o efeito. Não substitui o indicador de foco do teclado.
+
+Evite handlers que cancelem a propagação dos eventos de ponteiro. A toolbar
+permite validar as cores nos temas claro e escuro.
+
+## Horizontal
+
+Passe o ponteiro entre os itens para acompanhar o fundo e sua mudança de largura.
+
+<Canvas of={SlidingHighlightStories.Horizontal} />
+
+## Vertical
+
+A mesma API acompanha itens empilhados, sem configurar orientação.
+
+<Canvas of={SlidingHighlightStories.Vertical} />
+
+## Personalização
+
+Este exemplo usa `highlightClassName="rounded-full bg-accent/20"` e
+`spring={{ stiffness: 350, damping: 24, mass: 1 }}`.
+
+<Canvas of={SlidingHighlightStories.Customized} />
+
+## Widgets
+
+A barra envolve seu `<nav>` em `SlidingHighlight`. Cada `WidgetItem` já marca
+seu elemento raiz com `data-sliding-highlight-item`, inclusive quando usa `asChild`.
+Este exemplo usa valores estáticos para isolar a interação.
+
+<Canvas of={SlidingHighlightStories.Widgets} />
+
+## TabsTrigger
+
+`TabsList` já compõe `SlidingHighlight`, e cada `TabsTrigger` marca seu alvo.
+Use a composição normal de tabs; não é necessário adicionar outro wrapper.
+O hover acompanha o ponteiro sem selecionar a aba. O indicador da aba ativa
+e a navegação por teclado continuam sob controle de `Tabs`.
+
+<Canvas of={SlidingHighlightStories.TabTriggers} />
+
+## Propriedades
+
+<Controls of={SlidingHighlightStories.Horizontal} />

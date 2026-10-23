@@ -1,4 +1,6 @@
 import { Slot } from '@radix-ui/react-slot'
+import { motion, useReducedMotion, type SpringOptions } from 'motion/react'
+import { cn } from '@/lib/utils'
 import {
   useEffect,
   useRef,
@@ -8,22 +10,35 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 
-interface HoverRect {
+interface HighlightRect {
   left: number
   top: number
   width: number
   height: number
 }
 
-/** One sliding hover background per bar; widgets opt in with data-widget-hover.
- * Inspired by Jhey's progressive anchor pagination:
- * https://codepen.io/jh3y/pen/qEbVOMm
- * DOM geometry keeps this working on WebView2 without CSS anchor support.
+export interface SlidingHighlightProps {
+  /** One DOM element that contains the items and receives positioning styles. */
+  children: ReactElement
+  /** Background and radius classes for the decorative highlight. */
+  highlightClassName?: string
+  /** Physics of travel between items. The first hover appears in place. */
+  spring?: Pick<SpringOptions, 'stiffness' | 'damping' | 'mass'>
+}
+
+/** A single Motion background follows descendants marked data-sliding-highlight-item.
+ * Uses measured geometry to support WebView2, variable widths and scaled previews.
+ * Inspired by https://codepen.io/jh3y/pen/qEbVOMm.
  */
-export function WidgetHoverGroup({ children }: { children: ReactElement }) {
+export function SlidingHighlight({
+  children,
+  highlightClassName,
+  spring
+}: SlidingHighlightProps) {
+  const reducedMotion = useReducedMotion()
   const [container, setContainer] = useState<HTMLElement | null>(null)
   const [highlight, setHighlight] = useState<{
-    rect: HoverRect | null
+    rect: HighlightRect | null
     visible: boolean
     moving: boolean
   }>({ rect: null, visible: false, moving: false })
@@ -71,7 +86,7 @@ export function WidgetHoverGroup({ children }: { children: ReactElement }) {
         ? undefined
         : new ResizeObserver(update)
     observer?.observe(container)
-    // Metrics and responsive layout can change the hovered widget's size.
+    // Content and responsive layout can change the hovered item's size.
     const mutation = new MutationObserver(() => {
       if (active.current) update()
     })
@@ -101,15 +116,20 @@ export function WidgetHoverGroup({ children }: { children: ReactElement }) {
     <>
       <Slot
         ref={setContainer}
-        className="isolate"
+        data-sliding-highlight-group=""
+        className="relative isolate"
         onPointerMove={(event: PointerEvent<HTMLElement>) => {
           if (event.pointerType === 'touch') return
-          const target = (event.target as Element).closest<HTMLElement>(
-            '[data-widget-hover]'
-          )
+          const target =
+            event.target instanceof Element
+              ? event.target.closest<HTMLElement>(
+                  '[data-sliding-highlight-item]'
+                )
+              : null
           if (
             !target ||
             !event.currentTarget.contains(target) ||
+            target.closest('[data-sliding-highlight-group]') !== container ||
             target.closest('[inert]') ||
             target.matches(':disabled, [aria-disabled="true"]')
           ) {
@@ -128,14 +148,31 @@ export function WidgetHoverGroup({ children }: { children: ReactElement }) {
       </Slot>
       {container &&
         createPortal(
-          <span
+          <motion.span
             aria-hidden="true"
-            data-widget-hover-highlight=""
+            data-sliding-highlight=""
             data-moving={highlight.moving}
-            className="pointer-events-none absolute -z-10 rounded bg-muted transition-opacity duration-200 ease-out data-[moving=true]:transition-[left,top,width,height,opacity] motion-reduce:transition-none"
-            style={{
+            className={cn(
+              'pointer-events-none absolute -z-10 rounded bg-muted',
+              highlightClassName
+            )}
+            initial={false}
+            animate={{
               ...highlight.rect,
               opacity: highlight.visible ? 1 : 0
+            }}
+            transition={{
+              default:
+                reducedMotion || !highlight.moving
+                  ? { duration: 0 }
+                  : {
+                      type: 'spring',
+                      stiffness: 500,
+                      damping: 38,
+                      mass: 0.8,
+                      ...spring
+                    },
+              opacity: { duration: reducedMotion ? 0 : 0.16, ease: 'easeOut' }
             }}
           />,
           container

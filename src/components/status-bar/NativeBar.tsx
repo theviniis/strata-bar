@@ -6,7 +6,7 @@ import { useConfig } from '@/stores/config'
 import { BarVerticalSeparator } from '../ui/bar-vertical-separator'
 import { QueryProvider } from '../QueryProvider'
 import { Widget } from './Widget'
-import { WidgetHoverGroup } from '../widget-hover'
+import { SlidingHighlight } from '../ui/sliding-highlight'
 import { useAudioRouting } from '@/hooks/useAudioRouting'
 
 /** Order-preserving section filter: presence and order both come from config. */
@@ -81,13 +81,13 @@ export function NativeBarSurface({
   )
   return (
     <QueryProvider>
-      <WidgetHoverGroup>
-        {/*
+      {/*
           The theme root owns `group` and `data-theme` so every `group-data-[theme=light]:`
           utility below — including the nav's own colours — matches a descendant. On a single
           element the variant cannot select itself, which left the light theme unpainted.
-        */}
-        <div data-theme={theme} className={cn('group h-full w-full', theme)}>
+      */}
+      <div data-theme={theme} className={cn('group h-full w-full', theme)}>
+        <SlidingHighlight>
           <nav
             className={cn(
               !preview && 'native-bar',
@@ -127,8 +127,8 @@ export function NativeBarSurface({
               </div>
             ))}
           </nav>
-        </div>
-      </WidgetHoverGroup>
+        </SlidingHighlight>
+      </div>
     </QueryProvider>
   )
 }

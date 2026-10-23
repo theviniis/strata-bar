@@ -1,5 +1,6 @@
 import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { bouncePopupAnchor } from '../popups/motion'
 import { overlay } from '../services/system/overlay'
 import {
   popupMetadata,
@@ -20,8 +21,11 @@ export function useOverlayPopover<K extends PopupId>(
   const [error, setError] = useState('')
   const ref = useRef<HTMLElement>(null)
   const active = useRef<string | null>(null)
+  const exiting = useRef<string | null>(null)
+  const bounce = useRef<ReturnType<typeof bouncePopupAnchor>>(undefined)
   const close = useCallback(() => {
     const session = active.current
+    if (session) exiting.current = session
     active.current = null
     setOpen(false)
     if (session) {
@@ -39,8 +43,18 @@ export function useOverlayPopover<K extends PopupId>(
         const dispose = await listen<{
           session: string
           restoreFocus?: boolean
+          docked?: boolean
         }>('overlay:closed', (event) => {
-          if (event.payload.session === active.current) {
+          const { session, docked } = event.payload
+          if (session === active.current || session === exiting.current) {
+            if (docked && (!active.current || active.current === session)) {
+              bounce.current?.stop()
+              bounce.current = bouncePopupAnchor(
+                anchorRef?.current ?? ref.current
+              )
+            }
+            exiting.current = null
+            if (active.current && active.current !== session) return
             releasePopup(event.payload.session)
             active.current = null
             setOpen(false)
@@ -62,6 +76,7 @@ export function useOverlayPopover<K extends PopupId>(
     window.addEventListener('pointerdown', outside)
     return () => {
       cancelled = true
+      bounce.current?.stop()
       stop?.()
       window.removeEventListener('pointerdown', outside)
       window.removeEventListener('keydown', escape)
@@ -72,7 +87,7 @@ export function useOverlayPopover<K extends PopupId>(
         void overlay.hide(session).catch(console.error)
       }
     }
-  }, [close, preview])
+  }, [close, preview, anchorRef])
   async function toggle() {
     if (preview || overlay.mode !== 'native') return
     if (active.current) return close()
@@ -82,6 +97,8 @@ export function useOverlayPopover<K extends PopupId>(
       ref.current
     const rect = anchor?.getBoundingClientRect()
     if (!rect) return
+    bounce.current?.complete()
+    exiting.current = null
     const session = crypto.randomUUID()
     active.current = session
     try {

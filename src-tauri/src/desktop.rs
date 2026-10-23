@@ -54,6 +54,7 @@ struct PopupSession {
     anchor: OverlayAnchor,
     revealed: bool,
     closing: bool,
+    restore_focus: bool,
 }
 static POPUP: Mutex<Option<PopupSession>> = Mutex::new(None);
 static REMINDER_ANCHORS: std::sync::LazyLock<
@@ -965,6 +966,10 @@ pub fn ensure_overlay(app: &AppHandle) -> Result<WebviewWindow, Box<dyn std::err
 }
 
 fn hide_overlay_hwnd_with_focus(app: &AppHandle, hwnd: HWND, restore_focus: bool) {
+    finish_overlay_hide(app, hwnd, restore_focus, false);
+}
+
+fn finish_overlay_hide(app: &AppHandle, hwnd: HWND, restore_focus: bool, docked: bool) {
     let closed = POPUP.lock().unwrap().take();
     *LAST_OVERLAY_RENDER.lock().unwrap() = None;
     *OVERLAY_OWNER.lock().unwrap() = None;
@@ -982,9 +987,10 @@ fn hide_overlay_hwnd_with_focus(app: &AppHandle, hwnd: HWND, restore_focus: bool
     let cleared = OVERLAY_SESSION.fetch_add(1, Ordering::Relaxed) + 1;
     let _ = app.emit_to(OVERLAY, "overlay:clear", cleared);
     if let Some(closed) = closed {
-        let _ = app.emit(
+        let _ = app.emit_to(
+            &closed.source,
             "overlay:closed",
-            serde_json::json!({"session": closed.id, "restoreFocus": restore_focus}),
+            serde_json::json!({"session": closed.id, "restoreFocus": restore_focus, "docked": docked}),
         );
     }
 }
@@ -1037,12 +1043,13 @@ fn animate_popup_close(app: &AppHandle, restore_focus: bool) -> bool {
             return true;
         }
         popup.closing = true;
+        popup.restore_focus = restore_focus;
         popup.clone()
     };
     let _ = app.emit_to(OVERLAY, "overlay:closing", &popup.id);
     let app = app.clone();
     std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_millis(250));
+        std::thread::sleep(std::time::Duration::from_millis(1000));
         let handle = app.clone();
         let _ = app.run_on_main_thread(move || {
             let current = POPUP.lock().unwrap().clone();
@@ -1062,6 +1069,35 @@ fn animate_popup_close(app: &AppHandle, restore_focus: bool) -> bool {
         });
     });
     true
+}
+
+/// Only the overlay may acknowledge an exit, and only for the closing session.
+/// The timeout above remains a fail-safe if its renderer stops responding.
+pub fn overlay_exit_complete(
+    app: &AppHandle,
+    caller: &WebviewWindow,
+    session: &str,
+) -> Result<(), String> {
+    if caller.label() != OVERLAY {
+        return Err("Only overlay may complete an exit".into());
+    }
+    let popup = POPUP
+        .lock()
+        .unwrap()
+        .clone()
+        .filter(|p| p.id == session && p.closing);
+    let Some(popup) = popup else {
+        return Ok(());
+    };
+    let window = app.get_webview_window(OVERLAY).ok_or("No overlay")?;
+    let hwnd = HWND(window.hwnd().map_err(|e| e.to_string())?.0);
+    finish_overlay_hide(app, hwnd, popup.restore_focus, true);
+    if popup.restore_focus {
+        if let Some(source) = app.get_webview_window(&popup.source) {
+            let _ = source.set_focus();
+        }
+    }
+    Ok(())
 }
 
 pub fn overlay_dismiss(app: &AppHandle, session: Option<&str>) {
@@ -1170,7 +1206,9 @@ pub fn overlay_resize(
     if let Some(render) = LAST_OVERLAY_RENDER.lock().unwrap().as_mut() {
         render["arrowX"] = serde_json::json!(arrow_x);
     }
-    Ok(serde_json::json!({"arrowX": arrow_x}))
+    Ok(
+        serde_json::json!({"arrowX": arrow_x, "anchorSize": {"width": popup.anchor.width, "height": popup.anchor.height}}),
+    )
 }
 
 #[cfg(debug_assertions)]
@@ -1283,6 +1321,7 @@ pub fn overlay_show(
             },
             revealed: false,
             closing: false,
+            restore_focus: false,
         });
     }
     *OVERLAY_OWNER.lock().unwrap() = request.session.clone();
