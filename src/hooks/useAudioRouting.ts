@@ -29,13 +29,11 @@ export function useAudioRouting({ left, center, right }: Config['widgets']) {
       routes.set(widget.type, target)
     }
     for (const [channel, target] of routes) {
-      void bridge
-        .setChannelSource?.(channel, target)
-        .catch((error) => {
-          useConfig.setState({
-            error: error instanceof Error ? error.message : String(error)
-          })
+      void bridge.setChannelSource?.(channel, target).catch((error) => {
+        useConfig.setState({
+          error: error instanceof Error ? error.message : String(error)
         })
+      })
     }
   }, [left, center, right])
 }
