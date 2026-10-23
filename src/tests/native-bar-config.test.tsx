@@ -15,11 +15,14 @@ const native = vi.hoisted(() => ({
   loaded: vi.fn()
 }))
 
-const { setVolume, quit, komorebiAction } = vi.hoisted(() => ({
-  setVolume: vi.fn(async () => ({ level: 64, muted: false })),
-  quit: vi.fn(async () => {}),
-  komorebiAction: vi.fn(async () => {})
-}))
+const { setVolume, quit, komorebiAction, setChannelSource } = vi.hoisted(
+  () => ({
+    setChannelSource: vi.fn(async () => {}),
+    setVolume: vi.fn(async () => ({ level: 64, muted: false })),
+    quit: vi.fn(async () => {}),
+    komorebiAction: vi.fn(async () => {})
+  })
+)
 
 vi.mock('../services/system/bridge', () => ({
   bridge: {
@@ -27,6 +30,7 @@ vi.mock('../services/system/bridge', () => ({
     setVolume,
     quit,
     komorebiAction,
+    setChannelSource,
     configLoad: () => native.loaded()
   },
   connect: (
@@ -110,10 +114,53 @@ function install(config: Config, revision = 1) {
 }
 
 beforeEach(() => {
+  setChannelSource.mockClear()
   native.disposes.length = 0
   native.listeners.clear()
   native.loaded.mockReset()
   install(defaultConfig)
+})
+
+it('renders each saved audio instance and sends the last configured route once', () => {
+  install(
+    parseConfig(
+      JSON.stringify({
+        version: 1,
+        bar: {},
+        widgets: {
+          left: [
+            {
+              id: 'speakers',
+              type: 'volume',
+              audio: {
+                source: 'voicemeeter',
+                target: { kind: 'bus', index: 0 },
+                label: 'Speakers'
+              }
+            }
+          ],
+          center: [],
+          right: [
+            {
+              id: 'headphones',
+              type: 'volume',
+              audio: {
+                source: 'voicemeeter',
+                target: { kind: 'bus', index: 1 },
+                label: 'Headphones'
+              }
+            }
+          ]
+        }
+      })
+    )
+  )
+  render(<NativeBar />)
+  expect(screen.getByText('Voicemeeter: Speakers')).toBeInTheDocument()
+  expect(screen.getByText('Voicemeeter: Headphones')).toBeInTheDocument()
+  expect(setChannelSource.mock.calls).toEqual([
+    ['volume', { kind: 'bus', index: 1 }]
+  ])
 })
 
 it('renders exactly the configured widgets, in the configured sections', () => {

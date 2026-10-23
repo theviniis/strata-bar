@@ -4,21 +4,15 @@ import {
   WidgetItemTooltip
 } from '@/components/widget-item'
 import { Mic, MicOff } from 'lucide-react'
-import { useAudioSource } from '../../hooks/useAudioSource'
 import { useOverlayTooltip } from '../../hooks/useOverlayTooltip'
 import { useSystemChannel } from '../../hooks/useSystemChannel'
 import { useWidgetView } from '@/components/status-bar/widget-view'
-import {
-  voicemeeterLabel,
-  widgetAudio
-} from '../../services/configuration/config'
-import { useConfig } from '../../stores/config'
+import { voicemeeterLabel } from '../../services/configuration/config'
 import { WidgetPopup } from '../../popups/WidgetPopup'
 
 export function Microphone() {
   const view = useWidgetView()
-  const audio = useConfig((state) => widgetAudio(state.config, 'microphone'))
-  useAudioSource('microphone', audio)
+  const audio = view.audio
   const value = useSystemChannel('microphone', 0, view.intervalMs)
   const muted = value.status === 'ready' && value.data.muted
   const source =

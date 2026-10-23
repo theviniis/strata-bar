@@ -33,3 +33,19 @@ it('ignores browser persistence and storage events in a native window', async ()
   expect(localStorage.getItem(storageKey)).toBe(text)
   stop()
 })
+
+it('rejects local preference mutations in a native window', async () => {
+  vi.stubGlobal('__TAURI_INTERNALS__', {})
+  vi.resetModules()
+  const { useConfig } = await import('../stores/config')
+  const saved = structuredClone(defaultConfig)
+  saved.bar.theme = 'dark'
+  useConfig.getState().hydrate({ revision: 7, config: saved, error: null })
+  const draft = structuredClone(saved)
+  draft.bar.theme = 'light'
+
+  expect(useConfig.getState().apply(JSON.stringify(draft))).toBe(false)
+  expect(useConfig.getState().config).toEqual(saved)
+  expect(useConfig.getState().revision).toBe(7)
+  expect(localStorage.getItem(storageKey)).toBeNull()
+})

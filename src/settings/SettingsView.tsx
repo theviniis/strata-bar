@@ -73,6 +73,7 @@ function NativeSettingsView() {
 
   const persistence = useMemo(() => createNativePersistence(), [])
   const editor = useConfigEditor(persistence)
+  const disabled = !editor.loaded || editor.loading || editor.saving
 
   return (
     <QueryProvider>
@@ -112,7 +113,7 @@ function NativeSettingsView() {
               layoutScroll
               className="min-h-0 flex-1 overflow-auto p-6"
             >
-              <FieldSet disabled={editor.loading || editor.saving}>
+              <FieldSet disabled={disabled}>
                 {section === 'layout' ? (
                   <Card>
                     <CardHeader>
@@ -125,7 +126,7 @@ function NativeSettingsView() {
                     </CardHeader>
                     <CardContent>
                       <LayoutEditor
-                        disabled={editor.loading || editor.saving}
+                        disabled={disabled}
                         draft={editor.form.getValues()}
                         onChange={editor.replaceDraft}
                       />
@@ -158,7 +159,7 @@ function NativeSettingsView() {
                     </CardHeader>
                     <CardContent>
                       <BarSettings
-                        disabled={editor.loading || editor.saving}
+                        disabled={disabled}
                         draft={editor.form.getValues()}
                         onChange={editor.replaceDraft}
                       />
@@ -194,7 +195,7 @@ function NativeSettingsView() {
                       <AgentsSettings
                         draft={editor.form.getValues()}
                         onChange={editor.replaceDraft}
-                        disabled={editor.loading || editor.saving}
+                        disabled={disabled}
                       />
                     </CardContent>
                   </Card>
@@ -253,7 +254,7 @@ function NativeSettingsView() {
                   <Button
                     variant="outline"
                     onClick={editor.restoreDefaults}
-                    disabled={editor.loading || editor.saving}
+                    disabled={disabled}
                     title="Restaurar configurações padrão"
                   >
                     <RotateCw data-icon="inline-start" aria-hidden="true" />
@@ -276,7 +277,7 @@ function NativeSettingsView() {
                   </span>
                   <Button
                     onClick={editor.apply}
-                    disabled={!!editor.error || editor.loading || editor.saving}
+                    disabled={!!editor.error || disabled}
                     title="Aplicar e salvar as alterações"
                   >
                     {editor.saving ? (

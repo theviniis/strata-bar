@@ -48,7 +48,7 @@ export default function NativeBar() {
   // Push audio routing for all volume/microphone widgets in this bar's config
   // on mount and on config changes. The native worker applies last-write-wins
   // per channel, so the order in the config array determines priority.
-  useAudioRouting([widgets.left, widgets.center, widgets.right])
+  useAudioRouting(widgets)
 
   return <NativeBarSurface widgets={widgets} bar={bar} error={error} />
 }

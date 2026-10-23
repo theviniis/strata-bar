@@ -107,6 +107,7 @@ export type ConfigEditor = {
   /** Latest field or native failure, in one slot. */
   error: EditorError | null
   loading: boolean
+  loaded: boolean
   saving: boolean
   reverted: boolean
   /** Install a new draft without touching native. */
@@ -135,6 +136,7 @@ export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
   const [saved, setSaved] = useState<ValidConfig>(defaultConfig)
   const [error, setError] = useState<EditorError | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
   const [reverted, setReverted] = useState(false)
   const fieldMessage = firstError(form.formState.errors)
@@ -147,6 +149,7 @@ export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
         setRawText(null)
         setTextError(null)
         setSaved(config)
+        setLoaded(true)
         setReverted(reverting)
         form.reset(config)
         setError(null)
@@ -204,8 +207,8 @@ export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
     )()
   }, [form, persistence])
   const apply = useCallback(() => {
-    if (!textError) submit()
-  }, [submit, textError])
+    if (loaded && !loading && !saving && !textError) submit()
+  }, [loaded, loading, saving, submit, textError])
 
   const revert = useCallback(() => {
     // Re-read the file: an external edit made while the window was open must
@@ -219,9 +222,10 @@ export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
     setError(null)
     setRawText(null)
     setTextError(null)
-    // Restore flows through the same Apply path: never a silent local reset.
-    submit()
-  }, [submit, form])
+    setReverted(false)
+    // Defaults are a candidate document too; only Apply may persist them.
+    void form.trigger()
+  }, [form])
 
   return {
     form,
@@ -230,6 +234,7 @@ export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
       textError ??
       (fieldMessage ? { source: 'field', message: fieldMessage } : error),
     loading,
+    loaded,
     saving,
     reverted,
     replaceDraft,

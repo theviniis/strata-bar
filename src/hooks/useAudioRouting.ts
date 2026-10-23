@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import type { WidgetConfig } from '@/services/configuration/config'
+import type { Config } from '@/services/configuration/config'
+import { useConfig } from '@/stores/config'
 import {
   bridge,
   type AudioChannel,
@@ -13,20 +14,26 @@ import {
  * (e.g. disabled widgets that may be enabled later). The worker owns the
  * last-write-wins semantics per channel.
  */
-export function useAudioRouting(widgets: WidgetConfig[][]) {
+export function useAudioRouting({ left, center, right }: Config['widgets']) {
   useEffect(() => {
-    const allWidgets = widgets.flat()
+    const allWidgets = [...left, ...center, ...right]
+    const routes = new Map<AudioChannel, VmTarget | null>()
     for (const widget of allWidgets) {
       if (widget.type !== 'volume' && widget.type !== 'microphone') continue
       const audio = widget.audio
-      if (!audio) continue
-      const disabled = audio.enabled === false
+      const disabled = audio?.enabled === false
       const target: VmTarget | null =
-        !disabled && audio.source === 'voicemeeter' && audio.target
+        !disabled && audio?.source === 'voicemeeter' && audio.target
           ? { kind: audio.target.kind, index: audio.target.index }
           : null
-      const channel: AudioChannel = widget.type
-      void bridge.setChannelSource?.(channel, target)
+      routes.set(widget.type, target)
     }
-  }, [widgets])
+    for (const [channel, target] of routes) {
+      void bridge.setChannelSource?.(channel, target).catch((error) => {
+        useConfig.setState({
+          error: error instanceof Error ? error.message : String(error)
+        })
+      })
+    }
+  }, [left, center, right])
 }

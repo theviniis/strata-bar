@@ -64,6 +64,132 @@ fn ready(app: &AppHandle, expression: &str) {
         })
     });
 }
+
+/// Settings acceptance at the existing real-WebView seam, using this check's
+/// isolated document. No account connection or hook action is performed.
+fn check_settings_draft(app: &AppHandle) -> Value {
+    use std::os::windows::fs::OpenOptionsExt;
+    let snapshot = || {
+        app.state::<crate::config::ConfigStore>()
+            .snapshot()
+            .unwrap()
+    };
+    let original = snapshot().config;
+    let click = |label: &str| {
+        script(app, &format!("[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==={}).click()", json!(label)));
+    };
+    let edit = |value: &str| {
+        script(app, &format!("{{ const input=document.querySelector('#config-json'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(input,{}); input.dispatchEvent(new Event('input',{{bubbles:true}})); }}", json!(value)));
+    };
+    let bars_have_spacing = |spacing: u32| {
+        static CHECK: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let token = format!(
+            "settings-spacing-{}",
+            CHECK.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        );
+        wait(app, |app| {
+            let token = token.clone();
+            main_thread(app, move |app| {
+                let mut passed = true;
+                for (label, window) in app.webview_windows() {
+                    if !label.starts_with("bar-") {
+                        continue;
+                    }
+                    window.eval(&format!("if(document.querySelector('nav')?.style.gap==='{spacing}px') location.hash='{token}';")).unwrap();
+                    passed &= window.url().unwrap().fragment() == Some(token.as_str());
+                }
+                passed
+            })
+        });
+    };
+
+    phase("shared Draft and Apply");
+    click("JSON");
+    ready(app, "document.querySelector('#config-json') && !document.querySelector('#config-json').disabled");
+    let mut candidate = original.clone();
+    candidate.bar.spacing = 13.0;
+    edit(&serde_json::to_string(&candidate).unwrap());
+    click("Aparência");
+    ready(app, "document.querySelector('[role=slider][aria-label=\"Espaçamento entre widgets\"]')?.getAttribute('aria-valuenow')==='13'");
+    assert_eq!(snapshot().config, original);
+    bars_have_spacing(8);
+    click("Aplicar");
+    wait(app, |_| snapshot().config == candidate);
+    bars_have_spacing(13);
+    let path = app
+        .state::<crate::config::ConfigStore>()
+        .path()
+        .to_path_buf();
+    let saved_bytes = std::fs::read(&path).unwrap();
+
+    phase("defaults remain a Draft and Revert reloads saved preferences");
+    click("Restaurar padrões");
+    click("JSON");
+    ready(
+        app,
+        "JSON.parse(document.querySelector('#config-json').value).bar.spacing===8",
+    );
+    assert_eq!(snapshot().config, candidate);
+    assert_eq!(std::fs::read(&path).unwrap(), saved_bytes);
+    bars_have_spacing(13);
+    click("Reverter");
+    ready(app, "JSON.parse(document.querySelector('#config-json').value).bar.spacing===13 && ![...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Aplicar').disabled");
+
+    phase("reopen saved configuration");
+    main_thread(app, |app| {
+        app.get_webview_window(crate::desktop::SETTINGS)
+            .unwrap()
+            .close()
+            .unwrap()
+    });
+    wait(app, |app| {
+        app.get_webview_window(crate::desktop::SETTINGS).is_none()
+    });
+    main_thread(app, |app| crate::desktop::open_settings(&app).unwrap());
+    ready(app, "document.querySelector('#config-json') && JSON.parse(document.querySelector('#config-json').value).bar.spacing===13");
+
+    phase("invalid Draft preserves saved configuration");
+    edit("{");
+    ready(app, "document.querySelector('#config-error') && [...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Aplicar').disabled");
+    assert_eq!(std::fs::read(&path).unwrap(), saved_bytes);
+    click("Reverter");
+    ready(app, "!document.querySelector('#config-error') && ![...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Aplicar').disabled");
+
+    phase("native atomic write failure preserves saved configuration");
+    candidate.bar.spacing = 17.0;
+    edit(&serde_json::to_string(&candidate).unwrap());
+    // Windows denies replacing a destination opened without FILE_SHARE_DELETE.
+    let lock = std::fs::OpenOptions::new()
+        .read(true)
+        .share_mode(3)
+        .open(&path)
+        .unwrap();
+    click("Aplicar");
+    ready(
+        app,
+        "document.querySelector('#config-error')?.textContent.includes('Cannot save config')",
+    );
+    assert_eq!(snapshot().config.bar.spacing, 13.0);
+    assert_eq!(std::fs::read(&path).unwrap(), saved_bytes);
+    bars_have_spacing(13);
+    drop(lock);
+    click("Reverter");
+    ready(app, "!document.querySelector('#config-error') && ![...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Aplicar').disabled");
+
+    click("Restaurar padrões");
+    click("Aplicar");
+    let mut defaults = original.clone();
+    defaults.schema = None;
+    wait(app, |_| snapshot().config == defaults);
+    bars_have_spacing(8);
+    click("Layout");
+    ready(
+        app,
+        "[...document.querySelectorAll('[role=tab]')].some(b=>b.textContent.includes('Monitor 1'))",
+    );
+    json!({"sharedDraft":true,"applyPersistsAndPropagates":true,"defaultsRequireApply":true,"revert":true,"reopen":true,"validationFailurePreservesFile":true,"writeFailurePreservesFile":true,"realBarSpacing":[8,13,8]})
+}
+
 pub fn start(app: AppHandle) {
     std::thread::spawn(move || {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| -> Value {
@@ -72,6 +198,12 @@ pub fn start(app: AppHandle) {
             assert!(!monitors.is_empty());
             main_thread(&app, |app| crate::desktop::open_settings(&app).unwrap());
             ready(&app, "[...document.querySelectorAll('[role=tab]')].some(b=>b.textContent.includes('Monitor 1')) && [...document.querySelectorAll('button')].some(b=>b.textContent==='Aplicar' && !b.disabled)");
+            let settings_draft = check_settings_draft(&app);
+            std::fs::write(
+                std::env::temp_dir().join("strata-settings-draft-check.json"),
+                serde_json::to_string_pretty(&settings_draft).unwrap(),
+            )
+            .unwrap();
             let before = main_thread(&app, |_| crate::desktop::monitor_snapshot());
             assert_eq!(
                 main_thread(&app, |app| app
@@ -273,9 +405,9 @@ pub fn start(app: AppHandle) {
                 assert_eq!(bar["topmost"], true);
                 assert_eq!(bar["noActivate"], false);
             }
-            json!({"passed":true,"monitors":monitors,"before":before,"oneDisabled":disabled,"after":after,"bars":bars,"settings":crate::desktop::settings_snapshot(),"persisted":true,"widgetApply":true,"focusPreserved":focused,"liveIntervals":subscription})
+            json!({"passed":true,"settingsDraft":settings_draft,"monitors":monitors,"before":before,"oneDisabled":disabled,"after":after,"bars":bars,"settings":crate::desktop::settings_snapshot(),"persisted":true,"widgetApply":true,"focusPreserved":focused,"liveIntervals":subscription})
         }));
-        let report = result.unwrap_or_else(|error| json!({"passed":false,"phase": PHASE.lock().unwrap().clone(), "config":app.state::<crate::config::ConfigStore>().snapshot().ok(), "error":error.downcast_ref::<String>().cloned().or_else(|| error.downcast_ref::<&str>().map(|s|s.to_string())).unwrap_or_default()}));
+        let report = result.unwrap_or_else(|error| json!({"passed":false,"phase": PHASE.lock().unwrap().clone(), "metrics":app.state::<crate::metrics::Metrics>().diagnostics(), "config":app.state::<crate::config::ConfigStore>().snapshot().ok(), "error":error.downcast_ref::<String>().cloned().or_else(|| error.downcast_ref::<&str>().map(|s|s.to_string())).unwrap_or_default()}));
         let _ = std::fs::write(
             std::env::temp_dir().join("strata-monitor-manager-check.json"),
             serde_json::to_string_pretty(&report).unwrap(),
