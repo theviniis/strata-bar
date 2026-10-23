@@ -1,8 +1,9 @@
-import { Pause, Play } from 'lucide-react'
+import { FaPause as Pause, FaPlay as Play } from 'react-icons/fa6'
+
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
 import { MusicPopup } from './MusicPopup'
-import { musicFixture, musicControlsFixture } from './fixtures'
+import { musicControlsFixture, musicFixture } from './fixtures'
 import type { MusicPopupControls } from './useMusicPopupControls'
 
 const data = musicFixture()

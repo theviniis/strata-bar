@@ -2,6 +2,7 @@ import type { Config } from '@/services/configuration/config'
 import { useEffect, useRef, useState } from 'react'
 import { DemoWidget } from './DemoWidget'
 import { NativeBarSurface } from './NativeBar'
+import { cornerRadius } from './curves'
 
 const BAR_WIDTH = 1440
 
@@ -25,16 +26,17 @@ export function StudioBar({
     return () => observer.disconnect()
   }, [])
   const scale = Math.min(1, width / BAR_WIDTH)
+  const height = config.bar.height + cornerRadius(config.bar)
   return (
     <div
       ref={ref}
       className="w-full overflow-hidden"
-      style={{ height: config.bar.height * scale }}
+      style={{ height: height * scale }}
     >
       <div
         style={{
           width: Math.max(width, BAR_WIDTH),
-          height: config.bar.height,
+          height,
           transform: `scale(${scale})`,
           transformOrigin: 'top left'
         }}

@@ -19,11 +19,14 @@ import {
   Repeat,
   Repeat1,
   Shuffle,
-  SkipBack,
-  SkipForward,
   Volume2,
   VolumeX
 } from 'lucide-react'
+import {
+  FaBackwardStep as SkipBack,
+  FaForwardStep as SkipForward
+} from 'react-icons/fa6'
+
 import { memo } from 'react'
 import type { MusicPopupControls } from './useMusicPopupControls'
 const nextRepeatMode = (mode: RepeatMode): RepeatMode =>

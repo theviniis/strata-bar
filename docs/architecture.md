@@ -33,6 +33,22 @@ CPU: GetSystemTimes deltas or PDH (benchmark and document semantics). RAM: Globa
 
 AppBar owner must register callback messages, negotiate rectangle, handle ABN_POSCHANGED, taskbar recreation, DPI and monitor removal, and always ABM_REMOVE on exit. Transparent borderless always-on-top windows alone are insufficient. Reserve workspace opt-in until validated. Popovers may require separate windows to avoid clipping to a 36px host. Mica/acrylic needs OS support checks and fallback CSS.
 
+The transparent bar host extends by the curve radius toward the desktop to draw
+concave corners at the monitor edges. Only the configured bar height is reserved
+through `ABM_SETPOS`. A Win32 window region excludes the transparent extension
+between and inside the corner cutouts so desktop input passes through; empty side
+groups have no corner region. Bottom bars mirror the corners upward. Popup
+placement uses the content rectangle derived from a direct `GetWindowRect` read,
+excluding this extension. Diagnostics retain the actual HWND `rect` and expose a
+separate `reservationRect`; the live geometry script checks both heights.
+
+`bar.cornerRadius` configures all curves in CSS pixels (0–40); zero disables
+curves. The effective radius is capped at half the bar height. When omitted,
+it follows half the height, preserving the original appearance. Monitor
+overrides can supply their own `cornerRadius`. The appearance settings expose
+the radius slider; applying it updates the HWND region and size without changing
+the reserved height. Pass `-CornerRadius` to the geometry script for a custom value.
+
 ## Overlay surface (tooltips now, widget popups later)
 
 The AppBar strip is exactly 36px tall, so any `Positioner` output is clipped by WebView2. `src-tauri/src/desktop.rs` therefore owns one shared floating window, labelled `overlay` and titled `Strata overlay`, created in `setup()` via `ensure_overlay` (hidden, 1x1, transparent, focused(false), skip_taskbar, always_on_top) and never destroyed. It is not an AppBar: it never calls `ABM_NEW`/`ABM_SETPOS` and `release_all` only removes reservations for `bar-*` labels.

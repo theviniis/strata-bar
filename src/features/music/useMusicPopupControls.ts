@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { Pause, Play } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { FaPause as Pause, FaPlay as Play } from 'react-icons/fa6'
+
 import type {
   MediaAction,
   MediaData,

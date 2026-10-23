@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod agents;
+mod bar_region;
 mod agent_alerts;
 mod agent_notifications;
 mod agent_notifications_windows;
@@ -149,6 +150,14 @@ fn overlay_show(
         desktop::overlay_hide_request(&app, request.session.as_deref());
     }
     result
+}
+
+#[tauri::command]
+fn bar_set_region(
+    window: tauri::WebviewWindow,
+    polygons: Vec<Vec<bar_region::Point>>,
+) -> Result<(), String> {
+    bar_region::set(&window, polygons)
 }
 #[tauri::command]
 fn overlay_hide(app: tauri::AppHandle, window: tauri::WebviewWindow, session: Option<String>) {
@@ -433,6 +442,7 @@ fn main() {
             settings_monitors,
             settings_open,
             overlay_show,
+            bar_set_region,
             overlay_hide,
             overlay_resize,
             overlay_ready,

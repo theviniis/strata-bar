@@ -47,6 +47,7 @@
           "minimum": 28,
           "maximum": 80
         },
+        "cornerRadius": { "type": "number", "minimum": 0, "maximum": 40 },
         "spacing": {
           "default": 8,
           "type": "number",
@@ -285,6 +286,7 @@
           },
           "position": { "type": "string", "enum": ["top", "bottom"] },
           "height": { "type": "integer", "minimum": 28, "maximum": 80 },
+          "cornerRadius": { "type": "number", "minimum": 0, "maximum": 40 },
           "spacing": { "type": "number", "minimum": 0, "maximum": 32 },
           "theme": { "type": "string", "enum": ["system", "dark", "light"] },
           "alwaysOnTop": { "type": "boolean" },

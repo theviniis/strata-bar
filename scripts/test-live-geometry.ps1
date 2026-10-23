@@ -1,6 +1,7 @@
 param(
     [string]$Executable=(Join-Path $PSScriptRoot '../src-tauri/target/release/strata-bar.exe'),
     [ValidateRange(28,80)][int]$Height=36,
+    [ValidateRange(-1,40)][double]$CornerRadius=-1,
     [ValidateSet('top','bottom')][string]$Position='top',
     [ValidateSet('true','false')][string]$Topmost='true',
     [string]$EvidenceDirectory=(Join-Path $PSScriptRoot '../docs/evidence')
@@ -19,16 +20,21 @@ $checks=foreach($monitor in $report.monitors){
     # AppBars negotiate around other shell reservations (for example the taskbar).
     if($bar.rect[1] -lt $bounds[1] -or $bar.rect[3] -gt $bounds[3]){throw 'Bar is outside monitor bounds.'}
     $expectedHeight=[math]::Round($Height * $bar.dpi / 96)
-    if(($bar.rect[3] - $bar.rect[1]) -ne $expectedHeight){throw "Expected physical height $expectedHeight."}
+    $reservation=$bar.reservationRect
+    if($null -eq $reservation){throw 'The probe does not report the AppBar reservation.'}
+    if(($reservation[3] - $reservation[1]) -ne $expectedHeight){throw "Expected reserved physical height $expectedHeight."}
+    $radius=if($CornerRadius -lt 0){[math]::Floor($expectedHeight / 2)}else{[math]::Min([math]::Floor($expectedHeight / 2),[math]::Round($CornerRadius * $bar.dpi / 96))}
+    $expectedWindowHeight=$expectedHeight + $radius
+    if(($bar.rect[3] - $bar.rect[1]) -ne $expectedWindowHeight){throw "Expected window height $expectedWindowHeight including decorative corners."}
     if($Position -eq 'top'){
-        if($monitor.workArea[1] -lt $bar.rect[3]){throw 'The desktop work area does not reserve the top bar.'}
+        if($monitor.workArea[1] -lt $reservation[3]){throw 'The desktop work area does not reserve the top bar.'}
     }else{
-        if($monitor.workArea[3] -gt $bar.rect[1]){throw 'The desktop work area does not reserve the bottom bar.'}
+        if($monitor.workArea[3] -gt $reservation[1]){throw 'The desktop work area does not reserve the bottom bar.'}
     }
     if($bar.komorebiEligible){throw 'The bar still carries WS_CAPTION/WS_EX_WINDOWEDGE, so komorebi can tile it.'}
     if(-not $bar.toolWindow){throw 'The bar is missing WS_EX_TOOLWINDOW.'}
     if($bar.topmost -ne ($Topmost -eq 'true')){throw 'The bar stacking differs from the configured topmost policy.'}
-    [pscustomobject]@{title=$bar.title;monitor=$bounds;actualWindow=$bar.rect;workArea=$monitor.workArea;komorebiEligible=$bar.komorebiEligible;toolWindow=$bar.toolWindow;topmost=$bar.topmost;passed=$true}
+    [pscustomobject]@{title=$bar.title;monitor=$bounds;actualWindow=$bar.rect;reservation=$reservation;workArea=$monitor.workArea;komorebiEligible=$bar.komorebiEligible;toolWindow=$bar.toolWindow;topmost=$bar.topmost;passed=$true}
 }
 $overlay=$report.overlay
 if($null -eq $overlay){throw 'The probe does not report the overlay surface.'}

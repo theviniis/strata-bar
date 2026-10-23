@@ -96,6 +96,19 @@ vi.mock('../services/system/bridge', () => ({
 }))
 import NativeBar from '../components/status-bar/NativeBar'
 
+it('preserves the widget pill shape through popup trigger composition', () => {
+  render(<NativeBar />)
+  for (const name of [
+    'Detalhes da CPU',
+    'Detalhes da GPU',
+    'Detalhes dos discos'
+  ]) {
+    const widget = screen.getByRole('button', { name })
+    expect(widget).toHaveClass('rounded-full')
+    expect(widget).not.toHaveClass('rounded')
+  }
+})
+
 it('paints the hover highlight inside the positioned bar above its background', () => {
   render(<NativeBar />)
   const bar = screen.getByRole('navigation')

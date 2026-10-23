@@ -122,6 +122,42 @@ it('does not select on click or focus, and preserves widget actions', () => {
   expect(highlight).toHaveStyle({ opacity: '0' })
 })
 
+it('copies each corner from the item and follows live shape changes', async () => {
+  const { highlight } = fixture()
+  const cpu = screen.getByRole('button', { name: 'CPU' })
+  const memory = screen.getByRole('button', { name: 'Memory' })
+  Object.assign(cpu.style, {
+    borderTopLeftRadius: '9999px',
+    borderTopRightRadius: '9999px',
+    borderBottomRightRadius: '9999px',
+    borderBottomLeftRadius: '9999px'
+  })
+  fireEvent.pointerMove(cpu)
+  expect(highlight).toHaveStyle({
+    borderTopLeftRadius: '9999px',
+    borderTopRightRadius: '9999px',
+    borderBottomRightRadius: '9999px',
+    borderBottomLeftRadius: '9999px'
+  })
+  Object.assign(memory.style, {
+    borderTopLeftRadius: '2px',
+    borderTopRightRadius: '4px',
+    borderBottomRightRadius: '6px',
+    borderBottomLeftRadius: '8px'
+  })
+  fireEvent.pointerMove(memory)
+  expect(highlight).toHaveStyle({
+    borderTopLeftRadius: '2px',
+    borderTopRightRadius: '4px',
+    borderBottomRightRadius: '6px',
+    borderBottomLeftRadius: '8px'
+  })
+  await act(async () => {
+    memory.style.borderTopLeftRadius = '50%'
+  })
+  expect(highlight).toHaveStyle({ borderTopLeftRadius: '50%' })
+})
+
 it('updates geometry when live metrics change and cleans up the portal', async () => {
   const { bar, highlight, unmount } = fixture()
   fireEvent.pointerMove(screen.getByText('CPU'))

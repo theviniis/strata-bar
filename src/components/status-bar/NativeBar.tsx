@@ -1,13 +1,16 @@
-import { useResolvedTheme } from '@/hooks/useResolvedTheme'
-import { useMemo, type ReactNode } from 'react'
-import type { Config, WidgetConfig } from '@/services/configuration/config'
-import { cn } from '@/lib/utils'
-import { useConfig } from '@/stores/config'
-import { QueryProvider } from '../QueryProvider'
-import { Widget } from './Widget'
-import { SlidingHighlight } from '../ui/sliding-highlight'
+import desktopCorner from '@/assets/bar-desktop-corner.svg'
 import { useAudioRouting } from '@/hooks/useAudioRouting'
+import { useResolvedTheme } from '@/hooks/useResolvedTheme'
+import { cn } from '@/lib/utils'
+import type { Config, WidgetConfig } from '@/services/configuration/config'
+import { useConfig } from '@/stores/config'
+import { useMemo, useRef, type ReactNode } from 'react'
+import { useBarRegion } from '@/hooks/useBarRegion'
+import { QueryProvider } from '../QueryProvider'
+import { SlidingHighlight } from '../ui/sliding-highlight'
+import { cornerRadius, groupEdgeMask } from './curves'
 import { SeparatorMarginContext } from './separator-margin'
+import { Widget } from './Widget'
 
 /** Order-preserving section filter: presence and order both come from config. */
 function enabled(widgets: WidgetConfig[]) {
@@ -70,6 +73,10 @@ export function NativeBarSurface({
   ariaLabel?: string
 }) {
   const theme = useResolvedTheme(bar.theme)
+  const regionRef = useRef<HTMLElement>(null)
+  useBarRegion(regionRef, bar, preview)
+  const radius = cornerRadius(bar)
+  const edgeMask = groupEdgeMask(bar.height, radius)
   const sections = useMemo(
     () =>
       [
@@ -87,33 +94,101 @@ export function NativeBarSurface({
           utility below — including the nav's own colours — matches a descendant. On a single
           element the variant cannot select itself, which left the light theme unpainted.
       */}
-        <div data-theme={theme} className={cn('group h-full w-full', theme)}>
+        <div
+          data-theme={theme}
+          className={cn(
+            'group flex h-full w-full flex-col',
+            bar.position === 'bottom' && 'justify-end',
+            theme
+          )}
+        >
           <SlidingHighlight>
             <nav
+              ref={regionRef}
               className={cn(
                 !preview && 'native-bar',
-                "relative grid h-full w-full grid-cols-[1fr_max-content_1fr] items-center border-b border-[#ffffff12] bg-background px-3.5 font-['Segoe_UI',sans-serif] text-[11px] leading-[normal] text-[#e4e5ed] tabular-nums select-none group-data-[theme=light]:bg-[#f8f5f2] group-data-[theme=light]:text-[#302a3e]"
+                "relative grid h-full w-full grid-cols-[1fr_max-content_1fr] grid-rows-1 items-center bg-transparent font-['Segoe_UI',sans-serif] text-[11px] leading-[normal] text-[#e4e5ed] tabular-nums select-none group-data-[theme=light]:text-[#302a3e]"
               )}
               aria-label={ariaLabel}
-              style={{ gap: bar.spacing }}
+              style={{ gap: bar.spacing, height: bar.height, flexShrink: 0 }}
             >
               {sections.map(([name, widgets]) => (
                 <div
                   key={name}
                   data-section={name}
-                  className={
+                  className={cn(
+                    'relative flex h-full min-w-0 items-center',
                     name === 'center'
-                      ? 'flex justify-self-center items-center'
+                      ? 'justify-self-center'
                       : name === 'right'
-                        ? 'flex shrink-0 items-center ml-auto justify-end'
-                        : 'flex min-w-0 items-center'
-                  }
-                  style={{ gap: bar.spacing }}
+                        ? 'justify-self-end justify-end'
+                        : 'justify-self-start'
+                  )}
+                  style={{
+                    gap: bar.spacing,
+                    paddingLeft:
+                      widgets.length > 0 || (name === 'right' && error)
+                        ? name === 'left'
+                          ? 4
+                          : radius * 1.5
+                        : 0,
+                    paddingRight:
+                      widgets.length > 0 || (name === 'right' && error)
+                        ? name === 'right'
+                          ? 4
+                          : radius * 1.5
+                        : 0
+                  }}
                 >
-                  {widgets.map((widget) => (
+                  {name !== 'center' && widgets.length > 0 && radius > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'pointer-events-none absolute bg-background',
+                        name === 'left' ? 'left-0' : 'right-0 -scale-x-100',
+                        bar.position === 'bottom'
+                          ? 'bottom-full -scale-y-100'
+                          : 'top-full'
+                      )}
+                      style={{
+                        width: radius,
+                        height: radius,
+                        mask: `url("${desktopCorner}") center / 100% 100% no-repeat`
+                      }}
+                    />
+                  )}
+                  {(widgets.length > 0 || (name === 'right' && error)) && (
+                    <div
+                      aria-hidden="true"
+                      className={cn(
+                        'pointer-events-none absolute inset-0 -z-20 flex',
+                        bar.position === 'bottom' && '-scale-y-100'
+                      )}
+                    >
+                      <span
+                        className="h-full shrink-0 bg-background"
+                        style={{
+                          width: name === 'left' ? 0 : radius * 2,
+                          mask: name === 'left' ? undefined : edgeMask
+                        }}
+                      />
+                      <span className="h-full flex-1 bg-background" />
+                      <span
+                        className="h-full shrink-0 -scale-x-100 bg-background"
+                        style={{
+                          width: name === 'right' ? 0 : radius * 2,
+                          mask: name === 'right' ? undefined : edgeMask
+                        }}
+                      />
+                    </div>
+                  )}
+                  {widgets.map((widget, index) => (
                     <div
                       key={widget.id}
-                      className="flex min-w-0 items-center"
+                      data-bar-item
+                      data-has-previous={index > 0}
+                      data-has-next={index < widgets.length - 1}
+                      className="group/bar-item flex min-w-0 items-center"
                       style={{ gap: bar.spacing }}
                     >
                       {renderWidget ? (

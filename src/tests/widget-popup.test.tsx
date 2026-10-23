@@ -42,6 +42,7 @@ vi.mock('../services/system/bridge', async (original) => {
   }
 })
 import { WidgetPopup } from '../popups/WidgetPopup'
+import { WidgetItem } from '../components/widget-item'
 import { PopupHost } from '../popups/PopupHost'
 import { resolvePopup } from '../popups/resolve'
 import { discoveredPopups as popupRegistry } from '../popups/.generated/popups'
@@ -68,6 +69,31 @@ beforeEach(() => {
   host.overlay.hide.mockResolvedValue(undefined)
 })
 afterEach(() => vi.unstubAllGlobals())
+
+it.each(['native', 'demo'] as const)(
+  'preserves child shapes for popup triggers and anchors in %s mode',
+  (mode) => {
+    host.overlay.mode = mode
+    render(
+      <WidgetPopup.Root popup="cpu">
+        <WidgetPopup.Anchor asChild>
+          <div data-testid="pill-anchor" className="rounded-full">
+            <WidgetPopup.Trigger asChild>
+              <WidgetItem>Pill widget</WidgetItem>
+            </WidgetPopup.Trigger>
+          </div>
+        </WidgetPopup.Anchor>
+      </WidgetPopup.Root>
+    )
+    for (const element of [
+      screen.getByTestId('pill-anchor'),
+      screen.getByRole('button', { name: 'Pill widget' })
+    ]) {
+      expect(element).toHaveClass('rounded-full')
+      expect(element).not.toHaveClass('rounded')
+    }
+  }
+)
 
 it('composes child refs/handlers, uses the whole anchor and restores focus only when requested', async () => {
   const ref = createRef<HTMLButtonElement>()

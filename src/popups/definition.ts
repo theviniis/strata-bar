@@ -19,8 +19,8 @@ export function lazyContent<
   M extends Record<K, ComponentType>,
   K extends string
 >(load: () => Promise<M>, name: K) {
-  let pending: Promise<{ default: M[K] }> | undefined
-  let loaded: { default: M[K] } | undefined
+  let pending: Promise<{ default: ComponentType }> | undefined
+  let loaded: { default: ComponentType } | undefined
   const preload = () => {
     pending ??= Promise.resolve()
       .then(load)

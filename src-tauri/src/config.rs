@@ -61,6 +61,7 @@ pub fn defaults() -> Config {
             enabled: true,
             position: BarPosition::Top,
             height: 36,
+            corner_radius: None,
             spacing: 8.0,
             separator_margin_x: None,
             theme: BarTheme::System,
@@ -140,6 +141,9 @@ pub fn project(config: &Config, monitor: Option<&str>) -> Config {
     if let Some(value) = over.height {
         projected.bar.height = value;
     }
+    if let Some(value) = over.corner_radius {
+        projected.bar.corner_radius = Some(value);
+    }
     if let Some(value) = over.spacing {
         projected.bar.spacing = value;
     }
@@ -197,6 +201,7 @@ pub fn project_snapshot(snapshot: &ConfigSnapshot, monitor: Option<&str>) -> Con
 }
 
 fn validate_bar(bar: &BarConfig) -> Result<(), String> {
+    validate_corner_radius(bar.corner_radius)?;
     if !(MIN_HEIGHT..=MAX_HEIGHT).contains(&bar.height) {
         return Err(format!(
             "Bar height must be between {MIN_HEIGHT} and {MAX_HEIGHT}"
@@ -204,6 +209,13 @@ fn validate_bar(bar: &BarConfig) -> Result<(), String> {
     }
     if !bar.spacing.is_finite() || !(0.0..=MAX_SPACING).contains(&bar.spacing) {
         return Err(format!("Bar spacing must be between 0 and {MAX_SPACING}"));
+    }
+    Ok(())
+}
+
+fn validate_corner_radius(radius: Option<f64>) -> Result<(), String> {
+    if radius.is_some_and(|value| !value.is_finite() || !(0.0..=40.0).contains(&value)) {
+        return Err("Corner radius must be between 0 and 40".into());
     }
     Ok(())
 }
@@ -273,6 +285,7 @@ pub fn validate(config: &Config) -> Result<(), String> {
                 return Err(format!("Monitor {monitor} bar height is out of range"));
             }
         }
+        validate_corner_radius(over.corner_radius)?;
         if let Some(spacing) = over.spacing {
             if !spacing.is_finite() || !(0.0..=MAX_SPACING).contains(&spacing) {
                 return Err(format!("Monitor {monitor} bar spacing is out of range"));

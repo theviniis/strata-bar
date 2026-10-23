@@ -114,7 +114,7 @@ function TabsList({
   return (
     <TabsSizeContext.Provider value={resolvedSize}>
       <LayoutGroup id={id}>
-        <SlidingHighlight highlightClassName="rounded-md bg-background/60">
+        <SlidingHighlight highlightClassName="bg-background/60">
           <TabsPrimitive.List
             data-slot="tabs-list"
             data-size={resolvedSize}

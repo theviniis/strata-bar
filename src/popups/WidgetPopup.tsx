@@ -274,7 +274,11 @@ function Anchor({
   const anchorProps = {
     ...props,
     'data-popup-open': open,
-    className: cn('rounded data-[popup-open=true]:bg-muted', className)
+    className: cn(
+      !asChild && 'rounded',
+      'data-[popup-open=true]:bg-muted',
+      className
+    )
   }
   if (!native)
     return <Popover.Anchor asChild={asChild} {...anchorProps} ref={anchorRef} />
@@ -296,7 +300,11 @@ function Trigger({
         {...props}
         onClick={onClick}
         data-popup-open={open}
-        className={cn('rounded data-[popup-open=true]:bg-muted', className)}
+        className={cn(
+          !asChild && 'rounded',
+          'data-[popup-open=true]:bg-muted',
+          className
+        )}
         ref={triggerRef}
       />
     )
@@ -309,7 +317,11 @@ function Trigger({
       aria-haspopup="dialog"
       aria-expanded={open}
       data-popup-open={open}
-      className={cn('rounded data-[popup-open=true]:bg-muted', className)}
+      className={cn(
+        !asChild && 'rounded',
+        'data-[popup-open=true]:bg-muted',
+        className
+      )}
       onClick={(event) => {
         onClick?.(event)
         if (!event.defaultPrevented) void toggle()

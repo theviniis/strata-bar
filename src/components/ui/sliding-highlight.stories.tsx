@@ -98,8 +98,43 @@ export const Vertical: Story = {
 
 export const Customized: Story = {
   args: {
-    highlightClassName: 'rounded-full bg-accent/20',
+    highlightClassName: 'bg-accent/20',
     spring: { stiffness: 350, damping: 24, mass: 1 }
+  }
+}
+
+export const ItemShapes: Story = {
+  args: {
+    children: (
+      <div className="flex gap-3 rounded-lg border bg-background p-2">
+        <WidgetItem className="rounded-full bg-transparent">Cápsula</WidgetItem>
+        <WidgetItem className="rounded-none bg-transparent">Reto</WidgetItem>
+        <WidgetItem className="rounded-tl-2xl rounded-tr-sm rounded-br-xl rounded-bl-none bg-transparent">
+          Assimétrico
+        </WidgetItem>
+      </div>
+    )
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const highlight = canvasElement.querySelector('[data-sliding-highlight]')!
+    for (const name of ['Cápsula', 'Reto', 'Assimétrico']) {
+      const item = canvas.getByRole('button', { name })
+      await userEvent.hover(item)
+      await waitFor(() => {
+        const expected = getComputedStyle(item)
+        const actual = getComputedStyle(highlight)
+        for (const corner of [
+          'borderTopLeftRadius',
+          'borderTopRightRadius',
+          'borderBottomRightRadius',
+          'borderBottomLeftRadius'
+        ] as const) {
+          expect(actual[corner]).toBe(expected[corner])
+        }
+      })
+      await userEvent.unhover(item)
+    }
   }
 }
 

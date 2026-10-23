@@ -2,8 +2,8 @@ import type { WidgetView } from '@/components/status-bar/presentation'
 import { WidgetItem, WidgetItemIcon } from '@/components/widget-item'
 import { cn } from '@/lib/utils'
 import type { MediaAction, MediaData } from '@/services/system/media.generated'
-import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
 import type { ComponentProps, ReactNode } from 'react'
+import { FaBackwardStep, FaForwardStep, FaPause, FaPlay } from 'react-icons/fa6'
 export interface MusicProps extends ComponentProps<'div'> {
   marginX?: WidgetView['marginX']
   current: MediaData | null
@@ -25,7 +25,7 @@ export function Music({
   tooltipTrigger,
   children,
   className,
-  marginX = 0,
+  marginX: _marginX = 0,
   ...anchorProps
 }: MusicProps) {
   return (
@@ -33,7 +33,7 @@ export function Music({
       <div
         aria-label={demo ? 'Música · demonstração' : 'Música'}
         className={cn(
-          'min-w-0 max-w-45 shrink overflow-hidden mx-2',
+          'min-w-0 max-w-45 shrink overflow-hidden group-data-[has-previous=true]/bar-item:ml-2 group-data-[has-next=true]/bar-item:mr-2',
           className
         )}
         {...anchorProps}
@@ -73,13 +73,13 @@ export function Music({
 }
 const mediaControlMap = (current: MediaData | null) =>
   [
-    ['previous', 'Faixa anterior', SkipBack],
+    ['previous', 'Faixa anterior', FaBackwardStep],
     [
       'playPause',
       current?.playback === 'playing' ? 'Pausar' : 'Reproduzir',
-      current?.playback === 'playing' ? Pause : Play
+      current?.playback === 'playing' ? FaPause : FaPlay
     ],
-    ['next', 'Próxima faixa', SkipForward]
+    ['next', 'Próxima faixa', FaForwardStep]
   ] as const
 
 type NediaControlMapReturn = ReturnType<typeof mediaControlMap>[number][0]

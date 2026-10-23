@@ -83,6 +83,7 @@ const bar = z.object({
   enabled: z.boolean().default(true),
   position: z.enum(['top', 'bottom']).default('top'),
   height: z.number().int().min(28).max(80).default(36),
+  cornerRadius: z.number().min(0).max(40).optional(),
   spacing: z.number().min(0).max(32).default(8),
   /** Shared by every separator on every monitor; absent means zero. */
   separatorMarginX: z.number().min(0).max(32).optional(),
@@ -121,6 +122,7 @@ const monitorOverride = z.object({
   layout: widgetLayoutSchema.optional(),
   position: bar.shape.position.removeDefault().optional(),
   height: bar.shape.height.removeDefault().optional(),
+  cornerRadius: bar.shape.cornerRadius,
   spacing: bar.shape.spacing.removeDefault().optional(),
   theme: bar.shape.theme.removeDefault().optional(),
   alwaysOnTop: bar.shape.alwaysOnTop.removeDefault().optional(),

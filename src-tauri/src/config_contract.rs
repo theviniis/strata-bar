@@ -145,6 +145,8 @@ pub struct BarConfig {
     pub position: BarPosition,
     #[serde(default = "default_height")]
     pub height: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub corner_radius: Option<f64>,
     #[serde(default = "default_spacing")]
     pub spacing: f64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -186,6 +188,8 @@ pub struct BarOverride {
     pub position: Option<BarPosition>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub height: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub corner_radius: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spacing: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

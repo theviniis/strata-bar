@@ -6,8 +6,42 @@ import {
   widgetAudio
 } from '../services/configuration/config'
 import { useConfig } from '../stores/config'
+import { cornerRadius } from '../components/status-bar/curves'
 
 describe('configuration', () => {
+  it('preserves automatic curves and accepts a bounded custom radius', () => {
+    expect(cornerRadius(defaultConfig.bar)).toBe(18)
+    for (const radius of [0, 8.5, 40]) {
+      const parsed = parseConfig(
+        JSON.stringify({
+          ...defaultConfig,
+          bar: { ...defaultConfig.bar, cornerRadius: radius },
+          monitors: { DISPLAY2: { cornerRadius: radius } }
+        })
+      )
+      expect(parsed.bar.cornerRadius).toBe(radius)
+      expect(parsed.monitors.DISPLAY2.cornerRadius).toBe(radius)
+      expect(cornerRadius(parsed.bar)).toBe(Math.min(radius, 18))
+    }
+    for (const cornerRadius of [-1, 41]) {
+      expect(() =>
+        parseConfig(
+          JSON.stringify({
+            ...defaultConfig,
+            bar: { ...defaultConfig.bar, cornerRadius }
+          })
+        )
+      ).toThrow()
+      expect(() =>
+        parseConfig(
+          JSON.stringify({
+            ...defaultConfig,
+            monitors: { DISPLAY2: { cornerRadius } }
+          })
+        )
+      ).toThrow()
+    }
+  })
   beforeEach(() => {
     localStorage.clear()
     useConfig.setState({ config: defaultConfig, error: null })

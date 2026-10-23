@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type ReactElement,
   type PointerEvent
 } from 'react'
@@ -15,12 +16,16 @@ interface HighlightRect {
   top: number
   width: number
   height: number
+  borderTopLeftRadius: CSSProperties['borderTopLeftRadius']
+  borderTopRightRadius: CSSProperties['borderTopRightRadius']
+  borderBottomRightRadius: CSSProperties['borderBottomRightRadius']
+  borderBottomLeftRadius: CSSProperties['borderBottomLeftRadius']
 }
 
 export interface SlidingHighlightProps {
   /** One DOM element that contains the items and receives positioning styles. */
   children: ReactElement
-  /** Background and radius classes for the decorative highlight. */
+  /** Decorative classes; corner radii always follow the hovered item. */
   highlightClassName?: string
   /** Physics of travel between items. The first hover appears in place. */
   spring?: Pick<SpringOptions, 'stiffness' | 'damping' | 'mass'>
@@ -56,6 +61,7 @@ export function SlidingHighlight({
       }
       const bounds = container.getBoundingClientRect()
       const item = target.getBoundingClientRect()
+      const shape = getComputedStyle(target)
       const scaleX = container.offsetWidth
         ? bounds.width / container.offsetWidth
         : 1
@@ -72,7 +78,11 @@ export function SlidingHighlight({
           container.clientTop +
           container.scrollTop,
         width: item.width / scaleX,
-        height: item.height / scaleY
+        height: item.height / scaleY,
+        borderTopLeftRadius: shape.borderTopLeftRadius || '0px',
+        borderTopRightRadius: shape.borderTopRightRadius || '0px',
+        borderBottomRightRadius: shape.borderBottomRightRadius || '0px',
+        borderBottomLeftRadius: shape.borderBottomLeftRadius || '0px'
       }
       setHighlight((old) => ({
         rect,
@@ -87,13 +97,25 @@ export function SlidingHighlight({
         : new ResizeObserver(update)
     observer?.observe(container)
     // Content and responsive layout can change the hovered item's size.
-    const mutation = new MutationObserver(() => {
-      if (active.current) update()
+    const mutation = new MutationObserver((records) => {
+      if (
+        active.current &&
+        records.some(
+          (record) =>
+            record.type !== 'attributes' ||
+            (record.target instanceof Element &&
+              record.target.contains(active.current))
+        )
+      ) {
+        update()
+      }
     })
     mutation.observe(container, {
       childList: true,
       subtree: true,
-      characterData: true
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['class', 'style']
     })
     window.addEventListener('resize', update)
     return () => {
@@ -153,7 +175,7 @@ export function SlidingHighlight({
             data-sliding-highlight=""
             data-moving={highlight.moving}
             className={cn(
-              'pointer-events-none absolute -z-10 rounded bg-muted',
+              'pointer-events-none absolute -z-10 bg-muted',
               highlightClassName
             )}
             initial={false}
@@ -172,7 +194,13 @@ export function SlidingHighlight({
                       mass: 0.8,
                       ...spring
                     },
-              opacity: { duration: reducedMotion ? 0 : 0.16, ease: 'easeOut' }
+              opacity: { duration: reducedMotion ? 0 : 0.16, ease: 'easeOut' },
+              // Copy the item's CSS radius immediately. Interpolating enormous
+              // pill radii (Tailwind rounded-full) would distort other shapes.
+              borderTopLeftRadius: { duration: 0 },
+              borderTopRightRadius: { duration: 0 },
+              borderBottomRightRadius: { duration: 0 },
+              borderBottomLeftRadius: { duration: 0 }
             }}
           />,
           container

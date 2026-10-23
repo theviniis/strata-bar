@@ -1,8 +1,8 @@
-import type { ComponentProps } from 'react'
-import type { KomorebiData, SystemEvent } from '@/services/system/bridge'
 import type { WidgetView } from '@/components/status-bar/presentation'
 import { showLabel } from '@/components/status-bar/presentation'
 import { WidgetItemLabel } from '@/components/widget-item'
+import type { KomorebiData, SystemEvent } from '@/services/system/bridge'
+import type { ComponentProps } from 'react'
 import { Workspaces, type WorkspacesProps } from './Workspaces'
 
 export interface KomorebiProps extends ComponentProps<'div'> {
@@ -19,7 +19,7 @@ export function Komorebi({
 }: KomorebiProps) {
   const snapshot = event.status === 'ready' ? event.data : null
   return (
-    <div className="flex min-w-0 items-center gap-2" {...props}>
+    <div className="flex min-w-0 items-center gap-2 px-2" {...props}>
       {showLabel(format) && (
         <WidgetItemLabel className="shrink-0 text-[10px]">
           Áreas

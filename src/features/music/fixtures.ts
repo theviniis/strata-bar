@@ -1,6 +1,6 @@
 import { demoMedia } from '@/services/system/media'
+import { FaPause as Pause } from 'react-icons/fa6'
 import type { MusicPopupControls } from './useMusicPopupControls'
-import { Pause } from 'lucide-react'
 
 export const MUSIC_FIXTURE_TIME = 1792744860000
 export function musicFixture() {

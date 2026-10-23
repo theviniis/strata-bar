@@ -12,7 +12,10 @@ use windows::{
     core::w,
     Win32::{
         Foundation::*,
-        Graphics::Gdi::*,
+        Graphics::{
+            Dwm::{DwmEnableBlurBehindWindow, DWM_BB_BLURREGION, DWM_BB_ENABLE, DWM_BLURBEHIND},
+            Gdi::*,
+        },
         UI::{HiDpi::GetDpiForWindow, Shell::*, WindowsAndMessaging::*},
     },
 };
@@ -21,9 +24,8 @@ const REFRESH_GEOMETRY: u32 = WM_APP + 43;
 const SUBCLASS: usize = 0x53545241;
 const OVERLAY_SUBCLASS: usize = 0x5354524F;
 const SETTINGS_SUBCLASS: usize = 0x53545253;
-/// `#171821` — the bar colour in `styles.css`. The window paints it before the
-/// webview has any content, so a starting bar is never white.
-const BAR_BACKGROUND: tauri::window::Color = tauri::window::Color(23, 24, 33, 255);
+/// Keep the host clear, including the decorative corners outside the AppBar.
+const BAR_BACKGROUND: tauri::window::Color = tauri::window::Color(0, 0, 0, 0);
 /// Window label and title of the shared floating surface. The title deliberately
 /// does not start with `"Strata ·"`, which `bar_snapshot` uses to find AppBars.
 pub const OVERLAY: &str = "overlay";
@@ -69,15 +71,27 @@ static OVERLAY_SESSION: AtomicU64 = AtomicU64::new(0);
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct BarGeometry {
     height: i32,
+    radius: i32,
     bottom: bool,
     always_on_top: bool,
+    left_corner: bool,
+    right_corner: bool,
 }
 impl BarGeometry {
-    fn from_config(bar: &crate::config_contract::BarConfig, scale: f64) -> Self {
+    fn from_config(config: &crate::config_contract::Config, scale: f64) -> Self {
+        let bar = &config.bar;
+        let height = (bar.height as f64 * scale).round() as i32;
         Self {
-            height: (bar.height as f64 * scale).round() as i32,
+            height,
+            radius: bar
+                .corner_radius
+                .map(|radius| (radius * scale).round() as i32)
+                .unwrap_or(height / 2)
+                .clamp(0, height / 2),
             bottom: bar.position == crate::config_contract::BarPosition::Bottom,
             always_on_top: bar.always_on_top,
+            left_corner: config.widgets.left.iter().any(|widget| widget.enabled),
+            right_corner: config.widgets.right.iter().any(|widget| widget.enabled),
         }
     }
     fn edge(self) -> u32 {
@@ -101,6 +115,107 @@ impl BarGeometry {
             top_strip(monitor, height)
         }
     }
+    fn window_rect(self, mut reservation: RECT) -> RECT {
+        if self.bottom {
+            reservation.top -= self.radius;
+        } else {
+            reservation.bottom += self.radius;
+        }
+        reservation
+    }
+}
+
+/// Read the actual HWND first; the decoration is not part of popup placement
+/// or the desktop reservation.
+unsafe fn bar_content_rect(hwnd: HWND) -> windows::core::Result<RECT> {
+    let mut rect = RECT::default();
+    GetWindowRect(hwnd, &mut rect)?;
+    // A signed physical height is also readable by the separate --probe process.
+    let height = GetPropW(hwnd, w!("StrataBarHeight")).0 as isize as i32;
+    if height > 0 {
+        rect.bottom = rect.top + height;
+    } else if height < 0 {
+        rect.top = rect.bottom + height;
+    }
+    Ok(rect)
+}
+
+/// Frame and region changes can discard tao's transparent DWM composition,
+/// exposing the white host surface and title behind transparent web content.
+/// An empty blur region restores per-pixel transparency without adding blur.
+unsafe fn restore_bar_transparency(hwnd: HWND) {
+    let region = CreateRectRgn(0, 0, -1, -1);
+    let blur = DWM_BLURBEHIND {
+        dwFlags: DWM_BB_ENABLE | DWM_BB_BLURREGION,
+        fEnable: true.into(),
+        hRgnBlur: region,
+        fTransitionOnMaximized: false.into(),
+    };
+    if let Err(error) = DwmEnableBlurBehindWindow(hwnd, &blur) {
+        eprintln!("Bar transparency: {error}");
+    }
+    let _ = DeleteObject(region.into());
+}
+
+/// An undecorated host has no non-client surface to paint. Default activation
+/// painting otherwise draws a system caption over the transparent webview.
+/// Forward activation to tao (focus events still matter), with the documented
+/// -1 lParam that suppresses DefWindowProc's non-client repaint.
+unsafe fn floating_nonclient_message(hwnd: HWND, msg: u32, wp: WPARAM) -> Option<LRESULT> {
+    match msg {
+        WM_NCPAINT => Some(LRESULT(0)),
+        WM_NCACTIVATE => Some(DefSubclassProc(hwnd, msg, wp, LPARAM(-1))),
+        _ => None,
+    }
+}
+
+/// Restrict the enlarged HWND to the bar and its two concave corner silhouettes.
+/// The desktop below the transparent middle receives input directly.
+unsafe fn apply_bar_region(hwnd: HWND, geometry: BarGeometry, width: i32) {
+    let radius = geometry.radius;
+    let height = geometry.height + radius;
+    let region = CreateRectRgn(0, 0, width, height);
+    if radius == 0 {
+        if SetWindowRgn(hwnd, Some(region), true) == 0 {
+            let _ = DeleteObject(region.into());
+        }
+        return;
+    }
+    let (top, bottom, circle_top, circle_bottom) = if geometry.bottom {
+        (0, radius, -radius, radius)
+    } else {
+        (
+            geometry.height,
+            height,
+            geometry.height,
+            geometry.height + 2 * radius,
+        )
+    };
+    let middle = CreateRectRgn(radius, top, width - radius, bottom);
+    CombineRgn(Some(region), Some(region), Some(middle), RGN_DIFF);
+    let _ = DeleteObject(middle.into());
+    for (left, right, enabled) in [
+        (0, 2 * radius, geometry.left_corner),
+        (width - 2 * radius, width, geometry.right_corner),
+    ] {
+        if !enabled {
+            let corner = CreateRectRgn(left.max(0), top, right.min(width), bottom);
+            CombineRgn(Some(region), Some(region), Some(corner), RGN_DIFF);
+            let _ = DeleteObject(corner.into());
+            continue;
+        }
+        let circle = CreateEllipticRgn(left, circle_top, right, circle_bottom);
+        // Only remove the part of the ellipse outside the reserved strip.
+        let outside = CreateRectRgn(0, top, width, bottom);
+        CombineRgn(Some(circle), Some(circle), Some(outside), RGN_AND);
+        CombineRgn(Some(region), Some(region), Some(circle), RGN_DIFF);
+        let _ = DeleteObject(outside.into());
+        let _ = DeleteObject(circle.into());
+    }
+    // Windows owns the region after a successful SetWindowRgn.
+    if SetWindowRgn(hwnd, Some(region), true) == 0 {
+        let _ = DeleteObject(region.into());
+    }
 }
 
 struct Reservation {
@@ -109,6 +224,7 @@ struct Reservation {
     geometry: Cell<BarGeometry>,
     busy: Cell<bool>,
     applied: Cell<Option<[i32; 4]>>,
+    shaped: Cell<Option<(BarGeometry, i32)>>,
     taskbar_message: u32,
 }
 unsafe fn data(hwnd: HWND) -> APPBARDATA {
@@ -191,6 +307,16 @@ unsafe fn position(hwnd: HWND, state: &Reservation) {
         return;
     }
     let geometry = state.geometry.get();
+    let signed_height = if geometry.bottom {
+        -geometry.height
+    } else {
+        geometry.height
+    };
+    let _ = SetPropW(
+        hwnd,
+        w!("StrataBarHeight"),
+        Some(HANDLE(signed_height as isize as *mut _)),
+    );
     // tao re-applies its own frame and stacking styles on visibility changes.
     enforce_frame(hwnd, geometry.topmost());
     let mut d = data(hwnd);
@@ -214,10 +340,11 @@ unsafe fn position(hwnd: HWND, state: &Reservation) {
             .applied
             .set(Some([d.rc.left, d.rc.top, d.rc.right, d.rc.bottom]));
     }
+    let target = geometry.window_rect(d.rc);
     let mut actual = RECT::default();
     let matches = GetWindowRect(hwnd, &mut actual).is_ok()
         && [actual.left, actual.top, actual.right, actual.bottom]
-            == [d.rc.left, d.rc.top, d.rc.right, d.rc.bottom];
+            == [target.left, target.top, target.right, target.bottom];
     if !matches {
         if let Err(e) = SetWindowPos(
             hwnd,
@@ -226,15 +353,24 @@ unsafe fn position(hwnd: HWND, state: &Reservation) {
             } else {
                 HWND_NOTOPMOST
             }),
-            d.rc.left,
-            d.rc.top,
-            d.rc.right - d.rc.left,
-            d.rc.bottom - d.rc.top,
+            target.left,
+            target.top,
+            target.right - target.left,
+            target.bottom - target.top,
             SWP_NOACTIVATE,
         ) {
             eprintln!("Bar positioning: {e}");
         }
     }
+    let shape = (geometry, target.right - target.left);
+    if state.shaped.get() != Some(shape) {
+        apply_bar_region(hwnd, geometry, shape.1);
+        state.shaped.set(Some(shape));
+    }
+    // Showing/repositioning can reset DWM even when the cached region is still
+    // correct. Restore composition after every placement, including the final
+    // post-show pass; the shape cache must not skip this step.
+    restore_bar_transparency(hwnd);
     state.busy.set(false);
 }
 unsafe extern "system" fn procedure(
@@ -250,18 +386,27 @@ unsafe extern "system" fn procedure(
         COUNTS[3].fetch_add(1, Ordering::Relaxed);
     }
     let state = &*(reference as *const Reservation);
+    if let Some(result) = floating_nonclient_message(hwnd, msg, wp) {
+        return result;
+    }
     // Windows can move a newly shown window inside rcWork, which starts BELOW
     // our reservation. Keep the bar HWND on its negotiated physical rectangle.
     if msg == WM_WINDOWPOSCHANGING && !state.busy.get() {
         if let Some([left, top, right, bottom]) = state.applied.get() {
+            let target = state.geometry.get().window_rect(RECT {
+                left,
+                top,
+                right,
+                bottom,
+            });
             if let Some(p) = (lp.0 as *mut WINDOWPOS).as_mut() {
                 if !p.flags.contains(SWP_NOMOVE) {
-                    p.x = left;
-                    p.y = top;
+                    p.x = target.left;
+                    p.y = target.top;
                 }
                 if !p.flags.contains(SWP_NOSIZE) {
                     p.cx = right - left;
-                    p.cy = bottom - top;
+                    p.cy = target.bottom - target.top;
                 }
             }
         }
@@ -272,7 +417,17 @@ unsafe extern "system" fn procedure(
     }
     if msg == WM_STYLECHANGED {
         enforce_frame(hwnd, state.geometry.get().topmost());
+        restore_bar_transparency(hwnd);
         return LRESULT(0);
+    }
+    if msg == WM_DWMCOMPOSITIONCHANGED {
+        restore_bar_transparency(hwnd);
+    }
+    if msg == WM_SHOWWINDOW && wp.0 != 0 {
+        // Let tao finish its visibility work before restoring the clear host.
+        let result = DefSubclassProc(hwnd, msg, wp, lp);
+        restore_bar_transparency(hwnd);
+        return result;
     }
     if msg == WM_NCDESTROY {
         let mut d = data(hwnd);
@@ -389,7 +544,7 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         signature.hash(&mut hash);
         let label = format!("bar-{:x}", hash.finish());
         desired.push(label.clone());
-        let geometry = BarGeometry::from_config(&projected.bar, m.scale_factor());
+        let geometry = BarGeometry::from_config(&projected, m.scale_factor());
         if let Some(window) = app.get_webview_window(&label) {
             configure_geometry(app, window, geometry)?;
             continue;
@@ -417,10 +572,11 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         .shadow(false)
         .visible(false)
         .focused(false)
+        .transparent(true)
         .background_color(BAR_BACKGROUND)
         .inner_size(
             m.size().width as f64 / m.scale_factor(),
-            projected.bar.height as f64,
+            (geometry.height + geometry.radius) as f64 / m.scale_factor(),
         )
         .position(
             m.position().x as f64 / m.scale_factor(),
@@ -504,6 +660,7 @@ fn activate_bar(
                     geometry: Cell::new(geometry),
                     busy: Cell::new(false),
                     applied: Cell::new(None),
+                    shaped: Cell::new(None),
                     taskbar_message: RegisterWindowMessageW(w!("TaskbarCreated")),
                 });
                 let pointer = Box::into_raw(owner);
@@ -1153,10 +1310,10 @@ pub fn overlay_resize(
         .ok_or("Popup source is unavailable")?;
     let source_hwnd = HWND(source.hwnd().map_err(|e| e.to_string())?.0);
     let hwnd = HWND(caller.hwnd().map_err(|e| e.to_string())?.0);
-    let mut bar = RECT::default();
+    let bar;
     let mut current = RECT::default();
     unsafe {
-        GetWindowRect(source_hwnd, &mut bar).map_err(|e| e.to_string())?;
+        bar = bar_content_rect(source_hwnd).map_err(|e| e.to_string())?;
         GetWindowRect(hwnd, &mut current).map_err(|e| e.to_string())?;
     }
     let monitor = monitor_rect(source_hwnd).ok_or("Popup monitor is unavailable")?;
@@ -1271,11 +1428,10 @@ pub fn overlay_show(
     }
     let window = ensure_overlay(app).map_err(|e| e.to_string())?;
     let bar_hwnd = HWND(caller.hwnd().map_err(|e| e.to_string())?.0);
-    let mut bar = RECT::default();
+    let bar;
     unsafe {
-        if GetWindowRect(bar_hwnd, &mut bar).is_err() {
-            return Err("The reporting bar window has no rectangle".into());
-        }
+        bar = bar_content_rect(bar_hwnd)
+            .map_err(|_| "The reporting bar window has no rectangle".to_string())?;
     }
     let monitor = monitor_rect(bar_hwnd).unwrap_or(bar);
     let side = overlay_side_for_bar(bar, monitor);
@@ -1692,10 +1848,11 @@ pub fn bar_snapshot() -> serde_json::Value {
             let mut client = RECT::default();
             if GetWindowRect(hwnd, &mut rect).is_ok() {
                 let _ = GetClientRect(hwnd, &mut client);
+                let reservation = bar_content_rect(hwnd).unwrap_or(rect);
                 let style = GetWindowLongPtrW(hwnd, GWL_STYLE) as u32;
                 let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
                 let values = &mut *(param.0 as *mut Vec<serde_json::Value>);
-                values.push(serde_json::json!({"title":title,"dpi":GetDpiForWindow(hwnd),"rect":[rect.left,rect.top,rect.right,rect.bottom],"client":[client.right,client.bottom],"visible":IsWindowVisible(hwnd).as_bool(),"toolWindow":ex & WS_EX_TOOLWINDOW.0 != 0,"topmost":ex & WS_EX_TOPMOST.0 != 0,"noActivate":ex & WS_EX_NOACTIVATE.0 != 0,"komorebiEligible":komorebi_eligible(style,ex)}));
+                values.push(serde_json::json!({"title":title,"dpi":GetDpiForWindow(hwnd),"rect":[rect.left,rect.top,rect.right,rect.bottom],"reservationRect":[reservation.left,reservation.top,reservation.right,reservation.bottom],"client":[client.right,client.bottom],"visible":IsWindowVisible(hwnd).as_bool(),"toolWindow":ex & WS_EX_TOOLWINDOW.0 != 0,"topmost":ex & WS_EX_TOPMOST.0 != 0,"noActivate":ex & WS_EX_NOACTIVATE.0 != 0,"komorebiEligible":komorebi_eligible(style,ex)}));
             }
         }
         true.into()
@@ -1709,6 +1866,190 @@ pub fn bar_snapshot() -> serde_json::Value {
 #[cfg(test)]
 mod geometry_tests {
     use super::*;
+    #[test]
+    fn transparent_bar_forwards_activation_without_painting_a_system_caption() {
+        struct Probe {
+            activation: Cell<Option<isize>>,
+            paints: Cell<u32>,
+        }
+        unsafe extern "system" fn observe(
+            hwnd: HWND,
+            msg: u32,
+            wp: WPARAM,
+            lp: LPARAM,
+            _: usize,
+            reference: usize,
+        ) -> LRESULT {
+            let probe = &*(reference as *const Probe);
+            if msg == WM_NCACTIVATE {
+                probe.activation.set(Some(lp.0));
+            }
+            if msg == WM_NCPAINT {
+                probe.paints.set(probe.paints.get() + 1);
+            }
+            DefSubclassProc(hwnd, msg, wp, lp)
+        }
+        unsafe extern "system" fn guard(
+            hwnd: HWND,
+            msg: u32,
+            wp: WPARAM,
+            lp: LPARAM,
+            _: usize,
+            _: usize,
+        ) -> LRESULT {
+            floating_nonclient_message(hwnd, msg, wp)
+                .unwrap_or_else(|| DefSubclassProc(hwnd, msg, wp, lp))
+        }
+        unsafe {
+            let hwnd = CreateWindowExW(
+                WINDOW_EX_STYLE::default(),
+                w!("STATIC"),
+                w!("Strata frame test"),
+                WS_POPUP,
+                0,
+                0,
+                800,
+                54,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+            let probe = Probe {
+                activation: Cell::new(None),
+                paints: Cell::new(0),
+            };
+            assert!(
+                SetWindowSubclass(hwnd, Some(observe), 1, &probe as *const _ as usize).as_bool()
+            );
+            assert!(SetWindowSubclass(hwnd, Some(guard), 2, 0).as_bool());
+            for active in [0, 1, 0, 1] {
+                SendMessageW(hwnd, WM_NCACTIVATE, Some(WPARAM(active)), Some(LPARAM(0)));
+                assert_eq!(probe.activation.get(), Some(-1));
+                SendMessageW(hwnd, WM_NCPAINT, Some(WPARAM(1)), Some(LPARAM(0)));
+                assert_eq!(probe.paints.get(), 0);
+            }
+            let _ = RemoveWindowSubclass(hwnd, Some(guard), 2);
+            let _ = RemoveWindowSubclass(hwnd, Some(observe), 1);
+            DestroyWindow(hwnd).unwrap();
+        }
+    }
+    #[test]
+    fn configured_curve_radius_is_scaled_clamped_and_projected() {
+        let mut config = crate::config::defaults();
+        assert_eq!(BarGeometry::from_config(&config, 1.5).radius, 27);
+        for (radius, expected) in [(0.0, 0), (8.0, 12), (40.0, 27)] {
+            config.bar.corner_radius = Some(radius);
+            let geometry = BarGeometry::from_config(&config, 1.5);
+            assert_eq!(geometry.radius, expected);
+            let strip = geometry.strip(RECT {
+                left: 0,
+                top: 0,
+                right: 1920,
+                bottom: 1080,
+            });
+            assert_eq!(strip.bottom, 54);
+            assert_eq!(geometry.window_rect(strip).bottom, 54 + expected);
+        }
+        config.monitors.insert(
+            "DISPLAY2".into(),
+            crate::config_contract::BarOverride {
+                corner_radius: Some(6.0),
+                ..Default::default()
+            },
+        );
+        let projected = crate::config::project(&config, Some("DISPLAY2"));
+        assert_eq!(BarGeometry::from_config(&projected, 1.5).radius, 9);
+        for radius in [-1.0, 41.0, f64::NAN, f64::INFINITY] {
+            config.bar.corner_radius = Some(radius);
+            assert!(crate::config::validate(&config).is_err());
+            config.bar.corner_radius = None;
+            config.monitors.get_mut("DISPLAY2").unwrap().corner_radius = Some(radius);
+            assert!(crate::config::validate(&config).is_err());
+        }
+    }
+    #[test]
+    fn desktop_corners_extend_the_window_without_extending_the_reservation() {
+        let mut config = crate::config::defaults();
+        for bottom in [false, true] {
+            config.bar.position = if bottom {
+                crate::config_contract::BarPosition::Bottom
+            } else {
+                crate::config_contract::BarPosition::Top
+            };
+            let geometry = BarGeometry::from_config(&config, 1.5);
+            let reservation = geometry.strip(RECT {
+                left: -1920,
+                top: -1080,
+                right: 0,
+                bottom: 0,
+            });
+            let window = geometry.window_rect(reservation);
+            assert_eq!(reservation.bottom - reservation.top, 54);
+            assert_eq!(window.bottom - window.top, 81);
+            assert_eq!(window.left, -1920);
+            assert_eq!(window.right, 0);
+            if bottom {
+                assert_eq!(window.bottom, reservation.bottom);
+                assert_eq!(window.top, reservation.top - 27);
+            } else {
+                assert_eq!(window.top, reservation.top);
+                assert_eq!(window.bottom, reservation.bottom + 27);
+            }
+        }
+    }
+
+    #[test]
+    fn native_corner_region_leaves_the_desktop_clickable() {
+        unsafe {
+            let hwnd = CreateWindowExW(
+                WINDOW_EX_STYLE::default(),
+                w!("STATIC"),
+                w!("Strata corner test"),
+                WS_POPUP,
+                0,
+                0,
+                800,
+                54,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+            let mut config = crate::config::defaults();
+            for bottom in [false, true] {
+                config.bar.position = if bottom {
+                    crate::config_contract::BarPosition::Bottom
+                } else {
+                    crate::config_contract::BarPosition::Top
+                };
+                let mut geometry = BarGeometry::from_config(&config, 1.0);
+                geometry.left_corner = true;
+                geometry.right_corner = true;
+                apply_bar_region(hwnd, geometry, 800);
+                let region = CreateRectRgn(0, 0, 0, 0);
+                assert_ne!(GetWindowRgn(hwnd, region).0, ERROR);
+                let outside_y = if bottom { 9 } else { 45 };
+                let bar_y = if bottom { 30 } else { 18 };
+                assert!(PtInRegion(region, 400, bar_y).as_bool());
+                assert!(!PtInRegion(region, 400, outside_y).as_bool());
+                assert!(PtInRegion(region, 0, outside_y).as_bool());
+                assert!(PtInRegion(region, 799, outside_y).as_bool());
+                assert!(!PtInRegion(region, 16, outside_y).as_bool());
+                geometry.left_corner = false;
+                geometry.right_corner = false;
+                apply_bar_region(hwnd, geometry, 800);
+                GetWindowRgn(hwnd, region);
+                assert!(!PtInRegion(region, 0, outside_y).as_bool());
+                assert!(!PtInRegion(region, 799, outside_y).as_bool());
+                let _ = DeleteObject(region.into());
+            }
+            DestroyWindow(hwnd).unwrap();
+        }
+    }
+
     #[test]
     fn alerts_never_autofocus_and_borderless_fullscreen_is_detected() {
         assert!(!popup_takes_focus("reminderAlert"));
@@ -1825,7 +2166,7 @@ mod geometry_tests {
         );
         let projected = crate::config::project(&config, Some("DISPLAY2"));
         assert_eq!(projected.bar.spacing, 32.0);
-        let geometry = BarGeometry::from_config(&projected.bar, 1.25);
+        let geometry = BarGeometry::from_config(&projected, 1.25);
         let rect = geometry.strip(RECT {
             left: -2560,
             top: -1440,
@@ -1839,7 +2180,7 @@ mod geometry_tests {
         assert_eq!(geometry.edge(), ABE_BOTTOM);
         assert!(!geometry.topmost());
         config.bar.position = crate::config_contract::BarPosition::Top;
-        let geometry = BarGeometry::from_config(&config.bar, 1.5);
+        let geometry = BarGeometry::from_config(&config, 1.5);
         let rect = geometry.strip(RECT {
             left: 724,
             top: -1080,

@@ -19,7 +19,7 @@ transparentes para que o destaque apareça.
 ```tsx
 import { SlidingHighlight } from '@/components/ui/sliding-highlight'
 
-<SlidingHighlight>
+;<SlidingHighlight>
   <div className="flex gap-2 rounded-lg bg-background p-2">
     <button data-sliding-highlight-item className="rounded px-3 py-2">
       Primeiro
@@ -37,7 +37,11 @@ Não há dependência de dados, popups ou APIs nativas.
 
 ## Comportamento e personalização
 
-- `highlightClassName`: cor e arredondamento; padrão `rounded bg-muted`.
+- `highlightClassName`: cor e decoração; padrão `bg-muted`.
+- O arredondamento acompanha os quatro cantos do item sob o ponteiro, incluindo
+  `rounded-full`, cantos retos, raios percentuais e cantos assimétricos.
+  Configure o shape no próprio item; as classes de raio do destaque são
+  substituídas pelos valores calculados do alvo.
 - `spring`: ajusta `stiffness`, `damping` e `mass`; padrões 500, 38 e 0.8.
 - Funciona em linhas, colunas, tamanhos variáveis e previews com escala.
 - Recalcula geometria em alterações de conteúdo e redimensionamento.
@@ -63,10 +67,18 @@ A mesma API acompanha itens empilhados, sem configurar orientação.
 
 ## Personalização
 
-Este exemplo usa `highlightClassName="rounded-full bg-accent/20"` e
+Este exemplo usa `highlightClassName="bg-accent/20"` e
 `spring={{ stiffness: 350, damping: 24, mass: 1 }}`.
 
 <Canvas of={SlidingHighlightStories.Customized} />
+
+## Shape do item
+
+O fundo copia o `border-radius` calculado do item sem precisar repetir classes
+no `SlidingHighlight`. Alterações de classe ou estilo do item também atualizam
+o destaque enquanto o ponteiro permanece sobre ele.
+
+<Canvas of={SlidingHighlightStories.ItemShapes} />
 
 ## Widgets
 

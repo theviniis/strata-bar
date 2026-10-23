@@ -18,7 +18,7 @@ export function WidgetItem({
     <Comp
       data-sliding-highlight-item=""
       className={cn(
-        'flex items-center gap-1 px-2 py-1 rounded focus-visible:outline-accent',
+        'flex items-center gap-1 px-2 py-1 focus-visible:outline-accent rounded-full',
         className
       )}
       {...props}
@@ -37,7 +37,7 @@ export function WidgetItemIcon({
   ...props
 }: WidgetItemIconProps) {
   return (
-    <Icon size={size} className={cn('text-secondary', className)} {...props} />
+    <Icon size={size} className={cn('text-secondary ', className)} {...props} />
   )
 }
 
