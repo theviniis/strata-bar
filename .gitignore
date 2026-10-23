@@ -5,3 +5,4 @@ src-tauri/target/
 research/
 node_modules
 src/popups/.generated/
+.worktrees
