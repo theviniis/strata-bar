@@ -199,6 +199,11 @@ pub fn start(app: AppHandle) {
             main_thread(&app, |app| crate::desktop::open_settings(&app).unwrap());
             ready(&app, "[...document.querySelectorAll('[role=tab]')].some(b=>b.textContent.includes('Monitor 1')) && [...document.querySelectorAll('button')].some(b=>b.textContent==='Aplicar' && !b.disabled)");
             let settings_draft = check_settings_draft(&app);
+            std::fs::write(
+                std::env::temp_dir().join("strata-settings-draft-check.json"),
+                serde_json::to_string_pretty(&settings_draft).unwrap(),
+            )
+            .unwrap();
             let before = main_thread(&app, |_| crate::desktop::monitor_snapshot());
             assert_eq!(
                 main_thread(&app, |app| app
@@ -402,7 +407,7 @@ pub fn start(app: AppHandle) {
             }
             json!({"passed":true,"settingsDraft":settings_draft,"monitors":monitors,"before":before,"oneDisabled":disabled,"after":after,"bars":bars,"settings":crate::desktop::settings_snapshot(),"persisted":true,"widgetApply":true,"focusPreserved":focused,"liveIntervals":subscription})
         }));
-        let report = result.unwrap_or_else(|error| json!({"passed":false,"phase": PHASE.lock().unwrap().clone(), "config":app.state::<crate::config::ConfigStore>().snapshot().ok(), "error":error.downcast_ref::<String>().cloned().or_else(|| error.downcast_ref::<&str>().map(|s|s.to_string())).unwrap_or_default()}));
+        let report = result.unwrap_or_else(|error| json!({"passed":false,"phase": PHASE.lock().unwrap().clone(), "metrics":app.state::<crate::metrics::Metrics>().diagnostics(), "config":app.state::<crate::config::ConfigStore>().snapshot().ok(), "error":error.downcast_ref::<String>().cloned().or_else(|| error.downcast_ref::<&str>().map(|s|s.to_string())).unwrap_or_default()}));
         let _ = std::fs::write(
             std::env::temp_dir().join("strata-monitor-manager-check.json"),
             serde_json::to_string_pretty(&report).unwrap(),

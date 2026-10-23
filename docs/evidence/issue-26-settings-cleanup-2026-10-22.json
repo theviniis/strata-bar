@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-22",
+  "phase": "after isolated verifier exit",
+  "bars": [],
+  "overlay": {
+    "counters": {
+      "hides": 0,
+      "positions": 0,
+      "shows": 0
+    },
+    "present": false,
+    "window": null
+  },
+  "settings": {
+    "present": false,
+    "windows": []
+  },
+  "monitors": [
+    {
+      "monitor": [0, 0, 3440, 1440],
+      "workArea": [0, 0, 3440, 1440]
+    },
+    {
+      "monitor": [724, -1080, 2644, 0],
+      "workArea": [724, -1080, 2644, 0]
+    }
+  ],
+  "personalConfigSha256": "1799C4530FF56322E955D095EB6050A9A21AE2C2C2D28EA48A90144E9835EC58"
+}
