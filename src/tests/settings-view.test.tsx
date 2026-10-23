@@ -12,6 +12,7 @@ import { bridge, connect } from '../services/system/bridge'
 import { createAgentsStore } from '@/stores/agents'
 import { createDemoAgentsAdapter } from '@/services/system/agents'
 import { SettingsView } from '../settings/SettingsView'
+import { rememberNavigation } from '../settings/navigation'
 
 const calendarAccount = vi.hoisted(() => ({
   status: vi.fn(),
@@ -68,6 +69,10 @@ vi.mock('../services/system/bridge', async (importOriginal) => ({
     configLoad: vi.fn(),
     configSave: vi.fn(),
     settingsMonitors: vi.fn(),
+    spotifyStatus: vi.fn(),
+    spotifyConnect: vi.fn(),
+    spotifyDisconnect: vi.fn(),
+    spotifyOpenDashboard: vi.fn(),
     quit: vi.fn()
   }
 }))
@@ -77,6 +82,9 @@ beforeEach(() => {
   agentStore = createAgentsStore(agentAdapter)
   localStorage.clear()
   vi.clearAllMocks()
+  vi.mocked(bridge.spotifyConnect!).mockReset()
+  vi.mocked(bridge.spotifyDisconnect!).mockReset()
+  vi.mocked(bridge.spotifyStatus!).mockReset()
   monitorEvents.listener = undefined
   calendarEvents.listener = undefined
   vi.mocked(bridge.settingsMonitors!).mockResolvedValue([
@@ -881,6 +889,85 @@ it('applies editable native bar geometry only after Apply', async () => {
     )
   )
 })
+
+it('connects Spotify in music settings immediately without saving or reverting the account', async () => {
+  rememberNavigation({ section: 'music' })
+  const id = '0123456789abcdef0123456789abcdef'
+  vi.mocked(bridge.spotifyStatus!).mockResolvedValue({
+    state: 'disconnected',
+    clientId: '',
+    error: null
+  })
+  vi.mocked(bridge.spotifyConnect!).mockImplementation(async () => {
+    vi.mocked(bridge.spotifyStatus!).mockResolvedValue({
+      state: 'connected',
+      clientId: id,
+      error: null
+    })
+  })
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Player de música' }))
+  expect(await screen.findByText(/Reverter não desfaz/)).toBeVisible()
+  fireEvent.change(screen.getByRole('textbox', { name: 'Client ID' }), {
+    target: { value: id }
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Conectar Spotify' }))
+  expect(await screen.findByText('Spotify conectado')).toBeVisible()
+  expect(bridge.configSave).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
+  expect(screen.getByText('Spotify conectado')).toBeVisible()
+  expect(bridge.spotifyDisconnect).not.toHaveBeenCalled()
+  vi.mocked(bridge.spotifyDisconnect!).mockImplementation(async () => {
+    vi.mocked(bridge.spotifyStatus!).mockResolvedValue({
+      state: 'disconnected',
+      clientId: '',
+      error: null
+    })
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Desconectar' }))
+  expect(await screen.findByText('Spotify desconectado')).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() =>
+    expect(bridge.configSave).toHaveBeenCalledWith(defaultConfig)
+  )
+})
+
+it.each(['connect', 'disconnect', 'status'] as const)(
+  'shows Spotify %s failures without changing the saved draft',
+  async (operation) => {
+    rememberNavigation({ section: 'music' })
+    vi.mocked(bridge.spotifyStatus!).mockResolvedValue({
+      state: 'connected',
+      clientId: '0123456789abcdef0123456789abcdef',
+      error: null
+    })
+    if (operation === 'status')
+      vi.mocked(bridge.spotifyStatus!).mockRejectedValue(
+        new Error('Spotify unavailable')
+      )
+    else if (operation === 'connect')
+      vi.mocked(bridge.spotifyConnect!).mockRejectedValue(
+        new Error('Spotify unavailable')
+      )
+    else
+      vi.mocked(bridge.spotifyDisconnect!).mockRejectedValue(
+        new Error('Spotify unavailable')
+      )
+    await openEditor()
+    fireEvent.click(screen.getByRole('button', { name: 'Player de música' }))
+    if (operation !== 'status') {
+      const action = await screen.findByRole('button', {
+        name: operation === 'connect' ? 'Conectar Spotify' : 'Desconectar'
+      })
+      await waitFor(() => expect(action).toBeEnabled())
+      fireEvent.click(action)
+    }
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Spotify unavailable'
+    )
+    expect(bridge.configSave).not.toHaveBeenCalled()
+  }
+)
 
 it('opens Calendar credentials in the Lembretes settings section', async () => {
   await openEditor()

@@ -82,6 +82,10 @@ The browser studio is a labelled, display-only demo with no inline appearance co
 uses GSMTC events and Core Audio session/device callbacks; a cached-snapshot tick
 schedules independent Spotify enrichment without polling those native APIs.
 `spotify.rs` owns fixed-host HTTP, PKCE and Windows Credential Manager storage.
-Native `media_action` and Spotify account commands are scoped to bar/overlay
-windows. The `media` channel contract is generated from Rust and validated before
-frontend delivery. See [music API and account setup](plans/music-widget.md).
+Native `media_action` is scoped to bar/overlay windows. Spotify account commands
+are restricted to the Settings window, where Player de música owns Client ID and
+immediate connect/disconnect actions. Credentials stay outside the configuration
+Draft; Apply/Revert do not transact account operations. Account changes notify
+the media worker to publish an updated player snapshot. The popup keeps daily
+controls and provides only textual setup guidance. The `media` channel contract
+is generated from Rust and validated before frontend delivery. See [music API and account setup](plans/music-widget.md).

@@ -30,12 +30,14 @@ import {
 } from '@/components/ui/sidebar'
 import { Spinner } from '@/components/ui/spinner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { SpotifySettings } from '@/features/music/SpotifySettings'
 import { bridge } from '@/services/system/bridge'
 import { cn } from 'cn'
 import {
   Bot,
   LayoutDashboard,
   Palette,
+  Music2,
   RotateCw,
   Save,
   Undo2,
@@ -157,6 +159,22 @@ function NativeSettingsView() {
                         draft={editor.form.getValues()}
                         onChange={editor.replaceDraft}
                       />
+                    </CardContent>
+                  </Card>
+                ) : section === 'music' ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle role="heading" aria-level={2}>
+                        Player de música
+                      </CardTitle>
+                      <CardDescription>
+                        Conectar e desconectar têm efeito imediato. Aplicar
+                        salva apenas as preferências do Draft; Reverter não
+                        desfaz a conexão ou desconexão da conta.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <SpotifySettings />
                     </CardContent>
                   </Card>
                 ) : section === 'agents' ? (
@@ -317,6 +335,7 @@ function SettingsSidebar({
                     },
 
                     { id: 'agents', label: 'Agentes', icon: Bot },
+                    { id: 'music', label: 'Player de música', icon: Music2 },
                     { id: 'json', label: 'JSON', icon: LayoutDashboard }
                   ] as const
                 ).map(({ id, label, icon: Icon }) => (
