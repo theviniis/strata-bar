@@ -30,8 +30,10 @@ function PanelElement({
 }: ComponentProps<'div'> & { elementProps: ComponentProps<'div'> }) {
   const present = useIsPresent()
   const panelRef = useRef<HTMLDivElement>(null)
-  useImperativeHandle(ref, () => panelRef.current!)
-  useImperativeHandle(elementProps.ref, () => panelRef.current!)
+  // Motion treats ref detach/attach as unmount/mount and replays `initial`.
+  // Only reconnect when the receiving ref changes, not on every input render.
+  useImperativeHandle(ref, () => panelRef.current!, [])
+  useImperativeHandle(elementProps.ref, () => panelRef.current!, [])
 
   return (
     <div

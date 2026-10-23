@@ -32,7 +32,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { SpotifySettingsController } from '@/features/music/SpotifySettingsController'
 import { bridge } from '@/services/system/bridge'
-import { cn } from 'cn'
+import { cn } from '@/lib/utils'
 import {
   Bot,
   LayoutDashboard,
@@ -93,7 +93,7 @@ function NativeSettingsView() {
             <header className="flex h-14 shrink-0 items-center justify-between px-6">
               <div className="flex items-center gap-2">
                 <SidebarTrigger aria-label="Alternar navegação" />
-                <h1 className="text-lg font-semibold">Configurações</h1>
+                <h1 className="text-page font-semibold">Configurações</h1>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -272,7 +272,7 @@ function NativeSettingsView() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-caption text-muted-foreground">
                     {bridge.mode === 'demo' ? 'Visualização do navegador' : ''}
                   </span>
                   <Button

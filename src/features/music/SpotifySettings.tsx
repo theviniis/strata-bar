@@ -37,12 +37,12 @@ export function SpotifySettings({
 }: SpotifySettingsProps) {
   return (
     <section className="flex flex-col gap-2" aria-label="Conexão Spotify">
-      <h3 className="text-sm font-medium">Spotify</h3>
-      <p className="text-xs text-muted-foreground">
+      <h3 className="text-body font-medium">Spotify</h3>
+      <p className="text-caption text-muted-foreground">
         Conecte sua conta para consultar e alterar músicas favoritas. Crie um
         aplicativo no Spotify e cadastre esta URL como Redirect URI:
       </p>
-      <code className="break-all text-xs">{SPOTIFY_CALLBACK}</code>
+      <code className="break-all text-caption">{SPOTIFY_CALLBACK}</code>
       <div className="flex flex-col gap-2">
         <Button
           type="button"
@@ -113,7 +113,7 @@ export function SpotifySettings({
           Desconectar
         </Button>
       </div>
-      <p role="status" className="text-xs text-muted-foreground">
+      <p role="status" className="text-caption text-muted-foreground">
         {!native
           ? 'Demonstração · conexão disponível na barra nativa'
           : status?.state === 'connecting'
@@ -123,7 +123,7 @@ export function SpotifySettings({
               : 'Spotify desconectado'}
       </p>
       {(error || status?.error) && (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="text-caption text-destructive">
           {error || status?.error}
         </p>
       )}

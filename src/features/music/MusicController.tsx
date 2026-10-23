@@ -150,7 +150,7 @@ export function MusicContent({
               <ScrollingText
                 text={text}
                 aria-describedby={tooltip ? tip.describedBy : undefined}
-                className="relative z-10 mx-1 flex-1 text-[11px]"
+                className="relative z-10 mx-1 flex-1 text-bar"
               />
             </button>
           </WidgetPopup.Trigger>

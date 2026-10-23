@@ -50,7 +50,7 @@ export function ReminderAlert({
           <>
             <div className="max-h-60 min-w-0 overflow-y-auto">{message}</div>
             {actions}
-            <p className="text-xs text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               Fechar esta janela mantém o lembrete pendente no sino.
             </p>
           </>

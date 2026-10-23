@@ -14,7 +14,7 @@ export const ReminderMessageController = memo(
       editorProps: {
         attributes: {
           class:
-            'min-w-0 wrap-break-word text-sm [&_p+p]:mt-2 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_h3]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:whitespace-pre [&_pre]:rounded [&_pre]:bg-muted [&_pre]:p-3 [&_pre]:font-mono [&_code]:font-mono [&_a]:underline [&_blockquote]:my-2 [&_blockquote]:border-l-3 [&_blockquote]:border-primary/60 [&_blockquote]:bg-muted/50 [&_blockquote]:py-2 [&_blockquote]:pl-3 [&_blockquote]:pr-2'
+            'min-w-0 wrap-break-word text-body [&_p+p]:mt-2 [&_h1]:text-page [&_h1]:font-bold [&_h2]:text-title [&_h2]:font-bold [&_h3]:text-subtitle [&_h3]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:whitespace-pre [&_pre]:rounded [&_pre]:bg-muted [&_pre]:p-3 [&_pre]:font-mono [&_code]:font-mono [&_a]:underline [&_blockquote]:my-2 [&_blockquote]:border-l-3 [&_blockquote]:border-primary/60 [&_blockquote]:bg-muted/50 [&_blockquote]:py-2 [&_blockquote]:pl-3 [&_blockquote]:pr-2'
         }
       }
     })

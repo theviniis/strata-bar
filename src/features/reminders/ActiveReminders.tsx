@@ -12,7 +12,7 @@ import {
   EmptyTitle
 } from '@/components/ui/empty'
 import type { Reminder } from '@/services/system/reminders.generated'
-import { cn } from 'cn'
+import { cn } from '@/lib/utils'
 import { ChevronDownIcon, Ghost, RefreshCw, Trash } from 'lucide-react'
 import type { ComponentProps, ReactNode } from 'react'
 
@@ -96,21 +96,21 @@ export const ActiveRemindersItem = ({
     >
       <div className="grid gap-2">
         {message}
-        <p className="text-xs text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           {new Date(reminder.notifyAt).toLocaleString()} ·{' '}
           {reminder.status === 'ringing'
             ? 'Aguardando confirmação'
             : 'Agendado'}
         </p>
         {reminder.googleEventId && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             Evento criado no Google Calendar
           </p>
         )}
       </div>
       {reminder.calendarRequested && !reminder.googleEventId && (
         <>
-          <p className="text-xs text-destructive">
+          <p className="text-caption text-destructive">
             {reminder.calendarError ?? 'Sincronização pendente'}
           </p>
           <Button

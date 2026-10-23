@@ -1,3 +1,4 @@
+import { barTextClasses } from '@/lib/typography'
 import desktopCorner from '@/assets/bar-desktop-corner.svg'
 import { useAudioRouting } from '@/hooks/useAudioRouting'
 import { useResolvedTheme } from '@/hooks/useResolvedTheme'
@@ -28,7 +29,7 @@ function ConfigWarning({ message }: { message: string }) {
       role="alert"
       title={message}
       aria-label={`Configuração não aplicada: ${message}`}
-      className="shrink-0 cursor-help px-1 text-[10px] text-destructive"
+      className="shrink-0 cursor-help px-1 text-micro text-destructive"
     >
       ⚠
     </span>
@@ -107,7 +108,8 @@ export function NativeBarSurface({
               ref={regionRef}
               className={cn(
                 !preview && 'native-bar',
-                "relative grid h-full w-full grid-cols-[1fr_max-content_1fr] grid-rows-1 items-center bg-transparent font-['Segoe_UI',sans-serif] text-[11px] leading-[normal] text-[#e4e5ed] tabular-nums select-none group-data-[theme=light]:text-[#302a3e]"
+                barTextClasses,
+                'relative grid h-full w-full grid-cols-[1fr_max-content_1fr] grid-rows-1 items-center bg-transparent text-[#e4e5ed] group-data-[theme=light]:text-[#302a3e]'
               )}
               aria-label={ariaLabel}
               style={{ gap: bar.spacing, height: bar.height, flexShrink: 0 }}

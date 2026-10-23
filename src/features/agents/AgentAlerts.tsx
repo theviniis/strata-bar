@@ -46,23 +46,23 @@ export function AgentAlerts({
       aria-label="Alertas dos agentes"
       className="space-y-2 rounded-md border p-2"
     >
-      <h3 className="text-sm font-medium">Alertas recentes</h3>
-      <p className="text-xs text-muted-foreground">
+      <h3 className="text-body font-medium">Alertas recentes</h3>
+      <p className="text-caption text-muted-foreground">
         Alertas visuais na barra e neste popup.
       </p>
       {notifications && (
-        <p className="text-xs text-muted-foreground" role="status">
+        <p className="text-caption text-muted-foreground" role="status">
           {notificationLabels[notifications.status]}
         </p>
       )}
       {notifications && notifications.skipped > 0 && (
-        <p className="text-xs text-destructive">
+        <p className="text-caption text-destructive">
           {notifications.skipped} notificações não foram enviadas por limite da
           fila ou indisponibilidade do serviço. Confira os alertas visuais.
         </p>
       )}
       {alerts.items.length === 0 ? (
-        <p className="text-xs">Sem novos alertas.</p>
+        <p className="text-caption">Sem novos alertas.</p>
       ) : (
         <>
           <ul
@@ -76,15 +76,17 @@ export function AgentAlerts({
                 key={alert.id}
                 className="space-y-1 border-b pb-2 last:border-0"
               >
-                <p className="text-xs font-medium">
+                <p className="text-caption font-medium">
                   {labels[alert.agent]} ·{' '}
                   {alert.kind === 'attention'
                     ? 'Atenção necessária'
                     : 'Turno concluído'}
                 </p>
-                <p className="text-xs wrap-anywhere">{alert.sessionTitle}</p>
+                <p className="text-caption wrap-anywhere">
+                  {alert.sessionTitle}
+                </p>
                 <time
-                  className="text-xs text-muted-foreground"
+                  className="text-caption text-muted-foreground"
                   dateTime={times[alert.id].iso}
                 >
                   {times[alert.id].text}
@@ -115,19 +117,19 @@ export function AgentAlerts({
         </>
       )}
       {alerts.overflowCount > 0 && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           {alerts.overflowCount} alertas anteriores saíram da lista nesta
           execução. São mantidos até 32 alertas recentes.
         </p>
       )}
       {alerts.paused && (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="text-caption text-destructive">
           Novos alertas pausados por limite de capacidade. Reinicie o Strata
           para retomar.
         </p>
       )}
       {error && (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="text-caption text-destructive">
           {error}
         </p>
       )}

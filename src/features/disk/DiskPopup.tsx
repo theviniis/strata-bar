@@ -35,12 +35,12 @@ export function DiskPopup({ event, lastData, now, demo }: DiskPopupProps) {
           Espaço usado e disponível em cada unidade
         </CardDescription>
         {demo && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             Dados de demonstração · ilustrativos
           </p>
         )}
         {isDiskStale(data, now, event.status === 'ready') && (
-          <p role="status" className="text-xs text-destructive">
+          <p role="status" className="text-caption text-destructive">
             {event.status === 'error' ? `${event.error} · ` : ''}última leitura
             desatualizada
           </p>
@@ -48,7 +48,7 @@ export function DiskPopup({ event, lastData, now, demo }: DiskPopupProps) {
       </CardHeader>
       <CardContent>
         {volumes.length ? (
-          <ul className="flex w-80 flex-col gap-3 text-xs">
+          <ul className="flex w-80 flex-col gap-3 text-caption">
             {volumes.map((volume) => {
               const percent = Math.round(volume.percent)
               return (
@@ -86,7 +86,7 @@ export function DiskPopup({ event, lastData, now, demo }: DiskPopupProps) {
             })}
           </ul>
         ) : (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             Nenhum disco disponível
           </p>
         )}

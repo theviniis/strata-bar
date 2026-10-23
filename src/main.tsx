@@ -43,28 +43,43 @@ if (import.meta.hot) {
   })
 }
 
-createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <Suspense
-      fallback={
-        <div className="flex items-center gap-2 px-4 py-2 bg-card text-card-foreground rounded">
-          <Spinner />
-          <p>Carregando...</p>
-        </div>
-      }
-    >
-      {view === 'overlay' ? (
-        <OverlayView />
-      ) : view === 'settings' ? (
-        <SettingsView />
-      ) : import.meta.env.DEV &&
-        new URLSearchParams(window.location.search).has('popup-check') ? (
-        <PopupCheckView />
-      ) : native || view === 'bar' ? (
-        <NativeBar />
-      ) : (
-        <StudioView />
-      )}
-    </Suspense>
-  </React.StrictMode>
-)
+// Load every UI weight before React mounts: the bar's off-screen probe and
+// the detached overlay must measure Geist even on their first opening.
+async function mount() {
+  try {
+    await Promise.all(
+      [400, 500, 600, 700].map((weight) =>
+        document.fonts.load(`${weight} 12px "Geist Variable"`)
+      )
+    )
+  } catch (error) {
+    console.error('Não foi possível carregar a fonte Geist', error)
+  }
+  createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <Suspense
+        fallback={
+          <div className="flex items-center gap-2 px-4 py-2 bg-card text-card-foreground rounded">
+            <Spinner />
+            <p>Carregando...</p>
+          </div>
+        }
+      >
+        {view === 'overlay' ? (
+          <OverlayView />
+        ) : view === 'settings' ? (
+          <SettingsView />
+        ) : import.meta.env.DEV &&
+          new URLSearchParams(window.location.search).has('popup-check') ? (
+          <PopupCheckView />
+        ) : native || view === 'bar' ? (
+          <NativeBar />
+        ) : (
+          <StudioView />
+        )}
+      </Suspense>
+    </React.StrictMode>
+  )
+}
+
+void mount()

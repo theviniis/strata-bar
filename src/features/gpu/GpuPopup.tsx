@@ -98,12 +98,12 @@ export function GpuPopup({
           Utilização, memória, temperatura e consumo da placa
         </CardDescription>
         {demo && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             Dados de demonstração · ilustrativos
           </p>
         )}
         {event.status === 'error' && (
-          <p role="status" className="text-xs text-destructive">
+          <p role="status" className="text-caption text-destructive">
             {event.error} · última leitura desatualizada
           </p>
         )}
@@ -126,7 +126,7 @@ export function GpuPopup({
           maximum={maximum}
           color="var(--chart-5)"
         />
-        <dl className="grid grid-cols-2 gap-3 text-xs">
+        <dl className="grid grid-cols-2 gap-3 text-caption">
           {fields.map(([label, value, error]) => (
             <div key={label}>
               <dt className="text-muted-foreground">{label}</dt>
@@ -139,7 +139,7 @@ export function GpuPopup({
             </div>
           ))}
         </dl>
-        <p className="mt-3 text-[10px] text-muted-foreground">
+        <p className="mt-3 text-caption text-muted-foreground">
           {data.adapter ? `${data.adapter.name} · ` : ''}
           {data.temperatureSensor && !temperatureStale
             ? `MSI Afterburner · ${data.temperatureSensor.name}`

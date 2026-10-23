@@ -30,14 +30,16 @@ export function AgentSessionList({
           key={`${session.connectionId}:${session.id}`}
           className="space-y-1 rounded-md border p-2"
         >
-          <h4 className="text-sm font-medium wrap-anywhere">{session.title}</h4>
+          <h4 className="text-body font-medium wrap-anywhere">
+            {session.title}
+          </h4>
           <span
             data-status={stale ? 'disconnected' : session.status}
-            className="inline-flex rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground data-[status=attention]:text-destructive"
+            className="inline-flex rounded-md bg-muted px-2 py-0.5 text-caption text-muted-foreground data-[status=attention]:text-destructive"
           >
             {statuses[stale ? 'disconnected' : session.status]}
           </span>
-          <p className="text-xs text-muted-foreground wrap-anywhere">
+          <p className="text-caption text-muted-foreground wrap-anywhere">
             {session.directory}
           </p>
           {renderActions?.(session)}

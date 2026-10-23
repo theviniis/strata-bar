@@ -32,7 +32,7 @@ export function CalendarSettings({
   return (
     <section
       aria-label="Conexão Google Calendar"
-      className="grid gap-3 text-sm"
+      className="grid gap-3 text-body"
     >
       {status?.connected ? (
         <>

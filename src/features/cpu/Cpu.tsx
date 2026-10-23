@@ -1,3 +1,4 @@
+import { showLabel } from '@/components/status-bar/presentation'
 import {
   WidgetItem,
   WidgetItemIcon,
@@ -5,10 +6,9 @@ import {
   WidgetItemOutput,
   type WidgetItemProps
 } from '@/components/widget-item'
-import { Cpu as Icon } from 'lucide-react'
-import { showLabel } from '@/components/status-bar/presentation'
 import type { WidgetConfig } from '@/services/configuration/config'
 import type { ChannelData, SystemEvent } from '@/services/system/bridge'
+import { Cpu as Icon } from 'lucide-react'
 import { isCpuMetricStale } from './presentation'
 
 export interface CpuProps extends WidgetItemProps {
@@ -36,7 +36,7 @@ export function Cpu({
       {showLabel(format) && <WidgetItemLabel>CPU</WidgetItemLabel>}
       <WidgetItemOutput aria-label="Uso da CPU" aria-describedby={describedBy}>
         {percent?.value != null
-          ? percent.value.toFixed(1)
+          ? `${percent.value.toFixed(1)}%`
           : event.status === 'loading'
             ? '...'
             : '—'}

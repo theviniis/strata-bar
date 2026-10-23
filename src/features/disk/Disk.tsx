@@ -1,6 +1,10 @@
-import { Progress } from '@/components/ui/progress'
-import { WidgetItem, type WidgetItemProps } from '@/components/widget-item'
 import { showLabel } from '@/components/status-bar/presentation'
+import { Progress } from '@/components/ui/progress'
+import {
+  WidgetItem,
+  WidgetItemOutput,
+  type WidgetItemProps
+} from '@/components/widget-item'
 import type { WidgetConfig } from '@/services/configuration/config'
 import type { ChannelData, SystemEvent } from '@/services/system/bridge'
 import type { DiskVolume } from '@/services/system/disk.generated'
@@ -22,16 +26,16 @@ export function DiskBar({
   compact: boolean
 }) {
   if (!volumes.length)
-    return <span className="text-[11px] text-muted-foreground">—</span>
+    return <span className="text-bar text-muted-foreground">—</span>
   return (
     <>
       {volumes.map((volume) => (
         <span key={volume.mount} className="flex items-center gap-1.5">
           <HardDrive size={14} className="shrink-0 text-secondary" />
           {!compact && (
-            <span className="text-[11px] whitespace-nowrap tabular-nums">
+            <WidgetItemOutput className="whitespace-nowrap tabular-nums">
               {volume.mount} {wholePercent(volume)}%
-            </span>
+            </WidgetItemOutput>
           )}
           <Progress
             value={wholePercent(volume)}

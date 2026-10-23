@@ -65,7 +65,7 @@ export function PopupHost({
       autoFocus={id !== 'reminderAlert'}
     >
       {mode === 'demo' && (
-        <p className="m-4 text-[10px] text-muted-foreground">
+        <p className="m-4 text-micro text-muted-foreground">
           Demonstração interativa · sem acesso ao Windows
         </p>
       )}

@@ -37,7 +37,7 @@ export function WidgetItemIcon({
   ...props
 }: WidgetItemIconProps) {
   return (
-    <Icon size={size} className={cn('text-secondary ', className)} {...props} />
+    <Icon size={size} className={cn('text-secondary', className)} {...props} />
   )
 }
 
@@ -53,7 +53,7 @@ export function WidgetItemLabel({
   const Comp = asChild ? Slot : 'span'
   return (
     <Comp
-      className={cn('text-[11px] text-muted-foreground', className)}
+      className={cn('text-bar text-muted-foreground', className)}
       {...props}
     />
   )
@@ -71,8 +71,11 @@ export function WidgetItemOutput({
 }: WidgetItemOutputProps) {
   const Comp = asChild ? Slot : 'output'
   return (
-    <Comp className={cn('flex items-center gap-1', className)} {...props}>
-      {children}%
+    <Comp
+      className={cn('flex items-center gap-1 text-bar', className)}
+      {...props}
+    >
+      {children}
     </Comp>
   )
 }

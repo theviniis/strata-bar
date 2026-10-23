@@ -46,21 +46,21 @@ export function AgentsPopup({
         <CardTitle>Agentes de IA</CardTitle>
         <CardDescription>Aplicativos neste Windows</CardDescription>
         {demo && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             Demo · sem acesso ao sistema
           </p>
         )}
       </CardHeader>
       <CardContent className="space-y-3">
         {discoveryError && (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-body text-destructive">
             Detecção indisponível: {discoveryError}
           </p>
         )}
         {!snapshot && !error && <p role="status">Detectando aplicativos…</p>}
         {snapshot && alerts}
         {snapshot && applications.length === 0 && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             Nenhum agente selecionado. Escolha os agentes em Configurações →
             Agentes.
           </p>
@@ -88,7 +88,7 @@ export function AgentsPopup({
                   value={application.agent}
                   className="space-y-2"
                 >
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-caption text-muted-foreground">
                     {discoveryError || application.running === null
                       ? 'Detecção indisponível'
                       : application.running
@@ -99,8 +99,8 @@ export function AgentsPopup({
                     sessions[application.agent]
                   ) : (
                     <>
-                      <p className="text-xs">Sessões indisponíveis</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-caption">Sessões indisponíveis</p>
+                      <p className="text-caption text-muted-foreground">
                         Controle de sessões ainda não integrado. Um processo
                         aberto não informa o estado das conversas. Para sessões
                         locais como as do Codex, abra a seção Codex local neste

@@ -60,7 +60,7 @@ export function ResourceGraph({
   } satisfies ChartConfig
   return (
     <div className="mb-4">
-      <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
+      <div className="mb-1 flex justify-between text-micro text-muted-foreground">
         <span>{label} · 2 minutos</span>
         <span>{scale}</span>
       </div>
@@ -122,19 +122,19 @@ export function ResourceGraph({
           />
         </AreaChart>
       </ChartContainer>
-      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+      <div className="mt-1 flex justify-between text-micro text-muted-foreground">
         <span>2 min atrás</span>
         <span>Agora · 0{unit}</span>
       </div>
       {missing > 0 && (
-        <p className="mt-1 text-[10px] text-muted-foreground">
+        <p className="mt-1 text-micro text-muted-foreground">
           {missing}{' '}
           {missing === 1 ? 'leitura indisponível' : 'leituras indisponíveis'} ·
           lacunas preservadas
         </p>
       )}
       {!samples.length && (
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 text-caption text-muted-foreground">
           Aguardando histórico observado
         </p>
       )}

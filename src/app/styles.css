@@ -9,6 +9,37 @@
   --font-heading: var(--font-sans);
   --font-sans: 'Geist Variable', sans-serif;
 
+  /* Compact typography: sizes and line heights travel together. */
+  --text-micro: 10px;
+  --text-micro--line-height: 14px;
+  --text-micro--font-weight: 400;
+  --text-bar: 11px;
+  --text-bar--line-height: 14px;
+  --text-bar--font-weight: 400;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-caption--font-weight: 400;
+  --text-body: 12px;
+  --text-body--line-height: 16px;
+  --text-body--font-weight: 400;
+  --text-control: 12px;
+  --text-control--line-height: 16px;
+  --text-control--font-weight: 500;
+  --text-subtitle: 12px;
+  --text-subtitle--line-height: 16px;
+  --text-subtitle--font-weight: 600;
+  --text-title: 14px;
+  --text-title--line-height: 20px;
+  --text-title--font-weight: 600;
+  --text-page: 18px;
+  --text-page--line-height: 24px;
+  --text-page--font-weight: 600;
+  --text-clock-display: 70px;
+  --text-clock-display--line-height: 1;
+  --text-studio-display: clamp(40px, 4.5vw, 64px);
+  --text-studio-display--line-height: 1.08;
+  --tracking-display: -2.5px;
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -151,7 +182,7 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground text-body;
   }
 
   html {
@@ -188,7 +219,7 @@
    scrollbars, form controls and inherited text never fall back to a light UA. */
   html[data-view='overlay'] {
     color-scheme: dark;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: var(--font-sans);
     font-variant-numeric: tabular-nums;
     color: var(--foreground);
   }

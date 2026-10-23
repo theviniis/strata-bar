@@ -1,6 +1,6 @@
 import {
   WidgetItem,
-  WidgetItemLabel,
+  WidgetItemOutput,
   type WidgetItemProps
 } from '@/components/widget-item'
 import type { TimePresentation } from './presentation'
@@ -24,12 +24,10 @@ export function Clock({
       {...triggerProps}
     >
       <time dateTime={time.dateTime}>
-        <WidgetItemLabel className="font-semibold text-foreground">
-          {time.hours}
-        </WidgetItemLabel>
+        <WidgetItemOutput>{time.hours}</WidgetItemOutput>
       </time>
       {showDate && (
-        <span className="text-[10px] text-muted-foreground">{time.date}</span>
+        <span className="text-micro text-muted-foreground">{time.date}</span>
       )}
     </WidgetItem>
   )

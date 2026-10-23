@@ -77,7 +77,7 @@ export function MusicPopup({
         )}
         {((!media && event.status === 'unavailable') ||
           media?.favorite.status === 'unauthenticated') && (
-          <p className="mt-4 text-xs text-muted-foreground">
+          <p className="mt-4 text-caption text-muted-foreground">
             Para conectar o Spotify, abra Configurações → Player de música.
           </p>
         )}
@@ -197,10 +197,10 @@ function MusicPopupContentData({
             <Music2 aria-hidden="true" />
           </div>
         )}
-        <div className="min-w-0 text-[12px] text-muted-foreground">
+        <div className="min-w-0 text-body text-muted-foreground">
           <h1 className="min-w-0 mb-1 text-foreground" title={media.title}>
             <ScrollingText
-              className="text-[14px]"
+              className="text-title"
               text={media.title || 'Sem título'}
             />
           </h1>
@@ -326,13 +326,13 @@ function MusicPopupContentData({
               void act({ action: 'seek', positionMs: value })
           }}
         />
-        <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
+        <div className="flex justify-between text-caption text-muted-foreground tabular-nums">
           <span>{progress ? time(position) : '—'}</span>
           <span>{progress ? time(progress.durationMs) : '—'}</span>
         </div>
       </div>
       {error && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-body text-destructive">
           {error}
         </p>
       )}

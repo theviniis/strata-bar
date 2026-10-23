@@ -21,9 +21,7 @@ export function Komorebi({
   return (
     <div className="flex min-w-0 items-center gap-2 px-2" {...props}>
       {showLabel(format) && (
-        <WidgetItemLabel className="shrink-0 text-[10px]">
-          Áreas
-        </WidgetItemLabel>
+        <WidgetItemLabel className="shrink-0 text-micro">Áreas</WidgetItemLabel>
       )}
       {event.status === 'loading' ? (
         <output aria-label="Áreas de trabalho">…</output>

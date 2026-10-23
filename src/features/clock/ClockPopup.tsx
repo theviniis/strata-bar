@@ -31,17 +31,17 @@ export function ClockPopup({
       <CardContent>
         <section className="grid grid-cols-[auto_auto] place-content-center gap-8">
           <div className="flex flex-col items-center justify-center capitalize">
-            <p className="font-bold text-lg">{day}</p>
-            <p className="text-base leading-5 text-muted-foreground">
+            <p className="font-semibold text-title">{day}</p>
+            <p className="text-caption text-muted-foreground">
               {month}, {year}
             </p>
             <time
               dateTime={dateTime}
-              className="text-[70px] leading-none font-bold tracking-tight tabular-nums"
+              className="text-clock-display font-bold tracking-tight tabular-nums"
             >
               {hours}
             </time>
-            <span className="mt-3 rounded text-xs focus-visible:outline-2 focus-visible:outline-ring text-muted-foreground">
+            <span className="mt-3 rounded text-caption focus-visible:outline-2 focus-visible:outline-ring text-muted-foreground">
               Week {week}
             </span>
           </div>

@@ -234,7 +234,7 @@ export function PopupSurface({
           aria-label={label}
           tabIndex={-1}
           className={cn(
-            'bg-popover text-[12px] shadow-lg outline-none *:max-w-full',
+            'bg-popover text-body font-normal shadow-lg outline-none *:max-w-full',
             closing && 'overflow-hidden',
             className
           )}

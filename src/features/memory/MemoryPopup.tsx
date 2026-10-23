@@ -45,19 +45,19 @@ export function MemoryPopup({
           Visualize informações sobre a memória RAM
         </CardDescription>
         {demo && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             Dados de demonstração · ilustrativos
           </p>
         )}
         {event.status === 'error' && (
-          <p role="status" className="mb-3 text-xs text-destructive">
+          <p role="status" className="mb-3 text-caption text-destructive">
             {event.error} · última leitura desatualizada
           </p>
         )}
       </CardHeader>
       <CardContent>
         <MemoryGraph history={data.history} now={now} />
-        <dl className="grid grid-cols-2 gap-3 text-xs">
+        <dl className="grid grid-cols-2 gap-3 text-caption">
           {fields.map(([label, metric, unit]) => (
             <div key={label}>
               <dt className="text-muted-foreground">{label}</dt>
