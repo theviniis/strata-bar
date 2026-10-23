@@ -9,7 +9,16 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import type { SettingsMonitor } from '../services/system/config.generated'
 import { configSchema, defaultConfig } from '../services/configuration/config'
 import { bridge, connect } from '../services/system/bridge'
+import { createAgentsStore } from '@/stores/agents'
+import { createDemoAgentsAdapter } from '@/services/system/agents'
 import { SettingsView } from '../settings/SettingsView'
+
+let agentAdapter = createDemoAgentsAdapter()
+let agentStore = createAgentsStore(agentAdapter)
+vi.mock('@/stores/agents', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/stores/agents')>()),
+  getAgentsStore: () => agentStore
+}))
 
 const close = vi.hoisted(() => vi.fn())
 const monitorEvents = vi.hoisted(() => ({
@@ -52,6 +61,8 @@ vi.mock('../services/system/bridge', async (importOriginal) => ({
 }))
 
 beforeEach(() => {
+  agentAdapter = createDemoAgentsAdapter()
+  agentStore = createAgentsStore(agentAdapter)
   localStorage.clear()
   vi.clearAllMocks()
   monitorEvents.listener = undefined
@@ -741,7 +752,7 @@ it('offers bounded manual audio targets when the channel is unavailable', async 
 
 it('applies per-agent visibility checkboxes through the normal save', async () => {
   await openEditor()
-  fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Agentes' }))
   fireEvent.click(
     screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
   )
@@ -855,5 +866,150 @@ it('applies editable native bar geometry only after Apply', async () => {
         })
       })
     )
+  )
+})
+it('edits agent visibility only in the shared draft and reverts without saving', async () => {
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Agentes' }))
+  const codex = await screen.findByRole('checkbox', {
+    name: 'Mostrar Codex na barra'
+  })
+  fireEvent.click(codex)
+  expect(bridge.configSave).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
+  expect(
+    JSON.parse(
+      (screen.getByLabelText('Configuração JSON') as HTMLTextAreaElement).value
+    ).agents.visible.codex
+  ).toBe(false)
+  fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Agentes' }))
+  await waitFor(() =>
+    expect(
+      screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
+    ).toBeChecked()
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
+  expect(screen.queryByText('Agentes visíveis')).not.toBeInTheDocument()
+})
+
+it('runs integration actions immediately and keeps them independent of Apply and Revert', async () => {
+  const openCode = vi.spyOn(agentAdapter, 'setOpenCode')
+  const codex = vi.spyOn(agentAdapter, 'setCodex')
+  const antigravity = vi.spyOn(agentAdapter, 'setAntigravity')
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Agentes' }))
+  expect(
+    screen.getByText(/Aplicar e Reverter não desfazem essas ações/)
+  ).toBeInTheDocument()
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Conectar OpenCode' })
+  )
+  await screen.findByRole('button', { name: 'Desconectar OpenCode' })
+  expect(openCode).toHaveBeenCalledExactlyOnceWith(true)
+  fireEvent.click(screen.getByRole('button', { name: 'Ativar hooks do Codex' }))
+  await screen.findByRole('button', { name: 'Desativar hooks do Codex' })
+  expect(codex).toHaveBeenCalledExactlyOnceWith(true)
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Ativar hooks do Antigravity' })
+  )
+  await screen.findByRole('button', { name: 'Desativar hooks do Antigravity' })
+  expect(antigravity).toHaveBeenCalledExactlyOnceWith(true)
+  fireEvent.click(
+    screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
+  await waitFor(() =>
+    expect(
+      screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
+    ).toBeChecked()
+  )
+  expect(openCode).toHaveBeenCalledTimes(1)
+  expect(codex).toHaveBeenCalledTimes(1)
+  expect(antigravity).toHaveBeenCalledTimes(1)
+  expect(bridge.configSave).not.toHaveBeenCalled()
+  for (const name of [
+    'Desconectar OpenCode',
+    'Desativar hooks do Codex',
+    'Desativar hooks do Antigravity'
+  ]) {
+    fireEvent.click(screen.getByRole('button', { name }))
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+    )
+  }
+  expect(openCode).toHaveBeenLastCalledWith(false)
+  expect(codex).toHaveBeenLastCalledWith(false)
+  expect(antigravity).toHaveBeenLastCalledWith(false)
+})
+
+it('shows native integration failures without changing the draft or claiming a connection', async () => {
+  vi.spyOn(agentAdapter, 'setOpenCode').mockRejectedValue(
+    new Error('OpenCode não está disponível')
+  )
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Agentes' }))
+  const connect = await screen.findByRole('button', {
+    name: 'Conectar OpenCode'
+  })
+  await waitFor(() => expect(connect).toBeEnabled())
+  fireEvent.click(connect)
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'OpenCode não está disponível'
+  )
+  expect(
+    screen.getByRole('button', { name: 'Conectar OpenCode' })
+  ).toBeEnabled()
+  expect(
+    screen.queryByRole('button', { name: 'Desconectar OpenCode' })
+  ).not.toBeInTheDocument()
+  expect(bridge.configSave).not.toHaveBeenCalled()
+})
+
+it('recovers applied agent visibility after reopening and preserves saved values on a failed save', async () => {
+  let saved = structuredClone(defaultConfig)
+  vi.mocked(bridge.configLoad!).mockImplementation(async () => ({
+    config: saved,
+    revision: 1,
+    error: null
+  }))
+  vi.mocked(bridge.configSave!).mockImplementation(async (config) => {
+    saved = configSchema.parse(config)
+    return { config: saved, revision: 2, error: null }
+  })
+  const first = render(<SettingsView />)
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Agentes' }))
+  fireEvent.click(
+    screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() => expect(saved.agents.visible.codex).toBe(false))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
+  )
+  first.unmount()
+  await openEditor()
+  expect(
+    screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
+  ).not.toBeChecked()
+  vi.mocked(bridge.configSave!).mockRejectedValueOnce(
+    new Error('Falha de gravação')
+  )
+  fireEvent.click(
+    screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Falha de gravação'
+  )
+  expect(saved.agents.visible.codex).toBe(false)
+  fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
+  await waitFor(() =>
+    expect(
+      screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
+    ).not.toBeChecked()
   )
 })

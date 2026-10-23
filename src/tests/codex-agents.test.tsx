@@ -1,27 +1,21 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { expect, it, vi } from 'vitest'
+import { expect, it } from 'vitest'
 import { AgentsPopupContent } from '@/features/agents/AgentsPopup'
 import {
   createDemoAgentsAdapter,
   parseAgentsSnapshot
 } from '@/services/system/agents'
 
-it('offers Codex hook activation in the shared tabs and explains trust', async () => {
+it('directs disabled Codex users to Settings without hook controls', async () => {
   const snapshot = await createDemoAgentsAdapter().load()
-  const configure = vi.fn(async () => {})
-  render(
-    <AgentsPopupContent
-      snapshot={snapshot}
-      error={null}
-      onConfigureCodex={configure}
-    />
-  )
+  render(<AgentsPopupContent snapshot={snapshot} error={null} />)
   fireEvent.click(screen.getByRole('tab', { name: /Codex local/ }))
-  expect(screen.getByText(/Revise e confie/)).toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: 'Ativar hooks do Codex' }))
-  await vi.waitFor(() =>
-    expect(configure).toHaveBeenCalledExactlyOnceWith(true)
-  )
+  expect(
+    screen.getByText(/Configure esta integração em Configurações → Agentes/)
+  ).toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: /hooks/ })
+  ).not.toBeInTheDocument()
 })
 
 it('renders only Codex metadata and rejects provider mismatches', async () => {

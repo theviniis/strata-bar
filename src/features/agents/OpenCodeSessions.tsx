@@ -20,14 +20,12 @@ const connectionLabels = {
 
 export function OpenCodeSessions({
   connection,
-  onConfigure,
   stale = false,
   onCreate,
   onReply,
   onDecision
 }: {
   connection: OpenCodeSnapshot
-  onConfigure?: (enabled: boolean) => Promise<void>
   stale?: boolean
   onCreate?: (
     directory?: string,
@@ -45,19 +43,6 @@ export function OpenCodeSessions({
   const [replyNotice, setReplyNotice] = useState<string | null>(null)
   const promptTooLong = new TextEncoder().encode(prompt).length > 4096
   const canCreate = !stale && connection.status === 'connected' && !!onCreate
-  const enabled = connection.status !== 'disabled'
-  const configure = async () => {
-    if (!onConfigure || pending) return
-    setPending(true)
-    setError(null)
-    try {
-      await onConfigure(!enabled)
-    } catch (error) {
-      setError(error instanceof Error ? error.message : String(error))
-    } finally {
-      setPending(false)
-    }
-  }
   return (
     <div className="space-y-3">
       <p role="status" className="text-xs text-muted-foreground">
@@ -69,14 +54,11 @@ export function OpenCodeSessions({
         Usa o servidor e a autenticação do OpenCode Desktop v2 instalado. A
         conexão fica ativa enquanto o Strata estiver aberto.
       </p>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => void configure()}
-        disabled={!onConfigure || pending}
-      >
-        {enabled ? 'Desconectar OpenCode' : 'Conectar OpenCode'}
-      </Button>
+      {connection.status === 'disabled' && (
+        <p className="text-xs text-muted-foreground">
+          Configure esta integração em Configurações → Agentes.
+        </p>
+      )}
       {(error || connection.error) && (
         <p role="alert" className="text-xs text-destructive">
           {error || connection.error}
