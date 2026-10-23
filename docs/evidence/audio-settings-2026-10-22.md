@@ -60,3 +60,14 @@ real-window validation limitation above remains explicit.
 
 Review totals: Standards — 0 violations, 1 optional suggestion; Spec — 0 code
 findings, with interactive validation pending.
+
+## Follow-up after main integrated reminders and music
+
+Rebased onto `3638be0` (PRs #28 and #30). Resolved the Settings navigation and
+icon-import conflicts by retaining Agentes, Lembretes, Player de música, Entrada
+de áudio and Saída de áudio. No native code changed in this conflict resolution.
+
+- TypeScript, ESLint and formatting of the resolved files passed.
+- Settings window, music settings and calendar settings regression suites:
+  48 passed, 0 failed; JSON reporter returned success and exit code 0.
+- GitHub reported the updated PR as mergeable after the rebased branch was pushed.
