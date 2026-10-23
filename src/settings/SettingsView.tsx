@@ -33,6 +33,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { bridge } from '@/services/system/bridge'
 import { cn } from 'cn'
 import {
+  Bot,
   LayoutDashboard,
   Palette,
   RotateCw,
@@ -42,6 +43,7 @@ import {
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useMemo, useState, type CSSProperties } from 'react'
+import { AgentsSettings } from './AgentsSettings'
 import { BarSettings } from './BarSettings'
 import { createNativePersistence, useConfigEditor } from './draft'
 import { LayoutEditor } from './LayoutEditor'
@@ -146,7 +148,7 @@ function NativeSettingsView() {
                         Aparência
                       </CardTitle>
                       <CardDescription>
-                        Escolha o tema, o espaçamento e os agentes visíveis.
+                        Escolha o tema e o espaçamento da barra.
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -154,6 +156,24 @@ function NativeSettingsView() {
                         disabled={editor.loading || editor.saving}
                         draft={editor.form.getValues()}
                         onChange={editor.replaceDraft}
+                      />
+                    </CardContent>
+                  </Card>
+                ) : section === 'agents' ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle role="heading" aria-level={2}>
+                        Agentes
+                      </CardTitle>
+                      <CardDescription>
+                        Seleção de agentes e integrações existentes.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <AgentsSettings
+                        draft={editor.form.getValues()}
+                        onChange={editor.replaceDraft}
+                        disabled={editor.loading || editor.saving}
                       />
                     </CardContent>
                   </Card>
@@ -295,6 +315,8 @@ function SettingsSidebar({
                       label: 'Lembretes',
                       icon: LayoutDashboard
                     },
+
+                    { id: 'agents', label: 'Agentes', icon: Bot },
                     { id: 'json', label: 'JSON', icon: LayoutDashboard }
                   ] as const
                 ).map(({ id, label, icon: Icon }) => (

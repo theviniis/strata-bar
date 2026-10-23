@@ -12,6 +12,7 @@ import type {
   OpenCodeSnapshot
 } from '@/services/system/agents'
 import { AgentAlerts } from '@/features/agents/AgentAlerts'
+import { createDemoAgentsAdapter } from '@/services/system/agents'
 import { AgentAlertCount } from '@/features/agents/Agents'
 
 it.each(['', 'Responda OK'])(
@@ -424,37 +425,20 @@ it('labels the studio preview and lists each tool without claiming live sessions
   expect(screen.getByText('Sessões indisponíveis')).toBeInTheDocument()
   fireEvent.click(antigravity)
   expect(
-    screen.getByRole('button', { name: 'Ativar hooks do Antigravity' })
+    screen.getByText(/Configure esta integração em Configurações → Agentes/)
   ).toBeInTheDocument()
 })
 
-it('activates Antigravity hooks without claiming discovery of previous sessions', async () => {
-  render(
-    <PopupContext.Provider
-      value={{ mode: 'demo', id: 'agents', params: {}, close: () => {} }}
-    >
-      <AgentsPopup />
-    </PopupContext.Provider>
-  )
-  fireEvent.click(await screen.findByRole('tab', { name: /^Antigravity/ }))
+it('guides Antigravity setup through Settings without a popup action', async () => {
+  const snapshot = await createDemoAgentsAdapter().load()
+  render(<AgentsPopupContent snapshot={snapshot} error={null} />)
+  fireEvent.click(screen.getByRole('tab', { name: /^Antigravity/ }))
   expect(
-    screen.getByText(/Somente sessões que emitirem eventos após a conexão/)
-  ).toBeInTheDocument()
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Ativar hooks do Antigravity' })
-  )
-  expect(
-    await screen.findByText('Aguardando eventos do Antigravity')
+    screen.getByText(/Configure esta integração em Configurações → Agentes/)
   ).toBeInTheDocument()
   expect(
-    screen.queryByRole('list', { name: 'Sessões do Antigravity' })
+    screen.queryByRole('button', { name: /hooks/ })
   ).not.toBeInTheDocument()
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Desativar hooks do Antigravity' })
-  )
-  expect(
-    await screen.findByRole('button', { name: 'Ativar hooks do Antigravity' })
-  ).toBeInTheDocument()
 })
 
 it('does not show stale process presence after discovery fails', () => {
@@ -493,22 +477,17 @@ it('does not show stale process presence after discovery fails', () => {
   expect(screen.getAllByText('Detecção indisponível')).toHaveLength(1)
 })
 
-it('connects and disconnects OpenCode inside its tab', async () => {
-  render(
-    <PopupContext.Provider
-      value={{ mode: 'demo', id: 'agents', params: {}, close: () => {} }}
-    >
-      <AgentsPopup />
-    </PopupContext.Provider>
-  )
-  fireEvent.click(await screen.findByRole('tab', { name: /^OpenCode/ }))
-  fireEvent.click(screen.getByRole('button', { name: 'Conectar OpenCode' }))
-  expect(await screen.findByText('Exemplo de sessão')).toBeInTheDocument()
-  expect(screen.getByText('Atenção necessária')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Nova sessão' })).toBeEnabled()
-  fireEvent.click(screen.getByRole('button', { name: 'Desconectar OpenCode' }))
-  await screen.findByRole('button', { name: 'Conectar OpenCode' })
-  expect(screen.queryByText('Exemplo de sessão')).not.toBeInTheDocument()
+it('guides OpenCode setup through Settings without connection controls', async () => {
+  const snapshot = await createDemoAgentsAdapter().load()
+  render(<AgentsPopupContent snapshot={snapshot} error={null} />)
+  fireEvent.click(screen.getByRole('tab', { name: /^OpenCode/ }))
+  expect(
+    screen.getByText(/Configure esta integração em Configurações → Agentes/)
+  ).toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: /Conectar OpenCode/ })
+  ).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Nova sessão' })).toBeDisabled()
 })
 
 it('blocks creating while pending or disconnected and keeps ambiguous failures visible without retry', async () => {
@@ -549,37 +528,39 @@ it('blocks creating while pending or disconnected and keeps ambiguous failures v
 })
 
 it('creates an empty OpenCode conversation in the chosen folder through the popup', async () => {
+  const adapter = createDemoAgentsAdapter()
+  const snapshot = await adapter.setOpenCode(true)
   render(
-    <PopupContext.Provider
-      value={{ mode: 'demo', id: 'agents', params: {}, close: () => {} }}
-    >
-      <AgentsPopup />
-    </PopupContext.Provider>
+    <AgentsPopupContent
+      snapshot={snapshot}
+      error={null}
+      onCreateOpenCode={(directory, prompt) =>
+        adapter.createOpenCode(directory, prompt)
+      }
+    />
   )
-  fireEvent.click(await screen.findByRole('tab', { name: /^OpenCode/ }))
-  fireEvent.click(screen.getByRole('button', { name: 'Conectar OpenCode' }))
-  await screen.findByText('Exemplo de sessão')
+  fireEvent.click(screen.getByRole('tab', { name: /^OpenCode/ }))
   fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
   fireEvent.change(screen.getByLabelText(/Pasta do projeto/), {
     target: { value: 'C:\\Projetos\\novo' }
   })
   fireEvent.click(screen.getByRole('button', { name: 'Criar conversa vazia' }))
   expect(await screen.findByText(/Conversa criada:/)).toBeInTheDocument()
-  expect(await screen.findByText('Nova conversa')).toBeInTheDocument()
-  expect(screen.getByText('C:\\Projetos\\novo')).toBeInTheDocument()
 })
 
 it('admits an optional initial prompt without reporting the task as completed', async () => {
+  const adapter = createDemoAgentsAdapter()
+  const snapshot = await adapter.setOpenCode(true)
   render(
-    <PopupContext.Provider
-      value={{ mode: 'demo', id: 'agents', params: {}, close: () => {} }}
-    >
-      <AgentsPopup />
-    </PopupContext.Provider>
+    <AgentsPopupContent
+      snapshot={snapshot}
+      error={null}
+      onCreateOpenCode={(directory, prompt) =>
+        adapter.createOpenCode(directory, prompt)
+      }
+    />
   )
-  fireEvent.click(await screen.findByRole('tab', { name: /^OpenCode/ }))
-  fireEvent.click(screen.getByRole('button', { name: 'Conectar OpenCode' }))
-  await screen.findByText('Exemplo de sessão')
+  fireEvent.click(screen.getByRole('tab', { name: /^OpenCode/ }))
   fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
   fireEvent.change(screen.getByLabelText(/Pasta do projeto/), {
     target: { value: 'C:\\Projetos\\novo' }

@@ -57,6 +57,14 @@ pub fn allowed_window(label: &str) -> bool {
     label == "overlay" || label.starts_with("bar-")
 }
 
+pub fn configuration_window(label: &str) -> bool {
+    label == "settings"
+}
+
+pub fn snapshot_window(label: &str) -> bool {
+    allowed_window(label) || configuration_window(label)
+}
+
 #[tauri::command]
 pub fn agents_set_codex(
     window: tauri::WebviewWindow,
@@ -64,8 +72,8 @@ pub fn agents_set_codex(
     state: tauri::State<Agents>,
     enabled: bool,
 ) -> Result<AgentsSnapshot, String> {
-    if !allowed_window(window.label()) {
-        return Err("Codex requer uma barra ou overlay".into());
+    if !configuration_window(window.label()) {
+        return Err("Codex requer Configurações".into());
     }
     let mut current = state.shared.lock().map_err(|_| "Codex indisponível")?;
     if enabled {
@@ -154,7 +162,7 @@ fn now() -> f64 {
 
 fn publish(app: &tauri::AppHandle, snapshot: &AgentsSnapshot) {
     for (label, window) in app.webview_windows() {
-        if allowed_window(&label) {
+        if snapshot_window(&label) {
             let _ = window.emit("agents:snapshot", snapshot);
         }
     }
@@ -409,8 +417,8 @@ pub fn agents_snapshot(
     window: tauri::WebviewWindow,
     state: tauri::State<Agents>,
 ) -> Result<AgentsSnapshot, String> {
-    if !allowed_window(window.label()) {
-        return Err("Agent discovery requires a bar or overlay".into());
+    if !snapshot_window(window.label()) {
+        return Err("Agent discovery requires Settings".into());
     }
     state.snapshot()
 }
@@ -440,8 +448,8 @@ pub fn agents_set_opencode(
     state: tauri::State<Agents>,
     enabled: bool,
 ) -> Result<AgentsSnapshot, String> {
-    if !allowed_window(window.label()) {
-        return Err("OpenCode connection requires a bar or overlay".into());
+    if !configuration_window(window.label()) {
+        return Err("OpenCode connection requires Settings".into());
     }
     let snapshot = state.configure_opencode(enabled)?;
     publish(&app, &snapshot);
@@ -637,8 +645,8 @@ pub fn agents_set_antigravity(
     state: tauri::State<Agents>,
     enabled: bool,
 ) -> Result<AgentsSnapshot, String> {
-    if !allowed_window(window.label()) {
-        return Err("Antigravity connection requires a bar or overlay".into());
+    if !configuration_window(window.label()) {
+        return Err("Antigravity connection requires Settings".into());
     }
     let snapshot = state.configure_antigravity(enabled)?;
     publish(&app, &snapshot);
@@ -648,6 +656,18 @@ pub fn agents_set_antigravity(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn settings_can_read_and_configure_but_not_perform_daily_actions() {
+        assert!(configuration_window("settings"));
+        assert!(snapshot_window("settings"));
+        assert!(!allowed_window("settings"));
+        for label in ["bar-0", "overlay", "main", "studio", "settings-other"] {
+            assert!(!configuration_window(label));
+        }
+        assert!(!snapshot_window("main"));
+        assert!(!snapshot_window("studio"));
+    }
 
     #[test]
     fn discovery_groups_processes_without_creating_sessions() {
