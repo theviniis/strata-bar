@@ -1,14 +1,15 @@
 # Audio settings validation — 2026-10-22
 
-Scope: issue #23, Centralizar Entrada e Saída de áudio.
+Scope: issue #23, Centralizar Entrada e Saída de áudio. Final validation includes
+the integration with main’s Agentes settings (#27).
 
 ## Automated checks
 
-- Full frontend suite: 346 tests passed, 0 failed; JSON reporter returned
+- Full frontend suite: 349 tests passed, 0 failed; JSON reporter returned
   `success: true` and the command exited with code 0. Command:
   `pnpm exec vitest run --maxWorkers=2 --testTimeout=60000 --reporter=json`.
 
-- Settings window and Voicemeeter suites: 43 tests passed. Coverage includes
+- Settings window and Voicemeeter suites: 47 tests passed. Coverage includes
   shared Draft/JSON, native save rejection, Revert/reopen, bounded targets,
   retained Windows targets, individual monitor/instance edits, popup daily
   controls, and existing global channel routing/no-fallback behavior.
@@ -16,7 +17,7 @@ Scope: issue #23, Centralizar Entrada e Saída de áudio.
 - Prettier passed for `src/` and this evidence document. The repository-wide
   format check fails on five unchanged files inherited from main:
   `.scratch/widget-settings/issues/01.md` through `05.md`.
-- Windows Rust suite: 206 passed, 0 failed, 21 opt-in tests ignored.
+- Windows Rust suite: 207 passed, 0 failed, 21 opt-in tests ignored.
 - Native debug build passed.
 - The targeted run used one worker and a 60-second test timeout because concurrent
   builds on this host caused existing Settings tests to exceed 10 seconds.
