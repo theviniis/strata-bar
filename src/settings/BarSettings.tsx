@@ -4,26 +4,16 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
   FieldTitle
 } from '@/components/ui/field'
 import { Slider } from '@/components/ui/slider'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import type { Config } from '@/services/configuration/config'
-import type { AgentType } from '@/services/system/agents.generated'
 import { Check } from 'lucide-react'
 import { useId } from 'react'
 import type { ConfigDraft } from './draft'
 import { ThemePreview } from './ThemePreview'
-
-const agents: { key: AgentType; label: string }[] = [
-  { key: 'chatgpt', label: 'ChatGPT' },
-  { key: 'opencode', label: 'OpenCode' },
-  { key: 'antigravity', label: 'Antigravity' },
-  { key: 'codex', label: 'Codex' }
-]
 
 interface BarSettingsProps {
   disabled?: boolean
@@ -164,45 +154,6 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
         />
         <FieldLabel htmlFor={topmostId}>Sempre no topo</FieldLabel>
       </Field>
-      <AgentVisibility draft={draft} onChange={onChange} disabled={disabled} />
     </FieldGroup>
-  )
-}
-
-function AgentVisibility({ draft, onChange, disabled }: BarSettingsProps) {
-  const id = useId()
-  return (
-    <FieldSet data-disabled={disabled}>
-      <FieldLegend id={id}>Agentes visíveis</FieldLegend>
-      <FieldDescription id={`${id}-description`}>
-        Escolha quais agentes aparecem na barra.
-      </FieldDescription>
-      <FieldGroup>
-        {agents.map(({ key, label }) => (
-          <Field key={key} orientation="horizontal" data-disabled={disabled}>
-            <Checkbox
-              id={`${id}-${key}`}
-              disabled={disabled}
-              checked={draft.agents.visible[key]}
-              onCheckedChange={(checked) =>
-                onChange({
-                  ...draft,
-                  agents: {
-                    ...draft.agents,
-                    visible: {
-                      ...draft.agents.visible,
-                      [key]: checked === true
-                    }
-                  }
-                })
-              }
-            />
-            <FieldLabel htmlFor={`${id}-${key}`}>
-              Mostrar {label} na barra
-            </FieldLabel>
-          </Field>
-        ))}
-      </FieldGroup>
-    </FieldSet>
   )
 }

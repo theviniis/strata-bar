@@ -47,7 +47,7 @@ createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <Suspense
       fallback={
-        <div className="flex items-center gap-2 px-4 py-2 bg-card text-card-foreground">
+        <div className="flex items-center gap-2 px-4 py-2 bg-card text-card-foreground rounded">
           <Spinner />
           <p>Carregando...</p>
         </div>

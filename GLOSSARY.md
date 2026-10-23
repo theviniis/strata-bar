@@ -5,6 +5,12 @@ popups. Memory terminology follows Windows concepts.
 
 ## Language
 
+**Widget settings**:
+The preferences and setup options for a widget, grouped in its own section of
+Settings. Settings is their single source of truth for every widget, including
+any per-monitor or per-instance variations; everyday actions remain available
+in the widget itself.
+
 **Draft**:
 The settings window's local candidate configuration, shared by the visual and
 JSON editors. Editing a draft does not change the native configuration or bars.

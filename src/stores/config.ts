@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import type { AgentType } from '@/services/system/agents.generated'
 import type { ConfigSnapshot } from '@/services/system/config.generated'
 import { bridge } from '@/services/system/bridge'
 import {
@@ -21,7 +20,6 @@ type ConfigState = {
   apply(text: string, persist?: boolean): boolean
   /** Installs a snapshot the native host published. Never falls back to demo values. */
   hydrate(snapshot: ConfigSnapshot): void
-  setAgentVisible(agent: AgentType, visible: boolean): boolean
   /** Updates the `audio` routing of the first widget of a type; `undefined` clears it. */
   setWidgetAudio(type: WidgetType, audio?: AudioSourceConfig): boolean
 }
@@ -37,18 +35,6 @@ export const useConfig = create<ConfigState>((set, get) => ({
   config: defaultConfig,
   error: null,
   revision: 0,
-  setAgentVisible(agent, visible) {
-    const { config, apply } = get()
-    return apply(
-      JSON.stringify({
-        ...config,
-        agents: {
-          ...config.agents,
-          visible: { ...config.agents.visible, [agent]: visible }
-        }
-      })
-    )
-  },
   setWidgetAudio(type, audio) {
     const { config, apply } = get()
     const next = structuredClone(config)

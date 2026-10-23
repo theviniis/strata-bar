@@ -80,7 +80,7 @@ export function PopupHost({
           <ContentBoundary close={close}>
             <Suspense
               fallback={
-                <div className="flex items-center gap-2 px-4 py-2 bg-card text-card-foreground">
+                <div className="flex items-center gap-2 px-4 py-2 bg-card text-card-foreground rounded">
                   <Spinner />
                   <p>Carregando...</p>
                 </div>

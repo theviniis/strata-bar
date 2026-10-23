@@ -25,7 +25,10 @@ Account changes notify the media worker to refresh the player snapshot.
   not counted as validation evidence.
 - Targeted music/Spotify suites passed: 28 tests; popup migration: two tests;
   Settings Spotify actions and errors: four tests.
-- Rust suite: 208 passed, zero failed, 21 environment-dependent tests ignored.
+- After merging the new Agents settings from `main`, all 68 tests in the four
+  Settings/music/Spotify suites passed; merged files passed ESLint and TypeScript.
+- Rust suite after the merge: 209 passed, zero failed, 21 environment-dependent
+  tests ignored.
 - The native regression test first failed because disconnect did not notify the
   player. It passes after the change and verifies the next enriched snapshot
   disables favorites and reports unauthenticated state.
