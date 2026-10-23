@@ -4,6 +4,10 @@ Scope: issue #23, Centralizar Entrada e Saída de áudio.
 
 ## Automated checks
 
+- Full frontend suite: 346 tests passed, 0 failed; JSON reporter returned
+  `success: true` and the command exited with code 0. Command:
+  `pnpm exec vitest run --maxWorkers=2 --testTimeout=60000 --reporter=json`.
+
 - Settings window and Voicemeeter suites: 43 tests passed. Coverage includes
   shared Draft/JSON, native save rejection, Revert/reopen, bounded targets,
   retained Windows targets, individual monitor/instance edits, popup daily
