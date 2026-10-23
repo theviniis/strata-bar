@@ -7,6 +7,8 @@ const navigationSchema = z.object({
     'agents',
     'reminders',
     'music',
+    'audio-input',
+    'audio-output',
     'json'
   ]),
   monitor: z

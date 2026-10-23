@@ -6,9 +6,7 @@ import {
   parseConfig,
   parseSnapshot,
   storageKey,
-  type AudioSourceConfig,
-  type Config,
-  type WidgetType
+  type Config
 } from '../services/configuration/config'
 
 type ConfigState = {
@@ -20,8 +18,6 @@ type ConfigState = {
   apply(text: string, persist?: boolean): boolean
   /** Installs a snapshot the native host published. Never falls back to demo values. */
   hydrate(snapshot: ConfigSnapshot): void
-  /** Updates the `audio` routing of the first widget of a type; `undefined` clears it. */
-  setWidgetAudio(type: WidgetType, audio?: AudioSourceConfig): boolean
 }
 
 function message(error: unknown) {
@@ -35,19 +31,6 @@ export const useConfig = create<ConfigState>((set, get) => ({
   config: defaultConfig,
   error: null,
   revision: 0,
-  setWidgetAudio(type, audio) {
-    const { config, apply } = get()
-    const next = structuredClone(config)
-    for (const column of ['left', 'center', 'right'] as const) {
-      const widget = next.widgets[column].find((w) => w.type === type)
-      if (widget) {
-        if (audio) widget.audio = audio
-        else delete widget.audio
-        return apply(JSON.stringify(next))
-      }
-    }
-    return false
-  },
   apply(text, persist = true) {
     try {
       const config = parseConfig(text)

@@ -674,7 +674,7 @@ it('uses live Voicemeeter slot names and retains the target while Windows handli
     }
   )
   await openEditor()
-  fireEvent.click(screen.getByRole('button', { name: 'Configurar Volume' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Saída de áudio' }))
   fireEvent.click(screen.getByRole('combobox', { name: 'Fonte de áudio' }))
   fireEvent.pointerDown(
     await screen.findByRole('option', { name: 'Voicemeeter' })
@@ -693,7 +693,6 @@ it('uses live Voicemeeter slot names and retains the target while Windows handli
       name: 'Usar endpoints do Windows mantendo o alvo'
     })
   )
-  fireEvent.click(screen.getByRole('button', { name: 'Concluir' }))
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
   await waitFor(() =>
     expect(bridge.configSave).toHaveBeenCalledWith(
@@ -724,7 +723,7 @@ it('offers bounded manual audio targets when the channel is unavailable', async 
     }
   )
   await openEditor()
-  fireEvent.click(screen.getByRole('button', { name: 'Configurar Microfone' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Entrada de áudio' }))
   fireEvent.click(screen.getByRole('combobox', { name: 'Fonte de áudio' }))
   fireEvent.pointerDown(
     await screen.findByRole('option', { name: 'Voicemeeter' })
@@ -750,7 +749,6 @@ it('offers bounded manual audio targets when the channel is unavailable', async 
       screen.getByRole('button', { name: 'Aplicar', hidden: true })
     ).toBeEnabled()
   )
-  fireEvent.click(screen.getByRole('button', { name: 'Concluir' }))
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar', hidden: true }))
   await waitFor(() =>
     expect(bridge.configSave).toHaveBeenCalledWith(
@@ -1204,4 +1202,109 @@ it('recovers applied agent visibility after reopening and preserves saved values
       screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
     ).not.toBeChecked()
   )
+})
+
+it('keeps audio edits in the shared Draft, preserves saved audio on failure, and reloads it on reopen', async () => {
+  const saved = structuredClone(defaultConfig)
+  saved.widgets.right.find((w) => w.type === 'volume')!.audio = {
+    source: 'windows',
+    target: { kind: 'bus', index: 3 },
+    label: 'Saved speakers',
+    enabled: false
+  }
+  vi.mocked(bridge.configLoad!).mockResolvedValue({
+    config: saved,
+    revision: 1,
+    error: null
+  })
+  vi.mocked(bridge.configSave!).mockRejectedValueOnce(
+    new Error('Disk write denied')
+  )
+  const view = render(<SettingsView />)
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Saída de áudio' }))
+  expect(screen.getByLabelText('Rótulo de áudio')).toHaveValue('Saved speakers')
+  fireEvent.change(screen.getByLabelText('Rótulo de áudio'), {
+    target: { value: 'Draft speakers' }
+  })
+  expect(bridge.configSave).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
+  expect(
+    (screen.getByLabelText('Configuração JSON') as HTMLTextAreaElement).value
+  ).toContain('Draft speakers')
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Disk write denied'
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Saída de áudio' }))
+  expect(screen.getByLabelText('Rótulo de áudio')).toHaveValue('Saved speakers')
+  view.unmount()
+  await openEditor()
+  expect(screen.getByLabelText('Rótulo de áudio')).toHaveValue('Saved speakers')
+})
+
+it('edits one audio instance on a saved monitor without losing the other target or identity', async () => {
+  const config = structuredClone(defaultConfig)
+  config.widgets.right.push({
+    ...config.widgets.right.find((w) => w.type === 'volume')!,
+    id: 'headphones'
+  })
+  config.monitors = {
+    'screen-a': {
+      widgets: {
+        volume: {
+          audio: {
+            source: 'windows',
+            target: { kind: 'bus', index: 2 },
+            label: 'Desk',
+            enabled: false
+          }
+        }
+      }
+    },
+    'screen-b': {
+      widgets: {
+        volume: {
+          audio: {
+            source: 'voicemeeter',
+            target: { kind: 'bus', index: 4 },
+            label: 'Other'
+          }
+        }
+      }
+    }
+  }
+  vi.mocked(bridge.configLoad!).mockResolvedValue({
+    config,
+    revision: 1,
+    error: null
+  })
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Saída de áudio' }))
+  fireEvent.click(
+    screen.getByRole('combobox', { name: 'Aplicar configurações em' })
+  )
+  fireEvent.pointerDown(await screen.findByRole('option', { name: 'Main' }))
+  fireEvent.click(screen.getByRole('option', { name: 'Main' }))
+  expect(screen.getByLabelText('Rótulo de áudio')).toHaveValue('Desk')
+  fireEvent.change(screen.getByLabelText('Rótulo de áudio'), {
+    target: { value: 'Updated desk' }
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() => expect(bridge.configSave).toHaveBeenCalled())
+  const saved = vi.mocked(bridge.configSave!).mock.calls[0][0]
+  expect(saved.monitors['screen-a']!.widgets!.volume!.audio).toEqual({
+    source: 'windows',
+    target: { kind: 'bus', index: 2 },
+    label: 'Updated desk',
+    enabled: false
+  })
+  expect(saved.monitors['screen-b']).toEqual(config.monitors['screen-b'])
+  expect(saved.widgets).toEqual(config.widgets)
 })
