@@ -5,10 +5,22 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
-import { useTime } from './useTime'
+import type { TimePresentation } from './presentation'
 
-export function ClockPopup() {
-  const { now, dateTime, day, year, week, hours, month } = useTime()
+export interface ClockPopupProps {
+  time: TimePresentation
+  calendarMonth: Date
+  selectedDate: Date
+  onDateSelect: (date: Date | undefined) => void
+}
+
+export function ClockPopup({
+  time,
+  calendarMonth,
+  selectedDate,
+  onDateSelect
+}: ClockPopupProps) {
+  const { now, dateTime, day, year, week, hours, month } = time
 
   return (
     <div>
@@ -36,7 +48,10 @@ export function ClockPopup() {
           <Calendar
             mode="single"
             className="bg-transparent p-0"
-            selected={now}
+            selected={selectedDate}
+            onSelect={onDateSelect}
+            month={calendarMonth}
+            today={now}
             readOnly
             hideNavigation
           />

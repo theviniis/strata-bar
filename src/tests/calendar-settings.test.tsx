@@ -7,8 +7,8 @@ import {
 import type { ReactNode } from 'react'
 import { QueryProvider } from '@/components/QueryProvider'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { CalendarSettings } from '@/features/reminders/CalendarSettings'
-import { RemindersPopup } from '@/features/reminders/RemindersPopup'
+import { CalendarSettingsController as CalendarSettings } from '@/features/reminders/CalendarSettingsController'
+import { RemindersPopupController as RemindersPopup } from '@/features/reminders/RemindersPopupController'
 import { getRemindersStore } from '@/stores/reminders'
 
 const render = (ui: ReactNode) =>

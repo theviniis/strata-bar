@@ -1,17 +1,20 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { expect, it, vi } from 'vitest'
-import { AgentsPopup, AgentsPopupContent } from '@/features/agents/AgentsPopup'
+import {
+  AgentsPopupController as AgentsPopup,
+  AgentsPopupStateController as AgentsPopupContent
+} from '@/features/agents/AgentsPopupController'
 import { PopupContext } from '@/popups/context'
-import { OpenCodeSessions } from '@/features/agents/OpenCodeSessions'
+import { OpenCodeSessionsController as OpenCodeSessions } from '@/features/agents/OpenCodeSessionsController'
 import type { CreateAgentSessionResult } from '@/services/system/agents'
 import type { AgentMessage } from '@/services/system/agents'
-import { AgentQuestion } from '@/features/agents/AgentQuestion'
-import { AgentPermissionCard } from '@/features/agents/AgentPermissionCard'
+import { AgentQuestionController as AgentQuestion } from '@/features/agents/AgentQuestionController'
+import { AgentPermissionCardController as AgentPermissionCard } from '@/features/agents/AgentPermissionCardController'
 import type {
   AgentPermission,
   OpenCodeSnapshot
 } from '@/services/system/agents'
-import { AgentAlerts } from '@/features/agents/AgentAlerts'
+import { AgentAlertsController as AgentAlerts } from '@/features/agents/AgentAlertsController'
 import { createDemoAgentsAdapter } from '@/services/system/agents'
 import { AgentAlertCount } from '@/features/agents/Agents'
 

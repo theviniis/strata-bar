@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { AgentsPopupContent } from '@/features/agents/AgentsPopup'
+import { AgentsPopupStateController as AgentsPopupContent } from '@/features/agents/AgentsPopupController'
 import {
   createDemoAgentsAdapter,
   parseAgentsSnapshot

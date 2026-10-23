@@ -4,7 +4,6 @@ import type {
   AgentNotificationsSnapshot
 } from '@/services/system/agents'
 import { Trash } from 'lucide-react'
-import { useState } from 'react'
 
 const labels = {
   opencode: 'OpenCode',
@@ -26,29 +25,22 @@ const notificationLabels = {
   demo: 'Demonstração: nenhuma notificação será enviada ao Windows.'
 } as const
 
+export interface AgentAlertsProps {
+  alerts: AgentAlertsSnapshot
+  notifications: AgentNotificationsSnapshot | undefined
+  times: Record<string, { iso: string; text: string }>
+  pending: boolean
+  error: string | null
+  onDismiss: ((ids: string[]) => void) | undefined
+}
 export function AgentAlerts({
   alerts,
   notifications,
+  times,
+  pending,
+  error,
   onDismiss
-}: {
-  alerts: AgentAlertsSnapshot
-  notifications?: AgentNotificationsSnapshot
-  onDismiss?: (ids: string[]) => Promise<void>
-}) {
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const dismiss = async (ids: string[]) => {
-    if (!onDismiss || pending) return
-    setPending(true)
-    setError(null)
-    try {
-      await onDismiss(ids)
-    } catch (error) {
-      setError(error instanceof Error ? error.message : String(error))
-    } finally {
-      setPending(false)
-    }
-  }
+}: AgentAlertsProps) {
   return (
     <section
       aria-label="Alertas dos agentes"
@@ -93,12 +85,9 @@ export function AgentAlerts({
                 <p className="text-xs wrap-anywhere">{alert.sessionTitle}</p>
                 <time
                   className="text-xs text-muted-foreground"
-                  dateTime={new Date(alert.createdAt).toISOString()}
+                  dateTime={times[alert.id].iso}
                 >
-                  {new Date(alert.createdAt).toLocaleTimeString('pt-BR', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+                  {times[alert.id].text}
                 </time>
                 <Button
                   type="button"
@@ -106,7 +95,7 @@ export function AgentAlerts({
                   variant="destructive"
                   className="ml-2"
                   disabled={!onDismiss || pending}
-                  onClick={() => void dismiss([alert.id])}
+                  onClick={() => onDismiss?.([alert.id])}
                   aria-label={`Dispensar alerta de ${alert.sessionTitle}`}
                 >
                   <Trash data-icon="inline-start" /> Dispensar
@@ -119,7 +108,7 @@ export function AgentAlerts({
             size="sm"
             variant="destructive"
             disabled={!onDismiss || pending}
-            onClick={() => void dismiss(alerts.items.map((alert) => alert.id))}
+            onClick={() => onDismiss?.(alerts.items.map((alert) => alert.id))}
           >
             <Trash data-icon="inline-start" /> Dispensar exibidos
           </Button>

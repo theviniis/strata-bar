@@ -1,16 +1,11 @@
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type {
   OpenCodeSnapshot,
-  CreateAgentSessionResult,
-  AgentReplyRequest,
-  AgentPermissionRequest
+  CreateAgentSessionResult
 } from '@/services/system/agents'
 import { AgentSessionList } from './AgentSessionList'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { AgentQuestion } from './AgentQuestion'
-import { AgentPermissionCard } from './AgentPermissionCard'
 const connectionLabels = {
   disabled: 'Conexão desativada',
   connecting: 'Conectando…',
@@ -18,31 +13,45 @@ const connectionLabels = {
   disconnected: 'Desconectado · tentando reconectar'
 } as const
 
+import type { ComponentProps, FormEventHandler } from 'react'
+export interface OpenCodeSessionsProps {
+  connection: OpenCodeSnapshot
+  stale: boolean
+  pending: boolean
+  error: string | null
+  creating: boolean
+  directory: string
+  created: CreateAgentSessionResult | null
+  prompt: string
+  replyNotice: string | null
+  promptTooLong: boolean
+  canCreate: boolean
+  renderActions: ComponentProps<typeof AgentSessionList>['renderActions']
+  onCreateSubmit: FormEventHandler<HTMLFormElement>
+  onStartCreating: () => void
+  onCancelCreating: () => void
+  onDirectoryChange: (value: string) => void
+  onPromptChange: (value: string) => void
+}
 export function OpenCodeSessions({
   connection,
-  stale = false,
-  onCreate,
-  onReply,
-  onDecision
-}: {
-  connection: OpenCodeSnapshot
-  stale?: boolean
-  onCreate?: (
-    directory?: string,
-    prompt?: string
-  ) => Promise<CreateAgentSessionResult>
-  onReply?: (request: AgentReplyRequest) => Promise<void>
-  onDecision?: (request: AgentPermissionRequest) => Promise<void>
-}) {
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
-  const [directory, setDirectory] = useState('')
-  const [created, setCreated] = useState<CreateAgentSessionResult | null>(null)
-  const [prompt, setPrompt] = useState('')
-  const [replyNotice, setReplyNotice] = useState<string | null>(null)
-  const promptTooLong = new TextEncoder().encode(prompt).length > 4096
-  const canCreate = !stale && connection.status === 'connected' && !!onCreate
+  stale,
+  pending,
+  error,
+  creating,
+  directory,
+  created,
+  prompt,
+  replyNotice,
+  promptTooLong,
+  canCreate,
+  renderActions,
+  onCreateSubmit,
+  onStartCreating,
+  onCancelCreating,
+  onDirectoryChange,
+  onPromptChange
+}: OpenCodeSessionsProps) {
   return (
     <div className="space-y-3">
       <p role="status" className="text-xs text-muted-foreground">
@@ -72,48 +81,7 @@ export function OpenCodeSessions({
         sessions={connection.sessions}
         label="Sessões do OpenCode"
         stale={stale}
-        renderActions={(session) => (
-          <>
-            {connection.permissions
-              .filter((p) => p.sessionId === session.id)
-              .map((permission) => (
-                <AgentPermissionCard
-                  key={`${permission.id}:${permission.version}`}
-                  permission={permission}
-                  disabled={stale || connection.status !== 'connected'}
-                  onDecision={
-                    onDecision
-                      ? async (request) => {
-                          await onDecision(request)
-                          setReplyNotice(
-                            'Decisão enviada. Acompanhe o andamento no OpenCode.'
-                          )
-                        }
-                      : undefined
-                  }
-                />
-              ))}
-            {connection.questions
-              .filter((q) => q.sessionId === session.id)
-              .map((question) => (
-                <AgentQuestion
-                  key={`${question.id}:${question.version}`}
-                  question={question}
-                  disabled={stale || connection.status !== 'connected'}
-                  onReply={
-                    onReply
-                      ? async (request) => {
-                          await onReply(request)
-                          setReplyNotice(
-                            'Resposta enviada. Acompanhe o andamento no OpenCode.'
-                          )
-                        }
-                      : undefined
-                  }
-                />
-              ))}
-          </>
-        )}
+        renderActions={renderActions}
       />
       {connection.hasMore && (
         <p className="text-xs text-muted-foreground">
@@ -129,10 +97,7 @@ export function OpenCodeSessions({
         <Button
           size="sm"
           disabled={!canCreate || pending}
-          onClick={() => {
-            setCreating(true)
-            setCreated(null)
-          }}
+          onClick={onStartCreating}
         >
           Nova sessão
         </Button>
@@ -143,37 +108,14 @@ export function OpenCodeSessions({
         </p>
       )}
       {creating && (
-        <form
-          className="space-y-2"
-          onSubmit={(event) => {
-            event.preventDefault()
-            if (!canCreate || pending || !onCreate || promptTooLong) return
-            setPending(true)
-            setError(null)
-            void onCreate(
-              directory.trim() || undefined,
-              prompt.trim() ? prompt : undefined
-            )
-              .then((result) => {
-                setCreated(result)
-                setError(result.error)
-                setCreating(false)
-                setDirectory('')
-                setPrompt('')
-              })
-              .catch((error: unknown) => {
-                setError(error instanceof Error ? error.message : String(error))
-              })
-              .finally(() => setPending(false))
-          }}
-        >
+        <form className="space-y-2" onSubmit={onCreateSubmit}>
           <label className="space-y-1 text-xs">
             <span>Pasta do projeto (opcional)</span>
             <Input
               value={directory}
               maxLength={4096}
               disabled={pending || !canCreate}
-              onChange={(event) => setDirectory(event.target.value)}
+              onChange={(event) => onDirectoryChange(event.target.value)}
             />
           </label>
           <p className="text-xs text-muted-foreground">
@@ -185,7 +127,7 @@ export function OpenCodeSessions({
               value={prompt}
               maxLength={4096}
               disabled={pending || !canCreate}
-              onChange={(event) => setPrompt(event.target.value)}
+              onChange={(event) => onPromptChange(event.target.value)}
             />
           </label>
           <p className="text-xs text-muted-foreground">
@@ -213,7 +155,7 @@ export function OpenCodeSessions({
             variant="outline"
             type="button"
             disabled={pending}
-            onClick={() => setCreating(false)}
+            onClick={onCancelCreating}
           >
             Cancelar
           </Button>

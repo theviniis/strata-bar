@@ -6,3 +6,5 @@ research/
 node_modules
 src/popups/.generated/
 .worktrees
+storybook-static/
+debug-storybook.log

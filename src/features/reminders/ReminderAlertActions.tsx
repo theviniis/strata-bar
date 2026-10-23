@@ -1,32 +1,25 @@
 import { Button } from '@/components/ui/button'
 import { snoozeOptions, type SnoozeOption } from '@/services/system/reminders'
-import { useReminders } from '@/stores/reminders'
 import { Trash } from 'lucide-react'
-import { useId, useState } from 'react'
 
+export interface ReminderAlertActionsProps {
+  inputId: string
+  option: SnoozeOption
+  pending: boolean
+  error: string | null
+  onOptionChange: (option: SnoozeOption) => void
+  onSnooze: () => void
+  onDismiss: () => void
+}
 export function ReminderAlertActions({
-  id,
-  onDone
-}: {
-  id: string
-  onDone?: () => void
-}) {
-  const inputId = useId()
-  const dismiss = useReminders((s) => s.dismiss)
-  const snooze = useReminders((s) => s.snooze)
-  const error = useReminders((s) => s.error)
-  const [option, setOption] = useState<SnoozeOption>('5')
-  const [pending, setPending] = useState(false)
-  async function act(shouldSnooze: boolean) {
-    if (pending) return
-    setPending(true)
-    try {
-      const ok = await (shouldSnooze ? snooze(id, option) : dismiss(id))
-      if (ok) onDone?.()
-    } finally {
-      setPending(false)
-    }
-  }
+  inputId,
+  option,
+  pending,
+  error,
+  onOptionChange,
+  onSnooze,
+  onDismiss
+}: ReminderAlertActionsProps) {
   return (
     <div className="grid gap-3">
       <label htmlFor={inputId} className="text-xs text-muted-foreground">
@@ -41,7 +34,7 @@ export function ReminderAlertActions({
           const selected = snoozeOptions.find(
             (value) => value === e.target.value
           )
-          if (selected) setOption(selected)
+          if (selected) onOptionChange(selected)
         }}
       >
         {snoozeOptions.map((value) => (
@@ -55,14 +48,14 @@ export function ReminderAlertActions({
           className="flex-1"
           variant="outline"
           disabled={pending}
-          onClick={() => void act(true)}
+          onClick={onSnooze}
         >
           Adiar
         </Button>
         <Button
           className="flex-1"
           disabled={pending}
-          onClick={() => void act(false)}
+          onClick={onDismiss}
           variant="destructive"
         >
           <Trash data-icon="inline-start" /> Dispensar

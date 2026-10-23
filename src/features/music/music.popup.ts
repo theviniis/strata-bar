@@ -2,5 +2,8 @@ import { definePopup, lazyContent } from '@/popups/definition'
 
 export default definePopup({
   label: 'Player de musica',
-  Content: lazyContent(() => import('./MusicPopup'), 'MusicPopup')
+  Content: lazyContent(
+    () => import('./MusicPopupController'),
+    'MusicPopupController'
+  )
 })

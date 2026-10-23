@@ -64,6 +64,25 @@ beforeEach(() => {
   host.resize.mockResolvedValue({ arrowX: 160 })
 })
 
+it('keeps level controls pending until the command settles and exposes failures', async () => {
+  let reject!: (error: Error) => void
+  host.mute.mockReturnValueOnce(
+    new Promise((_resolve, fail) => {
+      reject = fail
+    })
+  )
+  render(<AudioOutputs />)
+  const slider = await screen.findByRole('slider', { name: 'Volume' })
+  fireEvent.keyDown(slider, { key: 'ArrowRight' })
+  expect(host.mute).toHaveBeenCalledWith({ level: 65 })
+  expect(slider).toHaveAttribute('data-disabled', '')
+  expect(screen.getByRole('button', { name: 'Silenciar' })).toBeDisabled()
+  await act(async () => reject(new Error('Level failed')))
+  expect(screen.getByRole('alert')).toHaveTextContent('Level failed')
+  expect(slider).not.toHaveAttribute('data-disabled')
+  expect(screen.getByLabelText('Volume atual').textContent).toBe('64%')
+})
+
 it('confirms selection, retains the popup and controls mute', async () => {
   const { container } = render(<AudioOutputs arrowX={280} />)
   expect(container.querySelector('.rotate-45')).toHaveStyle({ left: '280px' })

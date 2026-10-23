@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { CpuPopupContent } from '@/features/cpu/CpuPopup'
+import { CpuPopup } from '@/features/cpu/CpuPopup'
 import type { CpuData } from '@/services/system/cpu.generated'
 
 const at = 100000
@@ -39,7 +39,9 @@ function observation(): CpuData {
 }
 it('shows independent CPU indicators and both observed graphs', () => {
   render(
-    <CpuPopupContent
+    <CpuPopup
+      lastData={undefined}
+      demo={false}
       event={{ status: 'ready', data: observation() }}
       now={at}
     />
@@ -66,7 +68,14 @@ it('keeps Windows readings usable when Afterburner is unavailable', () => {
   data.temperatureSensor = null
   data.history[0].temperatureCelsius = null
   data.history[0].temperatureUpdatedAt = null
-  render(<CpuPopupContent event={{ status: 'ready', data }} now={at} />)
+  render(
+    <CpuPopup
+      lastData={undefined}
+      demo={false}
+      event={{ status: 'ready', data }}
+      now={at}
+    />
+  )
   expect(screen.getByText('3.98 GHz')).toBeVisible()
   expect(screen.getByText('Indisponível')).toBeVisible()
   expect(screen.getByText(/requer MSI Afterburner/)).toBeVisible()
@@ -75,12 +84,18 @@ it('keeps Windows readings usable when Afterburner is unavailable', () => {
 })
 it('shows loading without zeros and preserves stale readings after transport failure', () => {
   const view = render(
-    <CpuPopupContent event={{ status: 'loading' }} now={at} />
+    <CpuPopup
+      lastData={undefined}
+      demo={false}
+      event={{ status: 'loading' }}
+      now={at}
+    />
   )
   expect(screen.getByRole('status')).toHaveTextContent('Carregando CPU')
   expect(screen.queryByText('0.0%')).not.toBeInTheDocument()
   view.rerender(
-    <CpuPopupContent
+    <CpuPopup
+      demo={false}
       event={{ status: 'error', error: 'IPC offline' }}
       lastData={observation()}
       now={at + 8000}
@@ -107,7 +122,14 @@ it('keeps temperature above 100 visible and excludes expired graph observations'
       temperatureUpdatedAt: at
     }
   ]
-  render(<CpuPopupContent event={{ status: 'ready', data }} now={at} />)
+  render(
+    <CpuPopup
+      lastData={undefined}
+      demo={false}
+      event={{ status: 'ready', data }}
+      now={at}
+    />
+  )
   // The scale is taken from the observed window only: the expired 180 °C
   // sample can neither raise the maximum nor reach the line.
   expect(screen.getByRole('group', { name: /Temperatura.*130/ })).toBeVisible()
@@ -131,7 +153,14 @@ it('scales the temperature graph from its own window, not from the clock', () =>
       temperatureUpdatedAt: at + 900
     }
   ]
-  render(<CpuPopupContent event={{ status: 'ready', data }} now={at} />)
+  render(
+    <CpuPopup
+      lastData={undefined}
+      demo={false}
+      event={{ status: 'ready', data }}
+      now={at}
+    />
+  )
   // The newest reading landed after the clock's last tick. It is still the
   // newest observation, so it ends the drawn window and sets the scale; a
   // clock-filtered window would drop it for the rest of the second.

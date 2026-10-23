@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { DiskPopupContent } from '../features/disk/DiskPopup'
+import { DiskPopup } from '../features/disk/DiskPopup'
 import { formatDiskBytes } from '../features/disk/presentation'
 import type { DiskData, DiskVolume } from '../services/system/disk.generated'
+import { diskFixture, DISK_FIXTURE_TIME } from '../features/disk/fixtures'
 
 function volume(
   mount: string,
@@ -38,7 +39,14 @@ it('lists local volumes with usage and hides network mappings', () => {
       )
     ]
   }
-  render(<DiskPopupContent event={{ status: 'ready', data }} />)
+  render(
+    <DiskPopup
+      lastData={undefined}
+      now={0}
+      demo={false}
+      event={{ status: 'ready', data }}
+    />
+  )
   expect(screen.getByText('C:')).toBeInTheDocument()
   expect(screen.getByText('System')).toBeInTheDocument()
   expect(screen.queryByText('Z:')).not.toBeInTheDocument()
@@ -58,9 +66,55 @@ it('formats capacity in binary units', () => {
 
 it('reports the loading and unavailable states', () => {
   const { rerender } = render(
-    <DiskPopupContent event={{ status: 'loading' }} />
+    <DiskPopup
+      lastData={undefined}
+      now={0}
+      demo={false}
+      event={{ status: 'loading' }}
+    />
   )
   expect(screen.getByRole('status')).toHaveTextContent('Carregando discos')
-  rerender(<DiskPopupContent event={{ status: 'error', error: 'Falha' }} />)
+  rerender(
+    <DiskPopup
+      lastData={undefined}
+      now={0}
+      demo={false}
+      event={{ status: 'error', error: 'Falha' }}
+    />
+  )
   expect(screen.getByRole('status')).toHaveTextContent('Discos indisponíveis')
+})
+
+it('retains failed readings, marks stale snapshots and labels demo data', () => {
+  const view = render(
+    <DiskPopup
+      event={{ status: 'error', error: 'IPC offline' }}
+      lastData={diskFixture()}
+      now={DISK_FIXTURE_TIME}
+      demo
+    />
+  )
+  expect(screen.getByText('System')).toBeVisible()
+  expect(screen.getByRole('status')).toHaveTextContent('IPC offline')
+  expect(screen.getByText(/Dados de demonstração/)).toBeVisible()
+  view.rerender(
+    <DiskPopup
+      event={{ status: 'ready', data: diskFixture() }}
+      lastData={undefined}
+      now={DISK_FIXTURE_TIME + 10000}
+      demo={false}
+    />
+  )
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'última leitura desatualizada'
+  )
+  view.rerender(
+    <DiskPopup
+      event={{ status: 'ready', data: { ...diskFixture(), volumes: [] } }}
+      lastData={undefined}
+      now={DISK_FIXTURE_TIME}
+      demo={false}
+    />
+  )
+  expect(screen.getByText('Nenhum disco disponível')).toBeVisible()
 })

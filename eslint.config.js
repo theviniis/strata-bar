@@ -10,6 +10,8 @@ export default tseslint.config(
   {
     ignores: [
       'dist',
+      '.worktrees',
+      'storybook-static',
       'node_modules',
       'src-tauri',
       'research',

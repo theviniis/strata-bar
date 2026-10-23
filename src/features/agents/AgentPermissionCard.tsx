@@ -1,48 +1,24 @@
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type {
   AgentPermission,
-  AgentPermissionDecision,
-  AgentPermissionRequest
+  AgentPermissionDecision
 } from '@/services/system/agents'
-
+export interface AgentPermissionCardProps {
+  permission: AgentPermission
+  pending: boolean
+  attempted: boolean
+  error: string | null
+  blocked: boolean
+  onDecision: (decision: AgentPermissionDecision) => void
+}
 export function AgentPermissionCard({
   permission,
-  disabled,
+  pending,
+  attempted,
+  error,
+  blocked,
   onDecision
-}: {
-  permission: AgentPermission
-  disabled: boolean
-  onDecision?: (request: AgentPermissionRequest) => Promise<void>
-}) {
-  const [pending, setPending] = useState(false)
-  const [attempted, setAttempted] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const blocked =
-    disabled ||
-    pending ||
-    attempted ||
-    permission.replyBlocked ||
-    !!permission.unsupportedReason ||
-    !onDecision
-  const decide = async (decision: AgentPermissionDecision) => {
-    if (blocked || !onDecision) return
-    setPending(true)
-    setAttempted(true)
-    setError(null)
-    try {
-      await onDecision({
-        sessionId: permission.sessionId,
-        permissionId: permission.id,
-        version: permission.version,
-        decision
-      })
-    } catch (error) {
-      setError(error instanceof Error ? error.message : String(error))
-    } finally {
-      setPending(false)
-    }
-  }
+}: AgentPermissionCardProps) {
   return (
     <section
       aria-label="Permissão de ferramenta"
@@ -81,7 +57,7 @@ export function AgentPermissionCard({
           type="button"
           size="sm"
           disabled={blocked}
-          onClick={() => void decide('approveOnce')}
+          onClick={() => onDecision('approveOnce')}
         >
           Aprovar uma vez
         </Button>
@@ -90,7 +66,7 @@ export function AgentPermissionCard({
           size="sm"
           variant="outline"
           disabled={blocked}
-          onClick={() => void decide('reject')}
+          onClick={() => onDecision('reject')}
         >
           Recusar
         </Button>

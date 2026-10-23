@@ -19,204 +19,39 @@ import { Slider } from '@/components/ui/slider'
 import { Spinner } from '@/components/ui/spinner'
 import { WidgetItemOutput } from '@/components/widget-item'
 import { Check, Volume2, VolumeX } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { useSystemChannel } from '../../hooks/useSystemChannel'
-import { usePopupContext } from '../../popups/context'
 import {
-  bridge,
   type ChannelData,
-  type SystemEvent,
-  type VolumeChange
+  type SystemEvent
 } from '../../services/system/bridge'
 
-type Outputs = ChannelData['audioOutputs']
-type Volume = ChannelData['volume']
-interface AudioProps {
-  outputs: SystemEvent<Outputs>
-  volume: SystemEvent<Volume>
-  selectOutput(value: { deviceId: string }): Promise<Outputs>
-  setVolume(value: VolumeChange): Promise<unknown>
+export interface AudioOutputsProps {
+  outputs: SystemEvent<ChannelData['audioOutputs']>
+  volume: SystemEvent<ChannelData['volume']>
+  data: ChannelData['audioOutputs'] | null
+  pending: string | null
+  error: string
+  level: number
+  muted: boolean
+  select(id: string): void
+  mute(): void
+  setDraft(level: number): void
+  setLevel(level: number): void
   retry(): void
 }
-
-export function AudioOutputs() {
-  const { mode } = usePopupContext('audioOutputs')
-  return mode === 'native' ? <NativeAudioOutputs /> : <DemoAudioOutputs />
-}
-function NativeAudioOutputs() {
-  const [revision, setRevision] = useState(0)
-  const outputs = useSystemChannel('audioOutputs', revision)
-  const volume = useSystemChannel('volume')
-  return (
-    <AudioOutputsContent
-      outputs={outputs}
-      volume={volume}
-      selectOutput={(value) => {
-        if (!bridge.setAudioOutput)
-          return Promise.reject(new Error('Audio output switching unavailable'))
-        return bridge.setAudioOutput(value)
-      }}
-      setVolume={(value) => bridge.setVolume(value)}
-      retry={() => setRevision((value) => value + 1)}
-    />
-  )
-}
-function DemoAudioOutputs() {
-  const [outputs, setOutputs] = useState<Outputs>({
-    devices: [
-      { id: 'demo-speakers', name: 'Alto-falantes (demo)' },
-      { id: 'demo-headphones', name: 'Fones de ouvido (demo)' }
-    ],
-    defaultDeviceId: 'demo-speakers'
-  })
-  const [volume, setVolume] = useState<Volume>({ level: 64, muted: false })
-  return (
-    <AudioOutputsContent
-      outputs={{ status: 'ready', data: outputs }}
-      volume={{ status: 'ready', data: volume }}
-      selectOutput={async ({ deviceId }) => {
-        const next = { ...outputs, defaultDeviceId: deviceId }
-        setOutputs(next)
-        return next
-      }}
-      setVolume={async (change) => {
-        setVolume((value) => ({ ...value, ...change }))
-      }}
-      retry={() => {}}
-    />
-  )
-}
-
-interface AudioOutputContentItemProps extends Omit<
-  ButtonLoadingProps,
-  'variant' | 'children'
-> {
-  device: Record<'id' | 'name', string>
-  isActive?: boolean
-}
-
-function AudioOutputContentItem({
-  device,
-  isActive,
-  isLoading,
-  disabled,
-  ...props
-}: AudioOutputContentItemProps) {
-  return (
-    <Button
-      className="grid grid-cols-[16px_1fr_16px]"
-      variant="outline"
-      disabled={isLoading || disabled}
-      aria-pressed={!!isActive}
-      {...props}
-    >
-      <Volume2 size={16} className="shrink-0 text-primary" />
-      <span>{device.name}</span>
-      {isLoading ? (
-        <Spinner
-          width={16}
-          height={16}
-          aria-hidden="true"
-          className="text-primary"
-        />
-      ) : (
-        isActive && (
-          <Check
-            size={16}
-            aria-label="Saída atual"
-            className="shrink-0 text-primary"
-          />
-        )
-      )}
-    </Button>
-  )
-}
-
-function EmptyOutputItems() {
-  return (
-    <Empty>
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <Spinner className="text-primary" />
-        </EmptyMedia>
-        <EmptyTitle>Carregando dispositivos de audio</EmptyTitle>
-        <EmptyDescription>
-          Por favor aguarde enquanto carregamos os dispositivos de audio
-        </EmptyDescription>
-      </EmptyHeader>
-    </Empty>
-  )
-}
-
-function AudioOutputsContent({
+export function AudioOutputs({
   outputs,
   volume,
-  selectOutput,
-  setVolume,
+  data,
+  pending,
+  error,
+  level,
+  muted,
+  select,
+  mute,
+  setDraft,
+  setLevel,
   retry
-}: AudioProps) {
-  const [pending, setPending] = useState<string | null>(null)
-  const [error, setError] = useState('')
-  const [draft, setDraft] = useState<number | null>(null)
-  const [confirmed, setConfirmed] = useState<{
-    base: typeof outputs
-    data: ChannelData['audioOutputs']
-  } | null>(null)
-  const busy = useRef(false)
-  const mounted = useRef(true)
-  useEffect(() => {
-    mounted.current = true
-    return () => {
-      mounted.current = false
-    }
-  }, [])
-  const data =
-    (confirmed?.base === outputs ? confirmed.data : null) ??
-    (outputs.status === 'ready' ? outputs.data : null)
-  async function select(id: string) {
-    if (busy.current) return
-    busy.current = true
-    setPending(id)
-    setError('')
-    try {
-      const result = await selectOutput({ deviceId: id })
-      if (mounted.current) setConfirmed({ base: outputs, data: result })
-    } catch (e) {
-      if (mounted.current) setError(String(e))
-    } finally {
-      busy.current = false
-      if (mounted.current) setPending(null)
-    }
-  }
-  async function mute() {
-    if (volume.status !== 'ready' || busy.current) return
-    busy.current = true
-    setPending('mute')
-    try {
-      await setVolume({ muted: !volume.data.muted })
-      if (mounted.current) setError('')
-    } catch (e) {
-      if (mounted.current) setError(String(e))
-    } finally {
-      busy.current = false
-      if (mounted.current) setPending(null)
-    }
-  }
-  async function setLevel(level: number) {
-    if (volume.status !== 'ready' || busy.current) return
-    busy.current = true
-    try {
-      await setVolume({ level })
-      if (mounted.current) setError('')
-    } catch (e) {
-      if (mounted.current) setError(String(e))
-    } finally {
-      busy.current = false
-      if (mounted.current) setDraft(null)
-    }
-  }
-  const level = draft ?? (volume.status === 'ready' ? volume.data.level : 0)
-  const muted = volume.status === 'ready' && volume.data.muted
+}: AudioOutputsProps) {
   const Icon = muted ? VolumeX : Volume2
 
   return (
@@ -287,7 +122,6 @@ function AudioOutputsContent({
           </Button>
           <Slider
             value={[level]}
-            defaultValue={[100]}
             max={100}
             step={1}
             aria-label="Volume"
@@ -299,10 +133,71 @@ function AudioOutputsContent({
             aria-label="Volume atual"
             className="min-w-8 text-right"
           >
-            {volume.status === 'ready' ? `${level}%` : '—'}
+            {volume.status === 'ready' ? level : '—'}
           </WidgetItemOutput>
         </CardFooter>
       </div>
     </>
+  )
+}
+interface AudioOutputContentItemProps extends Omit<
+  ButtonLoadingProps,
+  'variant' | 'children'
+> {
+  device: Record<'id' | 'name', string>
+  isActive: boolean
+  isLoading: boolean
+}
+
+function AudioOutputContentItem({
+  device,
+  isActive,
+  isLoading,
+  disabled,
+  ...props
+}: AudioOutputContentItemProps) {
+  return (
+    <Button
+      className="grid grid-cols-[16px_1fr_16px]"
+      variant="outline"
+      disabled={isLoading || disabled}
+      aria-pressed={!!isActive}
+      {...props}
+    >
+      <Volume2 size={16} className="shrink-0 text-primary" />
+      <span>{device.name}</span>
+      {isLoading ? (
+        <Spinner
+          width={16}
+          height={16}
+          aria-hidden="true"
+          className="text-primary"
+        />
+      ) : (
+        isActive && (
+          <Check
+            size={16}
+            aria-label="Saída atual"
+            className="shrink-0 text-primary"
+          />
+        )
+      )}
+    </Button>
+  )
+}
+
+function EmptyOutputItems() {
+  return (
+    <Empty>
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <Spinner className="text-primary" />
+        </EmptyMedia>
+        <EmptyTitle>Carregando dispositivos de audio</EmptyTitle>
+        <EmptyDescription>
+          Por favor aguarde enquanto carregamos os dispositivos de audio
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
   )
 }

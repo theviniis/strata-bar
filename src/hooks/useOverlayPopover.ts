@@ -1,3 +1,4 @@
+import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { overlay } from '../services/system/overlay'
 import {
@@ -14,6 +15,7 @@ export function useOverlayPopover<K extends PopupId>(
   params?: PopupParams<K>,
   anchorRef?: RefObject<HTMLElement | null>
 ) {
+  const preview = useWidgetPreview()
   const [open, setOpen] = useState(false)
   const [error, setError] = useState('')
   const ref = useRef<HTMLElement>(null)
@@ -29,7 +31,7 @@ export function useOverlayPopover<K extends PopupId>(
     return Promise.resolve()
   }, [])
   useEffect(() => {
-    if (overlay.mode !== 'native') return
+    if (preview || overlay.mode !== 'native') return
     let cancelled = false
     let stop: (() => void) | undefined
     void import('@tauri-apps/api/event')
@@ -70,9 +72,9 @@ export function useOverlayPopover<K extends PopupId>(
         void overlay.hide(session).catch(console.error)
       }
     }
-  }, [close])
+  }, [close, preview])
   async function toggle() {
-    if (overlay.mode !== 'native') return
+    if (preview || overlay.mode !== 'native') return
     if (active.current) return close()
     const anchor =
       anchorRef?.current ??

@@ -9,75 +9,24 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
-import { useResourceChannel } from '@/hooks/useResourceChannel'
-import { usePopupContext } from '@/popups/context'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { GpuData } from '@/services/system/gpu.generated'
-import { useState } from 'react'
 import {
   formatGpuMemoryPair,
   formatGpuMetric,
   isGpuMetricStale
 } from './presentation'
 
-export function GpuPopup() {
-  const { mode } = usePopupContext('gpu')
-  return mode === 'native' ? <NativeGpuPopup /> : <DemoGpuPopup />
-}
-function NativeGpuPopup() {
-  return <GpuPopupContent {...useResourceChannel('gpu')} />
-}
-function DemoGpuPopup() {
-  const [at] = useState(Date.now)
-  const metric = (value: number) => ({
-    status: 'ready' as const,
-    value,
-    updatedAt: at,
-    error: null
-  })
-  const data: GpuData = {
-    sequence: 61,
-    sampledAt: at,
-    adapter: {
-      name: 'GeForce RTX 3060 Ti',
-      vendorId: 4318,
-      deviceId: 9353,
-      dedicatedBytes: 8589934592
-    },
-    percent: metric(27.3),
-    memoryUsedBytes: metric(1610612736),
-    memoryTotalBytes: metric(8589934592),
-    sharedUsedBytes: metric(337641472),
-    sharedTotalBytes: metric(17179869184),
-    temperatureCelsius: metric(51),
-    powerWatts: metric(20.6),
-    fanPercent: metric(0),
-    temperatureSensor: {
-      provider: 'msiAfterburner',
-      sourceId: 0,
-      gpu: 0,
-      name: 'GeForce RTX 3060 Ti'
-    },
-    history: Array.from({ length: 61 }, (_, i) => ({
-      sequence: i + 1,
-      timestamp: at - (60 - i) * 2000,
-      percent: 27.3 + Math.sin(i / 4) * 12,
-      temperatureCelsius: 51 + Math.sin(i / 6) * 6,
-      temperatureUpdatedAt: at - (60 - i) * 2000
-    }))
-  }
-  return <GpuPopupContent event={{ status: 'ready', data }} now={at} demo />
-}
-export function GpuPopupContent({
+export function GpuPopup({
   event,
   lastData,
-  now = 0,
-  demo = false
+  now,
+  demo
 }: {
   event: SystemEvent<GpuData>
-  lastData?: GpuData
-  now?: number
-  demo?: boolean
+  lastData: GpuData | undefined
+  now: number
+  demo: boolean
 }) {
   const data = event.status === 'ready' ? event.data : lastData
   if (!data)

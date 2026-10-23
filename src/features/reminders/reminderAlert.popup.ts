@@ -3,7 +3,10 @@ import { definePopup, lazyContent } from '@/popups/definition'
 
 export default definePopup({
   label: 'Alerta de lembrete',
-  Content: lazyContent(() => import('./ReminderAlert'), 'ReminderAlert'),
+  Content: lazyContent(
+    () => import('./ReminderAlertController'),
+    'ReminderAlertController'
+  ),
   schema: z
     .object({
       id: z.uuid(),

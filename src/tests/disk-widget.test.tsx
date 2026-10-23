@@ -25,6 +25,7 @@ function volume(
 it('renders one progress bar per volume with its rounded percentage', () => {
   render(
     <DiskBar
+      compact={false}
       volumes={[
         volume('C:', 512_000_000_000, 225_280_000_000, 'System'),
         volume('D:', 1_000_000_000_000, 550_000_000_000)
@@ -42,7 +43,7 @@ it('renders one progress bar per volume with its rounded percentage', () => {
 })
 
 it('shows an empty placeholder when no volume is mounted', () => {
-  render(<DiskBar volumes={[]} />)
+  render(<DiskBar compact={false} volumes={[]} />)
   expect(screen.getByText('—')).toBeInTheDocument()
   expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
 })

@@ -119,3 +119,23 @@ it('shares the shadcn pill classes with the studio tooltip', () => {
     expect(pill).toHaveClass(token)
   }
 })
+
+it('does not schedule an empty tooltip when its configured presentation is disabled', () => {
+  render(<Target text="" />)
+  const target = screen.getByTestId('target')
+  fireEvent.pointerEnter(target)
+  fireEvent.focus(target)
+  expect(vi.getTimerCount()).toBe(0)
+  act(() => vi.advanceTimersByTime(TOOLTIP_DELAY))
+  expect(transport.show).not.toHaveBeenCalled()
+})
+
+it('hides the current tooltip when its configured text is disabled', () => {
+  const view = render(<Target text="Detalhes da CPU" />)
+  fireEvent.pointerEnter(screen.getByTestId('target'))
+  act(() => vi.advanceTimersByTime(TOOLTIP_DELAY))
+  expect(transport.show).toHaveBeenCalledOnce()
+  view.rerender(<Target text="" />)
+  expect(transport.hide).toHaveBeenCalledOnce()
+  expect(vi.getTimerCount()).toBe(0)
+})

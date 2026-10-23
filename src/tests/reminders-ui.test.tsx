@@ -1,5 +1,5 @@
 import { PopupContext } from '@/popups/context'
-import { ReminderAlert } from '@/features/reminders/ReminderAlert'
+import { ReminderAlertController as ReminderAlert } from '@/features/reminders/ReminderAlertController'
 import {
   act,
   fireEvent,
@@ -11,16 +11,16 @@ import type { Editor } from '@tiptap/react'
 import type { ReactNode } from 'react'
 import { QueryProvider } from '@/components/QueryProvider'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { Reminders } from '@/features/reminders/Reminders'
+import { RemindersController as Reminders } from '@/features/reminders/RemindersController'
 import {
   formatCountdown,
   scheduledDateTime
 } from '@/features/reminders/presentation'
-import { RemindersPopup } from '@/features/reminders/RemindersPopup'
+import { RemindersPopupController as RemindersPopup } from '@/features/reminders/RemindersPopupController'
 import { getRemindersStore } from '@/stores/reminders'
 import { PopupHost } from '@/popups/PopupHost'
 import { createDemoRemindersAdapter } from '@/services/system/reminders'
-import { DemoReminderAlerts } from '@/features/reminders/DemoReminderAlerts'
+import { DemoReminderAlertsController as DemoReminderAlerts } from '@/features/reminders/DemoReminderAlertsController'
 
 function fillMessage(
   element: HTMLElement,

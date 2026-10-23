@@ -1,3 +1,4 @@
+import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { measureTooltip } from '../overlay/measure'
 import { overlay, type OverlayRequest } from '../services/system/overlay'
@@ -99,14 +100,16 @@ function schedule(owner: symbol, target: Element, text: string) {
  * render (screen readers cannot follow text into another window).
  */
 export function useOverlayTooltip(text: string) {
+  const preview = useWidgetPreview()
   const raw = useId()
   const ref = useRef<HTMLElement | null>(null)
   const [owner] = useState(() => Symbol('overlay-tooltip'))
-  useEffect(() => () => hide(owner), [owner])
+  useEffect(() => () => hide(owner), [owner, text, preview])
   const setTarget = useCallback((node: HTMLElement | null) => {
     ref.current = node
   }, [])
   const enter = () => {
+    if (preview || !text || overlay.mode !== 'native') return
     const target = ref.current
     if (target) schedule(owner, target, text)
   }

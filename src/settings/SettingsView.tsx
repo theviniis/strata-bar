@@ -1,4 +1,4 @@
-import { CalendarSettings } from '@/features/reminders/CalendarSettings'
+import { CalendarSettingsController } from '@/features/reminders/CalendarSettingsController'
 import { Textarea } from '@/components/ui/textarea'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Logo } from '@/components/Logo'
@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/sidebar'
 import { Spinner } from '@/components/ui/spinner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { SpotifySettings } from '@/features/music/SpotifySettings'
+import { SpotifySettingsController } from '@/features/music/SpotifySettingsController'
 import { bridge } from '@/services/system/bridge'
 import { cn } from 'cn'
 import {
@@ -144,7 +144,7 @@ function NativeSettingsView() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <CalendarSettings />
+                      <CalendarSettingsController />
                     </CardContent>
                   </Card>
                 ) : section === 'appearance' ? (
@@ -178,7 +178,7 @@ function NativeSettingsView() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <SpotifySettings />
+                      <SpotifySettingsController />
                     </CardContent>
                   </Card>
                 ) : section === 'agents' ? (

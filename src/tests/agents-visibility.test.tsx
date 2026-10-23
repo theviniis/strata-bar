@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it } from 'vitest'
-import { AgentsPopupContent } from '@/features/agents/AgentsPopup'
+import { AgentsPopupStateController as AgentsPopupContent } from '@/features/agents/AgentsPopupController'
 import { defaultConfig, parseConfig } from '@/services/configuration/config'
 import { createDemoAgentsAdapter } from '@/services/system/agents'
 import { useConfig } from '@/stores/config'

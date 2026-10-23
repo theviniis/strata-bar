@@ -145,3 +145,26 @@ event-driven audio.
 - [current native validation](docs/native-mvp-validation.md) — evidence and remaining limits.
 
 No comparative YASB performance claim is made.
+
+## Storybook
+
+```sh
+pnpm storybook        # isolated widget visuals at http://localhost:6006
+pnpm build-storybook  # static output in storybook-static/ (ignored)
+```
+
+The Storybook Vite configuration is independent of the native application's
+port and generation plugins. Its theme toolbar selects light or dark using the
+same global Tailwind styles and Geist font as the application.
+
+Add `*.stories.tsx` beside a feature. Import its props-driven visual, use typed,
+deterministic fixtures and `fn` from `storybook/test` for callbacks. Stories must
+not import controllers, connect stores or start native subscriptions. For
+interactive controls, put state in a small story parent and pass values and
+callbacks to the visual. Render popup visuals inside a themed `Card` of the
+appropriate width without the native overlay host.
+
+CPU is the first migrated reference: `Cpu` / `CpuPopup` are visuals;
+`CpuController` / `CpuPopupController` own runtime integration. The remaining
+migration is tracked in [.docs/plans/widgets-controlled-by-props.md](.docs/plans/widgets-controlled-by-props.md).
+Storybook does not replace Windows AppBar, focus, audio or overlay validation.

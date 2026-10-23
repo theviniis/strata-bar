@@ -538,7 +538,7 @@ it('previews the draft NativeBar layout in both themes without native subscripti
       'Detalhes da CPU',
       { selector: 'button' }
     )
-    expect(cpu).toHaveTextContent('17%')
+    expect(cpu).toHaveTextContent('17.0%')
     expect(cpu.closest('[data-section]')).toHaveAttribute(
       'data-section',
       'left'

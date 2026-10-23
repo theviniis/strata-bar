@@ -5,60 +5,18 @@ import {
   CardTitle
 } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { useResourceChannel } from '@/hooks/useResourceChannel'
-import { usePopupContext } from '@/popups/context'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { DiskData } from '@/services/system/disk.generated'
 import { HardDrive } from 'lucide-react'
-import { useState } from 'react'
-import { formatDiskBytes, localVolumes } from './presentation'
+import { formatDiskBytes, isDiskStale, localVolumes } from './presentation'
 
-export function DiskPopup() {
-  const { mode } = usePopupContext('disk')
-  return mode === 'native' ? <NativeDiskPopup /> : <DemoDiskPopup />
-}
-function NativeDiskPopup() {
-  return <DiskPopupContent {...useResourceChannel('disk')} />
-}
-function DemoDiskPopup() {
-  const [at] = useState(Date.now)
-  const volume = (
-    mount: string,
-    label: string | null,
-    total: number,
-    free: number
-  ) => {
-    const used = total - free
-    return {
-      mount,
-      label,
-      kind: 'fixed' as const,
-      totalBytes: total,
-      freeBytes: free,
-      usedBytes: used,
-      percent: (used / total) * 100
-    }
-  }
-  const data: DiskData = {
-    sequence: 61,
-    sampledAt: at,
-    volumes: [
-      volume('C:', 'System', 512_000_000_000, 286_720_000_000),
-      volume('D:', 'Data', 1_000_000_000_000, 450_000_000_000)
-    ]
-  }
-  return <DiskPopupContent event={{ status: 'ready', data }} demo />
-}
-
-export function DiskPopupContent({
-  event,
-  lastData,
-  demo = false
-}: {
+export interface DiskPopupProps {
   event: SystemEvent<DiskData>
-  lastData?: DiskData
-  demo?: boolean
-}) {
+  lastData: DiskData | undefined
+  now: number
+  demo: boolean
+}
+export function DiskPopup({ event, lastData, now, demo }: DiskPopupProps) {
   const data = event.status === 'ready' ? event.data : lastData
   if (!data)
     return (
@@ -81,9 +39,10 @@ export function DiskPopupContent({
             Dados de demonstração · ilustrativos
           </p>
         )}
-        {event.status === 'error' && (
+        {isDiskStale(data, now, event.status === 'ready') && (
           <p role="status" className="text-xs text-destructive">
-            {event.error} · última leitura desatualizada
+            {event.status === 'error' ? `${event.error} · ` : ''}última leitura
+            desatualizada
           </p>
         )}
       </CardHeader>

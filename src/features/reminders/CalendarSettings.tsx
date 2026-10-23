@@ -1,37 +1,34 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { calendar } from '@/services/system/calendar'
-import { useId, useState } from 'react'
+import type { CalendarStatus } from '@/services/system/reminders.generated'
 
-import { useCalendarStatus } from './useCalendarStatus'
-
-export function CalendarSettings() {
-  const id = useId()
-  const [clientId, setClientId] = useState('')
-  const [clientSecret, setClientSecret] = useState('')
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState('')
-  const native = Boolean(window.__TAURI_INTERNALS__)
-  const {
-    data: status,
-    error: statusError,
-    refetch
-  } = useCalendarStatus(native)
-  async function change(connect: boolean) {
-    setPending(true)
-    setError('')
-    try {
-      if (connect) await calendar.connect(clientId.trim(), clientSecret.trim())
-      else await calendar.disconnect()
-      await refetch()
-      setClientSecret('')
-    } catch (e) {
-      setError(String(e))
-    } finally {
-      setPending(false)
-    }
-  }
+export interface CalendarSettingsProps {
+  id: string
+  clientId: string
+  clientSecret: string
+  pending: boolean
+  error: string
+  native: boolean
+  status: CalendarStatus | undefined
+  onClientIdChange: (value: string) => void
+  onClientSecretChange: (value: string) => void
+  onConnect: () => void
+  onDisconnect: () => void
+}
+export function CalendarSettings({
+  id,
+  clientId,
+  clientSecret,
+  pending,
+  error,
+  native,
+  status,
+  onClientIdChange,
+  onClientSecretChange,
+  onConnect,
+  onDisconnect
+}: CalendarSettingsProps) {
   return (
     <section
       aria-label="Conexão Google Calendar"
@@ -43,11 +40,7 @@ export function CalendarSettings() {
             Eventos na agenda <strong>Lembretes Strata</strong>, criada
             automaticamente se preciso. Adiar altera somente o alerta local.
           </p>
-          <Button
-            variant="outline"
-            disabled={pending}
-            onClick={() => void change(false)}
-          >
+          <Button variant="outline" disabled={pending} onClick={onDisconnect}>
             Desconectar Google
           </Button>
         </>
@@ -62,7 +55,7 @@ export function CalendarSettings() {
           <Input
             id={`${id}-client`}
             value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
+            onChange={(e) => onClientIdChange(e.target.value)}
             placeholder="…apps.googleusercontent.com"
             autoComplete="off"
             disabled={!native || pending || status?.connecting}
@@ -74,7 +67,7 @@ export function CalendarSettings() {
             id={`${id}-secret`}
             type="password"
             value={clientSecret}
-            onChange={(e) => setClientSecret(e.target.value)}
+            onChange={(e) => onClientSecretChange(e.target.value)}
             autoComplete="off"
             disabled={!native || pending || status?.connecting}
           />
@@ -82,7 +75,7 @@ export function CalendarSettings() {
             disabled={
               !native || pending || status?.connecting || !clientId.trim()
             }
-            onClick={() => void change(true)}
+            onClick={onConnect}
           >
             {pending || status?.connecting
               ? 'Aguardando autorização no navegador…'
@@ -95,9 +88,9 @@ export function CalendarSettings() {
           Demonstração · conexão disponível na barra nativa.
         </p>
       )}
-      {(error || statusError || status?.error) && (
+      {error && (
         <p role="alert" className="text-destructive">
-          {error || (statusError ? String(statusError) : status?.error)}
+          {error}
         </p>
       )}
     </section>

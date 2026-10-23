@@ -58,6 +58,7 @@ export default defineConfig({
     }
   },
   test: {
+    include: ['src/tests/**/*.test.{ts,tsx}'],
     environment: 'jsdom',
     // Avoid contention between full editor trees in concurrent Windows workers.
     maxWorkers: 2,

@@ -4,57 +4,21 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
-import { usePopupContext } from '@/popups/context'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { MemoryData } from '@/services/system/memory.generated'
-import { useState } from 'react'
 import { MemoryGraph } from './MemoryGraph'
 import { formatMemoryMetric } from './presentation'
-import { useResourceChannel } from '@/hooks/useResourceChannel'
 
-export function MemoryPopup() {
-  const { mode } = usePopupContext('memory')
-  return mode === 'native' ? <NativeMemoryPopup /> : <DemoMemoryPopup />
-}
-function NativeMemoryPopup() {
-  return <MemoryPopupContent {...useResourceChannel('memory')} />
-}
-function DemoMemoryPopup() {
-  const [at] = useState(Date.now)
-  const metric = (value: number) => ({
-    status: 'ready' as const,
-    value,
-    updatedAt: at,
-    error: null
-  })
-  const data: MemoryData = {
-    sequence: 61,
-    sampledAt: at,
-    totalBytes: metric(17179869184),
-    availableBytes: metric(7516192768),
-    usedBytes: metric(9126805504),
-    cachedBytes: metric(4294967296),
-    pagingFileBytes: metric(1073741824),
-    percent: metric(53.125),
-    history: Array.from({ length: 61 }, (_, index) => ({
-      sequence: index + 1,
-      timestamp: at - (60 - index) * 2000,
-      percent: 53.125 + Math.sin(index / 4) * 3
-    }))
-  }
-  return <MemoryPopupContent event={{ status: 'ready', data }} now={at} demo />
-}
-
-export function MemoryPopupContent({
+export function MemoryPopup({
   event,
-  now = 0,
+  now,
   lastData,
-  demo = false
+  demo
 }: {
   event: SystemEvent<MemoryData>
-  now?: number
-  lastData?: MemoryData
-  demo?: boolean
+  now: number
+  lastData: MemoryData | undefined
+  demo: boolean
 }) {
   const data = event.status === 'ready' ? event.data : lastData
   if (!data)

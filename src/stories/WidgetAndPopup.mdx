@@ -1,0 +1,676 @@
+import { Canvas, Meta } from '@storybook/addon-docs/blocks'
+import * as WidgetStories from '../components/status-bar/Widget.stories'
+import * as PopupStories from '../popups/WidgetPopup.stories'
+
+<Meta title="Guias/Usando Widget e WidgetPopup" />
+
+# Como usar Widget e WidgetPopup
+
+Este guia mostra como colocar um widget existente na barra e como ligar um
+botão ao seu popup. Os exemplos usam CPU, mas a composição se aplica às demais
+features registradas.
+
+## Qual componente escolher?
+
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Quero…</th>
+      <th scope="col">Uso</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        Mostrar uma instância configurada de CPU, memória ou outra feature na
+        barra
+      </td>
+      <td>
+        <code>Widget</code>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Ligar um botão ou visual a um popup registrado dentro de um controlador
+      </td>
+      <td>
+        <code>WidgetPopup.Root</code> e <code>WidgetPopup.Trigger</code>
+      </td>
+    </tr>
+    <tr>
+      <td>Posicionar o popup em relação a uma área maior que o botão</td>
+      <td>
+        <code>WidgetPopup.Anchor</code>
+      </td>
+    </tr>
+    <tr>
+      <td>Testar somente a aparência com dados e callbacks controlados</td>
+      <td>
+        O visual da feature, como <code>Cpu</code> ou <code>CpuPopup</code>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+O caminho normal é **barra → Widget → controlador da feature → visual**.
+O controlador já compõe `WidgetPopup` quando a feature tem popup. Ao usar
+`Widget`, você recebe essa composição pronta: não coloque outro `WidgetPopup`
+ao redor dele.
+
+## 1. Renderize um Widget existente
+
+Crie a configuração com `widgetSchema.parse`. O schema completa os defaults e
+valida tipo, formato, intervalo e preferências de áudio.
+
+```tsx
+import { Widget } from '@/components/status-bar/Widget'
+import { widgetSchema } from '@/services/configuration/config'
+
+const cpu = widgetSchema.parse({
+  id: 'cpu-main',
+  type: 'cpu',
+  format: 'label',
+  tooltip: true,
+  intervalMs: 2000
+})
+
+export function CpuArea() {
+  return <Widget widget={cpu} />
+}
+```
+
+Use esse componente no runtime da barra nativa, dentro da composição existente
+da aplicação. `Widget` escolhe `CpuController`; você não precisa buscar dados
+nem chamar o bridge no componente da barra. Cada controlador mantém sua própria
+subscription, evitando que uma leitura de CPU atualize todos os widgets.
+
+A demonstração abaixo usa o mesmo registro com amostras estáticas e interação
+bloqueada. A versão nativa recebe leituras reais.
+
+<Canvas of={WidgetStories.Label} meta={WidgetStories} />
+
+### Troque o formato sem trocar o componente
+
+```tsx
+const cpuCompact = widgetSchema.parse({
+  id: 'cpu-main',
+  type: 'cpu',
+  format: 'compact',
+  tooltip: false
+})
+```
+
+`compact` reduz a apresentação conforme a feature. `tooltip: false` desativa a
+superfície de hover/foco. O intervalo padrão é 2000 ms; o schema aceita de
+1000 a 60000 ms, embora canais orientados a eventos possam ignorar esse valor.
+
+<Canvas of={WidgetStories.Compact} meta={WidgetStories} />
+
+### Renderize uma lista configurada
+
+O pai decide presença, ordem e seção. Filtre `enabled` antes de renderizar e use
+um `id` único para cada instância. `Widget` não faz essa filtragem por conta própria.
+
+```tsx
+import { Widget } from '@/components/status-bar/Widget'
+import type { WidgetConfig } from '@/services/configuration/config'
+
+export function WidgetSection({ widgets }: { widgets: WidgetConfig[] }) {
+  return (
+    <div className="flex items-center gap-2">
+      {widgets
+        .filter((widget) => widget.enabled)
+        .map((widget) => (
+          <Widget key={widget.id} widget={widget} />
+        ))}
+    </div>
+  )
+}
+```
+
+Na aplicação, `NativeBar` já possui esse papel, os providers necessários e a
+aplicação de configuração por monitor. Acrescente a instância à configuração
+da barra em vez de manter uma segunda lista fixa de widgets.
+
+## 2. Use WidgetPopup dentro do controlador
+
+Quando você está implementando o controlador ou um trigger próprio, escolha
+um popup **já registrado**. `Root` mantém a sessão de abertura e resolve o
+conteúdo; `Trigger` é o botão que abre e fecha.
+
+Este exemplo mínimo é uma composição alternativa de trigger para o popup de CPU.
+Não deve envolver um `Widget` que já tenha seu próprio trigger.
+
+```tsx
+import { WidgetPopup } from '@/popups/WidgetPopup'
+
+export function CpuDetailsButton() {
+  return (
+    <WidgetPopup.Root popup="cpu">
+      <WidgetPopup.Trigger>Detalhes da CPU</WidgetPopup.Trigger>
+    </WidgetPopup.Root>
+  )
+}
+```
+
+Clique no exemplo, depois pressione **Escape**. No browser, o popup usa dados
+demo e devolve o foco ao botão ao fechar por Escape. No Windows, a superfície é
+uma janela overlay compartilhada e o host coordena a restauração de foco.
+
+<Canvas of={PopupStories.Trigger} meta={PopupStories} />
+
+### Reutilize um botão existente com asChild
+
+`Trigger` já renderiza um botão. Se seu visual também renderiza um botão,
+use `asChild` para compor atributos e ref em um único elemento.
+
+```tsx
+import { WidgetItem } from '@/components/widget-item'
+import { WidgetPopup } from '@/popups/WidgetPopup'
+
+export function CpuDetailsButton() {
+  return (
+    <WidgetPopup.Root popup="cpu">
+      <WidgetPopup.Trigger asChild>
+        <WidgetItem aria-label="Detalhes da CPU">CPU 25.5%</WidgetItem>
+      </WidgetPopup.Trigger>
+    </WidgetPopup.Root>
+  )
+}
+```
+
+Se o filho for um componente próprio, encaminhe os atributos, handlers e a ref
+recebidos até o botão DOM. Os visuais da feature já fazem isso. Sem encaminhamento,
+o clique, a acessibilidade ou o posicionamento podem deixar de funcionar.
+
+## 3. Escolha a âncora de posicionamento
+
+Sem `Anchor`, o trigger é usado como referência. Adicione `Anchor` quando um
+botão pequeno estiver dentro de um widget maior e o popup deva se alinhar ao
+widget completo.
+
+```tsx
+import { WidgetPopup } from '@/popups/WidgetPopup'
+
+export function AnchoredCpuDetails() {
+  return (
+    <WidgetPopup.Root popup="cpu">
+      <WidgetPopup.Anchor asChild>
+        <div className="flex w-80 items-center justify-between gap-4">
+          <span>CPU 25.5%</span>
+          <WidgetPopup.Trigger>Detalhes</WidgetPopup.Trigger>
+        </div>
+      </WidgetPopup.Anchor>
+    </WidgetPopup.Root>
+  )
+}
+```
+
+<Canvas of={PopupStories.WholeWidgetAnchor} meta={PopupStories} />
+
+A âncora fornece o retângulo de referência; ela não determina o tamanho do
+conteúdo nem as coordenadas finais da janela. No Windows, escala, monitor e
+limites de tela são tratados pelo host nativo.
+
+## 4. Passe parâmetros quando o popup exigir
+
+`popup` determina o contrato de `params`. Por exemplo, `reminderAlert` exige
+um UUID de lembrete existente. Passe o ID recebido do modelo, sem criar um ID
+novo apenas para abrir o alerta.
+
+```tsx
+import { WidgetPopup } from '@/popups/WidgetPopup'
+
+export function ReminderDetails({ reminderId }: { reminderId: string }) {
+  return (
+    <WidgetPopup.Root popup="reminderAlert" params={{ id: reminderId }}>
+      <WidgetPopup.Trigger>Abrir alerta do lembrete</WidgetPopup.Trigger>
+    </WidgetPopup.Root>
+  )
+}
+```
+
+CPU aceita parâmetros vazios, então `params` pode ser omitido. A validação em
+runtime também rejeita valores inválidos; um ID qualquer do tipo `string` não
+é automaticamente um UUID válido.
+
+O conteúdo não vai em `children`: ele vem do registro em `*.popup.ts`. Por
+exemplo, `src/features/cpu/cpu.popup.ts` aponta para `CpuPopupController` por
+`definePopup` e `lazyContent`. Esse controlador resolve suas dependências
+na janela que apresenta o popup e passa props a `CpuPopup`.
+
+Passe dados serializáveis em `params`. Callbacks, refs e instâncias de stores
+ficam no controlador de cada janela e não atravessam o transporte nativo.
+
+## 5. Inclua um novo popup do zero
+
+Neste exemplo, vamos adicionar um popup chamado `details`. Ele recebe um
+`title` e oferece uma ação de fechar. Os nomes são um exemplo para você adaptar;
+os arquivos abaixo não precisam existir para ler este guia.
+
+### 5.1. Separe os arquivos da feature
+
+Crie os arquivos dentro de `src/features/`, pois é essa árvore que os geradores
+percorrem:
+
+```text
+src/features/details/
+  DetailsPopup.tsx
+  DetailsPopupController.tsx
+  details.popup.ts
+  DetailsTrigger.tsx
+  DetailsPopup.stories.tsx
+```
+
+O ID vem do **nome do arquivo**, removendo `.popup.ts`: `details.popup.ts`
+registra `details`, independentemente do nome da pasta. Esse ID deve ser único
+em toda a árvore de features. Use um identificador ASCII, como `details` ou
+`audioDetails`; nomes com hífen, acento ou começando por número são rejeitados.
+
+### 5.2. Crie o visual por props
+
+Em `src/features/details/DetailsPopup.tsx`, coloque apenas a apresentação.
+O host já fornece a superfície externa do popup; o visual pode usar a composição
+de Card existente para organizar seu conteúdo.
+
+```tsx
+import {
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card'
+
+export interface DetailsPopupProps {
+  title: string
+  demo: boolean
+  onClose: () => void
+}
+
+export function DetailsPopup({ title, demo, onClose }: DetailsPopupProps) {
+  return (
+    <section aria-label="Detalhes">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>Informações da feature</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {demo && <p>Dados de demonstração</p>}
+        <button type="button" onClick={onClose}>
+          Fechar detalhes
+        </button>
+      </CardContent>
+    </section>
+  )
+}
+```
+
+Subscriptions, acesso a stores, timers e estado de interação ficam no
+controlador. Quando houver formulário ou operação pendente, acrescente ao
+visual as props de valores, erros, pending e callbacks correspondentes.
+
+### 5.3. Crie o controlador do conteúdo
+
+Em `src/features/details/DetailsPopupController.tsx`, use o contexto fornecido
+pelo host para ler os parâmetros validados, o modo e a função de fechar:
+
+```tsx
+import { usePopupContext } from '@/popups/context'
+import { DetailsPopup } from './DetailsPopup'
+
+export function DetailsPopupController() {
+  const { params, mode, close } = usePopupContext('details')
+
+  return (
+    <DetailsPopup title={params.title} demo={mode === 'demo'} onClose={close} />
+  )
+}
+```
+
+O ID `details` só passa a ser aceito pelo TypeScript depois de criar a definição
+e executar o gerador nas próximas etapas. Não resolva esse erro com cast.
+
+`PopupHost` monta o controlador dentro de `PopupContext`. Não renderize esse
+controlador sozinho em uma story sem o host. Para stories isoladas, use o visual
+`DetailsPopup` e forneça suas props diretamente.
+
+Se a feature consumir dados, o controlador escolhe a fonte pelo modo e é dono
+do setup/cleanup. No modo demo, use dados ilustrativos e ações simuladas. No modo
+nativo, uma falha deve aparecer como falha, sem trocar para dados demo.
+
+### 5.4. Crie o arquivo details.popup.ts
+
+Em `src/features/details/details.popup.ts`, exporte a definição como `default`:
+
+```ts
+import { z } from 'zod'
+import { definePopup, lazyContent } from '@/popups/definition'
+
+export default definePopup({
+  label: 'Detalhes',
+  Content: lazyContent(
+    () => import('./DetailsPopupController'),
+    'DetailsPopupController'
+  ),
+  schema: z
+    .object({
+      title: z.string().trim().min(1).max(120)
+    })
+    .strict()
+})
+```
+
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Campo</th>
+      <th scope="col">Como preencher</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>label</code>
+      </td>
+      <td>
+        Nome não vazio usado pelo host para identificar a superfície. Não é o
+        ID.
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>Content</code>
+      </td>
+      <td>
+        Componente sem props externas. Aponte para o controlador, que resolve
+        suas dependências na própria janela.
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>lazyContent</code>
+      </td>
+      <td>
+        O primeiro argumento importa o módulo; o segundo é o nome exato do
+        export nomeado desse módulo. O conteúdo é carregado quando necessário.
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>schema</code>
+      </td>
+      <td>
+        Zod schema da entrada de <code>params</code>. Neste exemplo,{' '}
+        <code>title</code> é obrigatório e chaves extras são rejeitadas.
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>className</code>
+      </td>
+      <td>
+        Opcional: classes aplicadas pelo host à superfície, por exemplo para
+        ajustar sua largura.
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+Se seu popup **não recebe parâmetros**, omita `schema`. `definePopup` usa por
+padrão um objeto vazio estrito e aceita `params` omitido ou `{}`. Nesse caso,
+adapte também o controlador para não acessar `params.title`.
+
+Não envie callbacks, elementos React, refs ou stores pelo schema. O transporte
+aceita dados serializáveis e limita o payload de parâmetros a 16 KiB.
+
+### 5.5. Gere o registro e os tipos
+
+Com os arquivos criados, execute na raiz do projeto:
+
+```sh
+pnpm generate:popups
+pnpm typecheck
+```
+
+O gerador descobre `*.popup.ts` recursivamente em `src/features/` e atualiza
+`src/popups/.generated/popups.ts`, incluindo o ID `details` e sua definição.
+`PopupId`, `PopupParams` e `PopupValues` passam a refletir o schema, permitindo
+que `usePopupContext('details')` conheça `params.title`.
+
+Não edite o arquivo gerado nem adicione uma entrada manual em `resolve.ts` ou
+`PopupHost.tsx`. Corrija a definição de origem e execute o gerador novamente.
+IDs duplicados ou nomes inválidos fazem a geração falhar, indicando os arquivos.
+
+`pnpm dev`, `pnpm build`, `pnpm test` e `pnpm typecheck` já executam a geração.
+O servidor Vite da aplicação também acompanha inclusão e remoção dessas
+definições. O Storybook tem configuração Vite independente: ao adicionar um
+popup e usar sua infraestrutura nele, execute `pnpm generate:popups` antes de
+iniciar ou reconstruir o Storybook.
+
+### 5.6. Ligue o trigger ao ID registrado
+
+Em `src/features/details/DetailsTrigger.tsx`, componha o popup no controlador ou
+na fronteira de integração que será montada pela feature:
+
+```tsx
+import { WidgetPopup } from '@/popups/WidgetPopup'
+
+export function DetailsTrigger({ title }: { title: string }) {
+  return (
+    <WidgetPopup.Root popup="details" params={{ title }}>
+      <WidgetPopup.Trigger>Ver detalhes</WidgetPopup.Trigger>
+    </WidgetPopup.Root>
+  )
+}
+```
+
+O TypeScript agora exige `params.title`. A validação em runtime também rejeita
+um título vazio, longo demais ou propriedades extras. Para usar um visual que
+já renderiza botão, aplique `Trigger asChild`, conforme a etapa 2 deste guia.
+
+Monte esse trigger na composição da feature. Ao adicionar um popup a um widget
+já existente, altere o controlador desse widget; não envolva o `Widget` inteiro
+em um segundo `Root`. Criar um popup não exige adicionar um novo tipo de widget
+à configuração. Uma nova feature de barra, por sua vez, precisa também de sua
+própria integração no registro de widgets.
+
+O fluxo completo fica:
+
+```text
+details.popup.ts → gerador → registro e tipos
+DetailsTrigger → Root/Trigger → host → DetailsPopupController → DetailsPopup
+```
+
+### 5.7. Crie a story isolada do visual
+
+Em `src/features/details/DetailsPopup.stories.tsx`, forneça props determinísticas.
+A story não precisa abrir uma janela, instalar subscription nem importar o bridge:
+
+```tsx
+import type { Meta, StoryObj } from '@storybook/react-vite'
+import { fn } from 'storybook/test'
+import { DetailsPopup } from './DetailsPopup'
+
+const meta = {
+  title: 'Popups/Details',
+  component: DetailsPopup,
+  tags: ['autodocs'],
+  args: {
+    title: 'Detalhes da feature',
+    demo: true,
+    onClose: fn()
+  }
+} satisfies Meta<typeof DetailsPopup>
+
+export default meta
+type Story = StoryObj<typeof meta>
+
+export const Ready: Story = {}
+```
+
+Quando houver estado de UI, acrescente um pequeno pai de demonstração na story
+para controlar valores e callbacks por props. Para conferir abertura e fechamento
+com a infraestrutura real, crie também uma story que renderize `DetailsTrigger`
+no browser, seguindo os exemplos em **Composição → WidgetPopup**.
+
+### 5.8. Valide o registro e a integração Windows
+
+```sh
+pnpm typecheck
+pnpm test
+pnpm build-storybook
+```
+
+Na story de integração, abra o popup, pressione Escape, confira o foco e abra
+outro popup para testar a coordenação. Na story do visual, revise os dois temas
+e os estados de erro/pending quando existirem.
+
+Para validar no Windows, recompile e reinicie o host nativo, por exemplo com
+`pnpm desktop` após encerrar a instância de desenvolvimento anterior. O build
+Rust também descobre os nomes dos arquivos `*.popup.ts` e gera a lista de IDs
+permitidos pela overlay. Atualizar apenas o frontend mantém o executável antigo
+sem o novo ID, podendo resultar em `Invalid popup component or session`.
+Não altere manualmente a lista gerada de IDs nativos.
+
+Para um popup comum, reutilize a superfície overlay existente. A inclusão do
+arquivo não cria uma janela própria nem exige uma nova AppBar. Novos comandos
+ou fontes de dados nativos são uma mudança separada e continuam precisando de
+validação no Rust.
+
+## 6. Combine tooltip e popup sem perder refs
+
+Um controlador pode precisar tanto do trigger do popup quanto dos handlers e
+da ref de `useOverlayTooltip`. O padrão existente usa `Slot` para compor essas
+refs no mesmo botão:
+
+```tsx
+import { Slot } from '@radix-ui/react-slot'
+import { WidgetItem, WidgetItemTooltip } from '@/components/widget-item'
+import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
+import { WidgetPopup } from '@/popups/WidgetPopup'
+
+export function CpuDetailsWithTooltip() {
+  const tip = useOverlayTooltip('Detalhes da CPU')
+
+  return (
+    <WidgetPopup.Root popup="cpu">
+      <WidgetPopup.Trigger asChild>
+        <Slot {...tip.trigger}>
+          <WidgetItem aria-describedby={tip.describedBy}>
+            Detalhes da CPU
+          </WidgetItem>
+        </Slot>
+      </WidgetPopup.Trigger>
+      <WidgetItemTooltip id={tip.describedBy}>
+        Detalhes da CPU
+      </WidgetItemTooltip>
+    </WidgetPopup.Root>
+  )
+}
+```
+
+Mantenha esse hook no controlador. No controlador real da feature, respeite
+`view.tooltip` ao escolher o texto e renderizar a descrição acessível; consulte
+`CpuController.tsx` para a composição completa com configuração e dados.
+
+## 7. Experimente a coordenação
+
+Abra CPU e depois Memória. A coordenação mantém um popup ativo; você não precisa
+implementar um estado global de abertura em cada widget. `Root` não expõe props
+públicas `open` e `onOpenChange`.
+
+<Canvas of={PopupStories.SingleActivePopup} meta={PopupStories} />
+
+## Faça previews sem conectar serviços nativos
+
+Para documentar `Widget` inteiro fora do runtime nativo, use a composição de
+preview existente. O contexto impede subscriptions e ações nativas; `inert`
+bloqueia a interação do usuário com a amostra.
+
+```tsx
+import { Widget } from '@/components/status-bar/Widget'
+import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
+import { widgetSchema } from '@/services/configuration/config'
+
+const widget = widgetSchema.parse({ id: 'cpu-preview', type: 'cpu' })
+
+export function StaticCpuPreview() {
+  return (
+    <WidgetPreviewContext value={true}>
+      <div inert>
+        <Widget widget={widget} />
+      </div>
+    </WidgetPreviewContext>
+  )
+}
+```
+
+Na interface de configurações, prefira o componente existente `WidgetPreview`,
+que também fornece tema e a composição de preview. Na barra real, mantenha o
+contexto de preview desativado. Para interação no Storybook, use as stories dos
+visuais ou as stories de `WidgetPopup`, que abrem conteúdo demo no browser.
+
+## Erros frequentes
+
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Sintoma</th>
+      <th scope="col">O que conferir</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Widget desativado ainda aparece</td>
+      <td>
+        O pai precisa filtrar <code>enabled</code> antes de renderizar.
+      </td>
+    </tr>
+    <tr>
+      <td>Dois botões ficam aninhados</td>
+      <td>
+        Use <code>Trigger asChild</code> quando o filho já for um botão.
+      </td>
+    </tr>
+    <tr>
+      <td>Trigger próprio não abre ou fica mal ancorado</td>
+      <td>
+        Encaminhe props, handlers e ref até o DOM; preserve a composição com{' '}
+        <code>Slot</code>.
+      </td>
+    </tr>
+    <tr>
+      <td>O popup usa a largura do botão pequeno</td>
+      <td>
+        Adicione <code>Anchor</code> em volta da área completa do widget.
+      </td>
+    </tr>
+    <tr>
+      <td>Alerta de parâmetros inválidos</td>
+      <td>
+        Confira o schema do popup e o UUID em <code>params.id</code>.
+      </td>
+    </tr>
+    <tr>
+      <td>Estou tentando passar o conteúdo como filho de Root</td>
+      <td>
+        Registre o conteúdo em <code>*.popup.ts</code>; os filhos de Root
+        compõem o trigger e a âncora.
+      </td>
+    </tr>
+    <tr>
+      <td>Preview tenta consultar o sistema</td>
+      <td>
+        Use <code>WidgetPreview</code> ou o contexto inerte; para visuais,
+        forneça fixtures por props.
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+As referências de API permanecem em **Composição → Widget** e
+**Composição → WidgetPopup**. Use a toolbar para alternar os temas.
+A validação de foco e geometria Windows exige a aplicação nativa.
+
+Esta página usa o padrão de documentação com
+[MDX e stories CSF do Storybook](https://storybook.js.org/docs/writing-docs/mdx/).

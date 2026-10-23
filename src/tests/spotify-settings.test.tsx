@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { SpotifySettings } from '@/features/music/SpotifySettings'
+import { SpotifySettingsController as SpotifySettings } from '@/features/music/SpotifySettingsController'
 
 const account = vi.hoisted(() => ({
   openDashboard: vi.fn(async () => {}),

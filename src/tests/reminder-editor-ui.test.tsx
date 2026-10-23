@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import type { Editor } from '@tiptap/react'
 import { expect, it, vi } from 'vitest'
-import { ReminderEditor } from '@/features/reminders/ReminderEditor'
+import { ReminderEditorController as ReminderEditor } from '@/features/reminders/ReminderEditorController'
 
 it('keeps Enter for editing, submits with Ctrl+Enter and respects IME', () => {
   const submit = vi.fn()

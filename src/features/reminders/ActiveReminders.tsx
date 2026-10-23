@@ -12,75 +12,40 @@ import {
   EmptyTitle
 } from '@/components/ui/empty'
 import type { Reminder } from '@/services/system/reminders.generated'
-import { useReminders } from '@/stores/reminders'
 import { cn } from 'cn'
 import { ChevronDownIcon, Ghost, RefreshCw, Trash } from 'lucide-react'
-import {
-  memo,
-  useCallback,
-  useMemo,
-  useState,
-  type ComponentProps
-} from 'react'
-import { ReminderAlertActions } from './ReminderAlertActions'
-import { ReminderMessage } from './ReminderMessage'
+import type { ComponentProps, ReactNode } from 'react'
 
-export const ActiveReminders = memo(function ActiveReminders({
-  connected,
-  pending,
-  onPendingChange
-}: {
-  connected: boolean
-  pending: boolean
-  onPendingChange: (pending: boolean) => void
-}) {
-  const reminders = useReminders((state) => state.snapshot?.reminders)
-  const dismiss = useReminders((state) => state.dismiss)
-  const sync = useReminders((state) => state.syncCalendar)
-  const [isOpen, setIsOpen] = useState(false)
-
-  const active = useMemo(
-    () =>
-      (reminders ?? [])
-        .filter((reminder) => reminder.status !== 'dismissed')
-        .sort((a, b) => a.notifyAt - b.notifyAt),
-    [reminders]
-  )
-
-  const onDismiss = useCallback(
-    (r: Reminder) => {
-      onPendingChange(true)
-      void dismiss(r.id).finally(() => onPendingChange(false))
-    },
-    [dismiss, onPendingChange]
-  )
-
-  const onSync = useCallback(
-    (r: Reminder) => {
-      onPendingChange(true)
-      void sync(r.id).finally(() => onPendingChange(false))
-    },
-    [sync, onPendingChange]
-  )
-
+export interface ActiveRemindersProps {
+  activeCount: number
+  isOpen: boolean
+  onOpenChange: (open: boolean) => void
+  items: ReactNode
+}
+export function ActiveReminders({
+  activeCount,
+  isOpen,
+  onOpenChange,
+  items
+}: ActiveRemindersProps) {
   return (
     <Collapsible
       open={isOpen}
-      onOpenChange={setIsOpen}
+      onOpenChange={onOpenChange}
       aria-label="Lembretes ativos"
       className="space-y-2"
     >
       <CollapsibleTrigger
         render={
           <Button variant="ghost" className="w-full">
-            Ativos ({active.length})
+            Ativos ({activeCount})
             <ChevronDownIcon className="ml-auto group-data-panel-open/button:rotate-180" />
           </Button>
         }
       />
 
       <CollapsibleContent className="grid gap-2">
-        {active.length === 0 && (
+        {activeCount === 0 && (
           <Empty>
             <EmptyHeader>
               <EmptyMedia>
@@ -94,22 +59,15 @@ export const ActiveReminders = memo(function ActiveReminders({
           </Empty>
         )}
 
-        {active.map((r) => (
-          <ActiveRemindersItem
-            key={r.id}
-            reminder={r}
-            pending={pending}
-            connected={connected}
-            onSync={onSync}
-            onDismiss={onDismiss}
-          />
-        ))}
+        {items}
       </CollapsibleContent>
     </Collapsible>
   )
-})
+}
 
 interface ActiveRemindersItemProps extends ComponentProps<'div'> {
+  message: ReactNode
+  actions: ReactNode
   reminder: Reminder
   pending: boolean
   connected: boolean
@@ -120,6 +78,8 @@ interface ActiveRemindersItemProps extends ComponentProps<'div'> {
 export const ActiveRemindersItem = ({
   className,
   reminder,
+  message,
+  actions,
   pending,
   connected,
   onSync,
@@ -135,7 +95,7 @@ export const ActiveRemindersItem = ({
       )}
     >
       <div className="grid gap-2">
-        <ReminderMessage message={reminder.message} />
+        {message}
         <p className="text-xs text-muted-foreground">
           {new Date(reminder.notifyAt).toLocaleString()} ·{' '}
           {reminder.status === 'ringing'
@@ -168,7 +128,7 @@ export const ActiveRemindersItem = ({
         </>
       )}
       {reminder.status === 'ringing' ? (
-        <ReminderAlertActions id={reminder.id} />
+        actions
       ) : (
         <Button
           className="w-full flex items-center gap-2"

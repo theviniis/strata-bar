@@ -1,58 +1,16 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { useConfig } from '@/stores/config'
 import {
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
-import { usePopupContext } from '@/popups/context'
-import { createDemoAgentsAdapter } from '@/services/system/agents'
 import type {
-  AgentPermissionRequest,
-  AgentReplyRequest,
   AgentType,
-  AgentsSnapshot,
-  CreateAgentSessionResult
+  AgentsSnapshot
 } from '@/services/system/agents.generated'
-import { createAgentsStore, getAgentsStore } from '@/stores/agents'
-import { useEffect, useState } from 'react'
-import { AgentAlerts } from './AgentAlerts'
-import { AntigravitySessions } from './AntigravitySessions'
-import { OpenCodeSessions } from './OpenCodeSessions'
-import { CodexSessions } from './CodexSessions'
-
-export function AgentsPopup() {
-  const { mode } = usePopupContext('agents')
-  return <ConnectedAgentsPopup key={mode} mode={mode} />
-}
-
-function ConnectedAgentsPopup({ mode }: { mode: 'native' | 'demo' }) {
-  const [useStore] = useState(() =>
-    mode === 'native'
-      ? getAgentsStore()
-      : createAgentsStore(createDemoAgentsAdapter())
-  )
-  const snapshot = useStore((state) => state.snapshot)
-  const error = useStore((state) => state.error)
-  const createOpenCode = useStore((state) => state.createOpenCode)
-  const replyOpenCode = useStore((state) => state.replyOpenCode)
-  const decideOpenCode = useStore((state) => state.decideOpenCode)
-  const dismissAlerts = useStore((state) => state.dismissAlerts)
-  useEffect(() => useStore.getState().connect(), [useStore])
-  return (
-    <AgentsPopupContent
-      snapshot={snapshot}
-      error={error}
-      demo={mode === 'demo'}
-      onCreateOpenCode={createOpenCode}
-      onReplyOpenCode={replyOpenCode}
-      onDecideOpenCode={decideOpenCode}
-      onDismissAlerts={dismissAlerts}
-    />
-  )
-}
+import type { ReactNode } from 'react'
 
 const labels = {
   chatgpt: 'ChatGPT Desktop',
@@ -61,35 +19,27 @@ const labels = {
   codex: 'Codex local'
 } as const
 
-export function AgentsPopupContent({
-  snapshot,
-  error,
-  demo = false,
-  onCreateOpenCode,
-  onReplyOpenCode,
-  onDecideOpenCode,
-  onDismissAlerts
-}: {
+export interface AgentsPopupProps {
   snapshot: AgentsSnapshot | null
   error: string | null
-  demo?: boolean
-  onCreateOpenCode?: (
-    directory?: string,
-    prompt?: string
-  ) => Promise<CreateAgentSessionResult>
-  onReplyOpenCode?: (request: AgentReplyRequest) => Promise<void>
-  onDecideOpenCode?: (request: AgentPermissionRequest) => Promise<void>
-  onDismissAlerts?: (ids: string[]) => Promise<void>
-}) {
+  demo: boolean
+  applications: AgentsSnapshot['applications']
+  activeAgent: AgentType | null
+  alerts: ReactNode
+  sessions: Partial<Record<AgentType, ReactNode>>
+  onAgentChange: (agent: string) => void
+}
+export function AgentsPopup({
+  snapshot,
+  error,
+  demo,
+  applications,
+  activeAgent,
+  alerts,
+  sessions,
+  onAgentChange
+}: AgentsPopupProps) {
   const discoveryError = error ?? snapshot?.error
-  const visible = useConfig((state) => state.config.agents.visible)
-  const [selectedAgent, setSelectedAgent] = useState<AgentType>('chatgpt')
-  const applications =
-    snapshot?.applications.filter((app) => visible[app.agent]) ?? []
-  const activeAgent =
-    applications.find((app) => app.agent === selectedAgent)?.agent ??
-    applications[0]?.agent ??
-    null
   return (
     <section className="w-150" aria-label="Controle de agentes">
       <CardHeader>
@@ -108,18 +58,7 @@ export function AgentsPopupContent({
           </p>
         )}
         {!snapshot && !error && <p role="status">Detectando aplicativos…</p>}
-        {snapshot && (
-          <AgentAlerts
-            alerts={{
-              ...snapshot.alerts,
-              items: snapshot.alerts.items.filter(
-                (alert) => visible[alert.agent]
-              )
-            }}
-            notifications={snapshot.notifications}
-            onDismiss={onDismissAlerts}
-          />
-        )}
+        {snapshot && alerts}
         {snapshot && applications.length === 0 && (
           <p className="text-sm text-muted-foreground">
             Nenhum agente selecionado. Escolha os agentes em Configurações →
@@ -129,12 +68,7 @@ export function AgentsPopupContent({
         {applications.length > 0 && (
           <Tabs
             value={activeAgent}
-            onValueChange={(value) => {
-              const application = applications.find(
-                (app) => app.agent === value
-              )
-              if (application) setSelectedAgent(application.agent)
-            }}
+            onValueChange={(value) => onAgentChange(value)}
             size="sm"
           >
             <TabsList aria-label="Agentes de IA" className="flex w-full">
@@ -162,24 +96,8 @@ export function AgentsPopupContent({
                         ? 'Processo detectado'
                         : 'Processo não detectado'}
                   </p>
-                  {application.agent === 'opencode' ? (
-                    <OpenCodeSessions
-                      connection={snapshot.opencode}
-                      stale={!!error}
-                      onCreate={onCreateOpenCode}
-                      onReply={onReplyOpenCode}
-                      onDecision={onDecideOpenCode}
-                    />
-                  ) : application.agent === 'antigravity' ? (
-                    <AntigravitySessions
-                      connection={snapshot.antigravity}
-                      stale={!!error}
-                    />
-                  ) : application.agent === 'codex' ? (
-                    <CodexSessions
-                      connection={snapshot.codex}
-                      stale={!!error}
-                    />
+                  {application.agent !== 'chatgpt' ? (
+                    sessions[application.agent]
                   ) : (
                     <>
                       <p className="text-xs">Sessões indisponíveis</p>

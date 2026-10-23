@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { MemoryPopupContent } from '../features/memory/MemoryPopup'
+import { MemoryPopup } from '../features/memory/MemoryPopup'
 
 const ready = (value: number) => ({
   status: 'ready' as const,
@@ -21,14 +21,23 @@ const memory = {
 }
 
 it('shows total and available physical RAM without inventing a loading value', () => {
-  render(<MemoryPopupContent event={{ status: 'loading' }} />)
+  render(
+    <MemoryPopup
+      event={{ status: 'loading' }}
+      lastData={undefined}
+      now={100000}
+      demo={false}
+    />
+  )
   expect(screen.getByRole('status')).toHaveTextContent('Carregando memória')
   expect(screen.queryByText('0.0 GiB')).not.toBeInTheDocument()
 })
 
 it('shows distinct physical memory and paging-file readings in GiB', () => {
   render(
-    <MemoryPopupContent
+    <MemoryPopup
+      lastData={undefined}
+      demo={false}
       event={{ status: 'ready', data: memory }}
       now={100000}
     />
@@ -43,7 +52,9 @@ it('shows distinct physical memory and paging-file readings in GiB', () => {
 
 it('keeps physical readings when cache fails and distinguishes an absent paging file', () => {
   render(
-    <MemoryPopupContent
+    <MemoryPopup
+      lastData={undefined}
+      demo={false}
       event={{
         status: 'ready',
         data: {
@@ -71,7 +82,9 @@ it('keeps physical readings when cache fails and distinguishes an absent paging 
 
 it('exposes the observed window and preserves its gaps', () => {
   render(
-    <MemoryPopupContent
+    <MemoryPopup
+      lastData={undefined}
+      demo={false}
       event={{
         status: 'ready',
         data: {
@@ -94,7 +107,8 @@ it('exposes the observed window and preserves its gaps', () => {
 
 it('identifies the last successful reading as stale after transport failure', () => {
   render(
-    <MemoryPopupContent
+    <MemoryPopup
+      demo={false}
       event={{ status: 'error', error: 'IPC offline' }}
       lastData={memory}
       now={110000}

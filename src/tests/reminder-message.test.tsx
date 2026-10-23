@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { ReminderMessage } from '@/features/reminders/ReminderMessage'
+import { ReminderMessageController as ReminderMessage } from '@/features/reminders/ReminderMessageController'
 
 it('renders stored Markdown formatting, lists, quotes, code and links as read-only content', () => {
   const { container } = render(

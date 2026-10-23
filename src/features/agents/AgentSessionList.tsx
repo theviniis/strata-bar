@@ -14,13 +14,13 @@ const statuses: Record<SessionStatus, string> = {
 export function AgentSessionList({
   sessions,
   label,
-  stale = false,
+  stale,
   renderActions
 }: {
   sessions: AgentSession[]
   label: string
-  stale?: boolean
-  renderActions?: (session: AgentSession) => ReactNode
+  stale: boolean
+  renderActions: ((session: AgentSession) => ReactNode) | undefined
 }) {
   if (sessions.length === 0) return null
   return (

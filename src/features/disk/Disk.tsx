@@ -1,33 +1,25 @@
 import { Progress } from '@/components/ui/progress'
-import { WidgetItem, WidgetItemTooltip } from '@/components/widget-item'
-import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
-import { useResourceChannel } from '@/hooks/useResourceChannel'
-import { useWidgetView } from '@/components/status-bar/widget-view'
+import { WidgetItem, type WidgetItemProps } from '@/components/widget-item'
 import { showLabel } from '@/components/status-bar/presentation'
-import { WidgetPopup } from '@/popups/WidgetPopup'
+import type { WidgetConfig } from '@/services/configuration/config'
+import type { ChannelData, SystemEvent } from '@/services/system/bridge'
 import type { DiskVolume } from '@/services/system/disk.generated'
 import { HardDrive } from 'lucide-react'
-import { localVolumes } from './presentation'
+import { isDiskStale, localVolumes } from './presentation'
 
 /** The bar shows whole percentages; the exact ratio stays in the tooltip. */
 function wholePercent(volume: DiskVolume) {
   return Math.round(volume.percent)
 }
 
-function describe(volumes: DiskVolume[]) {
-  return volumes.length
-    ? volumes.map((v) => `${v.mount} ${wholePercent(v)}%`).join(' · ')
-    : 'Nenhum disco disponível'
-}
-
 /** One row per mounted volume; shared by the native bar and the studio demo. */
 export function DiskBar({
   volumes,
-  compact = false
+  compact
 }: {
   volumes: DiskVolume[]
   /** `compact` keeps the bars and hides the mount/percentage text. */
-  compact?: boolean
+  compact: boolean
 }) {
   if (!volumes.length)
     return <span className="text-[11px] text-muted-foreground">—</span>
@@ -52,27 +44,38 @@ export function DiskBar({
   )
 }
 
-export function Disk() {
-  const view = useWidgetView()
-  const { event, lastData } = useResourceChannel('disk', view.intervalMs)
+export interface DiskProps extends WidgetItemProps {
+  event: SystemEvent<ChannelData['disk']>
+  lastData: ChannelData['disk'] | undefined
+  now: number
+  format: WidgetConfig['format']
+  describedBy: string | undefined
+}
+export function Disk({
+  event,
+  lastData,
+  now,
+  format,
+  describedBy,
+  ...triggerProps
+}: DiskProps) {
   const data = event.status === 'ready' ? event.data : lastData
   const volumes = localVolumes(data?.volumes ?? [])
-  const text = event.status === 'error' ? event.error : describe(volumes)
-  const tip = useOverlayTooltip(view.tooltip ? text : '')
   return (
-    <WidgetPopup.Root popup="disk">
-      <WidgetPopup.Trigger asChild>
-        <WidgetItem
-          aria-label="Detalhes dos discos"
-          className="gap-3"
-          {...tip.trigger}
-        >
-          <DiskBar volumes={volumes} compact={!showLabel(view.format)} />
-          {view.tooltip && (
-            <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
-          )}
-        </WidgetItem>
-      </WidgetPopup.Trigger>
-    </WidgetPopup.Root>
+    <WidgetItem
+      aria-label="Detalhes dos discos"
+      aria-describedby={describedBy}
+      className="gap-3"
+      {...triggerProps}
+    >
+      {event.status === 'loading' && !data ? (
+        <span>...</span>
+      ) : (
+        <DiskBar volumes={volumes} compact={!showLabel(format)} />
+      )}
+      {data && isDiskStale(data, now, event.status === 'ready') && (
+        <span aria-label="Leitura desatualizada">*</span>
+      )}
+    </WidgetItem>
   )
 }

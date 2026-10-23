@@ -11,10 +11,10 @@ const labels = {
 
 export function AntigravitySessions({
   connection,
-  stale = false
+  stale
 }: {
   connection: AntigravitySnapshot
-  stale?: boolean
+  stale: boolean
 }) {
   const enabled = connection.status !== 'disabled'
   return (
@@ -43,6 +43,7 @@ export function AntigravitySessions({
         sessions={connection.sessions}
         label="Sessões do Antigravity"
         stale={stale}
+        renderActions={undefined}
       />
       <p className="text-xs text-muted-foreground">
         Último estado observado. Execuções sem novos eventos por dois minutos

@@ -1,4 +1,4 @@
-import type { DiskVolume } from '@/services/system/disk.generated'
+import type { DiskData, DiskVolume } from '@/services/system/disk.generated'
 
 const KIB = 1024
 const MIB = KIB * 1024
@@ -27,4 +27,14 @@ export function isLocalVolume(volume: DiskVolume) {
 
 export function localVolumes(volumes: DiskVolume[]) {
   return volumes.filter(isLocalVolume)
+}
+
+export function isDiskStale(data: DiskData, now: number, ready: boolean) {
+  return !ready || now - data.sampledAt > 6000
+}
+
+export function describeDisks(volumes: DiskVolume[]) {
+  return volumes.length
+    ? volumes.map((v) => `${v.mount} ${Math.round(v.percent)}%`).join(' · ')
+    : 'Nenhum disco disponível'
 }

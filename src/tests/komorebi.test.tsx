@@ -3,6 +3,16 @@ import { it, expect, vi } from 'vitest'
 import { Workspaces } from '../features/komorebi/Workspaces'
 import type { KomorebiWorkspace } from '../services/system/bridge'
 
+const visualProps = {
+  offline: false,
+  showTitles: false,
+  describedBy: undefined,
+  containerRef: undefined,
+  indicatorRef: undefined,
+  itemRef: undefined,
+  onSelect: () => {}
+}
+
 const workspaces: KomorebiWorkspace[] = [
   { index: 0, name: null, status: 'populated', layer: 'Tiling', windows: 2 },
   { index: 1, name: 'web', status: 'active', layer: 'Tiling', windows: 1 },
@@ -11,7 +21,9 @@ const workspaces: KomorebiWorkspace[] = [
 
 it('marks the active workspace and reports selections', () => {
   const onSelect = vi.fn()
-  render(<Workspaces workspaces={workspaces} onSelect={onSelect} />)
+  render(
+    <Workspaces {...visualProps} workspaces={workspaces} onSelect={onSelect} />
+  )
   expect(
     screen.getByRole('button', { name: 'Workspace 2 (active)' })
   ).toHaveAttribute('aria-pressed', 'true')
@@ -23,7 +35,7 @@ it('marks the active workspace and reports selections', () => {
 })
 
 it('shows an offline label instead of stale workspaces', () => {
-  render(<Workspaces workspaces={workspaces} offline />)
+  render(<Workspaces {...visualProps} workspaces={workspaces} offline />)
   expect(screen.getByText('Komorebi Offline')).toBeInTheDocument()
   expect(screen.queryByRole('button')).not.toBeInTheDocument()
 })

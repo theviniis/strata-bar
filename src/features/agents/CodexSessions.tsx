@@ -10,10 +10,10 @@ const labels = {
 
 export function CodexSessions({
   connection,
-  stale = false
+  stale
 }: {
   connection: CodexSnapshot
-  stale?: boolean
+  stale: boolean
 }) {
   const enabled = connection.status !== 'disabled'
   return (
@@ -43,6 +43,7 @@ export function CodexSessions({
         sessions={connection.sessions}
         label="Sessões do Codex"
         stale={stale}
+        renderActions={undefined}
       />
       <p className="text-xs text-muted-foreground">
         Pedidos de aprovação aparecem como atenção. Turnos encerrados ficam

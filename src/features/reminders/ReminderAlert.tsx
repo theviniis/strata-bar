@@ -1,23 +1,27 @@
 import { Button } from '@/components/ui/button'
-import { useEffect } from 'react'
 import { BellRing, X } from 'lucide-react'
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { usePopupContext } from '@/popups/context'
-import { useReminders } from '@/stores/reminders'
-import { ReminderMessage } from './ReminderMessage'
-import { ReminderAlertActions } from './ReminderAlertActions'
+import type { ReactNode } from 'react'
+import type { Reminder } from '@/services/system/reminders.generated'
 
-export function ReminderAlert() {
-  const { params, close } = usePopupContext('reminderAlert')
-  const snapshot = useReminders((s) => s.snapshot)
-  const reminder = snapshot?.reminders.find((r) => r.id === params.id)
-  const synchronized =
-    snapshot !== null && snapshot.revision >= (params.revision ?? 0)
-  const error = useReminders((s) => s.error)
-  const source = useReminders((s) => s.source)
-  useEffect(() => {
-    if (synchronized && (!reminder || reminder.status !== 'ringing')) close()
-  }, [synchronized, reminder, close])
+export interface ReminderAlertProps {
+  synchronized: boolean
+  reminder: Reminder | undefined
+  error: string | null
+  source: 'native' | 'demo'
+  close: () => void
+  message: ReactNode
+  actions: ReactNode
+}
+export function ReminderAlert({
+  synchronized,
+  reminder,
+  error,
+  source,
+  close,
+  message,
+  actions
+}: ReminderAlertProps) {
   return (
     <section
       role="alertdialog"
@@ -44,10 +48,8 @@ export function ReminderAlert() {
       <CardContent className="grid gap-4">
         {synchronized && reminder ? (
           <>
-            <div className="max-h-60 min-w-0 overflow-y-auto">
-              <ReminderMessage message={reminder.message} />
-            </div>
-            <ReminderAlertActions id={reminder.id} onDone={close} />
+            <div className="max-h-60 min-w-0 overflow-y-auto">{message}</div>
+            {actions}
             <p className="text-xs text-muted-foreground">
               Fechar esta janela mantém o lembrete pendente no sino.
             </p>

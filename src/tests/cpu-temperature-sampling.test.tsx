@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { CpuPopupContent } from '@/features/cpu/CpuPopup'
+import { CpuPopup } from '@/features/cpu/CpuPopup'
 import type { CpuData } from '@/services/system/cpu.generated'
 
 function observation(): CpuData {
@@ -52,7 +52,9 @@ function observation(): CpuData {
 }
 it('does not label a still-valid repeated temperature as a failed reading', () => {
   render(
-    <CpuPopupContent
+    <CpuPopup
+      lastData={undefined}
+      demo={false}
       event={{ status: 'ready', data: observation() }}
       now={104000}
     />
@@ -71,14 +73,26 @@ it('continues to identify actual source failures while ignoring unchanged readin
     temperatureCelsius: null,
     temperatureUpdatedAt: null
   })
-  render(<CpuPopupContent event={{ status: 'ready', data }} now={106000} />)
+  render(
+    <CpuPopup
+      lastData={undefined}
+      demo={false}
+      event={{ status: 'ready', data }}
+      now={106000}
+    />
+  )
   expect(screen.getByText(/1 leitura indisponível/)).toBeVisible()
   expect(screen.queryByText(/2 leituras indisponíveis/)).not.toBeInTheDocument()
 })
 it('connects real observations across a fresh repeat but breaks at a real failure', () => {
   const data = observation()
   const view = render(
-    <CpuPopupContent event={{ status: 'ready', data }} now={104000} />
+    <CpuPopup
+      lastData={undefined}
+      demo={false}
+      event={{ status: 'ready', data }}
+      now={104000}
+    />
   )
   const hasConnectedTemperatureSegment = () => {
     const chart = screen.getByLabelText(
@@ -93,7 +107,12 @@ it('connects real observations across a fresh repeat but breaks at a real failur
   expect(hasConnectedTemperatureSegment()).toBe(true)
   data.history[1].temperatureUpdatedAt = null
   view.rerender(
-    <CpuPopupContent event={{ status: 'ready', data }} now={104000} />
+    <CpuPopup
+      lastData={undefined}
+      demo={false}
+      event={{ status: 'ready', data }}
+      now={104000}
+    />
   )
   expect(hasConnectedTemperatureSegment()).toBe(false)
 })
@@ -107,14 +126,24 @@ it('includes temperatures from ninety seconds ago and expires readings older tha
     temperatureUpdatedAt: 14000
   })
   const view = render(
-    <CpuPopupContent event={{ status: 'ready', data }} now={104000} />
+    <CpuPopup
+      lastData={undefined}
+      demo={false}
+      event={{ status: 'ready', data }}
+      now={104000}
+    />
   )
   expect(screen.getByText('130 °C')).toBeVisible()
   expect(screen.getByText('Temperatura · 2 minutos')).toBeVisible()
   data.history[0].timestamp = -18000
   data.history[0].temperatureUpdatedAt = -18000
   view.rerender(
-    <CpuPopupContent event={{ status: 'ready', data }} now={104000} />
+    <CpuPopup
+      lastData={undefined}
+      demo={false}
+      event={{ status: 'ready', data }}
+      now={104000}
+    />
   )
   expect(screen.getByText('100 °C')).toBeVisible()
   expect(screen.queryByText('130 °C')).not.toBeInTheDocument()

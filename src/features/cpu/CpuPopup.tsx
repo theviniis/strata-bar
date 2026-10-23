@@ -9,63 +9,20 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
-import { useResourceChannel } from '@/hooks/useResourceChannel'
-import { usePopupContext } from '@/popups/context'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { CpuData } from '@/services/system/cpu.generated'
-import { useState } from 'react'
 import { formatCpuMetric } from './presentation'
 
-export function CpuPopup() {
-  const { mode } = usePopupContext('cpu')
-  return mode === 'native' ? <NativeCpuPopup /> : <DemoCpuPopup />
-}
-function NativeCpuPopup() {
-  return <CpuPopupContent {...useResourceChannel('cpu')} />
-}
-function DemoCpuPopup() {
-  const [at] = useState(Date.now)
-  const metric = (value: number) => ({
-    status: 'ready' as const,
-    value,
-    updatedAt: at,
-    error: null
-  })
-  const data: CpuData = {
-    sequence: 61,
-    sampledAt: at,
-    percent: metric(25.5),
-    frequencyHz: metric(3.98e9),
-    maxFrequencyHz: metric(2.9e9),
-    physicalCores: metric(6),
-    logicalProcessors: metric(12),
-    temperatureCelsius: metric(42.5),
-    temperatureSensor: {
-      provider: 'msiAfterburner',
-      sourceId: 128,
-      instance: 4294967295,
-      name: 'CPU temperature'
-    },
-    history: Array.from({ length: 61 }, (_, i) => ({
-      sequence: i + 1,
-      timestamp: at - (60 - i) * 2000,
-      percent: 25.5 + Math.sin(i / 4) * 8,
-      temperatureCelsius: 42.5 + Math.sin(i / 6) * 4,
-      temperatureUpdatedAt: at - (60 - i) * 2000
-    }))
-  }
-  return <CpuPopupContent event={{ status: 'ready', data }} now={at} demo />
-}
-export function CpuPopupContent({
+export function CpuPopup({
   event,
   lastData,
-  now = 0,
-  demo = false
+  now,
+  demo
 }: {
   event: SystemEvent<CpuData>
-  lastData?: CpuData
-  now?: number
-  demo?: boolean
+  lastData: CpuData | undefined
+  now: number
+  demo: boolean
 }) {
   const data = event.status === 'ready' ? event.data : lastData
   if (!data)

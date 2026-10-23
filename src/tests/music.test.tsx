@@ -1,7 +1,7 @@
-import { MusicPopupContent } from '@/features/music/MusicPopup'
+import { MusicPopupContent } from '@/features/music/MusicPopupController'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { MusicContent } from '@/features/music/Music'
+import { MusicContent } from '@/features/music/MusicController'
 import {
   demoMedia,
   mediaPosition,

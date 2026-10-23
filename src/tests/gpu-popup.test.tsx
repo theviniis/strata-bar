@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { GpuPopupContent } from '@/features/gpu/GpuPopup'
+import { GpuPopup } from '@/features/gpu/GpuPopup'
 import type { GpuData } from '@/services/system/gpu.generated'
 
 const at = 100000
@@ -47,7 +47,9 @@ function observation(): GpuData {
 }
 it('shows independent GPU indicators and both observed graphs', () => {
   const { container } = render(
-    <GpuPopupContent
+    <GpuPopup
+      demo={false}
+      lastData={undefined}
       event={{ status: 'ready', data: observation() }}
       now={at}
     />
@@ -80,7 +82,14 @@ it('keeps Windows readings usable when Afterburner is unavailable', () => {
   data.temperatureSensor = null
   data.history[0].temperatureCelsius = null
   data.history[0].temperatureUpdatedAt = null
-  render(<GpuPopupContent event={{ status: 'ready', data }} now={at} />)
+  render(
+    <GpuPopup
+      demo={false}
+      lastData={undefined}
+      event={{ status: 'ready', data }}
+      now={at}
+    />
+  )
   expect(screen.getByText('27.3%')).toBeVisible()
   expect(screen.getByText('1.5 GiB / 8.0 GiB')).toBeVisible()
   expect(screen.getByText('322.0 MiB / 16.0 GiB')).toBeVisible()
@@ -91,12 +100,18 @@ it('keeps Windows readings usable when Afterburner is unavailable', () => {
 })
 it('shows loading without zeros and preserves stale readings after transport failure', () => {
   const view = render(
-    <GpuPopupContent event={{ status: 'loading' }} now={at} />
+    <GpuPopup
+      demo={false}
+      lastData={undefined}
+      event={{ status: 'loading' }}
+      now={at}
+    />
   )
   expect(screen.getByRole('status')).toHaveTextContent('Carregando GPU')
   expect(screen.queryByText('0.0%')).not.toBeInTheDocument()
   view.rerender(
-    <GpuPopupContent
+    <GpuPopup
+      demo={false}
       event={{ status: 'error', error: 'IPC offline' }}
       lastData={observation()}
       now={at + 8000}
@@ -125,7 +140,14 @@ it('excludes expired observations from the temperature scale', () => {
       temperatureUpdatedAt: at
     }
   ]
-  render(<GpuPopupContent event={{ status: 'ready', data }} now={at} />)
+  render(
+    <GpuPopup
+      demo={false}
+      lastData={undefined}
+      event={{ status: 'ready', data }}
+      now={at}
+    />
+  )
   // The scale comes from the observed window only: the expired 180 °C sample
   // can neither raise the maximum nor reach the line.
   expect(screen.getByRole('group', { name: /Temperatura.*130/ })).toBeVisible()
