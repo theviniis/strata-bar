@@ -132,6 +132,26 @@ async function openEditor() {
   )
 }
 
+it('blocks editing and saving defaults after a failed initial load until Reverter succeeds', async () => {
+  vi.mocked(bridge.configLoad!).mockRejectedValueOnce('Cannot read config')
+  render(<SettingsView />)
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Cannot read config'
+  )
+  expect(screen.getByRole('button', { name: 'Aplicar' })).toBeDisabled()
+  expect(
+    screen.getByRole('button', { name: 'Restaurar padrões' })
+  ).toBeDisabled()
+  fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
+  expect(screen.getByLabelText('Configuração JSON')).toBeDisabled()
+  expect(bridge.configSave).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
+  )
+  expect(screen.getByLabelText('Configuração JSON')).toBeEnabled()
+})
+
 it('restores the last menu and monitor after reopening without saving the draft', async () => {
   const first = render(<SettingsView />)
   fireEvent.click(await screen.findByRole('tab', { name: /Monitor 1/ }))
@@ -418,7 +438,7 @@ it('moves with an arrow only in the selected monitor until Apply', async () => {
   expect(saved.monitors['screen-a']).toBeUndefined()
 })
 
-it('reverts by reloading the saved file and restores defaults through save', async () => {
+it('reverts by reloading the saved file and restores defaults only after Apply', async () => {
   await openEditor()
   fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
   fireEvent.click(screen.getByRole('button', { name: 'Claro' }))
@@ -432,6 +452,11 @@ it('reverts by reloading the saved file and restores defaults through save', asy
   expect(bridge.configLoad).toHaveBeenCalledTimes(2)
   expect(bridge.configSave).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole('button', { name: 'Restaurar padrões' }))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
+  )
+  expect(bridge.configSave).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
   await waitFor(() =>
     expect(bridge.configSave).toHaveBeenCalledWith(defaultConfig)
   )
@@ -792,7 +817,7 @@ it('applies per-agent visibility checkboxes through the normal save', async () =
   )
 })
 
-it('keeps invalid JSON across navigation, and restores defaults through save', async () => {
+it('keeps invalid JSON across navigation, and restores defaults to the shared Draft', async () => {
   await openEditor()
   fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
   fireEvent.change(screen.getByLabelText('Configuração JSON'), {
@@ -804,8 +829,9 @@ it('keeps invalid JSON across navigation, and restores defaults through save', a
   expect(screen.getByLabelText('Configuração JSON')).toHaveValue('{')
   fireEvent.click(screen.getByRole('button', { name: 'Restaurar padrões' }))
   await waitFor(() =>
-    expect(bridge.configSave).toHaveBeenCalledWith(defaultConfig)
+    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
   )
+  expect(bridge.configSave).not.toHaveBeenCalled()
   expect(
     JSON.parse(
       (screen.getByLabelText('Configuração JSON') as HTMLTextAreaElement).value

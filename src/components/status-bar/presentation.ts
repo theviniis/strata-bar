@@ -12,6 +12,8 @@ export interface WidgetView {
   tooltip: boolean
   /** Polling cadence for channels the shared worker polls. */
   intervalMs: number
+  /** This instance's saved audio preferences, including monitor projection. */
+  audio?: WidgetConfig['audio']
 }
 
 export const defaultView: WidgetView = {
@@ -24,7 +26,8 @@ export function viewOf(widget: WidgetConfig): WidgetView {
   return {
     format: widget.format,
     tooltip: widget.tooltip,
-    intervalMs: widget.intervalMs
+    intervalMs: widget.intervalMs,
+    audio: widget.audio
   }
 }
 

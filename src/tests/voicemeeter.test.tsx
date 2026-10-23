@@ -42,8 +42,7 @@ vi.mock('../services/system/bridge', () => ({
 vi.mock('../services/system/overlay', () => ({ overlay: host.overlay }))
 import { defaultConfig } from '../services/configuration/config'
 import { useConfig } from '../stores/config'
-import { Microphone } from '../features/microphone/Microphone'
-import { Volume } from '../features/volume/Volume'
+import NativeBar from '../components/status-bar/NativeBar'
 import { optionLabel } from '../features/audio/presentation'
 import { PopupHost } from '../popups/PopupHost'
 import { resetVoicemeeterCapability } from '../hooks/useVoicemeeterCapability'
@@ -88,6 +87,11 @@ const engine: VoicemeeterData = {
 function seed(type: 'volume' | 'microphone', audio?: VoicemeeterAudio) {
   const config = structuredClone(defaultConfig)
   config.widgets.right.find((w) => w.type === type)!.audio = audio
+  config.widgets = {
+    left: [],
+    center: [],
+    right: config.widgets.right.filter((widget) => widget.type === type)
+  }
   useConfig.setState({ config, error: null })
 }
 
@@ -121,7 +125,7 @@ it('routes the volume channel through the configured Voicemeeter bus', () => {
     target: { kind: 'bus', index: 0 },
     label: 'A1 fones'
   })
-  render(<Volume />)
+  render(<NativeBar />)
   expect(host.channelSource).toHaveBeenCalledWith('volume', {
     kind: 'bus',
     index: 0
@@ -134,7 +138,7 @@ it('falls back to the index label without a configured label', () => {
     source: 'voicemeeter',
     target: { kind: 'bus', index: 2 }
   })
-  render(<Volume />)
+  render(<NativeBar />)
   expect(host.channelSource).toHaveBeenCalledWith('volume', {
     kind: 'bus',
     index: 2
@@ -144,14 +148,14 @@ it('falls back to the index label without a configured label', () => {
 
 it('clears the Voicemeeter routing when the widget returns to Windows', () => {
   seed('volume', { source: 'voicemeeter', target: { kind: 'bus', index: 0 } })
-  const { rerender } = render(<Volume />)
-  expect(host.channelSource).toHaveBeenLastCalledWith('volume', {
+  const { rerender } = render(<NativeBar />)
+  expect(host.channelSource).toHaveBeenCalledWith('volume', {
     kind: 'bus',
     index: 0
   })
   seed('volume')
-  rerender(<Volume />)
-  expect(host.channelSource).toHaveBeenLastCalledWith('volume', null)
+  rerender(<NativeBar />)
+  expect(host.channelSource).toHaveBeenCalledWith('volume', null)
 })
 
 it('routes the microphone strip and reports unavailable Voicemeeter', () => {
@@ -159,7 +163,7 @@ it('routes the microphone strip and reports unavailable Voicemeeter', () => {
     source: 'voicemeeter',
     target: { kind: 'strip', index: 0 }
   })
-  render(<Microphone />)
+  render(<NativeBar />)
   expect(host.channelSource).toHaveBeenCalledWith('microphone', {
     kind: 'strip',
     index: 0
@@ -319,7 +323,7 @@ describe('config events push audio routing', () => {
       target: { kind: 'bus', index: 0 },
       label: 'Bus 0'
     })
-    render(<Volume />)
+    render(<NativeBar />)
 
     // Routing was pushed to native worker
     expect(host.channelSource).toHaveBeenCalledWith('volume', {
@@ -344,19 +348,15 @@ describe('config events push audio routing', () => {
 
     // Switching back to Windows should work normally
     seed('volume')
-    render(<Volume />)
+    render(<NativeBar />)
 
-    expect(host.channelSource).toHaveBeenLastCalledWith('volume', null)
+    expect(host.channelSource).toHaveBeenCalledWith('volume', null)
     expect(screen.getByText('Volume do dispositivo padrão')).toBeInTheDocument()
   })
 })
 
 // Test component that uses the bar-level audio routing hook
 function TestBar({ config }: { config: typeof defaultConfig }) {
-  useAudioRouting([
-    config.widgets.left,
-    config.widgets.center,
-    config.widgets.right
-  ])
+  useAudioRouting(config.widgets)
   return <div data-testid="test-bar" />
 }

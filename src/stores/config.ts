@@ -14,7 +14,7 @@ type ConfigState = {
   error: string | null
   /** Revision of the last native snapshot; the demo store leaves it at 0. */
   revision: number
-  /** Applies a text draft. Native never writes localStorage: the file is truth. */
+  /** Applies browser demo text only. Native preferences arrive via hydrate. */
   apply(text: string, persist?: boolean): boolean
   /** Installs a snapshot the native host published. Never falls back to demo values. */
   hydrate(snapshot: ConfigSnapshot): void
@@ -32,6 +32,12 @@ export const useConfig = create<ConfigState>((set, get) => ({
   error: null,
   revision: 0,
   apply(text, persist = true) {
+    if (!browser) {
+      set({
+        error: 'Altere as preferências em Configurações e clique em Aplicar.'
+      })
+      return false
+    }
     try {
       const config = parseConfig(text)
       // A persisted draft is only written in the browser demo: a native bar
