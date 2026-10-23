@@ -304,6 +304,8 @@ impl Spotify {
             client_id: inner.status.client_id.clone(),
             error: None,
         };
+        drop(inner);
+        (self.notify)();
         Ok(())
     }
     pub fn stop(&self) {
@@ -361,7 +363,10 @@ impl Spotify {
                     inner.status.error = Some(e);
                 }
             }
+            drop(inner);
+            (this.notify)();
         });
+        (self.notify)();
         Ok(())
     }
     fn authorize(
@@ -1102,6 +1107,37 @@ mod tests {
             *self.0.lock().unwrap() = None;
             Ok(())
         }
+    }
+    #[test]
+    fn disconnect_notifies_the_player_and_removes_favorites_from_its_next_snapshot() {
+        let store = Arc::new(MemoryStore::default());
+        store
+            .write(&Credentials {
+                client_id: "test-client".into(),
+                access_token: "private-access".into(),
+                refresh_token: "private-refresh".into(),
+                expires_at: now() + 3600,
+            })
+            .unwrap();
+        let (notify, updates) = mpsc::channel();
+        let spotify = Spotify::with_options(
+            store,
+            "https://api.spotify.com/v1".into(),
+            Arc::new(move || {
+                let _ = notify.send(());
+            }),
+        );
+        let mut player = fixture();
+        spotify.enrich(&mut player);
+        assert!(player.capabilities.favorite);
+        spotify.disconnect().unwrap();
+        let notification = updates.recv_timeout(Duration::from_millis(500));
+        spotify.enrich(&mut player);
+        spotify.stop();
+        assert!(notification.is_ok(), "account changes must wake the player");
+        assert!(!player.capabilities.favorite);
+        assert_eq!(player.favorite.status, MediaAvailability::Unauthenticated);
+        assert!(player.favorite.value.is_none());
     }
     #[test]
     fn disconnect_removes_credentials_and_invalidates_old_jobs_without_exposing_tokens() {
