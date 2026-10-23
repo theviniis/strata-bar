@@ -349,49 +349,16 @@ it('converts local date/time and formats countdown without wrapping hours', () =
   expect(formatCountdown(1)).toBe('0:01')
 })
 
-it('opens Google settings from the gear and restores the form, draft and focus on close', async () => {
+it('directs unconfigured Calendar users to Settings with text while keeping reminder creation available', () => {
   render(<RemindersPopup />)
-  fillMessage(screen.getByLabelText('Mensagem'), {
-    target: { value: 'Keep my draft' }
-  })
-  const trigger = screen.getByRole('button', {
-    name: 'Configurações do Google Calendar'
-  })
+  expect(screen.getByText(/Configurações → Lembretes/)).toBeVisible()
+  expect(
+    screen.queryByRole('button', { name: /Configurações do Google Calendar/ })
+  ).not.toBeInTheDocument()
   expect(screen.queryByLabelText('Client ID do Google')).not.toBeInTheDocument()
-  fireEvent.click(trigger)
-  expect(
-    screen.getByRole('dialog', { name: 'Configurações do Google Calendar' })
-  ).toBeVisible()
-  expect(screen.getByLabelText('Client ID do Google')).toBeDisabled()
-  expect(
-    screen.getByRole('button', { name: 'Conectar Google Calendar' })
-  ).toBeDisabled()
-  expect(screen.queryByLabelText('Mensagem')).not.toBeVisible()
-  fireEvent.click(screen.getByRole('button', { name: 'Fechar' }))
-  await waitFor(() =>
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  )
-  expect(screen.getByLabelText('Mensagem')).toHaveTextContent('Keep my draft')
-  expect(trigger).toHaveFocus()
-})
-
-it('Escape closes only Google settings inside the reminders popup', async () => {
-  const close = vi.fn()
-  render(<PopupHost id="reminders" mode="demo" close={close} />)
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Configurações do Google Calendar' })
-  )
-  fireEvent.keyDown(
-    screen.getByRole('dialog', { name: 'Configurações do Google Calendar' }),
-    { key: 'Escape' }
-  )
-  await waitFor(() =>
-    expect(
-      screen.queryByRole('dialog', { name: 'Configurações do Google Calendar' })
-    ).not.toBeInTheDocument()
-  )
-  expect(screen.getByRole('dialog', { name: 'Lembretes' })).toBeVisible()
-  expect(close).not.toHaveBeenCalled()
+  expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  expect(screen.getByRole('form', { name: 'Criar lembrete' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Criar lembrete' })).toBeEnabled()
 })
 
 async function overdue(message: string) {

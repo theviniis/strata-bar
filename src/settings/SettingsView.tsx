@@ -52,7 +52,7 @@ import {
 } from './navigation'
 type SettingsSection = SettingsNavigation['section']
 
-/** The native settings window edits the file-backed configuration only. */
+/** Edits the configuration Draft and manages explicit integration actions. */
 export function SettingsView() {
   if (bridge.mode !== 'native')
     return <p>Open Settings from the Windows tray to configure Strata.</p>

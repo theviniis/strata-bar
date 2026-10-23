@@ -928,7 +928,7 @@ it('connects and disconnects Calendar immediately while Reverter only reloads th
   expect(
     screen.getByLabelText('Client Secret (se fornecido pelo Google)')
   ).toHaveValue('')
-  vi.unstubAllGlobals()
+  vi.stubGlobal('__TAURI_INTERNALS__', undefined)
 })
 
 it('receives OAuth completion after navigating away and returning while connecting', async () => {
@@ -959,5 +959,5 @@ it('receives OAuth completion after navigating away and returning while connecti
   expect(
     await screen.findByRole('button', { name: 'Desconectar Google' })
   ).toBeEnabled()
-  vi.unstubAllGlobals()
+  vi.stubGlobal('__TAURI_INTERNALS__', undefined)
 })
