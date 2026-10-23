@@ -8,7 +8,10 @@ Scope: issue #23, Centralizar Entrada e Saída de áudio.
   shared Draft/JSON, native save rejection, Revert/reopen, bounded targets,
   retained Windows targets, individual monitor/instance edits, popup daily
   controls, and existing global channel routing/no-fallback behavior.
-- TypeScript, ESLint and Prettier checks passed.
+- TypeScript and ESLint checks passed after rebasing onto `origin/main`.
+- Prettier passed for `src/` and this evidence document. The repository-wide
+  format check fails on five unchanged files inherited from main:
+  `.scratch/widget-settings/issues/01.md` through `05.md`.
 - Windows Rust suite: 206 passed, 0 failed, 21 opt-in tests ignored.
 - Native debug build passed.
 - The targeted run used one worker and a 60-second test timeout because concurrent
