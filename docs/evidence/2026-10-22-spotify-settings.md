@@ -45,3 +45,11 @@ It was left running; no replacement instance or AppBar was opened. Interactive
 OAuth connect/disconnect and favorite roundtrips against a real Spotify account
 were not verified. These external checks remain pending; automated tests do not
 substitute for them. No credentials or account identifiers were recorded here.
+
+## Follow-up after the Lembretes merge
+
+The next `main` update introduced Lembretes settings (#28). Navigation and
+Settings tests were merged by retaining both Calendar and Spotify sections and
+all regression cases. TypeScript and ESLint passed for the merged files.
+All 43 tests in `settings-view.test.tsx` and `music-settings.test.tsx` passed
+with one worker and a 60-second per-test timeout (82.50 seconds).

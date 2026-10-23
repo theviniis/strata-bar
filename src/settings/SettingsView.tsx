@@ -1,3 +1,4 @@
+import { CalendarSettings } from '@/features/reminders/CalendarSettings'
 import { Textarea } from '@/components/ui/textarea'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Logo } from '@/components/Logo'
@@ -55,7 +56,7 @@ import {
 } from './navigation'
 type SettingsSection = SettingsNavigation['section']
 
-/** The native settings window edits the file-backed configuration only. */
+/** Edits the configuration Draft and manages explicit integration actions. */
 export function SettingsView() {
   if (bridge.mode !== 'native')
     return <p>Open Settings from the Windows tray to configure Strata.</p>
@@ -125,6 +126,21 @@ function NativeSettingsView() {
                         draft={editor.form.getValues()}
                         onChange={editor.replaceDraft}
                       />
+                    </CardContent>
+                  </Card>
+                ) : section === 'reminders' ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle role="heading" aria-level={2}>
+                        Lembretes
+                      </CardTitle>
+                      <CardDescription>
+                        Conectar e desconectar Google Calendar têm efeito
+                        imediato. Reverter não desfaz essas operações externas.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <CalendarSettings />
                     </CardContent>
                   </Card>
                 ) : section === 'appearance' ? (
@@ -312,6 +328,12 @@ function SettingsSidebar({
                   [
                     { id: 'layout', label: 'Layout', icon: LayoutDashboard },
                     { id: 'appearance', label: 'Aparência', icon: Palette },
+                    {
+                      id: 'reminders',
+                      label: 'Lembretes',
+                      icon: LayoutDashboard
+                    },
+
                     { id: 'agents', label: 'Agentes', icon: Bot },
                     { id: 'music', label: 'Player de música', icon: Music2 },
                     { id: 'json', label: 'JSON', icon: LayoutDashboard }
