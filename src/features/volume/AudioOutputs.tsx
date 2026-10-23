@@ -224,10 +224,10 @@ function AudioOutputsContent({
       <div className="flex flex-col">
         <CardHeader>
           <div className="flex items-center justify-between gap-2">
-            <CardTitle>Saída de audio</CardTitle>
+            <CardTitle>Saída de áudio</CardTitle>
           </div>
           <CardDescription>
-            Controle o volume e a saída de audio
+            Controle o volume e a saída de áudio
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -1231,9 +1231,7 @@ it('keeps audio edits in the shared Draft, preserves saved audio on failure, and
   })
   expect(bridge.configSave).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
-  expect(screen.getByLabelText('Configuração JSON')).toHaveValue(
-    expect.stringContaining('Draft speakers')
-  )
+  expect((screen.getByLabelText('Configuração JSON') as HTMLTextAreaElement).value).toContain('Draft speakers')
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Disk write denied'
@@ -1290,7 +1288,8 @@ it('edits one audio instance on a saved monitor without losing the other target 
   fireEvent.click(
     screen.getByRole('combobox', { name: 'Aplicar configurações em' })
   )
-  fireEvent.click(await screen.findByRole('option', { name: 'Main' }))
+  fireEvent.pointerDown(await screen.findByRole('option', { name: 'Main' }))
+  fireEvent.click(screen.getByRole('option', { name: 'Main' }))
   expect(screen.getByLabelText('Rótulo de áudio')).toHaveValue('Desk')
   fireEvent.change(screen.getByLabelText('Rótulo de áudio'), {
     target: { value: 'Updated desk' }

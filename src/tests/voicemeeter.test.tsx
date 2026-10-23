@@ -199,7 +199,7 @@ it.each(['audioOutputs', 'audioInputs'] as const)(
       defaultDeviceId: 'mic'
     }
     render(<PopupHost id={id} mode="native" close={() => {}} />)
-    await act(async () => {})
+    await screen.findByRole('slider', { name: 'Volume' })
     expect(
       screen.queryByRole('button', { name: 'Configurações do Voicemeeter' })
     ).not.toBeInTheDocument()
