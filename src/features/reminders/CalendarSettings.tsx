@@ -2,47 +2,29 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { calendar } from '@/services/system/calendar'
-import type { CalendarStatus } from '@/services/system/reminders.generated'
-import { useEffect, useId, useState } from 'react'
+import { useId, useState } from 'react'
 
-export function CalendarSettings({
-  onConnected
-}: {
-  onConnected(connected: boolean): void
-}) {
+import { useCalendarStatus } from './useCalendarStatus'
+
+export function CalendarSettings() {
   const id = useId()
-  const [status, setStatus] = useState<CalendarStatus | null>(null)
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const native = Boolean(window.__TAURI_INTERNALS__)
-  useEffect(() => {
-    if (!native) return
-    let cancelled = false
-    void calendar
-      .status()
-      .then((value) => {
-        if (cancelled) return
-        setStatus(value)
-        onConnected(value.connected)
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setError(String(e))
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [native, onConnected])
+  const {
+    data: status,
+    error: statusError,
+    refetch
+  } = useCalendarStatus(native)
   async function change(connect: boolean) {
     setPending(true)
     setError('')
     try {
-      const value = connect
-        ? await calendar.connect(clientId.trim(), clientSecret.trim())
-        : await calendar.disconnect()
-      setStatus(value)
-      onConnected(value.connected)
+      if (connect) await calendar.connect(clientId.trim(), clientSecret.trim())
+      else await calendar.disconnect()
+      await refetch()
       setClientSecret('')
     } catch (e) {
       setError(String(e))
@@ -113,9 +95,9 @@ export function CalendarSettings({
           Demonstração · conexão disponível na barra nativa.
         </p>
       )}
-      {(error || status?.error) && (
+      {(error || statusError || status?.error) && (
         <p role="alert" className="text-destructive">
-          {error || status?.error}
+          {error || (statusError ? String(statusError) : status?.error)}
         </p>
       )}
     </section>

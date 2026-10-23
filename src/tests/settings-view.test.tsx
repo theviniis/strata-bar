@@ -13,6 +13,13 @@ import { createAgentsStore } from '@/stores/agents'
 import { createDemoAgentsAdapter } from '@/services/system/agents'
 import { SettingsView } from '../settings/SettingsView'
 
+const calendarAccount = vi.hoisted(() => ({
+  status: vi.fn(),
+  connect: vi.fn(),
+  disconnect: vi.fn()
+}))
+vi.mock('@/services/system/calendar', () => ({ calendar: calendarAccount }))
+
 let agentAdapter = createDemoAgentsAdapter()
 let agentStore = createAgentsStore(agentAdapter)
 vi.mock('@/stores/agents', async (importOriginal) => ({
@@ -21,6 +28,9 @@ vi.mock('@/stores/agents', async (importOriginal) => ({
 }))
 
 const close = vi.hoisted(() => vi.fn())
+const calendarEvents = vi.hoisted(() => ({
+  listener: undefined as undefined | (() => void)
+}))
 const monitorEvents = vi.hoisted(() => ({
   listener: undefined as
     undefined | ((event: { payload: SettingsMonitor[] }) => void)
@@ -32,6 +42,8 @@ vi.mock('@tauri-apps/api/event', () => ({
       listener: (event: { payload: SettingsMonitor[] }) => void
     ) => {
       if (event === 'monitors:changed') monitorEvents.listener = listener
+      if (event === 'calendar:changed')
+        calendarEvents.listener = () => listener({ payload: [] })
       return () => {}
     }
   )
@@ -66,6 +78,7 @@ beforeEach(() => {
   localStorage.clear()
   vi.clearAllMocks()
   monitorEvents.listener = undefined
+  calendarEvents.listener = undefined
   vi.mocked(bridge.settingsMonitors!).mockResolvedValue([
     {
       id: 'screen-a',
@@ -868,6 +881,98 @@ it('applies editable native bar geometry only after Apply', async () => {
     )
   )
 })
+
+it('opens Calendar credentials in the Lembretes settings section', async () => {
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Lembretes' }))
+  expect(
+    await screen.findByLabelText('Client ID do Google')
+  ).toBeInTheDocument()
+  expect(screen.getByText(/Reverter não desfaz/)).toBeInTheDocument()
+  expect(bridge.configSave).not.toHaveBeenCalled()
+})
+
+it('connects and disconnects Calendar immediately while Reverter only reloads the Draft', async () => {
+  vi.stubGlobal('__TAURI_INTERNALS__', {})
+  calendarAccount.status.mockResolvedValue({
+    connected: false,
+    connecting: false,
+    error: null
+  })
+  calendarAccount.connect.mockImplementation(async () => {
+    const value = { connected: true, connecting: false, error: null }
+    calendarAccount.status.mockResolvedValue(value)
+    return value
+  })
+  calendarAccount.disconnect.mockImplementation(async () => {
+    const value = { connected: false, connecting: false, error: null }
+    calendarAccount.status.mockResolvedValue(value)
+    return value
+  })
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Lembretes' }))
+  fireEvent.change(await screen.findByLabelText('Client ID do Google'), {
+    target: { value: ' client.apps.googleusercontent.com ' }
+  })
+  fireEvent.change(
+    screen.getByLabelText('Client Secret (se fornecido pelo Google)'),
+    { target: { value: ' secret ' } }
+  )
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Conectar Google Calendar' })
+  )
+  const disconnect = await screen.findByRole('button', {
+    name: 'Desconectar Google'
+  })
+  expect(calendarAccount.connect).toHaveBeenCalledWith(
+    'client.apps.googleusercontent.com',
+    'secret'
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
+  await waitFor(() => expect(bridge.configLoad).toHaveBeenCalledTimes(2))
+  expect(calendarAccount.disconnect).not.toHaveBeenCalled()
+  expect(disconnect).toBeInTheDocument()
+  expect(bridge.configSave).not.toHaveBeenCalled()
+  fireEvent.click(disconnect)
+  await screen.findByRole('button', { name: 'Conectar Google Calendar' })
+  expect(calendarAccount.disconnect).toHaveBeenCalledOnce()
+  expect(
+    screen.getByLabelText('Client Secret (se fornecido pelo Google)')
+  ).toHaveValue('')
+  vi.stubGlobal('__TAURI_INTERNALS__', undefined)
+})
+
+it('receives OAuth completion after navigating away and returning while connecting', async () => {
+  vi.stubGlobal('__TAURI_INTERNALS__', {})
+  calendarAccount.status.mockResolvedValue({
+    connected: false,
+    connecting: true,
+    error: null
+  })
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Lembretes' }))
+  await screen.findByRole('button', {
+    name: 'Aguardando autorização no navegador…'
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Lembretes' }))
+  expect(
+    await screen.findByRole('button', {
+      name: 'Aguardando autorização no navegador…'
+    })
+  ).toBeDisabled()
+  calendarAccount.status.mockResolvedValue({
+    connected: true,
+    connecting: false,
+    error: null
+  })
+  calendarEvents.listener?.()
+  expect(
+    await screen.findByRole('button', { name: 'Desconectar Google' })
+  ).toBeEnabled()
+  vi.stubGlobal('__TAURI_INTERNALS__', undefined)
+})
+
 it('edits agent visibility only in the shared draft and reverts without saving', async () => {
   await openEditor()
   fireEvent.click(screen.getByRole('button', { name: 'Agentes' }))
