@@ -1,9 +1,11 @@
-import { cn } from '@/lib/utils'
+import type { WidgetView } from '@/components/status-bar/presentation'
 import { WidgetItem, WidgetItemIcon } from '@/components/widget-item'
+import { cn } from '@/lib/utils'
+import type { MediaAction, MediaData } from '@/services/system/media.generated'
 import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
 import type { ComponentProps, ReactNode } from 'react'
-import type { MediaAction, MediaData } from '@/services/system/media.generated'
 export interface MusicProps extends ComponentProps<'div'> {
+  marginX?: WidgetView['marginX']
   current: MediaData | null
   pending: boolean
   demo: boolean
@@ -23,13 +25,17 @@ export function Music({
   tooltipTrigger,
   children,
   className,
+  marginX = 0,
   ...anchorProps
 }: MusicProps) {
   return (
     <WidgetItem className="group/music p-0" disabled={!current} asChild>
       <div
         aria-label={demo ? 'Música · demonstração' : 'Música'}
-        className={cn('min-w-0 max-w-45 shrink overflow-hidden', className)}
+        className={cn(
+          'min-w-0 max-w-45 shrink overflow-hidden mx-2',
+          className
+        )}
         {...anchorProps}
       >
         <div
