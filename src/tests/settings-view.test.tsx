@@ -1231,7 +1231,9 @@ it('keeps audio edits in the shared Draft, preserves saved audio on failure, and
   })
   expect(bridge.configSave).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
-  expect((screen.getByLabelText('Configuração JSON') as HTMLTextAreaElement).value).toContain('Draft speakers')
+  expect(
+    (screen.getByLabelText('Configuração JSON') as HTMLTextAreaElement).value
+  ).toContain('Draft speakers')
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Disk write denied'
