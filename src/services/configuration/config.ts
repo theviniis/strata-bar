@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { ConfigSnapshot } from '@/services/system/config.generated'
 
 export const types = [
+  'separator',
   'clock',
   'reminders',
   'agents',
@@ -54,6 +55,7 @@ const widget = z.object({
   format: z.enum(['compact', 'label']).default('label'),
   tooltip: z.boolean().default(true),
   /** Per-widget audio routing. Only the volume and microphone widgets consume it. */
+  marginX: z.number().min(0).max(32).optional(),
   audio: audio.optional()
 })
 
@@ -82,6 +84,8 @@ const bar = z.object({
   position: z.enum(['top', 'bottom']).default('top'),
   height: z.number().int().min(28).max(80).default(36),
   spacing: z.number().min(0).max(32).default(8),
+  /** Shared by every separator on every monitor; absent means zero. */
+  separatorMarginX: z.number().min(0).max(32).optional(),
   theme: z.enum(['system', 'dark', 'light']).default('system'),
   alwaysOnTop: z.boolean().default(true)
 })
@@ -103,6 +107,7 @@ const widgetOverride = z.object({
   intervalMs: widget.shape.intervalMs.removeDefault().optional(),
   format: widget.shape.format.removeDefault().optional(),
   tooltip: widget.shape.tooltip.removeDefault().optional(),
+  marginX: widget.shape.marginX,
   audio: widget.shape.audio
 })
 export const widgetLayoutSchema = z.object({

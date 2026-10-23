@@ -17,6 +17,7 @@ export const sectionLabels: Record<Section, string> = {
 
 /** Display label of a widget type, matching the bar's vocabulary. */
 export const typeLabels: Record<WidgetType, string> = {
+  separator: 'Separador',
   clock: 'Relógio',
   reminders: 'Lembretes',
   agents: 'Agentes',

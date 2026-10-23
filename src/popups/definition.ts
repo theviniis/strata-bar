@@ -1,12 +1,12 @@
 import type { ComponentType } from 'react'
-import { lazy } from 'react'
+import { createElement, lazy, useState } from 'react'
 import { z } from 'zod'
 
 const emptyParams = z.object({}).strict().default({})
 
 type Definition<S extends z.ZodType> = {
   label: string
-  Content: ComponentType
+  Content: ComponentType & { preload?: () => Promise<unknown> }
   className?: string
   schema: S
 }
@@ -19,7 +19,31 @@ export function lazyContent<
   M extends Record<K, ComponentType>,
   K extends string
 >(load: () => Promise<M>, name: K) {
-  return lazy(async () => ({ default: (await load())[name] }))
+  let pending: Promise<{ default: M[K] }> | undefined
+  let loaded: { default: M[K] } | undefined
+  const preload = () => {
+    pending ??= Promise.resolve()
+      .then(load)
+      .then((module) => {
+        loaded = { default: module[name] }
+        return loaded
+      })
+      .catch((error: unknown) => {
+        pending = undefined
+        throw error
+      })
+    return pending
+  }
+  const Deferred = lazy(preload)
+  function Content() {
+    // Pick once per mount: warm opens avoid Suspense's fallback delay, while
+    // cold opens keep the same lazy child even after its import resolves.
+    const [Component] = useState<ComponentType>(
+      () => loaded?.default ?? Deferred
+    )
+    return createElement(Component)
+  }
+  return Object.assign(Content, { preload })
 }
 
 export function definePopup<S extends z.ZodType>(

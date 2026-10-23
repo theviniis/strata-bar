@@ -34,6 +34,30 @@ function Editor({ centerTypes = [] }: { centerTypes?: WidgetType[] }) {
   )
 }
 
+it('keeps separators in the catalog and adds independent instances', () => {
+  render(<Editor />)
+  for (let index = 0; index < 2; index += 1) {
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar Separador' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Adicionar Separador em Centro' })
+    )
+  }
+  const draft = JSON.parse(screen.getByLabelText('Draft').textContent!)
+  expect(
+    draft.widgets.center.map((widget: { id: string }) => widget.id)
+  ).toEqual(['separator', 'separator-2'])
+  const center = screen.getByRole('region', { name: 'Seção Centro' })
+  fireEvent.click(
+    within(center).getAllByRole('button', { name: 'Configurar Separador' })[0]
+  )
+  fireEvent.change(screen.getByLabelText('Margem horizontal (px)'), {
+    target: { value: '10' }
+  })
+  const changed = JSON.parse(screen.getByLabelText('Draft').textContent!)
+  expect(changed.bar.separatorMarginX).toBe(10)
+  expect(changed.widgets.center[1].marginX).toBeUndefined()
+})
+
 it('moves through adjacent columns with arrows, appends and preserves settings and keyboard focus', async () => {
   render(<Editor centerTypes={['gpu']} />)
   const before = JSON.parse(screen.getByLabelText('Draft').textContent!).widgets
@@ -162,6 +186,31 @@ it.each(['drop', 'cancel'] as const)(
     }
   }
 )
+
+it('adds multiple separators through successive catalog drags', async () => {
+  const cleanup = mockPointerLayout()
+  try {
+    render(<Editor />)
+    for (let index = 0; index < 3; index += 1) {
+      const handle = screen.getByRole('button', {
+        name: 'Arrastar Separador do catálogo'
+      })
+      fireEvent.pointerDown(handle, { button: 0, clientX: 20, clientY: 100 })
+      fireEvent.pointerMove(document, { clientX: 30, clientY: 100 })
+      await act(async () => {})
+      fireEvent.pointerMove(document, { clientX: 350, clientY: 110 })
+      await screen.findByRole('img', { name: 'Movendo Separador' })
+      fireEvent.pointerUp(document)
+      await waitFor(() => {
+        const draft = JSON.parse(screen.getByLabelText('Draft').textContent!)
+        expect(draft.layout.center).toHaveLength(index + 1)
+        expect(configSchema.safeParse(draft).success).toBe(true)
+      })
+    }
+  } finally {
+    cleanup()
+  }
+})
 
 it('adds a catalog widget with the keyboard drag handle', async () => {
   const cleanup = mockPointerLayout()

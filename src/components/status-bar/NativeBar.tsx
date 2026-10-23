@@ -3,11 +3,11 @@ import { useMemo, type ReactNode } from 'react'
 import type { Config, WidgetConfig } from '@/services/configuration/config'
 import { cn } from '@/lib/utils'
 import { useConfig } from '@/stores/config'
-import { BarVerticalSeparator } from '../ui/bar-vertical-separator'
 import { QueryProvider } from '../QueryProvider'
 import { Widget } from './Widget'
 import { SlidingHighlight } from '../ui/sliding-highlight'
 import { useAudioRouting } from '@/hooks/useAudioRouting'
+import { SeparatorMarginContext } from './separator-margin'
 
 /** Order-preserving section filter: presence and order both come from config. */
 function enabled(widgets: WidgetConfig[]) {
@@ -80,55 +80,58 @@ export function NativeBarSurface({
     [widgets]
   )
   return (
-    <QueryProvider>
-      {/*
+    <SeparatorMarginContext value={bar.separatorMarginX ?? 0}>
+      <QueryProvider>
+        {/*
           The theme root owns `group` and `data-theme` so every `group-data-[theme=light]:`
           utility below — including the nav's own colours — matches a descendant. On a single
           element the variant cannot select itself, which left the light theme unpainted.
       */}
-      <div data-theme={theme} className={cn('group h-full w-full', theme)}>
-        <SlidingHighlight>
-          <nav
-            className={cn(
-              !preview && 'native-bar',
-              "relative grid h-full w-full grid-cols-[1fr_max-content_1fr] items-center border-b border-[#ffffff12] bg-background px-3.5 font-['Segoe_UI',sans-serif] text-[11px] leading-[normal] text-[#e4e5ed] tabular-nums select-none group-data-[theme=light]:bg-[#f8f5f2] group-data-[theme=light]:text-[#302a3e]"
-            )}
-            aria-label={ariaLabel}
-            style={{ gap: bar.spacing }}
-          >
-            {sections.map(([name, widgets]) => (
-              <div
-                key={name}
-                data-section={name}
-                className={
-                  name === 'center'
-                    ? 'flex justify-self-center items-center'
-                    : name === 'right'
-                      ? 'flex shrink-0 items-center ml-auto justify-end'
-                      : 'flex min-w-0 items-center'
-                }
-                style={{ gap: bar.spacing }}
-              >
-                {widgets.map((widget, index) => (
-                  <div
-                    key={widget.id}
-                    className="flex min-w-0 items-center"
-                    style={{ gap: bar.spacing }}
-                  >
-                    {index > 0 && <BarVerticalSeparator />}
-                    {renderWidget ? (
-                      renderWidget(widget)
-                    ) : (
-                      <Widget widget={widget} />
-                    )}
-                  </div>
-                ))}
-                {name === 'right' && error && <ConfigWarning message={error} />}
-              </div>
-            ))}
-          </nav>
-        </SlidingHighlight>
-      </div>
-    </QueryProvider>
+        <div data-theme={theme} className={cn('group h-full w-full', theme)}>
+          <SlidingHighlight>
+            <nav
+              className={cn(
+                !preview && 'native-bar',
+                "relative grid h-full w-full grid-cols-[1fr_max-content_1fr] items-center border-b border-[#ffffff12] bg-background px-3.5 font-['Segoe_UI',sans-serif] text-[11px] leading-[normal] text-[#e4e5ed] tabular-nums select-none group-data-[theme=light]:bg-[#f8f5f2] group-data-[theme=light]:text-[#302a3e]"
+              )}
+              aria-label={ariaLabel}
+              style={{ gap: bar.spacing }}
+            >
+              {sections.map(([name, widgets]) => (
+                <div
+                  key={name}
+                  data-section={name}
+                  className={
+                    name === 'center'
+                      ? 'flex justify-self-center items-center'
+                      : name === 'right'
+                        ? 'flex shrink-0 items-center ml-auto justify-end'
+                        : 'flex min-w-0 items-center'
+                  }
+                  style={{ gap: bar.spacing }}
+                >
+                  {widgets.map((widget) => (
+                    <div
+                      key={widget.id}
+                      className="flex min-w-0 items-center"
+                      style={{ gap: bar.spacing }}
+                    >
+                      {renderWidget ? (
+                        renderWidget(widget)
+                      ) : (
+                        <Widget widget={widget} />
+                      )}
+                    </div>
+                  ))}
+                  {name === 'right' && error && (
+                    <ConfigWarning message={error} />
+                  )}
+                </div>
+              ))}
+            </nav>
+          </SlidingHighlight>
+        </div>
+      </QueryProvider>
+    </SeparatorMarginContext>
   )
 }

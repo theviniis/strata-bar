@@ -63,12 +63,16 @@ export function WidgetInspector({
   widget,
   onChange,
   values = [widget],
-  onPatch
+  onPatch,
+  separatorMarginX = 0,
+  onSeparatorMarginChange
 }: {
   widget: WidgetConfig
   onChange(next: WidgetConfig): void
   values?: WidgetConfig[]
   onPatch?(path: string, value: unknown): void
+  separatorMarginX?: number
+  onSeparatorMarginChange?(value: number): void
 }) {
   const id = useId()
   const mixed = (path: string) =>
@@ -79,6 +83,35 @@ export function WidgetInspector({
     )
   const update = (path: 'intervalMs' | 'format' | 'tooltip', value: unknown) =>
     onPatch ? onPatch(path, value) : onChange({ ...widget, [path]: value })
+  if (widget.type === 'separator') {
+    return (
+      <FieldSet>
+        <FieldLegend>Configurar {widget.id}</FieldLegend>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor={`${id}-margin`}>
+              Margem horizontal (px)
+            </FieldLabel>
+            <Input
+              id={`${id}-margin`}
+              type="number"
+              min={0}
+              max={32}
+              step="any"
+              value={Number.isNaN(separatorMarginX) ? '' : separatorMarginX}
+              onChange={(event) =>
+                onSeparatorMarginChange?.(event.target.valueAsNumber)
+              }
+            />
+            <FieldDescription>
+              Todos os separadores, em todos os monitores, usam esta margem. 0 a
+              32 px de cada lado, somados ao espaçamento da barra.
+            </FieldDescription>
+          </Field>
+        </FieldGroup>
+      </FieldSet>
+    )
+  }
   return (
     <>
       <FieldSet>

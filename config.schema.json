@@ -53,6 +53,7 @@
           "minimum": 0,
           "maximum": 32
         },
+        "separatorMarginX": { "type": "number", "minimum": 0, "maximum": 32 },
         "theme": {
           "default": "system",
           "type": "string",
@@ -73,6 +74,7 @@
               "type": {
                 "type": "string",
                 "enum": [
+                  "separator",
                   "clock",
                   "reminders",
                   "agents",
@@ -101,6 +103,7 @@
                 "enum": ["compact", "label"]
               },
               "tooltip": { "default": true, "type": "boolean" },
+              "marginX": { "type": "number", "minimum": 0, "maximum": 32 },
               "audio": {
                 "type": "object",
                 "properties": {
@@ -134,6 +137,7 @@
               "type": {
                 "type": "string",
                 "enum": [
+                  "separator",
                   "clock",
                   "reminders",
                   "agents",
@@ -162,6 +166,7 @@
                 "enum": ["compact", "label"]
               },
               "tooltip": { "default": true, "type": "boolean" },
+              "marginX": { "type": "number", "minimum": 0, "maximum": 32 },
               "audio": {
                 "type": "object",
                 "properties": {
@@ -195,6 +200,7 @@
               "type": {
                 "type": "string",
                 "enum": [
+                  "separator",
                   "clock",
                   "reminders",
                   "agents",
@@ -223,6 +229,7 @@
                 "enum": ["compact", "label"]
               },
               "tooltip": { "default": true, "type": "boolean" },
+              "marginX": { "type": "number", "minimum": 0, "maximum": 32 },
               "audio": {
                 "type": "object",
                 "properties": {
@@ -295,6 +302,7 @@
                 },
                 "format": { "type": "string", "enum": ["compact", "label"] },
                 "tooltip": { "type": "boolean" },
+                "marginX": { "type": "number", "minimum": 0, "maximum": 32 },
                 "audio": {
                   "type": "object",
                   "properties": {

@@ -38,6 +38,7 @@ pub fn defaults() -> Config {
         format: WidgetFormat::Label,
         tooltip: true,
         audio: None,
+        margin_x: None,
     };
     let right = [
         ("cpu", WidgetKind::Cpu),
@@ -61,6 +62,7 @@ pub fn defaults() -> Config {
             position: BarPosition::Top,
             height: 36,
             spacing: 8.0,
+            separator_margin_x: None,
             theme: BarTheme::System,
             always_on_top: true,
         },
@@ -168,6 +170,9 @@ pub fn project(config: &Config, monitor: Option<&str>) -> Config {
                 if let Some(tooltip) = value.tooltip {
                     widget.tooltip = tooltip;
                 }
+                if let Some(margin) = value.margin_x {
+                    widget.margin_x = Some(margin);
+                }
                 if let Some(audio) = &value.audio {
                     widget.audio = Some(audio.clone());
                 }
@@ -207,6 +212,13 @@ fn validate_bar(bar: &BarConfig) -> Result<(), String> {
 /// required fields; this checks the ranges, uniqueness and cross-field rules the
 /// frontend schema also enforces.
 pub fn validate(config: &Config) -> Result<(), String> {
+    if config
+        .bar
+        .separator_margin_x
+        .is_some_and(|margin| !margin.is_finite() || !(0.0..=32.0).contains(&margin))
+    {
+        return Err("Separator margin must be between 0 and 32 px".into());
+    }
     if config.version != SCHEMA_VERSION {
         return Err(format!(
             "Unsupported config version {} (expected {SCHEMA_VERSION})",
@@ -284,6 +296,15 @@ pub fn validate(config: &Config) -> Result<(), String> {
         if !(MIN_INTERVAL_MS..=MAX_INTERVAL_MS).contains(&widget.interval_ms) {
             return Err(format!(
                 "Widget {} interval must be between {MIN_INTERVAL_MS} and {MAX_INTERVAL_MS} ms",
+                widget.id
+            ));
+        }
+        if widget
+            .margin_x
+            .is_some_and(|margin| !margin.is_finite() || !(0.0..=32.0).contains(&margin))
+        {
+            return Err(format!(
+                "Widget {} marginX must be between 0 and 32 px",
                 widget.id
             ));
         }
@@ -913,6 +934,7 @@ mod tests {
             format: WidgetFormat::Label,
             tooltip: true,
             audio: None,
+            margin_x: None,
         });
         assert!(store.save(invalid).unwrap_err().contains("duplicated"));
     }
@@ -1199,5 +1221,77 @@ mod tests {
         assert!(accepts_config(crate::desktop::OVERLAY));
         assert!(!accepts_config("studio"));
         assert!(!accepts_config("popup-check"));
+    }
+    #[test]
+    fn separator_margins_validate_project_and_persist() {
+        let mut config = defaults();
+        config.widgets.center[0].r#type = WidgetKind::Separator;
+        config.widgets.center[0].margin_x = Some(4.5);
+        config.monitors.insert(
+            "DISPLAY1".into(),
+            BarOverride {
+                widgets: Some(BTreeMap::from([(
+                    "time".into(),
+                    WidgetOverride {
+                        margin_x: Some(20.0),
+                        ..Default::default()
+                    },
+                )])),
+                ..Default::default()
+            },
+        );
+        validate(&config).unwrap();
+        assert_eq!(
+            project(&config, Some("DISPLAY1")).widgets.center[0].margin_x,
+            Some(20.0)
+        );
+        let dir = Directory::new();
+        let store = ConfigStore::open(dir.path());
+        store.save(config.clone()).unwrap();
+        assert_eq!(
+            ConfigStore::open(dir.path()).snapshot().unwrap().config,
+            config
+        );
+        for margin in [-1.0, 33.0, f64::NAN, f64::INFINITY] {
+            let mut invalid = config.clone();
+            invalid.widgets.center[0].margin_x = Some(margin);
+            assert!(validate(&invalid).is_err());
+            let mut invalid = config.clone();
+            invalid
+                .monitors
+                .get_mut("DISPLAY1")
+                .unwrap()
+                .widgets
+                .as_mut()
+                .unwrap()
+                .get_mut("time")
+                .unwrap()
+                .margin_x = Some(margin);
+            assert!(validate(&invalid).is_err());
+        }
+    }
+    #[test]
+    fn shared_separator_margin_validates_and_reaches_every_monitor() {
+        let mut config = defaults();
+        config.bar.separator_margin_x = Some(12.5);
+        config
+            .monitors
+            .insert("DISPLAY1".into(), BarOverride::default());
+        validate(&config).unwrap();
+        assert_eq!(
+            project(&config, Some("DISPLAY1")).bar.separator_margin_x,
+            Some(12.5)
+        );
+        assert_eq!(
+            parse(&serde_json::to_string(&config).unwrap())
+                .unwrap()
+                .bar
+                .separator_margin_x,
+            Some(12.5)
+        );
+        for margin in [-1.0, 33.0, f64::NAN, f64::INFINITY] {
+            config.bar.separator_margin_x = Some(margin);
+            assert!(validate(&config).is_err());
+        }
     }
 }

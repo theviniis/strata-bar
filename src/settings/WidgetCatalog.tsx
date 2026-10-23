@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useDraggable } from '@dnd-kit/core'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { GripVertical, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,7 +52,7 @@ export function WidgetCatalog({
   const existing = new Set(allWidgets(display).map((w) => w.type))
   const available = types.filter(
     (type) =>
-      !existing.has(type) &&
+      (type === 'separator' || !existing.has(type)) &&
       normalize(typeLabels[type]).includes(normalize(search))
   )
   return (
@@ -113,12 +113,24 @@ function CatalogEntry({
     id: `catalog:${type}`,
     disabled
   })
+  // The sortable keyboard coordinate getter needs a source droppable entry.
+  // It is never a destination; the sortable preview has its own separate ID.
+  const { setNodeRef: setSourceRef } = useDroppable({
+    id: `catalog:${type}`,
+    disabled: true
+  })
   const [open, setOpen] = useState(false)
   const widget =
     allWidgets(config).find((w) => w.type === type) ??
     widgetSchema.parse({ id: type, type })
   return (
-    <div ref={setNodeRef} className="flex flex-col gap-2 rounded-md border p-3">
+    <div
+      ref={(node) => {
+        setNodeRef(node)
+        setSourceRef(node)
+      }}
+      className="flex flex-col gap-2 rounded-md border p-3"
+    >
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
@@ -163,7 +175,11 @@ function CatalogEntry({
           </PopoverContent>
         </Popover>
       </div>
-      <WidgetPreview widget={widget} theme={config.bar.theme} />
+      <WidgetPreview
+        widget={widget}
+        theme={config.bar.theme}
+        separatorMarginX={config.bar.separatorMarginX}
+      />
     </div>
   )
 }

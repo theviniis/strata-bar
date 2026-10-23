@@ -198,7 +198,10 @@ export function addToScope(
   to: { section: Section; index: number }
 ) {
   let next = structuredClone(config)
-  let widget = allWidgets(next).find((w) => w.type === type)
+  let widget =
+    type === 'separator'
+      ? undefined
+      : allWidgets(next).find((w) => w.type === type)
   if (!widget) {
     // Freeze inherited membership before extending the global catalog.
     next.layout = structuredClone(layoutFor(next, null))

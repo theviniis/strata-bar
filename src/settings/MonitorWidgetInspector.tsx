@@ -23,6 +23,21 @@ export function MonitorWidgetInspector({
   monitors?: SettingsMonitor[]
 }) {
   const [all, setAll] = useState(!scope)
+  if (widget.type === 'separator') {
+    return (
+      <WidgetInspector
+        widget={widget}
+        onChange={() => {}}
+        separatorMarginX={draft.bar.separatorMarginX}
+        onSeparatorMarginChange={(separatorMarginX) =>
+          onChange({
+            ...draft,
+            bar: { ...draft.bar, separatorMarginX }
+          })
+        }
+      />
+    )
+  }
   const target = all ? null : scope
   const values = aggregateIds(target, monitors).map((monitor) =>
     effectiveWidget(draft, widget.id, monitor)

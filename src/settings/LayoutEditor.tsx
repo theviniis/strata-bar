@@ -212,7 +212,7 @@ export function LayoutEditor({
       const target =
         event.activatorEvent instanceof KeyboardEvent
           ? dropTarget(drag.config, String(over.id))
-          : findWidget(drag.config, String(active.id))
+          : findWidget(drag.config, drag.id)
       if (target)
         commit(addToScope(source, scope, monitors, catalogType, target))
       setCatalogType(null)
@@ -241,7 +241,7 @@ export function LayoutEditor({
     const pointerY = activatorEvent.clientY + delta.y
     setDrag((current) => {
       if (!current) return current
-      const from = findWidget(current.config, String(active.id))
+      const from = findWidget(current.config, current.id)
       const overId = String(over.id)
       const target = dropTarget(current.config, overId)
       if (!from || !target) return current
@@ -256,7 +256,7 @@ export function LayoutEditor({
         return current
       return {
         ...current,
-        config: moveWidget(current.config, String(active.id), {
+        config: moveWidget(current.config, current.id, {
           section: target.section,
           index
         })
@@ -381,8 +381,13 @@ export function LayoutEditor({
               const type = id.slice(8) as WidgetType
               setCatalogType(type)
               const preview = structuredClone(draft)
-              preview.widgets.right.push(widgetSchema.parse({ id, type }))
-              setDrag({ id, config: preview })
+              // Catalog handles remain mounted for repeatable items. Their
+              // draggable ID must not also register a sortable preview node.
+              const previewId = `preview:${id}`
+              preview.widgets.right.push(
+                widgetSchema.parse({ id: previewId, type })
+              )
+              setDrag({ id: previewId, config: preview })
             } else setDrag({ id, config: draft })
           }}
           onDragCancel={() => {
@@ -680,7 +685,11 @@ function WidgetCard({
         </Button>
       </ItemHeader>
       <ItemContent className="min-w-0 basis-full">
-        <WidgetPreview widget={widget} theme={draft.bar.theme} />
+        <WidgetPreview
+          widget={widget}
+          theme={draft.bar.theme}
+          separatorMarginX={draft.bar.separatorMarginX}
+        />
       </ItemContent>
       <ItemFooter className="flex-wrap">
         <Popover open={inspectorOpen} onOpenChange={setInspectorOpen}>

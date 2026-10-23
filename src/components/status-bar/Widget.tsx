@@ -14,6 +14,8 @@ import type { WidgetConfig } from '../../services/configuration/config'
 import { defaultView, viewOf, type WidgetView } from './presentation'
 import { WidgetViewContext } from './widget-view'
 import { Unsupported } from './Unsupported'
+import { BarVerticalSeparator } from '../ui/bar-vertical-separator'
+import { useSeparatorMargin } from './separator-margin'
 
 /**
  * One configured widget of the native bar. The composition (presence, order,
@@ -23,7 +25,10 @@ import { Unsupported } from './Unsupported'
  * The mapping is a table so the supported set is one readable list and an
  * unknown type is a compile error.
  */
-const widgets: Record<WidgetConfig['type'], () => ReactElement> = {
+const widgets: Record<
+  Exclude<WidgetConfig['type'], 'separator'>,
+  () => ReactElement
+> = {
   clock: () => <ClockController />,
   reminders: () => <RemindersController />,
   agents: () => <AgentsController />,
@@ -42,6 +47,9 @@ const widgets: Record<WidgetConfig['type'], () => ReactElement> = {
 }
 
 export function Widget({ widget }: { widget: WidgetConfig }) {
+  const separatorMargin = useSeparatorMargin()
+  if (widget.type === 'separator')
+    return <BarVerticalSeparator marginX={separatorMargin} />
   const view: WidgetView = widget ? viewOf(widget) : defaultView
   return (
     <WidgetViewContext.Provider value={view}>

@@ -12,6 +12,8 @@ export interface WidgetView {
   tooltip: boolean
   /** Polling cadence for channels the shared worker polls. */
   intervalMs: number
+  /** Horizontal outer margin in CSS pixels. */
+  marginX?: WidgetConfig['marginX']
   /** This instance's saved audio preferences, including monitor projection. */
   audio?: WidgetConfig['audio']
 }
@@ -27,6 +29,7 @@ export function viewOf(widget: WidgetConfig): WidgetView {
     format: widget.format,
     tooltip: widget.tooltip,
     intervalMs: widget.intervalMs,
+    marginX: widget.marginX,
     audio: widget.audio
   }
 }

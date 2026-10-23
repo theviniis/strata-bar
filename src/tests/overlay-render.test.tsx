@@ -5,9 +5,11 @@ type Handler = (event: { payload: unknown }) => void
 
 const host = vi.hoisted(() => ({
   listeners: new Map<string, Handler>(),
-  ready: vi.fn()
+  ready: vi.fn(),
+  warmup: vi.fn(() => vi.fn())
 }))
 vi.mock('@tauri-apps/api/core', () => ({ invoke: host.ready }))
+vi.mock('../popups/warmup', () => ({ warmPopupContents: host.warmup }))
 
 vi.mock('@tauri-apps/api/event', () => ({
   listen: async (name: string, handler: Handler) => {
@@ -21,7 +23,9 @@ import { measureTooltip } from '../overlay/measure'
 
 beforeEach(() => {
   host.listeners.clear()
+  host.ready.mockClear()
   host.ready.mockResolvedValue(null)
+  host.warmup.mockClear()
   window.__TAURI_INTERNALS__ = {}
 })
 
@@ -33,6 +37,37 @@ async function mountOverlay() {
   render(<Overlay />)
   await waitFor(() => expect(host.listeners.has('overlay:render')).toBe(true))
 }
+
+it('starts warmup only after overlay readiness and cancels on unmount', async () => {
+  let ready!: () => void
+  host.ready.mockReturnValueOnce(
+    new Promise<void>((resolve) => {
+      ready = resolve
+    })
+  )
+  const { unmount } = render(<Overlay />)
+  await waitFor(() => expect(host.ready).toHaveBeenCalledWith('overlay_ready'))
+  expect(host.warmup).not.toHaveBeenCalled()
+  await act(async () => ready())
+  await waitFor(() => expect(host.warmup).toHaveBeenCalledOnce())
+  const stop = host.warmup.mock.results[0].value
+  unmount()
+  expect(stop).toHaveBeenCalledOnce()
+})
+
+it('does not warm after unmounting while overlay readiness is pending', async () => {
+  let ready!: () => void
+  host.ready.mockReturnValueOnce(
+    new Promise<void>((resolve) => {
+      ready = resolve
+    })
+  )
+  const { unmount } = render(<Overlay />)
+  await waitFor(() => expect(host.ready).toHaveBeenCalledWith('overlay_ready'))
+  unmount()
+  await act(async () => ready())
+  expect(host.warmup).not.toHaveBeenCalled()
+})
 
 it('paints the rendered text as text, never as markup', async () => {
   await mountOverlay()

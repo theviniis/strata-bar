@@ -27,6 +27,8 @@ import {
 } from '../../services/system/bridge'
 import type { DiskData } from '../../services/system/disk.generated'
 import { Unsupported } from './Unsupported'
+import { BarVerticalSeparator } from '../ui/bar-vertical-separator'
+import { useSeparatorMargin } from './separator-margin'
 
 type PreviewValue = DemoChannelData[Channel]
 type PreviewSnapshot = SystemEvent<PreviewValue>
@@ -45,6 +47,9 @@ const preview = bridge as DemoBridge
  */
 type DemoWidgetProps = { widget: WidgetConfig; staticPreview?: boolean }
 export function DemoWidget({ widget, staticPreview = false }: DemoWidgetProps) {
+  const separatorMargin = useSeparatorMargin()
+  if (widget.type === 'separator')
+    return <BarVerticalSeparator marginX={separatorMargin} />
   return (
     <WidgetViewContext value={viewOf(widget)}>
       <WidgetPreviewContext value={staticPreview}>
@@ -64,7 +69,8 @@ function DemoWidgetController({
   )
   const previewType = widget.type
   const sample: PreviewSnapshot | undefined = staticPreview
-    ? previewType === 'clock' ||
+    ? previewType === 'separator' ||
+      previewType === 'clock' ||
       previewType === 'music' ||
       previewType === 'agents' ||
       previewType === 'reminders'
@@ -75,6 +81,7 @@ function DemoWidgetController({
     if (staticPreview) return
     const type = widget.type
     if (
+      type === 'separator' ||
       type === 'clock' ||
       type === 'music' ||
       type === 'reminders' ||

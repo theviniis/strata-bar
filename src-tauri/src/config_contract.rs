@@ -27,6 +27,7 @@ fn default_source() -> AudioSource {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum WidgetKind {
+    Separator,
     Clock,
     Reminders,
     Agents,
@@ -104,6 +105,8 @@ pub struct WidgetConfig {
     pub tooltip: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub audio: Option<WidgetAudio>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub margin_x: Option<f64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
@@ -144,6 +147,8 @@ pub struct BarConfig {
     pub height: u32,
     #[serde(default = "default_spacing")]
     pub spacing: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub separator_margin_x: Option<f64>,
     #[serde(default)]
     pub theme: BarTheme,
     #[serde(default = "default_true")]
@@ -163,6 +168,8 @@ pub struct WidgetOverride {
     pub tooltip: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub audio: Option<WidgetAudio>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub margin_x: Option<f64>,
 }
 
 /// One monitor's partial override of bar appearance and widget behavior.
