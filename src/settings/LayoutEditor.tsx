@@ -8,7 +8,6 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty'
 import {
   Item,
@@ -87,9 +86,7 @@ import {
   displayedLayout,
   effectiveWidget,
   layoutFor,
-  patchWidget,
   removeFromScope,
-  scopedIds,
   setBarEnabled,
   setLayout,
   viewConfig
@@ -313,6 +310,22 @@ export function LayoutEditor({
                 Salvo {index + 1} · Desconectado
               </TabsTrigger>
             ))}
+            <div className="ml-auto flex items-center justify-between gap-4">
+              <label htmlFor={`${layoutId}-enabled`}>
+                {scope
+                  ? 'Habilitar neste monitor'
+                  : 'Habilitar em todos os monitores'}
+              </label>
+              {mixedBar && <p role="status">Alguns monitores habilitados</p>}
+              <Switch
+                id={`${layoutId}-enabled`}
+                disabled={disabled}
+                checked={activation.every(Boolean)}
+                onCheckedChange={(enabled) =>
+                  commit(setBarEnabled(source, scope, monitors, enabled))
+                }
+              />
+            </div>
           </TabsList>
         </Tabs>
         {disconnectedNotice && (
@@ -341,22 +354,7 @@ export function LayoutEditor({
             </Button>
           </p>
         )}
-        <div className="flex items-center justify-between gap-4">
-          <label htmlFor={`${layoutId}-enabled`}>
-            {scope
-              ? 'Habilitar barra neste monitor'
-              : 'Habilitar barra em todos os monitores'}
-          </label>
-          {mixedBar && <p role="status">Alguns monitores habilitados</p>}
-          <Switch
-            id={`${layoutId}-enabled`}
-            disabled={disabled}
-            checked={activation.every(Boolean)}
-            onCheckedChange={(enabled) =>
-              commit(setBarEnabled(source, scope, monitors, enabled))
-            }
-          />
-        </div>
+
         {!scope && (
           <Alert role="note">
             <AlertDescription>
@@ -626,37 +624,6 @@ function WidgetCard({
           >
             <GripVertical aria-hidden="true" />
           </Button>
-          <Checkbox
-            disabled={disabled}
-            aria-label={`Ativar ${typeLabels[widget.type]}`}
-            checked={checked}
-            onCheckedChange={(value) => {
-              let next = manager.config
-              if (value === true) {
-                const where = findWidget(draft, widget.id)!
-                for (const monitor of scopedIds(
-                  manager.scope,
-                  manager.monitors
-                ).reverse()) {
-                  const layout = structuredClone(layoutFor(next, monitor))
-                  if (!Object.values(layout).flat().includes(widget.id)) {
-                    layout[where.section].push(widget.id)
-                    next = setLayout(next, monitor, [], layout)
-                  }
-                }
-              }
-              manager.onChange(
-                patchWidget(
-                  next,
-                  manager.scope,
-                  manager.monitors,
-                  widget.id,
-                  'enabled',
-                  value === true
-                )
-              )
-            }}
-          />
           <ItemTitle
             className="block max-w-full truncate"
             title={typeLabels[widget.type]}
