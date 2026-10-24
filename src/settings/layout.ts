@@ -5,6 +5,7 @@ import {
   type WidgetConfig,
   type WidgetType
 } from '../services/configuration/config'
+import { isWidgetAvailable } from '../services/configuration/widget-flags'
 
 export const sections = ['left', 'center', 'right'] as const
 export type Section = (typeof sections)[number]
@@ -105,6 +106,7 @@ export function addWidget(
   type: WidgetType,
   section: Section
 ): Config {
+  if (!isWidgetAvailable(type)) return config
   const next = structuredClone(config)
   next.widgets[section].push(
     widgetSchema.parse({ id: uniqueId(next, type), type })
@@ -147,5 +149,5 @@ export function toggleWidget(config: Config, id: string): Config {
 
 /** Widget types a user may add (the schema's full set, in a stable order). */
 export function addableTypes(): WidgetType[] {
-  return [...types]
+  return types.filter(isWidgetAvailable)
 }

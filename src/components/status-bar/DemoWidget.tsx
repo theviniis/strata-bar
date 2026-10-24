@@ -29,6 +29,7 @@ import type { DiskData } from '../../services/system/disk.generated'
 import { Unsupported } from './Unsupported'
 import { BarVerticalSeparator } from '../ui/bar-vertical-separator'
 import { useSeparatorMargin } from './separator-margin'
+import { isWidgetAvailable } from '@/services/configuration/widget-flags'
 
 type PreviewValue = DemoChannelData[Channel]
 type PreviewSnapshot = SystemEvent<PreviewValue>
@@ -48,6 +49,7 @@ const preview = bridge as DemoBridge
 type DemoWidgetProps = { widget: WidgetConfig; staticPreview?: boolean }
 export function DemoWidget({ widget, staticPreview = false }: DemoWidgetProps) {
   const separatorMargin = useSeparatorMargin()
+  if (!isWidgetAvailable(widget.type)) return null
   if (widget.type === 'separator')
     return <BarVerticalSeparator marginX={separatorMargin} />
   return (

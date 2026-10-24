@@ -7,6 +7,7 @@ import {
   type WidgetType
 } from '@/services/configuration/config'
 import type { SettingsMonitor } from '@/services/system/config.generated'
+import { isWidgetAvailable } from '@/services/configuration/widget-flags'
 import { allWidgets, uniqueId, sections, type Section } from './layout'
 
 export type Scope = string | null
@@ -197,6 +198,7 @@ export function addToScope(
   type: WidgetType,
   to: { section: Section; index: number }
 ) {
+  if (!isWidgetAvailable(type)) return config
   let next = structuredClone(config)
   let widget =
     type === 'separator'

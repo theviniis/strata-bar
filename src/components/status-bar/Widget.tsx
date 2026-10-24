@@ -16,6 +16,7 @@ import { WidgetViewContext } from './widget-view'
 import { Unsupported } from './Unsupported'
 import { BarVerticalSeparator } from '../ui/bar-vertical-separator'
 import { useSeparatorMargin } from './separator-margin'
+import { isWidgetAvailable } from '@/services/configuration/widget-flags'
 
 /**
  * One configured widget of the native bar. The composition (presence, order,
@@ -48,6 +49,7 @@ const widgets: Record<
 
 export function Widget({ widget }: { widget: WidgetConfig }) {
   const separatorMargin = useSeparatorMargin()
+  if (!isWidgetAvailable(widget.type)) return null
   if (widget.type === 'separator')
     return <BarVerticalSeparator marginX={separatorMargin} />
   const view: WidgetView = widget ? viewOf(widget) : defaultView

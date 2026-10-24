@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { isWidgetAvailable } from '@/services/configuration/widget-flags'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { GripVertical, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -52,6 +53,7 @@ export function WidgetCatalog({
   const existing = new Set(allWidgets(display).map((w) => w.type))
   const available = types.filter(
     (type) =>
+      isWidgetAvailable(type) &&
       (type === 'separator' || !existing.has(type)) &&
       normalize(typeLabels[type]).includes(normalize(search))
   )

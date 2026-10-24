@@ -12,10 +12,13 @@ import { SlidingHighlight } from '../ui/sliding-highlight'
 import { cornerRadius, groupEdgeMask } from './curves'
 import { SeparatorMarginContext } from './separator-margin'
 import { Widget } from './Widget'
+import { isWidgetAvailable } from '@/services/configuration/widget-flags'
 
 /** Order-preserving section filter: presence and order both come from config. */
 function enabled(widgets: WidgetConfig[]) {
-  return widgets.filter((widget) => widget.enabled)
+  return widgets.filter(
+    (widget) => widget.enabled && isWidgetAvailable(widget.type)
+  )
 }
 
 /**
