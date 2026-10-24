@@ -106,7 +106,7 @@ function MediaControls({ current, pending, onClick }: MediaControlsProps) {
             if (!pending) onClick({ action })
           }}
         >
-          <WidgetItemIcon icon={Icon} size={14} className="text-secondary" />
+          <WidgetItemIcon icon={Icon} size={12} className="text-secondary" />
         </button>
       ))}
     </div>
