@@ -10,11 +10,11 @@ export const widgetFlags: Readonly<Record<WidgetType, boolean>> = {
   memory: true,
   gpu: true,
   disk: true,
-  network: true,
+  network: false,
   music: true,
   volume: true,
   microphone: true,
-  activeWindow: true,
+  activeWindow: false,
   komorebi: true
 }
 
