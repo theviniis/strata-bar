@@ -6,6 +6,13 @@ import { QueryProvider } from '@/components/QueryProvider'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator
+} from '@/components/ui/breadcrumb'
+import {
   Card,
   CardContent,
   CardDescription,
@@ -58,6 +65,20 @@ import {
 } from './navigation'
 type SettingsSection = SettingsNavigation['section']
 
+const settingsSections = [
+  { id: 'layout', label: 'Layout', icon: LayoutDashboard },
+  { id: 'appearance', label: 'Aparência', icon: Palette },
+  { id: 'reminders', label: 'Lembretes', icon: LayoutDashboard },
+  { id: 'agents', label: 'Agentes', icon: Bot },
+  { id: 'music', label: 'Player de música', icon: Music2 },
+  { id: 'audio', label: 'Áudio', icon: Volume2 },
+  { id: 'json', label: 'JSON', icon: LayoutDashboard }
+] as const satisfies readonly {
+  id: SettingsSection
+  label: string
+  icon: typeof LayoutDashboard
+}[]
+
 /** Edits the configuration Draft and manages explicit integration actions. */
 export function SettingsView() {
   if (bridge.mode !== 'native')
@@ -89,12 +110,32 @@ function NativeSettingsView() {
             }}
           />
           <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background text-foreground">
-            <header className="flex h-14 shrink-0 items-center justify-between px-6">
-              <div className="flex items-center gap-2">
+            <header className="flex h-14 shrink-0 items-center justify-between gap-2 px-6">
+              <h1 className="sr-only">Configurações</h1>
+              <div className="flex min-w-0 items-center gap-2">
                 <SidebarTrigger aria-label="Alternar navegação" />
-                <h1 className="text-page font-semibold">Configurações</h1>
+                <Separator orientation="vertical" className="mx-2 h-4" />
+                <Breadcrumb
+                  aria-label="Caminho das configurações"
+                  className="min-w-0"
+                >
+                  <BreadcrumbList className="flex-nowrap">
+                    <BreadcrumbItem className="hidden md:inline-flex">
+                      <span>Configurações</span>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator className="hidden md:block" />
+                    <BreadcrumbItem className="min-w-0">
+                      <BreadcrumbPage className="truncate">
+                        {
+                          settingsSections.find(({ id }) => id === section)
+                            ?.label
+                        }
+                      </BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </BreadcrumbList>
+                </Breadcrumb>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -332,26 +373,7 @@ function SettingsSidebar({
           <SidebarGroupContent>
             <nav aria-label="Seções das configurações">
               <SidebarMenu>
-                {(
-                  [
-                    { id: 'layout', label: 'Layout', icon: LayoutDashboard },
-                    { id: 'appearance', label: 'Aparência', icon: Palette },
-                    {
-                      id: 'reminders',
-                      label: 'Lembretes',
-                      icon: LayoutDashboard
-                    },
-
-                    { id: 'agents', label: 'Agentes', icon: Bot },
-                    { id: 'music', label: 'Player de música', icon: Music2 },
-                    {
-                      id: 'audio',
-                      label: 'Áudio',
-                      icon: Volume2
-                    },
-                    { id: 'json', label: 'JSON', icon: LayoutDashboard }
-                  ] as const
-                ).map(({ id, label, icon: Icon }) => (
+                {settingsSections.map(({ id, label, icon: Icon }) => (
                   <SidebarMenuItem key={id}>
                     <SidebarMenuButton
                       isActive={section === id}

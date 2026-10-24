@@ -136,6 +136,38 @@ async function openEditor() {
   )
 }
 
+it('shows the current section in the breadcrumb and updates it with sidebar navigation', async () => {
+  await openEditor()
+  const breadcrumb = screen.getByRole('navigation', {
+    name: 'Caminho das configurações'
+  })
+  expect(
+    screen.getByRole('heading', { level: 1, name: 'Configurações' })
+  ).toBeInTheDocument()
+  expect(within(breadcrumb).getByText('Configurações')).toBeInTheDocument()
+  expect(within(breadcrumb).getByText('Layout')).toHaveAttribute(
+    'aria-current',
+    'page'
+  )
+  for (const label of [
+    'Aparência',
+    'Lembretes',
+    'Agentes',
+    'Player de música',
+    'Áudio',
+    'JSON',
+    'Layout'
+  ]) {
+    fireEvent.click(screen.getByRole('button', { name: label }))
+    expect(within(breadcrumb).getByText(label)).toHaveAttribute(
+      'aria-current',
+      'page'
+    )
+  }
+  expect(breadcrumb.querySelector('a')).toBeNull()
+  expect(bridge.configSave).not.toHaveBeenCalled()
+})
+
 it('blocks editing and saving defaults after a failed initial load until Reverter succeeds', async () => {
   vi.mocked(bridge.configLoad!).mockRejectedValueOnce('Cannot read config')
   render(<SettingsView />)
@@ -167,6 +199,11 @@ it('restores the last menu and monitor after reopening without saving the draft'
     expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
   )
   expect(screen.getByRole('heading', { name: 'Aparência' })).toBeInTheDocument()
+  expect(
+    within(
+      screen.getByRole('navigation', { name: 'Caminho das configurações' })
+    ).getByText('Aparência')
+  ).toHaveAttribute('aria-current', 'page')
   fireEvent.click(screen.getByRole('button', { name: 'Layout' }))
   expect(await screen.findByRole('tab', { name: /Monitor 1/ })).toHaveAttribute(
     'aria-selected',
@@ -622,7 +659,9 @@ it('opens section navigation in a narrow window and closes it after selection', 
     removeEventListener: vi.fn()
   })
   await openEditor()
-  expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('navigation', { name: 'Seções das configurações' })
+  ).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Alternar navegação' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Aparência' }))
   expect(screen.getByRole('heading', { name: 'Aparência' })).toBeInTheDocument()
