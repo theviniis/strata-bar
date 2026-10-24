@@ -444,7 +444,7 @@ it('reverts by reloading the saved file and restores defaults only after Apply',
   fireEvent.click(screen.getByRole('button', { name: 'Claro' }))
   fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
   await waitFor(() =>
-    expect(screen.getByRole('button', { name: 'Sistema' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Escuro' })).toHaveAttribute(
       'aria-pressed',
       'true'
     )
@@ -523,14 +523,30 @@ it('closes only the settings window', async () => {
   expect(bridge.quit).not.toHaveBeenCalled()
 })
 
-it('previews the draft NativeBar layout in both themes without native subscriptions', async () => {
+it('previews the draft NativeBar layout in all palettes without native subscriptions', async () => {
+  const config = structuredClone(defaultConfig)
+  const cpu = Object.values(config.widgets)
+    .flat()
+    .find((widget) => widget.type === 'cpu')!
+  for (const section of ['left', 'center', 'right'] as const)
+    config.widgets[section] = config.widgets[section].filter(
+      (widget) => widget !== cpu
+    )
+  config.widgets.left.push(cpu)
+  vi.mocked(bridge.configLoad!).mockResolvedValueOnce({
+    config,
+    revision: 1,
+    error: null
+  })
   await openEditor()
-  fireEvent.click(screen.getByRole('button', { name: 'Mover CPU para Centro' }))
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Mover CPU para Esquerda' })
-  )
   fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
-  for (const name of ['Escuro', 'Claro']) {
+  for (const name of [
+    'Illusion (Refined)',
+    'AMOLED',
+    'Nord',
+    'Dracula',
+    'Catppuccin'
+  ]) {
     const choice = screen.getByRole('button', { name })
     const preview = choice.querySelector('[data-theme-preview]')!
     expect(preview).toHaveAttribute('inert')
@@ -547,6 +563,47 @@ it('previews the draft NativeBar layout in both themes without native subscripti
   }
   expect(connect).not.toHaveBeenCalled()
   expect(bridge.configSave).not.toHaveBeenCalled()
+})
+
+it('saves the chosen palette only on Apply and restores the saved palette after rejection', async () => {
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Nord' }))
+  expect(bridge.configSave).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() =>
+    expect(bridge.configSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bar: expect.objectContaining({ colorTheme: 'nord', theme: 'dark' })
+      })
+    )
+  )
+  vi.mocked(bridge.configLoad!).mockResolvedValueOnce({
+    config: {
+      ...defaultConfig,
+      bar: { ...defaultConfig.bar, colorTheme: 'nord' }
+    },
+    revision: 2,
+    error: null
+  })
+  vi.mocked(bridge.configSave!).mockRejectedValueOnce('Disk full')
+  fireEvent.click(screen.getByRole('button', { name: 'Dracula' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Disk full')
+  fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Nord' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Restaurar padrões' }))
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Illusion (Refined)' })
+    ).toHaveAttribute('aria-pressed', 'true')
+  )
+  expect(bridge.configSave).toHaveBeenCalledTimes(2)
 })
 
 it('opens section navigation in a narrow window and closes it after selection', async () => {
@@ -571,11 +628,21 @@ it('opens section navigation in a narrow window and closes it after selection', 
 })
 
 it('defaults to System with both preview halves and saves the system preference', async () => {
+  vi.mocked(bridge.configLoad!).mockResolvedValueOnce({
+    config: {
+      ...defaultConfig,
+      bar: { ...defaultConfig.bar, theme: 'system' }
+    },
+    revision: 1,
+    error: null
+  })
   await openEditor()
   fireEvent.click(screen.getByRole('button', { name: /Apar/ }))
   const system = screen.getByRole('button', { name: 'Sistema' })
   expect(system).toHaveAttribute('aria-pressed', 'true')
-  const preview = system.querySelector('[data-theme-preview="system"]')!
+  const preview = screen
+    .getByRole('button', { name: 'Illusion (Refined)' })
+    .querySelector('[data-theme-preview="system"]')!
   expect(preview).toHaveAttribute('inert')
   expect(preview.children).toHaveLength(3)
   expect(preview.children[0]).toHaveAttribute('data-theme', 'light')

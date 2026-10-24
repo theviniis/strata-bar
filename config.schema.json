@@ -60,6 +60,11 @@
           "type": "string",
           "enum": ["system", "dark", "light"]
         },
+        "colorTheme": {
+          "default": "current",
+          "type": "string",
+          "enum": ["current", "amoled", "nord", "dracula", "catppuccin"]
+        },
         "alwaysOnTop": { "default": true, "type": "boolean" }
       }
     },
@@ -289,6 +294,10 @@
           "cornerRadius": { "type": "number", "minimum": 0, "maximum": 40 },
           "spacing": { "type": "number", "minimum": 0, "maximum": 32 },
           "theme": { "type": "string", "enum": ["system", "dark", "light"] },
+          "colorTheme": {
+            "type": "string",
+            "enum": ["current", "amoled", "nord", "dracula", "catppuccin"]
+          },
           "alwaysOnTop": { "type": "boolean" },
           "widgets": {
             "type": "object",

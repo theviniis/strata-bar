@@ -1,3 +1,4 @@
+import type { Config } from '@/services/configuration/config'
 /**
  * Transport for the shared native overlay window (`src-tauri/src/desktop.rs`).
  *
@@ -47,6 +48,7 @@ export interface OverlayRequest {
 
 /** Event payload the overlay surface renders. */
 export interface OverlayRender {
+  appearance?: Pick<Config['bar'], 'theme' | 'colorTheme'>
   /** Anchor center relative to the placed window, in CSS px. */
   arrowX?: number
   popup_session?: string

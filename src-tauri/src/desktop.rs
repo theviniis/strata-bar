@@ -860,7 +860,16 @@ impl OverlayRequest {
 }
 
 #[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OverlayAppearance {
+    theme: crate::config_contract::BarTheme,
+    color_theme: crate::config_contract::ColorTheme,
+}
+
+#[derive(Clone, serde::Serialize)]
 struct RenderPayload<'a> {
+    appearance: OverlayAppearance,
+
     #[serde(rename = "arrowX")]
     arrow_x: f64,
     kind: &'a str,
@@ -1426,6 +1435,7 @@ pub fn overlay_show(
     if request.kind == "popover" {
         overlay_hide(app);
     }
+    let config = crate::config::snapshot_for(&app.state::<crate::config::ConfigStore>(), caller)?;
     let window = ensure_overlay(app).map_err(|e| e.to_string())?;
     let bar_hwnd = HWND(caller.hwnd().map_err(|e| e.to_string())?.0);
     let bar;
@@ -1485,6 +1495,10 @@ pub fn overlay_show(
         .set_ignore_cursor_events(!interactive)
         .map_err(|e| e.to_string())?;
     let payload = serde_json::to_value(RenderPayload {
+        appearance: OverlayAppearance {
+            theme: config.config.bar.theme,
+            color_theme: config.config.bar.color_theme,
+        },
         arrow_x: overlay_arrow_x(center, x, scale),
         kind: &request.kind,
         text: &request.text,

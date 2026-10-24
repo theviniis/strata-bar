@@ -39,7 +39,7 @@ export function Music({
         {...anchorProps}
       >
         <div
-          className="relative isolate flex min-w-0 items-center overflow-hidden rounded bg-muted/40 mask-[linear-gradient(#000,#000)] text-foreground group-data-[theme=light]:bg-[#302a3e]/5"
+          className="relative isolate flex min-w-0 items-center overflow-hidden rounded bg-muted/40 mask-[linear-gradient(#000,#000)] text-foreground"
           {...tooltipTrigger}
         >
           {artwork && (
@@ -50,7 +50,7 @@ export function Music({
                 onError={onArtworkError}
                 className="absolute inset-0 h-full w-full object-cover"
               />
-              <span className="absolute inset-0 bg-black/80 group-data-[theme=light]:bg-[#f8f5f2]/50" />
+              <span className="absolute inset-0 bg-background/80" />
               {/* The cover sits above the bar's shared hover highlight, so
                       the music widget mirrors that surface (and the popup-open
                       state) with its own layer. */}

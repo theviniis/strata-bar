@@ -5,6 +5,7 @@ import {
   type DocsContainerProps
 } from '@storybook/addon-docs/blocks'
 import { GLOBALS_UPDATED } from 'storybook/internal/core-events'
+import { useDocumentTheme } from '../src/hooks/useDocumentTheme'
 import { strataThemes } from './theme'
 
 type Context = DocsContainerProps['context']
@@ -34,6 +35,7 @@ export function StorybookDocsContainer({
   const [theme, setTheme] = useState<'light' | 'dark'>(() =>
     selectedTheme(context)
   )
+  useDocumentTheme({ theme, colorTheme: 'current' })
   useEffect(() => {
     const update = ({ globals }: GlobalsUpdatedPayload) => {
       setTheme(globals.theme === 'light' ? 'light' : 'dark')

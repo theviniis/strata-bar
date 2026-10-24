@@ -75,6 +75,8 @@
   --color-foreground: var(--foreground);
   --color-background: var(--background);
   --color-subtext: var(--subtext);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -85,95 +87,8 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root,
-.light {
-  /* Light Mode */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.285 0.024 282.8);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.285 0.024 282.8);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.285 0.024 282.8);
-
-  --primary: oklch(0.742 0.187 348.6);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.74 0.16 295.4);
-  --secondary-foreground: oklch(0.285 0.024 282.8);
-
-  --muted: oklch(0.95 0.008 282.8);
-  --muted-foreground: oklch(0.55 0.06 270);
-  --accent: oklch(0.905 0.182 148.3);
-  --accent-foreground: oklch(0.285 0.024 282.8);
-
-  --destructive: oklch(0.637 0.237 25.4);
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.88 0.01 282.8);
-  --input: oklch(0.88 0.01 282.8);
-  --ring: oklch(0.742 0.187 348.6);
-  --subtext: oklch(0.67 0.02 282.8);
-
+:root {
   --radius: 0.625rem;
-
-  /* Charts */
-  --chart-1: oklch(0.742 0.187 348.6);
-  --chart-2: oklch(0.74 0.16 295.4);
-  --chart-3: oklch(0.865 0.127 207.2);
-  --chart-4: oklch(0.905 0.182 148.3);
-  --chart-5: oklch(0.82 0.155 71.8);
-
-  /* Sidebar */
-  --sidebar: oklch(0.98 0 0);
-  --sidebar-foreground: oklch(0.285 0.024 282.8);
-  --sidebar-primary: oklch(0.742 0.187 348.6);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.95 0.008 282.8);
-  --sidebar-accent-foreground: oklch(0.285 0.024 282.8);
-  --sidebar-border: oklch(0.88 0.01 282.8);
-  --sidebar-ring: oklch(0.742 0.187 348.6);
-}
-
-.dark {
-  /* Illusion Refined Dark Mode */
-  --background: oklch(0.285 0.024 282.8); /* oklch(0.285 0.024 282.8) */
-  --foreground: oklch(0.978 0.008 106.8);
-  --card: oklch(0.248 0.02 282.2); /* oklch(0.248 0.02 282.2) */
-  --card-foreground: oklch(0.978 0.008 106.8);
-  --popover: oklch(0.248 0.02 282.2); /* oklch(0.248 0.02 282.2) */
-  --popover-foreground: oklch(0.978 0.008 106.8);
-
-  --primary: oklch(0.742 0.187 348.6);
-  --primary-foreground: oklch(0.285 0.024 282.8);
-  --secondary: oklch(0.74 0.16 295.4);
-  --secondary-foreground: oklch(0.285 0.024 282.8);
-
-  --muted: oklch(0.383 0.033 275.6);
-  --muted-foreground: oklch(0.55 0.06 270);
-  --accent: hsl(187, 65%, 55%);
-  --accent-foreground: oklch(0.285 0.024 282.8);
-
-  --destructive: oklch(0.637 0.237 25.4);
-  --destructive-foreground: oklch(0.978 0.008 106.8);
-  --border: oklch(0.383 0.033 275.6);
-  --input: oklch(0.383 0.033 275.6);
-  --ring: oklch(0.742 0.187 348.6);
-  --subtext: oklch(0.67 0.02 282.8);
-
-  /* Charts */
-  --chart-1: oklch(0.742 0.187 348.6);
-  --chart-2: oklch(0.74 0.16 295.4);
-  --chart-3: oklch(0.865 0.127 207.2);
-  --chart-4: oklch(0.905 0.182 148.3);
-  --chart-5: oklch(0.82 0.155 71.8);
-
-  /* Sidebar */
-  --sidebar: oklch(0.248 0.02 282.2);
-  --sidebar-foreground: oklch(0.978 0.008 106.8);
-  --sidebar-primary: oklch(0.742 0.187 348.6);
-  --sidebar-primary-foreground: oklch(0.285 0.024 282.8);
-  --sidebar-accent: oklch(0.383 0.033 275.6);
-  --sidebar-accent-foreground: oklch(0.978 0.008 106.8);
-  --sidebar-border: oklch(0.383 0.033 275.6);
-  --sidebar-ring: oklch(0.742 0.187 348.6);
 }
 
 @layer base {
@@ -218,7 +133,7 @@
   /* The overlay is a detached document; adopt the native bar's text context so
    scrollbars, form controls and inherited text never fall back to a light UA. */
   html[data-view='overlay'] {
-    color-scheme: dark;
+    color-scheme: inherit;
     font-family: var(--font-sans);
     font-variant-numeric: tabular-nums;
     color: var(--foreground);

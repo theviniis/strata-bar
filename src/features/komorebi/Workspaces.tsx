@@ -32,7 +32,9 @@ export function Workspaces({
   )?.index
 
   if (offline) {
-    return <span className="text-micro text-[#7d7a8c]">Komorebi Offline</span>
+    return (
+      <span className="text-micro text-muted-foreground">Komorebi Offline</span>
+    )
   }
 
   return (

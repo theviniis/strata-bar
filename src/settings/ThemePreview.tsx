@@ -1,3 +1,4 @@
+import { themeStyle } from '@/services/theme/palettes'
 import { viewConfig } from './monitor-layout'
 import { StudioBar } from '@/components/status-bar/StudioBar'
 import type { Config } from '@/services/configuration/config'
@@ -12,6 +13,7 @@ export function ThemePreview({ config }: { config: Config }) {
       inert
       aria-hidden="true"
       data-theme-preview={config.bar.theme}
+      data-color-theme-preview={config.bar.colorTheme}
       className="relative h-24 w-full overflow-hidden rounded-md border border-border bg-muted"
     >
       {system ? (
@@ -47,6 +49,7 @@ function PreviewSurface({
   return (
     <div
       data-theme={theme}
+      style={themeStyle(config.bar.colorTheme, theme)}
       className={cn('h-full w-full bg-muted', theme, className)}
     >
       <StudioBar
@@ -56,6 +59,25 @@ function PreviewSurface({
         }}
         staticPreview
       />
+      <div className="mx-auto mt-2 flex w-fit items-center gap-2 rounded-md border border-border bg-popover px-3 py-1 text-micro text-popover-foreground">
+        <span className="size-2 rounded-full bg-primary" />
+        CPU <span className="text-muted-foreground">24%</span>
+        <span className="h-1 w-10 rounded-full bg-chart-2" />
+      </div>
+      <div className="mt-2 flex justify-center gap-1">
+        {[
+          'bg-background',
+          'bg-primary',
+          'bg-secondary',
+          'bg-accent',
+          'bg-chart-4'
+        ].map((color) => (
+          <span
+            key={color}
+            className={cn('size-2 rounded-full border border-border', color)}
+          />
+        ))}
+      </div>
     </div>
   )
 }

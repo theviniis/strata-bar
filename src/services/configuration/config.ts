@@ -1,6 +1,6 @@
-import defaultDocument from './default.json' with { type: 'json' }
-import { z } from 'zod'
 import type { ConfigSnapshot } from '@/services/system/config.generated'
+import { z } from 'zod'
+import defaultDocument from './default.json' with { type: 'json' }
 
 export const types = [
   'separator',
@@ -80,6 +80,15 @@ export function voicemeeterLabel(audio: AudioSourceConfig): string {
   )
 }
 
+export const colorThemeSchema = z.enum([
+  'current',
+  'amoled',
+  'nord',
+  'dracula',
+  'catppuccin'
+])
+export type ColorTheme = z.infer<typeof colorThemeSchema>
+
 const bar = z.object({
   enabled: z.boolean().default(true),
   position: z.enum(['top', 'bottom']).default('top'),
@@ -89,6 +98,7 @@ const bar = z.object({
   /** Shared by every separator on every monitor; absent means zero. */
   separatorMarginX: z.number().min(0).max(32).optional(),
   theme: z.enum(['system', 'dark', 'light']).default('system'),
+  colorTheme: colorThemeSchema.default('current'),
   alwaysOnTop: z.boolean().default(true)
 })
 
@@ -126,6 +136,7 @@ const monitorOverride = z.object({
   cornerRadius: bar.shape.cornerRadius,
   spacing: bar.shape.spacing.removeDefault().optional(),
   theme: bar.shape.theme.removeDefault().optional(),
+  colorTheme: bar.shape.colorTheme.removeDefault().optional(),
   alwaysOnTop: bar.shape.alwaysOnTop.removeDefault().optional(),
   widgets: z.record(z.string(), widgetOverride).optional()
 })

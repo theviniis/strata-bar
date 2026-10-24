@@ -1,3 +1,6 @@
+import { useDocumentTheme } from '@/hooks/useDocumentTheme'
+import { useConfig } from '@/stores/config'
+import { themeStyle } from '@/services/theme/palettes'
 import { useEffect, useState } from 'react'
 import { QueryProvider } from '@/components/QueryProvider'
 import type { OverlayRender, OverlaySnapshot } from '../services/system/overlay'
@@ -14,6 +17,9 @@ import { overlayTextClasses } from './typography'
  */
 export default function Overlay() {
   const [render, setRender] = useState<OverlayRender | null>(null)
+  const bar = useConfig((state) => state.config.bar)
+  const appearance = render?.appearance ?? bar
+  const mode = useDocumentTheme(appearance)
   const [closing, setClosing] = useState<string | null>(null)
   useEffect(() => {
     // The overlay is only meaningful inside the native host.
@@ -81,7 +87,10 @@ export default function Overlay() {
     <QueryProvider>
       <div
         aria-hidden={render.kind === 'tooltip' ? true : undefined}
-        className={overlayTextClasses}
+        className={`group ${mode} ${overlayTextClasses}`}
+        data-theme={mode}
+        data-color-theme={appearance.colorTheme}
+        style={themeStyle(appearance.colorTheme, mode)}
       >
         {render.kind === 'tooltip' ? (
           <TooltipSurface

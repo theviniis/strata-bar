@@ -688,6 +688,7 @@ function WidgetCard({
         <WidgetPreview
           widget={widget}
           theme={draft.bar.theme}
+          colorTheme={draft.bar.colorTheme}
           separatorMarginX={draft.bar.separatorMarginX}
         />
       </ItemContent>

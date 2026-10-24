@@ -273,7 +273,7 @@ export function PopupSurface({
           style={{ left: (mode === 'native' ? placedArrowX : arrowX) ?? '50%' }}
           className={cn(
             tooltipArrowClasses,
-            'pointer-events-none absolute -translate-x-1/2 border-border group-data-[theme=light]:border-[#ded7e5] group-data-[theme=light]:bg-[#faf8fc]',
+            'pointer-events-none absolute -translate-x-1/2 border-border',
             side === 'bottom'
               ? 'top-1.75 border-t border-l'
               : 'bottom-1.75 border-r border-b'

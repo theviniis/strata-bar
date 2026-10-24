@@ -15,6 +15,7 @@
     "height": 33,
     "spacing": 2.0,
     "theme": "dark",
+    "colorTheme": "current",
     "alwaysOnTop": true
   },
   "widgets": {

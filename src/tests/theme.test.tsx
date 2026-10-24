@@ -17,14 +17,22 @@ it('follows system theme changes and removes the listener on unmount', () => {
   )
   vi.stubGlobal(
     'matchMedia',
-    vi.fn().mockImplementation((media: string) => ({
-      media,
-      get matches() {
-        return dark
-      },
-      addEventListener,
-      removeEventListener
-    }))
+    vi.fn().mockImplementation((media: string) =>
+      media !== query
+        ? {
+            matches: false,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn()
+          }
+        : {
+            media,
+            get matches() {
+              return dark
+            },
+            addEventListener,
+            removeEventListener
+          }
+    )
   )
   const { rerender, unmount } = render(
     <NativeBarSurface

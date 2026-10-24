@@ -180,6 +180,7 @@ function CatalogEntry({
       <WidgetPreview
         widget={widget}
         theme={config.bar.theme}
+        colorTheme={config.bar.colorTheme}
         separatorMarginX={config.bar.separatorMarginX}
       />
     </div>

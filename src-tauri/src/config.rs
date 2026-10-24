@@ -101,6 +101,9 @@ pub fn project(config: &Config, monitor: Option<&str>) -> Config {
     if let Some(value) = over.spacing {
         projected.bar.spacing = value;
     }
+    if let Some(value) = &over.color_theme {
+        projected.bar.color_theme = value.clone();
+    }
     if let Some(value) = &over.theme {
         projected.bar.theme = value.clone();
     }
@@ -666,6 +669,42 @@ fn run_loop(app: AppHandle, rx: Receiver<notify::Result<notify::Event>>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn color_palettes_default_validate_project_and_survive_restart() {
+        let directory = Directory::new();
+        let store = ConfigStore::open(directory.path());
+        let mut value = serde_json::to_value(defaults()).unwrap();
+        value["bar"].as_object_mut().unwrap().remove("colorTheme");
+        assert_eq!(
+            parse(&value.to_string()).unwrap().bar.color_theme,
+            ColorTheme::Current
+        );
+        for name in ["current", "amoled", "nord", "dracula", "catppuccin"] {
+            value["bar"]["colorTheme"] = serde_json::json!(name);
+            value["monitors"] =
+                serde_json::json!({"DISPLAY2": {"colorTheme": "catppuccin", "theme": "light"}});
+            let parsed = parse(&value.to_string()).unwrap();
+            store.save(parsed.clone()).unwrap();
+            let restored = ConfigStore::open(directory.path())
+                .snapshot()
+                .unwrap()
+                .config;
+            assert_eq!(restored, parsed);
+            let secondary = project(&restored, Some(r"\\.\DISPLAY2"));
+            assert_eq!(secondary.bar.color_theme, ColorTheme::Catppuccin);
+            assert_eq!(secondary.bar.theme, BarTheme::Light);
+            assert_eq!(
+                project(&restored, Some("DISPLAY1")).bar.color_theme,
+                parsed.bar.color_theme
+            );
+        }
+        value["bar"]["colorTheme"] = serde_json::json!("unknown");
+        assert!(parse(&value.to_string()).is_err());
+        value["bar"]["colorTheme"] = serde_json::json!("current");
+        value["monitors"]["DISPLAY2"]["colorTheme"] = serde_json::json!("unknown");
+        assert!(parse(&value.to_string()).is_err());
+    }
+
     #[test]
     fn monitor_layout_and_disabled_bar_survive_save_and_restart() {
         let directory = Directory::new();

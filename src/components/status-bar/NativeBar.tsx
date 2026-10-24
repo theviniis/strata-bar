@@ -1,3 +1,4 @@
+import { themeStyle } from '@/services/theme/palettes'
 import { barTextClasses } from '@/lib/typography'
 import desktopCorner from '@/assets/bar-desktop-corner.svg'
 import { useAudioRouting } from '@/hooks/useAudioRouting'
@@ -93,13 +94,11 @@ export function NativeBarSurface({
   return (
     <SeparatorMarginContext value={bar.separatorMarginX ?? 0}>
       <QueryProvider>
-        {/*
-          The theme root owns `group` and `data-theme` so every `group-data-[theme=light]:`
-          utility below — including the nav's own colours — matches a descendant. On a single
-          element the variant cannot select itself, which left the light theme unpainted.
-      */}
+        {/* Explicit tokens isolate this bar from surrounding preview palettes. */}
         <div
           data-theme={theme}
+          data-color-theme={bar.colorTheme}
+          style={themeStyle(bar.colorTheme, theme)}
           className={cn(
             'group flex h-full w-full flex-col',
             bar.position === 'bottom' && 'justify-end',
@@ -112,7 +111,7 @@ export function NativeBarSurface({
               className={cn(
                 !preview && 'native-bar',
                 barTextClasses,
-                'relative grid h-full w-full grid-cols-[1fr_max-content_1fr] grid-rows-1 items-center bg-transparent text-[#e4e5ed] group-data-[theme=light]:text-[#302a3e]'
+                'relative grid h-full w-full grid-cols-[1fr_max-content_1fr] grid-rows-1 items-center bg-transparent text-foreground'
               )}
               aria-label={ariaLabel}
               style={{ gap: bar.spacing, height: bar.height, flexShrink: 0 }}

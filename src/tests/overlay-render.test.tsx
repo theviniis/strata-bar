@@ -20,6 +20,7 @@ vi.mock('@tauri-apps/api/event', () => ({
 
 import Overlay from '../overlay/Overlay'
 import { measureTooltip } from '../overlay/measure'
+import { overlayTextClasses } from '../overlay/typography'
 
 beforeEach(() => {
   host.listeners.clear()
@@ -37,6 +38,31 @@ async function mountOverlay() {
   render(<Overlay />)
   await waitFor(() => expect(host.listeners.has('overlay:render')).toBe(true))
 }
+
+it('adopts the host-projected appearance on each monitor and ignores stale sessions', async () => {
+  await mountOverlay()
+  const show = (session: number, theme: string, colorTheme: string) =>
+    act(() =>
+      host.listeners.get('overlay:render')!({
+        payload: {
+          kind: 'tooltip',
+          text: 'CPU',
+          side: 'bottom',
+          session,
+          appearance: { theme, colorTheme }
+        }
+      })
+    )
+  show(1, 'light', 'nord')
+  expect(document.documentElement.dataset.colorTheme).toBe('nord')
+  expect(document.documentElement.dataset.theme).toBe('light')
+  show(2, 'dark', 'catppuccin')
+  expect(document.documentElement.style.getPropertyValue('--background')).toBe(
+    '#1e1e2e'
+  )
+  show(1, 'light', 'nord')
+  expect(document.documentElement.dataset.colorTheme).toBe('catppuccin')
+})
 
 it('starts warmup only after overlay readiness and cancels on unmount', async () => {
   let ready!: () => void
@@ -93,13 +119,13 @@ it('measures tooltip text with the same typography as the rendered overlay', asy
       payload: { kind: 'tooltip', text: 'Clock', side: 'bottom' }
     })
   )
-  const context = screen.getByText('Clock').closest('[aria-hidden="true"]')!
   let measured = false
   const measure = vi
     .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
     .mockImplementation(function (this: HTMLElement) {
       measured = true
-      for (const token of context.classList) expect(this).toHaveClass(token)
+      for (const token of overlayTextClasses.split(' '))
+        expect(this).toHaveClass(token)
       expect(this).toHaveStyle({ maxWidth: `${window.innerWidth}px` })
       return new DOMRect(0, 0, 100.25, 24)
     })

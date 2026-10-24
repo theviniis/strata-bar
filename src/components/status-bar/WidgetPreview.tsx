@@ -1,4 +1,5 @@
 import { useResolvedTheme } from '@/hooks/useResolvedTheme'
+import { themeStyle } from '@/services/theme/palettes'
 import { memo } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -11,10 +12,12 @@ import { SeparatorMarginContext } from './separator-margin'
 export const WidgetPreview = memo(function WidgetPreview({
   widget,
   theme,
+  colorTheme = 'current',
   separatorMarginX = 0
 }: {
   widget: WidgetConfig
   theme: Config['bar']['theme']
+  colorTheme?: Config['bar']['colorTheme']
   separatorMarginX?: number
 }) {
   const resolved = useResolvedTheme(theme)
@@ -27,6 +30,7 @@ export const WidgetPreview = memo(function WidgetPreview({
           title={widget.id}
           data-widget-preview={widget.type}
           data-theme={resolved}
+          style={themeStyle(colorTheme, resolved)}
           className={cn(
             'group w-full overflow-hidden rounded-md bg-background p-2 text-foreground',
             resolved

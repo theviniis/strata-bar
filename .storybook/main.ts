@@ -6,7 +6,8 @@ const config: StorybookConfig = {
     '../src/stories/**/*.mdx',
     '../src/features/**/*.stories.tsx',
     '../src/components/**/*.stories.tsx',
-    '../src/popups/**/*.stories.tsx'
+    '../src/popups/**/*.stories.tsx',
+    '../src/settings/**/*.stories.tsx'
   ],
   framework: '@storybook/react-vite',
 

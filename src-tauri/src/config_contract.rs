@@ -136,6 +136,17 @@ impl Default for BarTheme {
     }
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum ColorTheme {
+    #[default]
+    Current,
+    Amoled,
+    Nord,
+    Dracula,
+    Catppuccin,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct BarConfig {
@@ -153,6 +164,8 @@ pub struct BarConfig {
     pub separator_margin_x: Option<f64>,
     #[serde(default)]
     pub theme: BarTheme,
+    #[serde(default)]
+    pub color_theme: ColorTheme,
     #[serde(default = "default_true")]
     pub always_on_top: bool,
 }
@@ -194,6 +207,8 @@ pub struct BarOverride {
     pub spacing: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub theme: Option<BarTheme>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_theme: Option<ColorTheme>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub always_on_top: Option<bool>,
 }

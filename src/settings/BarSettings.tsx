@@ -1,3 +1,5 @@
+import { colorThemeSchema } from '@/services/configuration/config'
+import { colorThemes } from '@/services/theme/palettes'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Field,
@@ -23,17 +25,18 @@ interface BarSettingsProps {
 
 /** Presentation and native AppBar settings, applied together through config_save. */
 export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
+  const paletteId = useId()
   const themeId = useId()
   const spacingId = useId()
   const heightId = useId()
   const positionId = useId()
   const topmostId = useId()
   return (
-    <FieldGroup>
+    <FieldGroup className="@container">
       <Field data-disabled={disabled}>
-        <FieldTitle id={themeId}>Tema</FieldTitle>
+        <FieldTitle id={themeId}>Modo de aparência</FieldTitle>
         <ToggleGroup
-          className="grid w-full grid-cols-1 items-stretch"
+          className="grid w-full grid-cols-3 items-stretch"
           disabled={disabled}
           aria-labelledby={themeId}
           variant="outline"
@@ -56,13 +59,8 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
               key={theme}
               value={theme}
               aria-label={label}
-              render={<div />}
-              nativeButton={false}
               className="h-auto min-w-0 flex-col gap-3 p-3"
             >
-              <ThemePreview
-                config={{ ...draft, bar: { ...draft.bar, theme } }}
-              />
               <span className="flex w-full items-center justify-between gap-2">
                 {label}
                 <Check
@@ -73,9 +71,58 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
+      </Field>
+      <Field data-disabled={disabled}>
+        <FieldTitle id={paletteId}>Paleta de cores</FieldTitle>
+        <ToggleGroup
+          className="grid w-full grid-cols-1 items-stretch @min-[32rem]:grid-cols-2"
+          disabled={disabled}
+          aria-labelledby={paletteId}
+          variant="outline"
+          value={[draft.bar.colorTheme]}
+          onValueChange={(values) => {
+            const result = colorThemeSchema.safeParse(values[0])
+            if (result.success)
+              onChange({
+                ...draft,
+                bar: { ...draft.bar, colorTheme: result.data }
+              })
+          }}
+        >
+          {colorThemeSchema.options.map((colorTheme) => (
+            <ToggleGroupItem
+              key={colorTheme}
+              value={colorTheme}
+              aria-label={colorThemes[colorTheme].label}
+              render={<div />}
+              nativeButton={false}
+              className="h-auto min-w-0 flex-col gap-3 p-3"
+            >
+              <ThemePreview
+                config={{ ...draft, bar: { ...draft.bar, colorTheme } }}
+              />
+              <span className="flex w-full items-center justify-between gap-2">
+                {colorThemes[colorTheme].label}
+                <Check
+                  aria-hidden="true"
+                  className={cn(
+                    draft.bar.colorTheme !== colorTheme && 'invisible'
+                  )}
+                />
+              </span>
+              <span className="text-micro opacity-80">
+                {draft.bar.theme === 'system'
+                  ? `${colorThemes[colorTheme].lightLabel} / ${colorThemes[colorTheme].darkLabel}`
+                  : draft.bar.theme === 'light'
+                    ? colorThemes[colorTheme].lightLabel
+                    : colorThemes[colorTheme].darkLabel}
+              </span>
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
         <FieldDescription>
           Prévia da barra com o layout do rascunho e dados demonstrativos, como
-          no studio.
+          no studio. A paleta só entra em vigor após Aplicar.
         </FieldDescription>
       </Field>
       <Field data-disabled={disabled}>
