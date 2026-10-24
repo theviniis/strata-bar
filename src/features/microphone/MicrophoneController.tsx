@@ -50,18 +50,14 @@ function MicrophonePopupTrigger({
   const tip = useOverlayTooltip(view.tooltip ? text : '')
   return (
     <WidgetPopup.Root popup="audioInputs">
-      <WidgetPopup.Anchor asChild>
-        <div>
-          <WidgetPopup.Trigger asChild>
-            <Slot {...tip.trigger}>
-              <Microphone
-                event={value}
-                describedBy={view.tooltip ? tip.describedBy : undefined}
-              />
-            </Slot>
-          </WidgetPopup.Trigger>
-        </div>
-      </WidgetPopup.Anchor>
+      <WidgetPopup.Trigger asChild>
+        <Slot {...tip.trigger}>
+          <Microphone
+            event={value}
+            describedBy={view.tooltip ? tip.describedBy : undefined}
+          />
+        </Slot>
+      </WidgetPopup.Trigger>
       {view.tooltip && (
         <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
       )}

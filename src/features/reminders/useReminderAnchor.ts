@@ -4,7 +4,7 @@ import { useWidgetPreview } from '@/components/status-bar/widget-preview-context
 /** Native owns placement; report only the widget's viewport rectangle in CSS px. */
 export function useReminderAnchor() {
   const preview = useWidgetPreview()
-  const ref = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     if (preview) return
     if (!window.__TAURI_INTERNALS__) return

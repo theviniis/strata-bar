@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Slot } from '@radix-ui/react-slot'
 import { WidgetItemTooltip } from '@/components/widget-item'
 import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
 import { WidgetPopup } from '@/popups/WidgetPopup'
@@ -38,21 +39,19 @@ export function RemindersController() {
   const tip = useOverlayTooltip(view.tooltip ? text : '')
   return (
     <WidgetPopup.Root popup="reminders">
-      <WidgetPopup.Anchor asChild>
-        <div ref={anchor}>
-          <WidgetPopup.Trigger asChild>
-            <Reminders
-              next={next}
-              now={now}
-              ringing={!!ringing}
-              error={error}
-              format={view.format}
-              aria-describedby={view.tooltip ? tip.describedBy : undefined}
-              {...tip.trigger}
-            />
-          </WidgetPopup.Trigger>
-        </div>
-      </WidgetPopup.Anchor>
+      <WidgetPopup.Trigger asChild>
+        <Slot {...tip.trigger}>
+          <Reminders
+            ref={anchor}
+            next={next}
+            now={now}
+            ringing={!!ringing}
+            error={error}
+            format={view.format}
+            aria-describedby={view.tooltip ? tip.describedBy : undefined}
+          />
+        </Slot>
+      </WidgetPopup.Trigger>
       {view.tooltip && (
         <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
       )}

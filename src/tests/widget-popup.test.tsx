@@ -42,6 +42,10 @@ vi.mock('../services/system/bridge', async (original) => {
   }
 })
 import { WidgetPopup } from '../popups/WidgetPopup'
+import { DemoVolumeController } from '../features/volume/VolumeController'
+import { DemoMicrophoneController } from '../features/microphone/MicrophoneController'
+import { RemindersController } from '../features/reminders/RemindersController'
+import { defaultView } from '../components/status-bar/presentation'
 import { WidgetItem } from '../components/widget-item'
 import { PopupHost } from '../popups/PopupHost'
 import { resolvePopup } from '../popups/resolve'
@@ -69,6 +73,50 @@ beforeEach(() => {
   host.overlay.hide.mockResolvedValue(undefined)
 })
 afterEach(() => vi.unstubAllGlobals())
+
+it.each([
+  [
+    'audio',
+    () => (
+      <DemoVolumeController
+        event={{ status: 'ready', data: 50, timestamp: 0 }}
+        view={defaultView}
+      />
+    )
+  ],
+  [
+    'microphone',
+    () => (
+      <DemoMicrophoneController
+        event={{ status: 'ready', data: 50, timestamp: 0 }}
+        view={defaultView}
+      />
+    )
+  ],
+  ['reminders', () => <RemindersController />]
+] as const)(
+  'uses the rounded %s widget itself as the popup anchor',
+  async (_name, widget) => {
+    render(widget())
+    const button = screen.getByRole('button')
+    vi.spyOn(button, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(40, 0, 100, 36)
+    )
+    await waitFor(() => expect(host.listeners.size).toBe(1))
+    fireEvent.click(button)
+    await waitFor(() =>
+      expect(button).toHaveAttribute('data-popup-open', 'true')
+    )
+    expect(button).toHaveClass('rounded-full')
+    expect(button).toHaveClass('data-[popup-open=true]:bg-muted')
+    expect(button.parentElement).not.toHaveAttribute('data-popup-open')
+    expect(host.overlay.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        anchor: { x: 40, y: 0, width: 100, height: 36 }
+      })
+    )
+  }
+)
 
 it.each(['native', 'demo'] as const)(
   'preserves child shapes for popup triggers and anchors in %s mode',

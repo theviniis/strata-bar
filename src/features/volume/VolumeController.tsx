@@ -47,18 +47,14 @@ function VolumePopupTrigger({
   const tip = useOverlayTooltip(view.tooltip ? text : '')
   return (
     <WidgetPopup.Root popup="audioOutputs">
-      <WidgetPopup.Anchor asChild>
-        <div>
-          <WidgetPopup.Trigger asChild>
-            <Slot {...tip.trigger}>
-              <Volume
-                event={value}
-                describedBy={view.tooltip ? tip.describedBy : undefined}
-              />
-            </Slot>
-          </WidgetPopup.Trigger>
-        </div>
-      </WidgetPopup.Anchor>
+      <WidgetPopup.Trigger asChild>
+        <Slot {...tip.trigger}>
+          <Volume
+            event={value}
+            describedBy={view.tooltip ? tip.describedBy : undefined}
+          />
+        </Slot>
+      </WidgetPopup.Trigger>
       {view.tooltip && (
         <WidgetItemTooltip id={tip.describedBy}>{text}</WidgetItemTooltip>
       )}

@@ -1,6 +1,7 @@
 import { act, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { useReminderAnchor } from '@/features/reminders/useReminderAnchor'
+import { Reminders } from '@/features/reminders/Reminders'
 
 const transport = vi.hoisted(() => ({
   invoke: vi.fn(),
@@ -12,7 +13,16 @@ vi.mock('@tauri-apps/api/event', () => ({ listen: transport.listen }))
 
 function Anchor() {
   const ref = useReminderAnchor()
-  return <div ref={ref} />
+  return (
+    <Reminders
+      ref={ref}
+      next={null}
+      now={0}
+      ringing={false}
+      error={null}
+      format="label"
+    />
+  )
 }
 
 beforeEach(() => {
