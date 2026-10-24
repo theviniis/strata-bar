@@ -39,7 +39,7 @@ export function Music({
         {...anchorProps}
       >
         <div
-          className="relative isolate flex min-w-0 items-center overflow-hidden rounded bg-muted/40 mask-[linear-gradient(#000,#000)] text-foreground"
+          className="relative isolate flex w-full min-w-0 items-center overflow-hidden rounded-full bg-muted/40 mask-[linear-gradient(#000,#000)] px-2 text-foreground"
           {...tooltipTrigger}
         >
           {artwork && (
@@ -50,13 +50,10 @@ export function Music({
                 onError={onArtworkError}
                 className="absolute inset-0 h-full w-full object-cover"
               />
-              <span className="absolute inset-0 bg-background/80" />
-              {/* The cover sits above the bar's shared hover highlight, so
-                      the music widget mirrors that surface (and the popup-open
-                      state) with its own layer. */}
+              <span className="absolute inset-0 bg-background/65" />
               <span
                 aria-hidden
-                className="pointer-events-none absolute inset-0 rounded bg-muted opacity-0 transition-opacity duration-200 ease-out group-hover/music:opacity-100 group-data-[popup-open=true]/music:opacity-100 motion-reduce:transition-none"
+                className="pointer-events-none absolute inset-0 rounded-full bg-muted/30 opacity-0 transition-opacity duration-200 ease-out group-hover/music:opacity-100 group-data-[popup-open=true]/music:opacity-100 motion-reduce:transition-none"
               />
             </div>
           )}
@@ -92,7 +89,7 @@ interface MediaControlsProps {
 
 function MediaControls({ current, pending, onClick }: MediaControlsProps) {
   return (
-    <div className="flex items-center" aria-busy={pending}>
+    <div className="flex shrink-0 items-center" aria-busy={pending}>
       {mediaControlMap(current).map(([action, label, Icon]) => (
         <button
           key={action}
