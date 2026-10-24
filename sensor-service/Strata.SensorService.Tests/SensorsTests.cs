@@ -62,6 +62,19 @@ public sealed class SensorsTests
     }
     private static SensorValue Temperature(string name, double? value) => new(name, name, SensorType.Temperature, value);
     [Fact]
+    public void RyzenControlTemperatureWinsOverMultipleCcdsWithoutPackageDie()
+    {
+        var values = new[] { Temperature("CCD1 (Tdie)", 80), Temperature("CCD2 (Tdie)", 85), Temperature("Core (Tctl)", 65) };
+        Assert.Equal("Core (Tctl)", Selection.CpuTemperature(values)!.Name);
+        Assert.Null(Selection.CpuTemperature([]));
+        Assert.Empty(Selection.CoreClocks(values));
+        var clocks = new[] { new SensorValue("core1", "Core #1", SensorType.Clock, 4200),
+            new SensorValue("core2", "Core #2", SensorType.Clock, 4400),
+            new SensorValue("bus", "Bus Speed", SensorType.Clock, 100) };
+        Assert.Equal(4300, Selection.CoreClocks(clocks).Average(s => s.Value));
+        Assert.Null(Selection.CpuTemperature(clocks));
+    }
+    [Fact]
     public void CpuUsesDieBeforeControlAndPackageBeforeCore()
     {
         var values = new[] { Temperature("Core #1", 90), Temperature("CPU Package", 65), Temperature("Core (Tctl)", 70), Temperature("Core (Tdie)", 60), Temperature("CCD1 (Tdie)", 88) };

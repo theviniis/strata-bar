@@ -152,8 +152,18 @@ try {
           if ($process.ExitCode -notin @(0, 3010)) { throw "PawnIO install failed: $($process.ExitCode)" }
           if ($process.ExitCode -eq 3010) { throw 'PawnIO requires a reboot. Restart Windows and run Strata setup again.' }
         }
-        & $binary --verify-driver
-        if ($LASTEXITCODE) { throw 'PawnIO module could not be loaded; sensor installation was rolled back.' }
+        $verificationJson = & $binary --verify-driver
+        $verificationExit = $LASTEXITCODE
+        Write-Host ($verificationJson -join [Environment]::NewLine)
+        $verification = ($verificationJson -join [Environment]::NewLine) | ConvertFrom-Json
+        if ($verificationExit -or !$verification.moduleLoaded) {
+          throw "PawnIO verification failed for $($verification.manufacturer) family $($verification.family): $($verification.failureReason). Sensor installation was rolled back."
+        }
+        foreach ($module in $verification.modules) {
+          if (!$module.required -and !$module.loaded) {
+            Write-Host "Optional telemetry module $($module.name) unavailable: $($module.failureReason). Installation can continue; individual unsupported sensors remain unavailable."
+          }
+        }
         if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
           Invoke-ServiceControl @('config', $serviceName, 'binPath=', ('"' + $binary + '"'), 'start=', 'auto', 'obj=', 'LocalSystem')
         } else {

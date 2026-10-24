@@ -9,17 +9,9 @@ internal static class Program
     {
         if (args.SequenceEqual(new[] { "--verify-driver" }))
         {
-            var assembly = typeof(LibreHardwareMonitor.Hardware.Computer).Assembly;
-            string resource = assembly.GetManifestResourceNames().Single(n => n.EndsWith("PawnIo.IntelMSR.bin", StringComparison.Ordinal));
-            var load = typeof(LibreHardwareMonitor.PawnIo.PawnIo).GetMethod("LoadModuleFromResource",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
-            var module = (LibreHardwareMonitor.PawnIo.PawnIo)load.Invoke(null, [assembly, resource])!;
-            try
-            {
-                Console.WriteLine(JsonSerializer.Serialize(new { version = LibreHardwareMonitor.PawnIo.PawnIo.Version?.ToString(), moduleLoaded = module.IsLoaded }));
-                Environment.ExitCode = module.IsLoaded ? 0 : 1;
-            }
-            finally { module.Close(); }
+            var result = DriverVerification.Run();
+            Console.WriteLine(JsonSerializer.Serialize(result, Protocol.Json));
+            Environment.ExitCode = result.Success ? 0 : 1;
         }
         else if (args.SequenceEqual(new[] { "--probe" }))
         {

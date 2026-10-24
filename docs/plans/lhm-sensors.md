@@ -12,8 +12,36 @@ the .NET 10 runtime and offline WebView2 installer, and runs the official signed
 PawnIO 2.2.0 installer with `-install -silent` when a compatible driver is absent.
 Its SHA-256 is pinned in `sensor-service/dependencies.json`. Existing newer driver
 versions are never downgraded: the installer tests loading the bundled signed
-IntelMSR module before accepting an existing installation. This tests module
-loading, not universal CPU sensor support.
+CPU module before accepting an existing installation. CPUID selects IntelMSR for
+Intel, AMDFamily17 for AMD families 17h/19h/1Ah (Ryzen), and AMDFamily0F for legacy
+family 0Fh, matching the pinned LHM CPU dispatch. Other vendors/families fail
+verification explicitly without attempting an Intel module. This tests module
+loading, not universal CPU sensor support. RyzenSMU is checked separately as
+optional telemetry; failure is logged but does not block installation when the
+primary AMD module loads. No module functions or sensor operations run during
+this verification, and loaded handles are closed after each check.
+
+The verification JSON retains `version` and `moduleLoaded`, adding `manufacturer`
+(CPUID vendor), numeric `family`, `modules` (`name`, `required`, `loaded`,
+`failureReason`) and a top-level `failureReason`. Exit code remains 0 on required
+module success and 1 on failure. Optional failures have only a per-module reason.
+The installer records these diagnostics before committing the service upgrade.
+
+Ryzen desktop/notebook Windows 11 x64 support uses the same installer as Intel.
+Automated selection tests do not establish physical hardware compatibility.
+AMD installation, standard-user bars, idle/load readings, upgrade/rollback and
+uninstall remain pending real Ryzen acceptance; no Ryzen model has yet been
+validated. Intel/NVIDIA observations below remain historical evidence, not
+revalidation of the new installer. Temperature prefers package Tdie over Tctl;
+individual missing sensors remain unavailable without demo fallback.
+
+Implementation checks on 2026-10-24: all 35 .NET service tests passed on the
+second run (the first run had an intermittent live memory-pipe assertion).
+Rust tests reported 196 passed, 25 ignored and three failures in existing
+desktop geometry assertions; this change does not modify native geometry.
+The available Intel Core i5-10400F correctly selected IntelMSR via CPUID.
+Its unelevated verification returned exit 1 with structured module-load failure
+diagnostics, so it does not establish successful elevated driver verification.
 
 Installation needs UAC. The service runs as LocalSystem; the bar stays unelevated.
 The runtime performs no dependency downloads and needs neither the LHM GUI nor

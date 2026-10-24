@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-24",
+  "scope": "AMD Ryzen installer implementation; physical acceptance pending",
+  "machine": "Intel Core i5-10400F (GenuineIntel, CPUID family 6)",
+  "installer": {
+    "path": "src-tauri/target/release/bundle/nsis/Strata_0.1.0_x64-setup.exe",
+    "sha256": "7b32e786a9e0e82d4979c6de2f9f634ac500d3ce7b937045336300c13769cbc2",
+    "bytes": 257830712,
+    "build": "pnpm package:windows passed"
+  },
+  "dotnet": {
+    "command": "dotnet test sensor-service/Strata.SensorService.Tests (resolved .NET 10 SDK)",
+    "passed": 35,
+    "failed": 0,
+    "note": "Second run passed. First run: 34 passed, one transient LiveLocalPipeSharesCollectionAndStopsWhenUnsubscribed failure: totalBytes unavailable instead of ready."
+  },
+  "rust": {
+    "command": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "passed": 196,
+    "failed": 3,
+    "ignored": 25,
+    "failures": [
+      "desktop::geometry_tests::configured_curve_radius_is_scaled_clamped_and_projected",
+      "desktop::geometry_tests::configured_geometry_uses_projected_height_edge_and_stacking",
+      "desktop::geometry_tests::desktop_corners_extend_the_window_without_extending_the_reservation"
+    ],
+    "note": "Native source was not changed by this implementation."
+  },
+  "verification": {
+    "context": "Unelevated published service --verify-driver",
+    "exitCode": 1,
+    "version": "2.2.0.0",
+    "manufacturer": "GenuineIntel",
+    "family": 6,
+    "module": "IntelMSR",
+    "moduleLoaded": false,
+    "reason": "PawnIO could not open the driver or load the signed module."
+  },
+  "checks": [
+    "PowerShell installer syntax passed",
+    "git diff --check passed",
+    "Prettier documentation check passed",
+    "Pinned LHM embedded module resource tests passed"
+  ],
+  "pending": [
+    "Physical Ryzen desktop and notebook installation offline with UAC",
+    "Real CPU load and supported temperature/clocks at idle and load",
+    "Standard-user native bars on Ryzen",
+    "Upgrade, rollback, repair and uninstall on Ryzen",
+    "Elevated Intel verification and installation with this installer"
+  ],
+  "acceptance": "Not complete: no physical AMD machine available; elevated installer lifecycle not exercised."
+}
