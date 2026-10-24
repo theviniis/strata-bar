@@ -1,3 +1,4 @@
+import defaultDocument from './default.json' with { type: 'json' }
 import { z } from 'zod'
 import type { ConfigSnapshot } from '@/services/system/config.generated'
 
@@ -210,32 +211,7 @@ export const configSchema = z
       ctx.addIssue({ code: 'custom', message: 'Widget IDs must be unique' })
   })
 
-export const defaultConfig = configSchema.parse({
-  version: 1,
-  bar: {},
-  widgets: {
-    left: [
-      { id: 'workspaces', type: 'komorebi' },
-      { id: 'active', type: 'activeWindow' }
-    ],
-    center: [{ id: 'time', type: 'clock' }],
-    right: [
-      'cpu',
-      'memory',
-      'gpu',
-      'disk',
-      'network',
-      'music',
-      'volume',
-      'microphone',
-      'reminders',
-      'agents'
-    ].map((type) => ({
-      id: type,
-      type
-    }))
-  }
-})
+export const defaultConfig = configSchema.parse(defaultDocument)
 
 export function parseConfig(text: string): Config {
   return configSchema.parse(JSON.parse(text))

@@ -362,7 +362,7 @@ it('re-renders on a config event without remounting or resubscribing unrelated w
 
   // An interval edit re-subscribes exactly that widget's channel.
   const interval = structuredClone(themed)
-  interval.widgets.right.find((widget) => widget.type === 'cpu')!.intervalMs =
+  interval.widgets.center.find((widget) => widget.type === 'cpu')!.intervalMs =
     5000
   await act(async () => {
     native.listeners.get('bar-1')!({

@@ -28,58 +28,12 @@ const MIN_HEIGHT: u32 = 28;
 const MAX_HEIGHT: u32 = 80;
 const MAX_SPACING: f64 = 32.0;
 
-/// Every schema field with the default the Zod schema gives it.
+/// Shared installation preset, also validated by the frontend Zod schema.
 pub fn defaults() -> Config {
-    let widget = |id: &str, r#type: WidgetKind| WidgetConfig {
-        id: id.into(),
-        r#type,
-        enabled: true,
-        interval_ms: 2_000,
-        format: WidgetFormat::Label,
-        tooltip: true,
-        audio: None,
-        margin_x: None,
-    };
-    let right = [
-        ("cpu", WidgetKind::Cpu),
-        ("memory", WidgetKind::Memory),
-        ("gpu", WidgetKind::Gpu),
-        ("disk", WidgetKind::Disk),
-        ("network", WidgetKind::Network),
-        ("music", WidgetKind::Music),
-        ("volume", WidgetKind::Volume),
-        ("microphone", WidgetKind::Microphone),
-        ("reminders", WidgetKind::Reminders),
-        ("agents", WidgetKind::Agents),
-    ];
-    Config {
-        layout: None,
-        schema: Some(SCHEMA_URL.to_string()),
-        version: SCHEMA_VERSION,
-        agents: AgentsConfig::default(),
-        bar: BarConfig {
-            enabled: true,
-            position: BarPosition::Top,
-            height: 36,
-            corner_radius: None,
-            spacing: 8.0,
-            separator_margin_x: None,
-            theme: BarTheme::System,
-            always_on_top: true,
-        },
-        widgets: WidgetSections {
-            left: vec![
-                widget("workspaces", WidgetKind::Komorebi),
-                widget("active", WidgetKind::ActiveWindow),
-            ],
-            center: vec![widget("time", WidgetKind::Clock)],
-            right: right
-                .into_iter()
-                .map(|(id, kind)| widget(id, kind))
-                .collect(),
-        },
-        monitors: BTreeMap::new(),
-    }
+    parse(include_str!(
+        "../../src/services/configuration/default.json"
+    ))
+    .expect("bundled default configuration must be valid")
 }
 
 /// Normalizes a `monitors` key for comparison: Windows device names arrive as
@@ -780,7 +734,7 @@ mod tests {
         let restored = ConfigStore::open(directory.path()).snapshot().unwrap();
         assert!(!project(&restored.config, Some("hardware-b")).bar.enabled);
         assert_eq!(
-            project(&restored.config, Some("hardware-b")).widgets.right[0].interval_ms,
+            project(&restored.config, Some("hardware-b")).widgets.center[0].interval_ms,
             8000
         );
         assert_eq!(restored.config.monitors["offline"].height, Some(48));
@@ -806,7 +760,7 @@ mod tests {
         let cpu = secondary
             .config
             .widgets
-            .right
+            .center
             .iter()
             .find(|w| w.id == "cpu")
             .unwrap();
@@ -1244,7 +1198,7 @@ mod tests {
             "DISPLAY1".into(),
             BarOverride {
                 widgets: Some(BTreeMap::from([(
-                    "time".into(),
+                    "cpu".into(),
                     WidgetOverride {
                         margin_x: Some(20.0),
                         ..Default::default()
@@ -1277,7 +1231,7 @@ mod tests {
                 .widgets
                 .as_mut()
                 .unwrap()
-                .get_mut("time")
+                .get_mut("cpu")
                 .unwrap()
                 .margin_x = Some(margin);
             assert!(validate(&invalid).is_err());

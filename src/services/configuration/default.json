@@ -1,0 +1,133 @@
+{
+  "$schema": "https://raw.githubusercontent.com/theviniis/strata-bar/main/config.schema.json",
+  "version": 1,
+  "agents": {
+    "visible": {
+      "chatgpt": false,
+      "opencode": false,
+      "antigravity": false,
+      "codex": false
+    }
+  },
+  "bar": {
+    "enabled": true,
+    "position": "top",
+    "height": 33,
+    "spacing": 2.0,
+    "theme": "dark",
+    "alwaysOnTop": true
+  },
+  "widgets": {
+    "left": [
+      {
+        "id": "workspaces",
+        "type": "komorebi",
+        "enabled": true,
+        "intervalMs": 2000,
+        "format": "compact",
+        "tooltip": true
+      }
+    ],
+    "center": [
+      {
+        "id": "cpu",
+        "type": "cpu",
+        "enabled": true,
+        "intervalMs": 2000,
+        "format": "label",
+        "tooltip": true
+      },
+      {
+        "id": "gpu",
+        "type": "gpu",
+        "enabled": true,
+        "intervalMs": 2000,
+        "format": "label",
+        "tooltip": true
+      },
+      {
+        "id": "memory",
+        "type": "memory",
+        "enabled": true,
+        "intervalMs": 2000,
+        "format": "label",
+        "tooltip": true
+      },
+      {
+        "id": "disk",
+        "type": "disk",
+        "enabled": true,
+        "intervalMs": 2000,
+        "format": "label",
+        "tooltip": true
+      }
+    ],
+    "right": [
+      {
+        "id": "music",
+        "type": "music",
+        "enabled": true,
+        "intervalMs": 2000,
+        "format": "label",
+        "tooltip": true
+      },
+      {
+        "id": "separator-4",
+        "type": "separator",
+        "enabled": true,
+        "intervalMs": 2000,
+        "format": "label",
+        "tooltip": true
+      },
+      {
+        "id": "volume",
+        "type": "volume",
+        "enabled": true,
+        "intervalMs": 2000,
+        "format": "label",
+        "tooltip": true
+      },
+      {
+        "id": "microphone",
+        "type": "microphone",
+        "enabled": true,
+        "intervalMs": 2000,
+        "format": "label",
+        "tooltip": true
+      },
+      {
+        "id": "separator-5",
+        "type": "separator",
+        "enabled": true,
+        "intervalMs": 2000,
+        "format": "label",
+        "tooltip": true
+      },
+      {
+        "id": "reminders",
+        "type": "reminders",
+        "enabled": true,
+        "intervalMs": 2000,
+        "format": "label",
+        "tooltip": true
+      },
+      {
+        "id": "separator-3",
+        "type": "separator",
+        "enabled": true,
+        "intervalMs": 2000,
+        "format": "label",
+        "tooltip": true
+      },
+      {
+        "id": "time",
+        "type": "clock",
+        "enabled": true,
+        "intervalMs": 2000,
+        "format": "label",
+        "tooltip": true
+      }
+    ]
+  },
+  "monitors": {}
+}
