@@ -181,7 +181,7 @@ function MusicPopupContentData({
   } = controls
   return (
     <div className="flex flex-col gap-4" aria-busy={busyAny}>
-      <div className="relative grid grid-cols-[auto_minmax(0,1fr)] items-center gap-y-2 gap-x-4">
+      <div className="relative grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
         <div className="relative row-span-2 aspect-square self-stretch">
           {artwork && artwork !== badArt ? (
             <img
