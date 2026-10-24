@@ -384,7 +384,8 @@ impl Metrics {
                 let menu_wanted = self.active("voicemeeter");
                 let vm_wanted = !routed.is_empty() || menu_wanted;
                 if vm_wanted && Instant::now() >= vm_due {
-                    let vm_available;
+                    let mut vm_available;
+                    let mut vm_reconnect = false;
                     match voicemeeter.poll() {
                         Err(_) => {
                             vm_available = false;
@@ -421,10 +422,16 @@ impl Metrics {
                                             if let Some(pending) = vm_pending.remove(channel) {
                                                 let result = match outcome {
                                                     Some(Err(error)) => Err(error),
-                                                    _ => Ok(value),
+                                                    _ => Ok(value.clone()),
                                                 };
+                                                vm_reconnect = voicemeeter
+                                                    .record_confirmation(target, result.is_ok());
                                                 let report = json!({
                                                     "channel": channel,
+                                                    "target": target,
+                                                    "requested": {"level": pending.level, "muted": pending.muted},
+                                                    "observed": value,
+                                                    "reconnecting": vm_reconnect,
                                                     "queueMs": pending.write_started.duration_since(pending.submitted).as_secs_f64() * 1000.0,
                                                     "writeMs": pending.accepted.duration_since(pending.write_started).as_secs_f64() * 1000.0,
                                                     "confirmationMs": publication.duration_since(pending.accepted).as_secs_f64() * 1000.0,
@@ -440,6 +447,9 @@ impl Metrics {
                                                 data.audio_latency.push_back(report);
                                                 drop(data);
                                                 let _ = pending.reply.send(result);
+                                                if vm_reconnect {
+                                                    break;
+                                                }
                                             }
                                         }
                                     }
@@ -452,6 +462,7 @@ impl Metrics {
                                 }
                             }
                             if menu_wanted
+                                && !vm_reconnect
                                 && (matches!(state, crate::voicemeeter::Poll::Changed) || !vm_published)
                             {
                                 match voicemeeter.snapshot() {
@@ -468,6 +479,21 @@ impl Metrics {
                                 }
                                 vm_published = true;
                             }
+                        }
+                    }
+                    if vm_reconnect {
+                        vm_available = false;
+                        vm_published = false;
+                        for (_, pending) in vm_pending.drain() {
+                            let _ = pending.reply.send(Err(
+                                "Reconectando a sessão do Voicemeeter".into()
+                            ));
+                        }
+                        for channel in &routed {
+                            self.publish(&app, channel, envelope("unavailable", Value::Null));
+                        }
+                        if menu_wanted {
+                            self.publish(&app, "voicemeeter", envelope("unavailable", Value::Null));
                         }
                     }
                     vm_due = Instant::now() + vm_interval(vm_available, !vm_pending.is_empty());

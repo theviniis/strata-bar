@@ -58,6 +58,11 @@ Audio is global, independent of widget instances and monitor layouts:
 - Setters acknowledge DLL acceptance separately from engine confirmation. Commands
   resolve with an observed matching state, or reject after a 1 s confirmation
   timeout, disconnection or route change. Stale reads are not published as success.
+- Two consecutive confirmation timeouts on the same destination invalidate the
+  remote session (Logout); the worker marks routed channels unavailable and
+  retries Login after the normal 2 s recovery deadline. Confirmation on that
+  destination resets its count; another destination cannot mask the failure.
+  Reconnection never replays failed volume/mute commands or restarts Voicemeeter.
 - Both popups update mute and volume immediately. Dragging sends volume changes
   continuously; keyboard changes also apply immediately. Release does not send a
   duplicate write. A serial writer coalesces queued
@@ -100,6 +105,11 @@ across multiple bars; that requires a separate native acceptance run.
 
 - `cargo test --manifest-path src-tauri/Cargo.toml` — session state machine tests
   (fake API), mapping/bounds/parameter-name tests.
+  Recovery tests simulate a DLL that accepts setters while the engine ignores
+  them until re-login, plus isolated timeouts and failed recovery login. This
+  verifies the recovery policy; it does not establish the cause of the installed
+  application's incident, whose live failure disappeared after restarting
+  Voicemeeter.
 - `pnpm test` — schema, widget routing, native bridge command tests
   (`voicemeeter.test.tsx`, `config.test.ts`, `native-bridge.test.ts`).
 - Responsiveness regressions exercise both real popup controllers in

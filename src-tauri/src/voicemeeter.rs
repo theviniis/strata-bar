@@ -13,13 +13,14 @@
 
 use libloading::Library;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::ffi::{c_char, CString};
 use std::fmt;
 
 /// Widest supported index before the actual Voicemeeter application is known.
 pub const MAX_INDEX: u32 = 7;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Kind {
     Strip,
@@ -50,7 +51,7 @@ impl Kind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Target {
     pub kind: Kind,
     pub index: u32,
@@ -316,14 +317,33 @@ pub struct Client {
     api: Option<Box<dyn RemoteApi>>,
     connected: bool,
     application: Option<i32>,
+    confirmation_timeouts: HashMap<Target, u8>,
 }
 
 impl Client {
+    /// A live DLL can accept setters without the engine applying them. Two
+    /// consecutive timeouts on one target invalidate the shared session. The
+    /// worker reconnects on its normal recovery deadline, never replaying writes.
+    pub fn record_confirmation(&mut self, target: Target, confirmed: bool) -> bool {
+        if confirmed {
+            self.confirmation_timeouts.remove(&target);
+            return false;
+        }
+        let timeouts = self.confirmation_timeouts.entry(target).or_default();
+        *timeouts = timeouts.saturating_add(1);
+        if *timeouts < 2 {
+            return false;
+        }
+        self.disconnect();
+        true
+    }
+
     pub fn native() -> Self {
         Self {
             api: RemoteDll::open().map(|api| Box::new(api) as Box<dyn RemoteApi>),
             connected: false,
             application: None,
+            confirmation_timeouts: HashMap::new(),
         }
     }
 
@@ -332,6 +352,7 @@ impl Client {
             api: Some(api),
             connected: false,
             application: None,
+            confirmation_timeouts: HashMap::new(),
         }
     }
 
@@ -374,6 +395,7 @@ impl Client {
         }
         self.connected = false;
         self.application = None;
+        self.confirmation_timeouts.clear();
     }
 
     fn check(&self, target: Target) -> Result<(), String> {
@@ -718,6 +740,7 @@ mod tests {
         strings: std::sync::Mutex<HashMap<String, String>>,
         delayed: AtomicBool,
         staged: Mutex<HashMap<String, f32>>,
+        stalled_until_relogin: AtomicBool,
     }
 
     #[derive(Clone)]
@@ -739,6 +762,7 @@ mod tests {
                 ])),
                 delayed: AtomicBool::new(false),
                 staged: Mutex::new(HashMap::new()),
+                stalled_until_relogin: AtomicBool::new(false),
                 strings: Mutex::new(HashMap::from([
                     (
                         "Bus[0].Device.name".to_string(),
@@ -753,6 +777,7 @@ mod tests {
 
     impl RemoteApi for Fake {
         fn login(&self) -> i32 {
+            self.0.stalled_until_relogin.store(false, Ordering::SeqCst);
             let code = self.0.login_code.load(Ordering::SeqCst);
             self.0.logged_in.store(code >= 0, Ordering::SeqCst);
             code
@@ -783,6 +808,9 @@ mod tests {
         }
 
         fn set_float(&self, parameter: &str, value: f32) -> Result<(), i32> {
+            if self.0.stalled_until_relogin.load(Ordering::SeqCst) {
+                return Ok(());
+            }
             if self.0.delayed.load(Ordering::SeqCst) {
                 self.0.staged.lock().unwrap().insert(parameter.to_string(), value);
                 return Ok(());
@@ -954,6 +982,51 @@ mod tests {
         // Recovery: the client re-logins and publishes the current state.
         fake.0.dirty_code.store(1, Ordering::SeqCst);
         assert_eq!(client.poll(), Ok(Poll::Changed));
+        assert_eq!(fake.0.logouts.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn repeated_unconfirmed_writes_reconnect_a_silently_stalled_session() {
+        let fake = Fake::banana();
+        let mut client = Client::with_api(Box::new(fake.clone()));
+        client.poll().unwrap();
+        fake.0.stalled_until_relogin.store(true, Ordering::SeqCst);
+        for attempt in 0..2 {
+            assert_eq!(client.write(bus_0(), None, Some(true)), Ok((50, true)));
+            assert_eq!(client.read(bus_0()), Ok((50, false)));
+            assert_eq!(client.record_confirmation(bus_0(), false), attempt == 1);
+            // Activity on another destination must not hide this target's stall.
+            if attempt == 0 {
+                let strip = Target::parse(Some("strip"), Some(4)).unwrap();
+                assert!(!client.record_confirmation(strip, true));
+                assert_eq!(fake.0.logouts.load(Ordering::SeqCst), 0);
+            }
+        }
+        assert_eq!(fake.0.logouts.load(Ordering::SeqCst), 1);
+        assert!(!fake.0.logged_in.load(Ordering::SeqCst));
+        assert_eq!(client.poll(), Ok(Poll::Changed));
+        assert_eq!(
+            client.read(bus_0()),
+            Ok((50, false)),
+            "reconnect must not replay writes"
+        );
+        client.write(bus_0(), None, Some(true)).unwrap();
+        assert_eq!(client.read(bus_0()), Ok((50, true)));
+        assert!(!client.record_confirmation(bus_0(), true));
+    }
+
+    #[test]
+    fn a_confirmed_write_resets_only_its_targets_timeout_count() {
+        let fake = Fake::banana();
+        let mut client = Client::with_api(Box::new(fake.clone()));
+        client.poll().unwrap();
+        assert!(!client.record_confirmation(bus_0(), false));
+        assert!(!client.record_confirmation(bus_0(), true));
+        assert!(!client.record_confirmation(bus_0(), false));
+        assert_eq!(fake.0.logouts.load(Ordering::SeqCst), 0);
+        assert!(client.record_confirmation(bus_0(), false));
+        fake.0.login_code.store(-3, Ordering::SeqCst);
+        assert_eq!(client.poll(), Err(Failure::NotRunning));
         assert_eq!(fake.0.logouts.load(Ordering::SeqCst), 1);
     }
 
