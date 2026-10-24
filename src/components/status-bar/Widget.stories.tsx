@@ -27,7 +27,7 @@ separadamente e entrega props ao visual da feature.
 ### Responsabilidades
 
 - \`NativeBar\` decide presença, ordem, seção, espaçamento e configuração por monitor.
-- \`Widget\` seleciona o controlador e projeta \`format\`, \`tooltip\`, \`intervalMs\` e \`audio\`.
+- \`Widget\` seleciona o controlador e projeta \`format\`, \`tooltip\`, \`intervalMs\`.
 - O controlador possui subscriptions, timers, tooltip e popup. O visual recebe props.
 - \`enabled\` e \`id\` pertencem à configuração da instância; \`Widget\` não filtra
   \`enabled: false\` nem aplica posicionamento. Essa filtragem acontece no pai.
@@ -42,7 +42,6 @@ separadamente e entrega props ao visual da feature.
 | \`format\` | \`label\` (padrão) ou \`compact\`; cada feature interpreta sua apresentação. |
 | \`tooltip\` | Padrão \`true\`; habilita tooltip de hover/foco no runtime nativo. |
 | \`intervalMs\` | Inteiro de 1000 a 60000, padrão 2000. Canais orientados a eventos podem ignorá-lo. |
-| \`audio\` | Opcional, consumido por volume/microfone: Windows ou Voicemeeter com destino strip/bus. |
 
 Use \`widgetSchema.parse\` para preencher defaults e validar a configuração.
 
@@ -104,27 +103,6 @@ export const WithoutTooltip: Story = {
       description: {
         story:
           'A configuração é propagada ao controlador. O preview permanece inerte; valide hover/foco no runtime nativo.'
-      }
-    }
-  }
-}
-export const Voicemeeter: Story = {
-  args: {
-    widget: widgetSchema.parse({
-      id: 'volume-vm',
-      type: 'volume',
-      audio: {
-        source: 'voicemeeter',
-        target: { kind: 'bus', index: 0 },
-        label: 'Monitor'
-      }
-    })
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'Destino tipado de áudio. O contexto de preview impede que esta story configure ou consulte o Voicemeeter.'
       }
     }
   }

@@ -4,7 +4,7 @@ import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
 import { useSystemChannel } from '@/hooks/useSystemChannel'
 import { useWidgetView } from '@/components/status-bar/widget-view'
 import type { WidgetView } from '@/components/status-bar/presentation'
-import { voicemeeterLabel } from '@/services/configuration/config'
+import { useConfig } from '@/stores/config'
 import type { ChannelData, SystemEvent } from '@/services/system/bridge'
 import { WidgetPopup } from '@/popups/WidgetPopup'
 import { Microphone } from './Microphone'
@@ -33,11 +33,11 @@ function MicrophonePopupTrigger({
   event: SystemEvent<ChannelData['microphone']>
   view: WidgetView
 }) {
-  const audio = view.audio
+  const audio = useConfig((state) => state.config.audio.input)
   const muted = value.status === 'ready' && value.data.muted
   const source =
-    audio?.source === 'voicemeeter' && audio.enabled !== false
-      ? `Microfone (${voicemeeterLabel(audio)})`
+    audio.source === 'voicemeeter'
+      ? `Microfone (Strip ${audio.targetIndex})`
       : 'Microfone'
   const text =
     value.status === 'ready'

@@ -14,7 +14,7 @@ import { moveWidget, removeWidget, toggleWidget } from '@/settings/layout'
 
 it('renders only explicit enabled separators, including consecutive items', () => {
   const config = configSchema.parse({
-    version: 1,
+    version: 2,
     bar: { separatorMarginX: 6 },
     widgets: {
       left: [

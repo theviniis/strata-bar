@@ -38,7 +38,6 @@ import {
   LayoutDashboard,
   Palette,
   Music2,
-  Mic,
   Volume2,
   RotateCw,
   Save,
@@ -199,10 +198,8 @@ function NativeSettingsView() {
                       />
                     </CardContent>
                   </Card>
-                ) : section === 'audio-input' || section === 'audio-output' ? (
+                ) : section === 'audio' ? (
                   <AudioSettings
-                    key={section}
-                    type={section === 'audio-input' ? 'microphone' : 'volume'}
                     draft={editor.form.getValues()}
                     onChange={editor.replaceDraft}
                   />
@@ -347,10 +344,9 @@ function SettingsSidebar({
 
                     { id: 'agents', label: 'Agentes', icon: Bot },
                     { id: 'music', label: 'Player de música', icon: Music2 },
-                    { id: 'audio-input', label: 'Entrada de áudio', icon: Mic },
                     {
-                      id: 'audio-output',
-                      label: 'Saída de áudio',
+                      id: 'audio',
+                      label: 'Áudio',
                       icon: Volume2
                     },
                     { id: 'json', label: 'JSON', icon: LayoutDashboard }

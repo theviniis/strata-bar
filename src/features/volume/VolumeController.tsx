@@ -4,7 +4,7 @@ import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
 import { useSystemChannel } from '@/hooks/useSystemChannel'
 import { useWidgetView } from '@/components/status-bar/widget-view'
 import type { WidgetView } from '@/components/status-bar/presentation'
-import { voicemeeterLabel } from '@/services/configuration/config'
+import { useConfig } from '@/stores/config'
 import type { ChannelData, SystemEvent } from '@/services/system/bridge'
 import { WidgetPopup } from '@/popups/WidgetPopup'
 import { Volume } from './Volume'
@@ -33,10 +33,10 @@ function VolumePopupTrigger({
   event: SystemEvent<ChannelData['volume']>
   view: WidgetView
 }) {
-  const audio = view.audio
+  const audio = useConfig((state) => state.config.audio.output)
   const source =
-    audio?.source === 'voicemeeter' && audio.enabled !== false
-      ? `Voicemeeter: ${voicemeeterLabel(audio)}`
+    audio.source === 'voicemeeter'
+      ? `Voicemeeter: Bus ${audio.targetIndex}`
       : 'Volume do dispositivo padrão'
   const text =
     value.status === 'error'

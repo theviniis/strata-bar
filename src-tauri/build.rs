@@ -154,10 +154,9 @@ fn main() {
     println!("cargo:rerun-if-changed=src/config_contract.rs");
     let config_declarations = [
         config_contract::WidgetKind::decl(),
-        config_contract::AudioTargetKind::decl(),
-        config_contract::AudioTarget::decl(),
         config_contract::AudioSource::decl(),
-        config_contract::WidgetAudio::decl(),
+        config_contract::AudioChannelConfig::decl(),
+        config_contract::AudioConfig::decl(),
         config_contract::WidgetFormat::decl(),
         config_contract::WidgetConfig::decl(),
         config_contract::BarPosition::decl(),

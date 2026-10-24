@@ -47,9 +47,7 @@ import { optionLabel } from '../features/audio/presentation'
 import { PopupHost } from '../popups/PopupHost'
 import { resetVoicemeeterCapability } from '../hooks/useVoicemeeterCapability'
 
-type VoicemeeterAudio = NonNullable<
-  ReturnType<typeof import('../services/configuration/config').widgetAudio>
->
+type VoicemeeterAudio = typeof defaultConfig.audio.output
 
 const engine: VoicemeeterData = {
   application: 2,
@@ -86,7 +84,10 @@ const engine: VoicemeeterData = {
 
 function seed(type: 'volume' | 'microphone', audio?: VoicemeeterAudio) {
   const config = structuredClone(defaultConfig)
-  config.widgets.right.find((w) => w.type === type)!.audio = audio
+  config.audio[type === 'volume' ? 'output' : 'input'] = audio ?? {
+    source: 'windows',
+    targetIndex: 0
+  }
   config.widgets = {
     left: [],
     center: [],
@@ -122,21 +123,20 @@ beforeEach(() => {
 it('routes the volume channel through the configured Voicemeeter bus', () => {
   seed('volume', {
     source: 'voicemeeter',
-    target: { kind: 'bus', index: 0 },
-    label: 'A1 fones'
+    targetIndex: 0
   })
   render(<NativeBar />)
   expect(host.channelSource).toHaveBeenCalledWith('volume', {
     kind: 'bus',
     index: 0
   })
-  expect(screen.getByText('Voicemeeter: A1 fones')).toBeInTheDocument()
+  expect(screen.getByText('Voicemeeter: Bus 0')).toBeInTheDocument()
 })
 
-it('falls back to the index label without a configured label', () => {
+it('uses the bus index for the global output label', () => {
   seed('volume', {
     source: 'voicemeeter',
-    target: { kind: 'bus', index: 2 }
+    targetIndex: 2
   })
   render(<NativeBar />)
   expect(host.channelSource).toHaveBeenCalledWith('volume', {
@@ -147,7 +147,7 @@ it('falls back to the index label without a configured label', () => {
 })
 
 it('clears the Voicemeeter routing when the widget returns to Windows', () => {
-  seed('volume', { source: 'voicemeeter', target: { kind: 'bus', index: 0 } })
+  seed('volume', { source: 'voicemeeter', targetIndex: 0 })
   const { rerender } = render(<NativeBar />)
   expect(host.channelSource).toHaveBeenCalledWith('volume', {
     kind: 'bus',
@@ -161,7 +161,7 @@ it('clears the Voicemeeter routing when the widget returns to Windows', () => {
 it('routes the microphone strip and reports unavailable Voicemeeter', () => {
   seed('microphone', {
     source: 'voicemeeter',
-    target: { kind: 'strip', index: 0 }
+    targetIndex: 0
   })
   render(<NativeBar />)
   expect(host.channelSource).toHaveBeenCalledWith('microphone', {
@@ -213,17 +213,15 @@ it.each(['audioOutputs', 'audioInputs'] as const)(
 )
 
 describe('config events push audio routing', () => {
-  it('pushes routing for all audio widgets on config hydration (startup)', () => {
+  it('pushes both global routes on config hydration (startup)', () => {
     const config = structuredClone(defaultConfig)
-    config.widgets.right.find((w) => w.type === 'volume')!.audio = {
+    config.audio.output = {
       source: 'voicemeeter',
-      target: { kind: 'bus', index: 1 },
-      label: 'Bus 1'
+      targetIndex: 1
     }
-    config.widgets.right.find((w) => w.type === 'microphone')!.audio = {
+    config.audio.input = {
       source: 'voicemeeter',
-      target: { kind: 'strip', index: 2 },
-      label: 'Strip 2'
+      targetIndex: 2
     }
     // Simulate the native store hydrating the config (startup)
     useConfig.setState({ config, error: null, revision: 1 })
@@ -242,16 +240,15 @@ describe('config events push audio routing', () => {
 
     // Config event arrives (external edit) - new revision
     const newConfig = structuredClone(config)
-    newConfig.widgets.right.find((w) => w.type === 'volume')!.audio = {
+    newConfig.audio.output = {
       source: 'voicemeeter',
-      target: { kind: 'bus', index: 3 },
-      label: 'Bus 3'
+      targetIndex: 3
     }
     useConfig.setState({ config: newConfig, error: null, revision: 2 })
     // Re-render to trigger the hook again
     render(<TestBar config={newConfig} />)
 
-    // The hook pushes routing for ALL audio widgets, so the last call might be for microphone
+    // The hook pushes both global channels; the last call may be for microphone
     // Check that the volume routing was pushed with the new config
     const calls = host.channelSource.mock.calls as unknown as Array<
       [string, { kind: 'bus' | 'strip'; index: number } | null]
@@ -263,38 +260,36 @@ describe('config events push audio routing', () => {
     ])
   })
 
-  it('preserves last-write-wins per channel across rapid config edits', () => {
+  it('applies the latest global channel settings across rapid config edits', () => {
     const config = structuredClone(defaultConfig)
-    config.widgets.right.find((w) => w.type === 'volume')!.audio = {
+    config.audio.output = {
       source: 'voicemeeter',
-      target: { kind: 'bus', index: 0 },
-      label: 'Bus 0'
+      targetIndex: 0
     }
     useConfig.setState({ config, error: null, revision: 1 })
     render(<TestBar config={config} />)
 
     // Rapid edits: push multiple routing changes for the same channel
     const edit1 = structuredClone(config)
-    edit1.widgets.right.find((w) => w.type === 'volume')!.audio = {
+    edit1.audio.output = {
       source: 'voicemeeter',
-      target: { kind: 'bus', index: 1 },
-      label: 'Bus 1'
+      targetIndex: 1
     }
     useConfig.setState({ config: edit1, error: null, revision: 2 })
     render(<TestBar config={edit1} />)
 
     const edit2 = structuredClone(config)
-    edit2.widgets.right.find((w) => w.type === 'volume')!.audio = {
+    edit2.audio.output = {
       source: 'voicemeeter',
-      target: { kind: 'bus', index: 2 },
-      label: 'Bus 2'
+      targetIndex: 2
     }
     useConfig.setState({ config: edit2, error: null, revision: 3 })
     render(<TestBar config={edit2} />)
 
     const edit3 = structuredClone(config)
-    edit3.widgets.right.find((w) => w.type === 'volume')!.audio = {
-      source: 'windows'
+    edit3.audio.output = {
+      source: 'windows',
+      targetIndex: 0
     }
     useConfig.setState({ config: edit3, error: null, revision: 4 })
     render(<TestBar config={edit3} />)
@@ -310,18 +305,16 @@ describe('config events push audio routing', () => {
   it('reports unavailable when Voicemeeter is missing, no fallback to Windows', () => {
     host.capabilities.mockResolvedValue({ voicemeeter: false })
     const config = structuredClone(defaultConfig)
-    config.widgets.right.find((w) => w.type === 'volume')!.audio = {
+    config.audio.output = {
       source: 'voicemeeter',
-      target: { kind: 'bus', index: 0 },
-      label: 'Bus 0'
+      targetIndex: 0
     }
     useConfig.setState({ config, error: null, revision: 1 })
 
     // Render Volume widget directly to test the unavailable status
     seed('volume', {
       source: 'voicemeeter',
-      target: { kind: 'bus', index: 0 },
-      label: 'Bus 0'
+      targetIndex: 0
     })
     render(<NativeBar />)
 
@@ -357,6 +350,32 @@ describe('config events push audio routing', () => {
 
 // Test component that uses the bar-level audio routing hook
 function TestBar({ config }: { config: typeof defaultConfig }) {
-  useAudioRouting(config.widgets)
+  useAudioRouting(config.audio)
   return <div data-testid="test-bar" />
 }
+
+it('sends identical global routes from bars with different layouts and duplicate audio widgets', () => {
+  const first = structuredClone(defaultConfig)
+  first.audio = {
+    output: { source: 'voicemeeter', targetIndex: 3 },
+    input: { source: 'voicemeeter', targetIndex: 1 }
+  }
+  const second = structuredClone(first)
+  first.widgets.right.push({
+    ...first.widgets.right.find((w) => w.type === 'volume')!,
+    id: 'headphones'
+  })
+  second.widgets = { left: [], center: [], right: [] }
+  render(
+    <>
+      <TestBar config={first} />
+      <TestBar config={second} />
+    </>
+  )
+  expect(host.channelSource.mock.calls).toEqual([
+    ['volume', { kind: 'bus', index: 3 }],
+    ['microphone', { kind: 'strip', index: 1 }],
+    ['volume', { kind: 'bus', index: 3 }],
+    ['microphone', { kind: 'strip', index: 1 }]
+  ])
+})

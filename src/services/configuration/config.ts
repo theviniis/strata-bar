@@ -21,64 +21,28 @@ export const types = [
 
 export type WidgetType = (typeof types)[number]
 
-/** Voicemeeter destination of an audio widget: a strip or bus index on the engine. */
-const vmTarget = z.object({
-  kind: z.enum(['strip', 'bus']),
-  index: z.number().int().min(0).max(7)
+/** Global channel settings; destination kind is fixed by the channel. */
+const audioChannel = z.strictObject({
+  source: z.enum(['windows', 'voicemeeter']).default('windows'),
+  targetIndex: z.number().int().min(0).max(7).default(0)
 })
+const audio = z.strictObject({
+  output: audioChannel.default(() => audioChannel.parse({})),
+  input: audioChannel.default(() => audioChannel.parse({}))
+})
+export type AudioSourceConfig = z.infer<typeof audioChannel>
 
-const audio = z
-  .object({
-    /** `windows` drives the default endpoints; `voicemeeter` drives a strip/bus. */
-    source: z.enum(['windows', 'voicemeeter']).default('windows'),
-    target: vmTarget.optional(),
-    /** Friendly label shown by the widget instead of `Strip/Bus n`. */
-    label: z.string().optional(),
-    /** `false` keeps the stored target but drives the Windows endpoints again. */
-    enabled: z.boolean().optional()
-  })
-  .superRefine((a, ctx) => {
-    if (a.source === 'voicemeeter' && !a.target)
-      ctx.addIssue({
-        code: 'custom',
-        message: 'Voicemeeter source requires a target strip or bus'
-      })
-  })
-
-export type AudioSourceConfig = z.infer<typeof audio>
-export type VmAudioTarget = z.infer<typeof vmTarget>
-
-const widget = z.object({
+const widget = z.strictObject({
   id: z.string().min(1),
   type: z.enum(types),
   enabled: z.boolean().default(true),
   intervalMs: z.number().int().min(1000).max(60000).default(2000),
   format: z.enum(['compact', 'label']).default('label'),
   tooltip: z.boolean().default(true),
-  /** Per-widget audio routing. Only the volume and microphone widgets consume it. */
-  marginX: z.number().min(0).max(32).optional(),
-  audio: audio.optional()
+  marginX: z.number().min(0).max(32).optional()
 })
 
 export { widget as widgetSchema }
-
-/** Audio settings of the first widget of a type in the layout. */
-export function widgetAudio(config: Config, type: WidgetType) {
-  return [
-    ...config.widgets.left,
-    ...config.widgets.center,
-    ...config.widgets.right
-  ].find((w) => w.type === type)?.audio
-}
-
-/** Friendly Voicemeeter label; the configured override beats `Strip/Bus n`. */
-export function voicemeeterLabel(audio: AudioSourceConfig): string {
-  if (!audio.target) return 'Voicemeeter'
-  return (
-    audio.label ??
-    `${audio.target.kind === 'strip' ? 'Strip' : 'Bus'} ${audio.target.index}`
-  )
-}
 
 export const colorThemeSchema = z.enum([
   'current',
@@ -114,13 +78,12 @@ export function normalizeMonitorName(name: string): string {
     .toUpperCase()
 }
 
-const widgetOverride = z.object({
+const widgetOverride = z.strictObject({
   enabled: widget.shape.enabled.removeDefault().optional(),
   intervalMs: widget.shape.intervalMs.removeDefault().optional(),
   format: widget.shape.format.removeDefault().optional(),
   tooltip: widget.shape.tooltip.removeDefault().optional(),
-  marginX: widget.shape.marginX,
-  audio: widget.shape.audio
+  marginX: widget.shape.marginX
 })
 export const widgetLayoutSchema = z.object({
   left: z.array(z.string()),
@@ -156,7 +119,8 @@ export const configSchema = z
      * so a save round-trips it instead of dropping the author's pointer.
      */
     $schema: z.string().optional(),
-    version: z.literal(1),
+    version: z.literal(2),
+    audio: audio.default(() => audio.parse({})),
     agents: z
       .object({
         visible: agentVisibility.default(() => agentVisibility.parse({}))
@@ -224,8 +188,43 @@ export const configSchema = z
 
 export const defaultConfig = configSchema.parse(defaultDocument)
 
+/** Version 1 audio was per widget/monitor; migrate it to Windows globally. */
+export function migrateConfig(value: unknown): unknown {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    !('version' in value) ||
+    value.version !== 1
+  )
+    return value
+  const next = structuredClone(value) as Record<string, unknown>
+  next.version = 2
+  next.audio = {
+    output: { source: 'windows', targetIndex: 0 },
+    input: { source: 'windows', targetIndex: 0 }
+  }
+  const removeAudio = (widget: unknown) => {
+    if (widget && typeof widget === 'object' && !Array.isArray(widget))
+      delete (widget as Record<string, unknown>).audio
+  }
+  if (next.widgets && typeof next.widgets === 'object')
+    for (const section of Object.values(next.widgets))
+      if (Array.isArray(section)) section.forEach(removeAudio)
+  if (next.monitors && typeof next.monitors === 'object')
+    for (const monitor of Object.values(next.monitors))
+      if (
+        monitor &&
+        typeof monitor === 'object' &&
+        'widgets' in monitor &&
+        monitor.widgets &&
+        typeof monitor.widgets === 'object'
+      )
+        Object.values(monitor.widgets).forEach(removeAudio)
+  return next
+}
+
 export function parseConfig(text: string): Config {
-  return configSchema.parse(JSON.parse(text))
+  return configSchema.parse(migrateConfig(JSON.parse(text)))
 }
 
 /** A native snapshot with its document validated and defaulted. */
@@ -240,7 +239,7 @@ export function parseSnapshot(snapshot: ConfigSnapshot): ConfigDocument {
   // Keep the parsed result: Zod fills any field the native document omitted.
   return {
     revision: snapshot.revision,
-    config: configSchema.parse(snapshot.config),
+    config: configSchema.parse(migrateConfig(snapshot.config)),
     error: snapshot.error ?? null
   }
 }

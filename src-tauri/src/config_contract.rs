@@ -1,4 +1,4 @@
-//! Canonical configuration wire contract (schema version 1).
+//! Canonical configuration wire contract (schema version 2).
 //!
 //! The shape mirrors the frontend Zod schema one-for-one: every optional field
 //! carries the same default the schema applies, so a document normalized by
@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 
 fn default_true() -> bool {
     true
@@ -45,36 +45,36 @@ pub enum WidgetKind {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-pub enum AudioTargetKind {
-    Strip,
-    Bus,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-pub struct AudioTarget {
-    pub kind: AudioTargetKind,
-    pub index: u8,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
 pub enum AudioSource {
     Windows,
     Voicemeeter,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-pub struct WidgetAudio {
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AudioChannelConfig {
     #[serde(default = "default_source")]
     pub source: AudioSource,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub target: Option<AudioTarget>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub label: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub enabled: Option<bool>,
+    #[serde(default)]
+    pub target_index: u8,
+}
+
+impl Default for AudioChannelConfig {
+    fn default() -> Self {
+        Self {
+            source: AudioSource::Windows,
+            target_index: 0,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AudioConfig {
+    #[serde(default)]
+    pub output: AudioChannelConfig,
+    #[serde(default)]
+    pub input: AudioChannelConfig,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
@@ -91,7 +91,7 @@ impl Default for WidgetFormat {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WidgetConfig {
     pub id: String,
     pub r#type: WidgetKind,
@@ -103,8 +103,6 @@ pub struct WidgetConfig {
     pub format: WidgetFormat,
     #[serde(default = "default_true")]
     pub tooltip: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub audio: Option<WidgetAudio>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub margin_x: Option<f64>,
 }
@@ -171,7 +169,7 @@ pub struct BarConfig {
 }
 /// Partial widget behavior; identity is shared, membership and order are separate.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WidgetOverride {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
@@ -181,8 +179,6 @@ pub struct WidgetOverride {
     pub format: Option<WidgetFormat>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tooltip: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub audio: Option<WidgetAudio>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub margin_x: Option<f64>,
 }
@@ -262,6 +258,8 @@ pub struct Config {
     #[serde(rename = "$schema", default, skip_serializing_if = "Option::is_none")]
     pub schema: Option<String>,
     pub version: u32,
+    #[serde(default)]
+    pub audio: AudioConfig,
     #[serde(default)]
     pub agents: AgentsConfig,
     pub bar: BarConfig,

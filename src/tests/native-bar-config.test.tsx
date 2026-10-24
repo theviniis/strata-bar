@@ -121,45 +121,30 @@ beforeEach(() => {
   install(defaultConfig)
 })
 
-it('renders each saved audio instance and sends the last configured route once', () => {
-  install(
-    parseConfig(
-      JSON.stringify({
-        version: 1,
-        bar: {},
-        widgets: {
-          left: [
-            {
-              id: 'speakers',
-              type: 'volume',
-              audio: {
-                source: 'voicemeeter',
-                target: { kind: 'bus', index: 0 },
-                label: 'Speakers'
-              }
-            }
-          ],
-          center: [],
-          right: [
-            {
-              id: 'headphones',
-              type: 'volume',
-              audio: {
-                source: 'voicemeeter',
-                target: { kind: 'bus', index: 1 },
-                label: 'Headphones'
-              }
-            }
-          ]
-        }
-      })
-    )
-  )
+it('renders duplicate widgets from the same global route and sends both channels once', () => {
+  const config = structuredClone(defaultConfig)
+  config.audio.output = { source: 'voicemeeter', targetIndex: 1 }
+  config.widgets = {
+    left: [
+      {
+        ...config.widgets.right.find((w) => w.type === 'volume')!,
+        id: 'speakers'
+      }
+    ],
+    center: [],
+    right: [
+      {
+        ...config.widgets.right.find((w) => w.type === 'volume')!,
+        id: 'headphones'
+      }
+    ]
+  }
+  install(config)
   render(<NativeBar />)
-  expect(screen.getByText('Voicemeeter: Speakers')).toBeInTheDocument()
-  expect(screen.getByText('Voicemeeter: Headphones')).toBeInTheDocument()
+  expect(screen.getAllByText('Voicemeeter: Bus 1')).toHaveLength(2)
   expect(setChannelSource.mock.calls).toEqual([
-    ['volume', { kind: 'bus', index: 1 }]
+    ['volume', { kind: 'bus', index: 1 }],
+    ['microphone', null]
   ])
 })
 

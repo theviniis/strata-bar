@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useForm, type UseFormReturn } from 'react-hook-form'
 import {
   configSchema,
+  migrateConfig,
   defaultConfig,
   parseConfig,
   type Config
@@ -14,7 +15,7 @@ import { bridge } from '../services/system/bridge'
  * The settings window's editor contract.
  *
  * The page edits a *draft*, never the rendered bar: `react-hook-form` holds the
- * candidate document and `zodResolver` runs the schema-v1 schema on every
+ * candidate document and `zodResolver` runs the schema-v2 schema on every
  * change, so a field-level error blocks Apply before any native write. Apply
  * serializes the validated draft and calls `config_save`; the native store
  * re-validates, writes atomically and publishes a `config` event every bar
@@ -54,7 +55,9 @@ export function createNativePersistence(): ConfigPersistence {
     throw new Error('As configurações exigem o runtime nativo')
   return {
     async load() {
-      return configSchema.parse((await bridge.configLoad!()).config)
+      return configSchema.parse(
+        migrateConfig((await bridge.configLoad!()).config)
+      )
     },
     async save(config) {
       return configSchema.parse((await bridge.configSave!(config)).config)

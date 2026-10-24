@@ -2,8 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   defaultConfig,
   parseConfig,
-  voicemeeterLabel,
-  widgetAudio
+  configSchema
 } from '../services/configuration/config'
 import { useConfig } from '../stores/config'
 import { cornerRadius } from '../components/status-bar/curves'
@@ -66,7 +65,7 @@ describe('configuration', () => {
     // the two definitions fail loudly when they drift.
     const native = JSON.parse(JSON.stringify(defaultConfig))
     expect(parseConfig(JSON.stringify(native))).toEqual(defaultConfig)
-    expect(native.version).toBe(1)
+    expect(native.version).toBe(2)
   })
   it('keeps the schema pointer a hand edit added', () => {
     // Editors read `$schema` for completion and range errors. A parse must not
@@ -109,47 +108,63 @@ describe('configuration', () => {
     expect(useConfig.getState().apply(JSON.stringify(c))).toBe(true)
     expect(localStorage.getItem('strata.config.v1')).toContain('bottom')
   })
-  it('defaults audio widgets to the Windows endpoints', () => {
-    const parsed = parseConfig(JSON.stringify(defaultConfig))
-    expect(widgetAudio(parsed, 'volume')).toBeUndefined()
-    expect(widgetAudio(parsed, 'microphone')).toBeUndefined()
-  })
-  it('routes an audio widget to Voicemeeter only with a strip/bus target', () => {
-    const c = structuredClone(defaultConfig)
-    c.widgets.right.find((w) => w.type === 'volume')!.audio = {
-      source: 'voicemeeter',
-      target: { kind: 'bus', index: 0 },
-      label: 'A1 fones'
+  it('defaults both global channels to Windows and validates their indices', () => {
+    expect(defaultConfig.audio).toEqual({
+      output: { source: 'windows', targetIndex: 0 },
+      input: { source: 'windows', targetIndex: 0 }
+    })
+    for (const channel of ['output', 'input'] as const) {
+      for (const targetIndex of [-1, 8, 0.5]) {
+        const config = structuredClone(defaultConfig)
+        config.audio[channel] = { source: 'voicemeeter', targetIndex }
+        expect(() => configSchema.parse(config)).toThrow()
+      }
     }
-    const parsed = parseConfig(JSON.stringify(c))
-    const audio = widgetAudio(parsed, 'volume')!
-    expect(audio.source).toBe('voicemeeter')
-    expect(voicemeeterLabel(audio)).toBe('A1 fones')
-    expect(
-      voicemeeterLabel({
-        source: 'voicemeeter',
-        target: { kind: 'bus', index: 0 }
-      })
-    ).toBe('Bus 0')
-    expect(() =>
-      parseConfig(
-        JSON.stringify(
-          Object.assign(structuredClone(defaultConfig), {
-            widgets: {
-              left: [],
-              center: [],
-              right: [
-                {
-                  id: 'volume',
-                  type: 'volume',
-                  audio: { source: 'voicemeeter' }
-                }
-              ]
-            }
-          })
-        )
-      )
-    ).toThrow(/target/)
+  })
+  it('migrates conflicting legacy audio without changing other preferences', () => {
+    const legacy = JSON.parse(JSON.stringify(defaultConfig))
+    legacy.version = 1
+    delete legacy.audio
+    legacy.widgets.right[2].audio = {
+      source: 'voicemeeter',
+      target: { kind: 'strip', index: 3 },
+      label: 'Old',
+      enabled: false
+    }
+    legacy.monitors = {
+      DISPLAY2: {
+        widgets: {
+          volume: {
+            tooltip: false,
+            audio: { source: 'voicemeeter', target: { kind: 'bus', index: 7 } }
+          }
+        }
+      }
+    }
+    const migrated = parseConfig(JSON.stringify(legacy))
+    expect(migrated.version).toBe(2)
+    expect(migrated.audio).toEqual(defaultConfig.audio)
+    expect(migrated.widgets).toEqual(defaultConfig.widgets)
+    expect(migrated.monitors).toEqual({
+      DISPLAY2: { widgets: { volume: { tooltip: false } } }
+    })
+    expect(legacy.widgets.right[2].audio.label).toBe('Old')
+    expect(parseConfig(JSON.stringify(migrated))).toEqual(migrated)
+  })
+  it('rejects legacy audio fields and per-widget overrides in version 2', () => {
+    for (const field of ['label', 'kind', 'enabled', 'target']) {
+      const config = JSON.parse(JSON.stringify(defaultConfig))
+      config.audio.output[field] = 'legacy'
+      expect(() => parseConfig(JSON.stringify(config))).toThrow()
+    }
+    const config = JSON.parse(JSON.stringify(defaultConfig))
+    config.widgets.right[2].audio = { source: 'windows' }
+    expect(() => parseConfig(JSON.stringify(config))).toThrow()
+    delete config.widgets.right[2].audio
+    config.monitors = {
+      DISPLAY2: { widgets: { volume: { audio: { source: 'windows' } } } }
+    }
+    expect(() => parseConfig(JSON.stringify(config))).toThrow()
   })
 })
 
@@ -190,6 +205,6 @@ it('ships the installation layout without machine-specific routing or monitors',
   expect(
     Object.values(defaultConfig.widgets)
       .flat()
-      .every((w) => !w.audio)
+      .every((w) => !('audio' in w))
   ).toBe(true)
 })

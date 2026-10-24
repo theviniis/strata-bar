@@ -3,7 +3,53 @@
   "type": "object",
   "properties": {
     "$schema": { "type": "string" },
-    "version": { "type": "number", "const": 1 },
+    "version": { "type": "number", "const": 2 },
+    "audio": {
+      "default": {
+        "output": { "source": "windows", "targetIndex": 0 },
+        "input": { "source": "windows", "targetIndex": 0 }
+      },
+      "type": "object",
+      "properties": {
+        "output": {
+          "default": { "source": "windows", "targetIndex": 0 },
+          "type": "object",
+          "properties": {
+            "source": {
+              "default": "windows",
+              "type": "string",
+              "enum": ["windows", "voicemeeter"]
+            },
+            "targetIndex": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 7
+            }
+          },
+          "additionalProperties": false
+        },
+        "input": {
+          "default": { "source": "windows", "targetIndex": 0 },
+          "type": "object",
+          "properties": {
+            "source": {
+              "default": "windows",
+              "type": "string",
+              "enum": ["windows", "voicemeeter"]
+            },
+            "targetIndex": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 7
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "agents": {
       "default": {
         "visible": {
@@ -109,29 +155,10 @@
                 "enum": ["compact", "label"]
               },
               "tooltip": { "default": true, "type": "boolean" },
-              "marginX": { "type": "number", "minimum": 0, "maximum": 32 },
-              "audio": {
-                "type": "object",
-                "properties": {
-                  "source": {
-                    "default": "windows",
-                    "type": "string",
-                    "enum": ["windows", "voicemeeter"]
-                  },
-                  "target": {
-                    "type": "object",
-                    "properties": {
-                      "kind": { "type": "string", "enum": ["strip", "bus"] },
-                      "index": { "type": "integer", "minimum": 0, "maximum": 7 }
-                    },
-                    "required": ["kind", "index"]
-                  },
-                  "label": { "type": "string" },
-                  "enabled": { "type": "boolean" }
-                }
-              }
+              "marginX": { "type": "number", "minimum": 0, "maximum": 32 }
             },
-            "required": ["id", "type"]
+            "required": ["id", "type"],
+            "additionalProperties": false
           }
         },
         "center": {
@@ -172,29 +199,10 @@
                 "enum": ["compact", "label"]
               },
               "tooltip": { "default": true, "type": "boolean" },
-              "marginX": { "type": "number", "minimum": 0, "maximum": 32 },
-              "audio": {
-                "type": "object",
-                "properties": {
-                  "source": {
-                    "default": "windows",
-                    "type": "string",
-                    "enum": ["windows", "voicemeeter"]
-                  },
-                  "target": {
-                    "type": "object",
-                    "properties": {
-                      "kind": { "type": "string", "enum": ["strip", "bus"] },
-                      "index": { "type": "integer", "minimum": 0, "maximum": 7 }
-                    },
-                    "required": ["kind", "index"]
-                  },
-                  "label": { "type": "string" },
-                  "enabled": { "type": "boolean" }
-                }
-              }
+              "marginX": { "type": "number", "minimum": 0, "maximum": 32 }
             },
-            "required": ["id", "type"]
+            "required": ["id", "type"],
+            "additionalProperties": false
           }
         },
         "right": {
@@ -235,29 +243,10 @@
                 "enum": ["compact", "label"]
               },
               "tooltip": { "default": true, "type": "boolean" },
-              "marginX": { "type": "number", "minimum": 0, "maximum": 32 },
-              "audio": {
-                "type": "object",
-                "properties": {
-                  "source": {
-                    "default": "windows",
-                    "type": "string",
-                    "enum": ["windows", "voicemeeter"]
-                  },
-                  "target": {
-                    "type": "object",
-                    "properties": {
-                      "kind": { "type": "string", "enum": ["strip", "bus"] },
-                      "index": { "type": "integer", "minimum": 0, "maximum": 7 }
-                    },
-                    "required": ["kind", "index"]
-                  },
-                  "label": { "type": "string" },
-                  "enabled": { "type": "boolean" }
-                }
-              }
+              "marginX": { "type": "number", "minimum": 0, "maximum": 32 }
             },
-            "required": ["id", "type"]
+            "required": ["id", "type"],
+            "additionalProperties": false
           }
         }
       },
@@ -313,32 +302,9 @@
                 },
                 "format": { "type": "string", "enum": ["compact", "label"] },
                 "tooltip": { "type": "boolean" },
-                "marginX": { "type": "number", "minimum": 0, "maximum": 32 },
-                "audio": {
-                  "type": "object",
-                  "properties": {
-                    "source": {
-                      "default": "windows",
-                      "type": "string",
-                      "enum": ["windows", "voicemeeter"]
-                    },
-                    "target": {
-                      "type": "object",
-                      "properties": {
-                        "kind": { "type": "string", "enum": ["strip", "bus"] },
-                        "index": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 7
-                        }
-                      },
-                      "required": ["kind", "index"]
-                    },
-                    "label": { "type": "string" },
-                    "enabled": { "type": "boolean" }
-                  }
-                }
-              }
+                "marginX": { "type": "number", "minimum": 0, "maximum": 32 }
+              },
+              "additionalProperties": false
             }
           }
         }

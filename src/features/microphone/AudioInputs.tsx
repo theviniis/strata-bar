@@ -67,7 +67,9 @@ export function AudioInputs({
         </CardHeader>
         <CardContent>
           {volume.status === 'unavailable' && (
-            <p>Configure a fonte em Configurações → Entrada de áudio.</p>
+            <p>
+              Configure a fonte em Configurações → Áudio → Entrada de áudio.
+            </p>
           )}
           <div className="" aria-busy={pending !== null}>
             {inputs.status === 'loading' && <EmptyInputItems />}

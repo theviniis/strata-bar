@@ -125,6 +125,10 @@ beforeEach(() => {
   }))
 })
 
+function openAudioOutput() {
+  fireEvent.click(screen.getByRole('button', { name: 'Áudio' }))
+}
+
 async function openEditor() {
   render(<SettingsView />)
   await waitFor(() =>
@@ -766,8 +770,13 @@ it('uses live Voicemeeter slot names and retains the target while Windows handli
     }
   )
   await openEditor()
-  fireEvent.click(screen.getByRole('button', { name: 'Saída de áudio' }))
-  fireEvent.click(screen.getByRole('combobox', { name: 'Fonte de áudio' }))
+  openAudioOutput()
+  fireEvent.click(
+    within(screen.getByRole('region', { name: 'Saída de áudio' })).getByRole(
+      'combobox',
+      { name: 'Fonte de áudio' }
+    )
+  )
   fireEvent.pointerDown(
     await screen.findByRole('option', { name: 'Voicemeeter' })
   )
@@ -777,31 +786,22 @@ it('uses live Voicemeeter slot names and retains the target while Windows handli
     await screen.findByRole('option', { name: 'A3 · Studio speakers' })
   )
   fireEvent.click(screen.getByRole('option', { name: 'A3 · Studio speakers' }))
-  fireEvent.change(screen.getByLabelText('Rótulo de áudio'), {
-    target: { value: 'Desk' }
-  })
   fireEvent.click(
-    screen.getByRole('checkbox', {
-      name: 'Usar endpoints do Windows mantendo o alvo'
-    })
+    within(screen.getByRole('region', { name: 'Saída de áudio' })).getByRole(
+      'combobox',
+      { name: 'Fonte de áudio' }
+    )
   )
+  fireEvent.pointerDown(await screen.findByRole('option', { name: 'Windows' }))
+  fireEvent.click(screen.getByRole('option', { name: 'Windows' }))
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
   await waitFor(() =>
     expect(bridge.configSave).toHaveBeenCalledWith(
       expect.objectContaining({
-        widgets: expect.objectContaining({
-          right: expect.arrayContaining([
-            expect.objectContaining({
-              id: 'volume',
-              audio: {
-                source: 'voicemeeter',
-                target: { kind: 'bus', index: 2 },
-                enabled: false,
-                label: 'Desk'
-              }
-            })
-          ])
-        })
+        audio: {
+          output: { source: 'windows', targetIndex: 2 },
+          input: defaultConfig.audio.input
+        }
       })
     )
   )
@@ -815,8 +815,13 @@ it('offers bounded manual audio targets when the channel is unavailable', async 
     }
   )
   await openEditor()
-  fireEvent.click(screen.getByRole('button', { name: 'Entrada de áudio' }))
-  fireEvent.click(screen.getByRole('combobox', { name: 'Fonte de áudio' }))
+  openAudioOutput()
+  fireEvent.click(
+    within(screen.getByRole('region', { name: 'Entrada de áudio' })).getByRole(
+      'combobox',
+      { name: 'Fonte de áudio' }
+    )
+  )
   fireEvent.pointerDown(
     await screen.findByRole('option', { name: 'Voicemeeter' })
   )
@@ -845,17 +850,10 @@ it('offers bounded manual audio targets when the channel is unavailable', async 
   await waitFor(() =>
     expect(bridge.configSave).toHaveBeenCalledWith(
       expect.objectContaining({
-        widgets: expect.objectContaining({
-          right: expect.arrayContaining([
-            expect.objectContaining({
-              id: 'microphone',
-              audio: {
-                source: 'voicemeeter',
-                target: { kind: 'strip', index: 7 }
-              }
-            })
-          ])
-        })
+        audio: {
+          output: defaultConfig.audio.output,
+          input: { source: 'voicemeeter', targetIndex: 7 }
+        }
       })
     )
   )
@@ -1297,14 +1295,10 @@ it('recovers applied agent visibility after reopening and preserves saved values
   )
 })
 
-it('keeps audio edits in the shared Draft, preserves saved audio on failure, and reloads it on reopen', async () => {
+it('keeps global audio edits in Draft and restores the saved settings after a failed save and reopen', async () => {
   const saved = structuredClone(defaultConfig)
-  saved.widgets.right.find((w) => w.type === 'volume')!.audio = {
-    source: 'windows',
-    target: { kind: 'bus', index: 3 },
-    label: 'Saved speakers',
-    enabled: false
-  }
+  saved.audio.output = { source: 'voicemeeter', targetIndex: 3 }
+  vi.mocked(connect).mockImplementation(() => () => {})
   vi.mocked(bridge.configLoad!).mockResolvedValue({
     config: saved,
     revision: 1,
@@ -1317,16 +1311,18 @@ it('keeps audio edits in the shared Draft, preserves saved audio on failure, and
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
   )
-  fireEvent.click(screen.getByRole('button', { name: 'Saída de áudio' }))
-  expect(screen.getByLabelText('Rótulo de áudio')).toHaveValue('Saved speakers')
-  fireEvent.change(screen.getByLabelText('Rótulo de áudio'), {
-    target: { value: 'Draft speakers' }
+  openAudioOutput()
+  expect(screen.getByLabelText('Índice do alvo')).toHaveValue(3)
+  fireEvent.change(screen.getByLabelText('Índice do alvo'), {
+    target: { value: '5' }
   })
   expect(bridge.configSave).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
   expect(
-    (screen.getByLabelText('Configuração JSON') as HTMLTextAreaElement).value
-  ).toContain('Draft speakers')
+    JSON.parse(
+      (screen.getByLabelText('Configuração JSON') as HTMLTextAreaElement).value
+    ).audio.output.targetIndex
+  ).toBe(5)
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Disk write denied'
@@ -1335,69 +1331,86 @@ it('keeps audio edits in the shared Draft, preserves saved audio on failure, and
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
   )
-  fireEvent.click(screen.getByRole('button', { name: 'Saída de áudio' }))
-  expect(screen.getByLabelText('Rótulo de áudio')).toHaveValue('Saved speakers')
+  openAudioOutput()
+  expect(screen.getByLabelText('Índice do alvo')).toHaveValue(3)
   view.unmount()
   await openEditor()
-  expect(screen.getByLabelText('Rótulo de áudio')).toHaveValue('Saved speakers')
+  expect(screen.getByLabelText('Índice do alvo')).toHaveValue(3)
 })
 
-it('edits one audio instance on a saved monitor without losing the other target or identity', async () => {
+it('configures global audio without widgets and hides removed controls', async () => {
   const config = structuredClone(defaultConfig)
-  config.widgets.right.push({
-    ...config.widgets.right.find((w) => w.type === 'volume')!,
-    id: 'headphones'
-  })
-  config.monitors = {
-    'screen-a': {
-      widgets: {
-        volume: {
-          audio: {
-            source: 'windows',
-            target: { kind: 'bus', index: 2 },
-            label: 'Desk',
-            enabled: false
-          }
-        }
-      }
-    },
-    'screen-b': {
-      widgets: {
-        volume: {
-          audio: {
-            source: 'voicemeeter',
-            target: { kind: 'bus', index: 4 },
-            label: 'Other'
-          }
-        }
-      }
-    }
-  }
+  config.widgets = { left: [], center: [], right: [] }
+  vi.mocked(connect).mockImplementation(() => () => {})
   vi.mocked(bridge.configLoad!).mockResolvedValue({
     config,
     revision: 1,
     error: null
   })
   await openEditor()
-  fireEvent.click(screen.getByRole('button', { name: 'Saída de áudio' }))
+  openAudioOutput()
+  for (const name of [
+    'Aplicar configurações em',
+    'Instância do widget',
+    'Rótulo de áudio',
+    'Tipo de alvo',
+    'Usar endpoints do Windows mantendo o alvo'
+  ])
+    expect(screen.queryByLabelText(name)).not.toBeInTheDocument()
   fireEvent.click(
-    screen.getByRole('combobox', { name: 'Aplicar configurações em' })
+    within(screen.getByRole('region', { name: 'Saída de áudio' })).getByRole(
+      'combobox',
+      { name: 'Fonte de áudio' }
+    )
   )
-  fireEvent.pointerDown(await screen.findByRole('option', { name: 'Main' }))
-  fireEvent.click(screen.getByRole('option', { name: 'Main' }))
-  expect(screen.getByLabelText('Rótulo de áudio')).toHaveValue('Desk')
-  fireEvent.change(screen.getByLabelText('Rótulo de áudio'), {
-    target: { value: 'Updated desk' }
+  fireEvent.pointerDown(
+    await screen.findByRole('option', { name: 'Voicemeeter' })
+  )
+  fireEvent.click(screen.getByRole('option', { name: 'Voicemeeter' }))
+  fireEvent.change(screen.getByLabelText('Índice do alvo'), {
+    target: { value: '4' }
   })
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
-  await waitFor(() => expect(bridge.configSave).toHaveBeenCalled())
-  const saved = vi.mocked(bridge.configSave!).mock.calls[0][0]
-  expect(saved.monitors['screen-a']!.widgets!.volume!.audio).toEqual({
-    source: 'windows',
-    target: { kind: 'bus', index: 2 },
-    label: 'Updated desk',
-    enabled: false
-  })
-  expect(saved.monitors['screen-b']).toEqual(config.monitors['screen-b'])
-  expect(saved.widgets).toEqual(config.widgets)
+  await waitFor(() =>
+    expect(bridge.configSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audio: {
+          ...defaultConfig.audio,
+          output: { source: 'voicemeeter', targetIndex: 4 }
+        },
+        widgets: config.widgets
+      })
+    )
+  )
+})
+
+it('opens both audio sections from a single menu and restores the page on reopen', async () => {
+  const view = render(<SettingsView />)
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
+  )
+  openAudioOutput()
+  expect(screen.getByRole('heading', { name: 'Saída de áudio' })).toBeVisible()
+  expect(
+    screen.getByRole('heading', { name: 'Entrada de áudio' })
+  ).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Áudio' })).toHaveAttribute(
+    'aria-current',
+    'page'
+  )
+  expect(
+    screen.queryByRole('button', { name: 'Entrada' })
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'Saída' })
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('tablist', { name: 'Configurações de áudio' })
+  ).not.toBeInTheDocument()
+  view.unmount()
+  await openEditor()
+  expect(
+    screen.getByRole('heading', { name: 'Entrada de áudio' })
+  ).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Saída de áudio' })).toBeVisible()
 })

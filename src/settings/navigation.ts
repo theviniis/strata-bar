@@ -7,8 +7,7 @@ const navigationSchema = z.object({
     'agents',
     'reminders',
     'music',
-    'audio-input',
-    'audio-output',
+    'audio',
     'json'
   ]),
   monitor: z
@@ -21,9 +20,10 @@ const key = 'strata.settings.navigation.v1'
 /** UI preferences survive WebView destruction and application restarts. */
 export function readNavigation(): SettingsNavigation {
   try {
-    return navigationSchema.parse(
-      JSON.parse(localStorage.getItem(key) ?? 'null')
-    )
+    const saved = JSON.parse(localStorage.getItem(key) ?? 'null')
+    if (saved?.section === 'audio-input' || saved?.section === 'audio-output')
+      saved.section = 'audio'
+    return navigationSchema.parse(saved)
   } catch {
     return { section: 'layout', monitor: null }
   }

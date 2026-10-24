@@ -67,7 +67,7 @@ export function AudioOutputs({
         </CardHeader>
         <CardContent>
           {volume.status === 'unavailable' && (
-            <p>Configure a fonte em Configurações → Saída de áudio.</p>
+            <p>Configure a fonte em Configurações → Áudio → Saída de áudio.</p>
           )}
           <div className="" aria-busy={pending !== null}>
             {outputs.status === 'loading' && <EmptyOutputItems />}

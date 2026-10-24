@@ -165,8 +165,7 @@ it('owns independent subscriptions, follows intervals and cleans up', () => {
     <WidgetViewContext
       value={{
         ...defaultView,
-        intervalMs: 4000,
-        audio: { source: 'voicemeeter', target: { kind: 'strip', index: 0 } }
+        intervalMs: 4000
       }}
     >
       <VolumeController />
@@ -175,7 +174,7 @@ it('owns independent subscriptions, follows intervals and cleans up', () => {
   )
   expect(runtime.dispose).toHaveBeenCalledTimes(2)
   expect(runtime.connect.mock.calls[2][2]).toEqual({ intervalMs: 4000 })
-  expect(screen.getByText(/Voicemeeter: Strip 0/)).toBeInTheDocument()
+  expect(screen.getByText('Volume do dispositivo padrão')).toBeInTheDocument()
   view.unmount()
   expect(runtime.dispose).toHaveBeenCalledTimes(4)
 })

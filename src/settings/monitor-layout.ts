@@ -147,7 +147,7 @@ export function setLayout(
   return next
 }
 
-/** Patch one leaf of each effective value, retaining unrelated audio fields too. */
+/** Patch one leaf of each effective value, retaining unrelated widget fields. */
 export function patchWidget(
   config: Config,
   scope: Scope,
@@ -163,18 +163,10 @@ export function patchWidget(
     const keys = path.split('.')
     let target = widget as unknown as Record<string, unknown>
     for (const key of keys.slice(0, -1)) {
-      target[key] ??=
-        key === 'audio'
-          ? { source: 'windows' }
-          : { kind: widget.type === 'volume' ? 'bus' : 'strip', index: 0 }
+      target[key] ??= {}
       target = target[key] as Record<string, unknown>
     }
     target[keys.at(-1)!] = value
-    if (widget.audio?.source === 'voicemeeter' && !widget.audio.target)
-      widget.audio.target = {
-        kind: widget.type === 'volume' ? 'bus' : 'strip',
-        index: 0
-      }
     if (!monitor)
       Object.assign(
         definitions.find((w) => w.id === id)!,
@@ -256,19 +248,5 @@ export function valueAt(widget: WidgetConfig, path: string): unknown {
           : undefined,
       widget
     )
-  if (value !== undefined) return value
-  switch (path) {
-    case 'audio.source':
-      return 'windows'
-    case 'audio.label':
-      return ''
-    case 'audio.enabled':
-      return true
-    case 'audio.target.kind':
-      return widget.type === 'volume' ? 'bus' : 'strip'
-    case 'audio.target.index':
-      return 0
-    default:
-      return value
-  }
+  return value
 }

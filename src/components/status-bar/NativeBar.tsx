@@ -53,10 +53,8 @@ export default function NativeBar() {
   const bar = useConfig((state) => state.config.bar)
   const error = useConfig((state) => state.error)
 
-  // Push audio routing for all volume/microphone widgets in this bar's config
-  // on mount and on config changes. The native worker applies last-write-wins
-  // per channel, so the order in the config array determines priority.
-  useAudioRouting(widgets)
+  const audio = useConfig((state) => state.config.audio)
+  useAudioRouting(audio)
 
   return <NativeBarSurface widgets={widgets} bar={bar} error={error} />
 }

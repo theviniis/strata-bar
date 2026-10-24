@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/theviniis/strata-bar/main/config.schema.json",
-  "version": 1,
+  "version": 2,
   "agents": {
     "visible": {
       "chatgpt": false,
@@ -130,5 +130,15 @@
       }
     ]
   },
-  "monitors": {}
+  "monitors": {},
+  "audio": {
+    "output": {
+      "source": "windows",
+      "targetIndex": 0
+    },
+    "input": {
+      "source": "windows",
+      "targetIndex": 0
+    }
+  }
 }

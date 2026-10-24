@@ -1,6 +1,6 @@
 //! Configuration defaults, native validation and the file-backed store.
 //!
-//! Schema version 1 lives in `config_contract.rs`. This module applies the same
+//! Schema version 2 lives in `config_contract.rs`. This module applies the same
 //! defaults the frontend Zod schema applies, re-validates every write natively,
 //! persists atomically (temp file + `MoveFileExW`) and watches the file so an
 //! external edit republishes to every window. Rejections never mutate the stored
@@ -134,9 +134,6 @@ pub fn project(config: &Config, monitor: Option<&str>) -> Config {
                 if let Some(margin) = value.margin_x {
                     widget.margin_x = Some(margin);
                 }
-                if let Some(audio) = &value.audio {
-                    widget.audio = Some(audio.clone());
-                }
             }
         }
     }
@@ -193,6 +190,11 @@ pub fn validate(config: &Config) -> Result<(), String> {
             "Unsupported config version {} (expected {SCHEMA_VERSION})",
             config.version
         ));
+    }
+    for channel in [&config.audio.output, &config.audio.input] {
+        if u32::from(channel.target_index) > crate::voicemeeter::MAX_INDEX {
+            return Err("Audio targetIndex must be between 0 and 7".into());
+        }
     }
     validate_bar(&config.bar)?;
     let mut monitors = std::collections::HashSet::new();
@@ -278,23 +280,6 @@ pub fn validate(config: &Config) -> Result<(), String> {
                 widget.id
             ));
         }
-        if let Some(audio) = &widget.audio {
-            if audio.source == AudioSource::Voicemeeter && audio.target.is_none() {
-                return Err(format!(
-                    "Widget {} needs an audio target when routed through Voicemeeter",
-                    widget.id
-                ));
-            }
-            if let Some(target) = &audio.target {
-                if u32::from(target.index) > crate::voicemeeter::MAX_INDEX {
-                    return Err(format!(
-                        "Widget {} audio target index must be between 0 and {}",
-                        widget.id,
-                        crate::voicemeeter::MAX_INDEX
-                    ));
-                }
-            }
-        }
     }
     for (monitor, over) in &config.monitors {
         if let Some(widgets) = &over.widgets {
@@ -319,7 +304,36 @@ pub fn validate(config: &Config) -> Result<(), String> {
 
 /// Parses a JSON document, applying schema defaults before validation.
 pub fn parse(text: &str) -> Result<Config, String> {
-    let config: Config = serde_json::from_str(text).map_err(|e| format!("Invalid config: {e}"))?;
+    let mut value: serde_json::Value =
+        serde_json::from_str(text).map_err(|e| format!("Invalid config: {e}"))?;
+    if value.get("version").and_then(|v| v.as_u64()) == Some(1) {
+        value["version"] = serde_json::json!(2);
+        value["audio"] = serde_json::json!({"output": {"source": "windows", "targetIndex": 0}, "input": {"source": "windows", "targetIndex": 0}});
+        if let Some(sections) = value.get_mut("widgets").and_then(|v| v.as_object_mut()) {
+            for section in sections.values_mut() {
+                if let Some(widgets) = section.as_array_mut() {
+                    for widget in widgets {
+                        if let Some(widget) = widget.as_object_mut() {
+                            widget.remove("audio");
+                        }
+                    }
+                }
+            }
+        }
+        if let Some(monitors) = value.get_mut("monitors").and_then(|v| v.as_object_mut()) {
+            for monitor in monitors.values_mut() {
+                if let Some(widgets) = monitor.get_mut("widgets").and_then(|v| v.as_object_mut()) {
+                    for widget in widgets.values_mut() {
+                        if let Some(widget) = widget.as_object_mut() {
+                            widget.remove("audio");
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let config: Config =
+        serde_json::from_value(value).map_err(|e| format!("Invalid config: {e}"))?;
     validate(&config)?;
     Ok(config)
 }
@@ -559,6 +573,11 @@ pub fn publish(app: &AppHandle, snapshot: &ConfigSnapshot) {
     });
 }
 
+/// Include global audio so a route-only edit is never deduplicated away.
+fn bar_render_state(snapshot: &ConfigSnapshot) -> serde_json::Value {
+    serde_json::json!({"bar": snapshot.config.bar, "widgets": snapshot.config.widgets, "agents": snapshot.config.agents, "audio": snapshot.config.audio, "error": snapshot.error})
+}
+
 fn publish_windows(app: &AppHandle, snapshot: &ConfigSnapshot) {
     static SENT: std::sync::LazyLock<Mutex<BTreeMap<String, serde_json::Value>>> =
         std::sync::LazyLock::new(|| Mutex::new(BTreeMap::new()));
@@ -577,7 +596,7 @@ fn publish_windows(app: &AppHandle, snapshot: &ConfigSnapshot) {
         };
         let payload = serde_json::to_value(&projected).expect("Config snapshot serializes");
         if label.starts_with("bar-") {
-            let rendered = serde_json::json!({"bar": projected.config.bar, "widgets": projected.config.widgets, "agents": projected.config.agents, "error": projected.error});
+            let rendered = bar_render_state(&projected);
             if SENT
                 .lock()
                 .unwrap()
@@ -889,42 +908,95 @@ mod tests {
     }
 
     #[test]
-    fn save_rejects_audio_targets_outside_the_engine_range() {
+    fn audio_only_edits_change_the_bar_publication_state() {
+        let mut snapshot = ConfigSnapshot {
+            revision: 1,
+            config: defaults(),
+            error: None,
+        };
+        let before = bar_render_state(&snapshot);
+        snapshot.config.audio.input.source = AudioSource::Voicemeeter;
+        assert_ne!(bar_render_state(&snapshot), before);
+    }
+
+    #[test]
+    fn global_audio_validates_and_survives_projection_and_restart() {
         let dir = Directory::new();
         let store = ConfigStore::open(dir.path());
-        let mut invalid = defaults();
-        invalid.widgets.right[6].audio = Some(WidgetAudio {
+        let before = fs::read(dir.path()).unwrap();
+        let mut config = defaults();
+        config.audio.output = AudioChannelConfig {
             source: AudioSource::Voicemeeter,
-            target: Some(AudioTarget {
-                kind: AudioTargetKind::Strip,
-                index: 8,
-            }),
-            label: None,
-            enabled: None,
-        });
-        let error = store.save(invalid).unwrap_err();
-        assert!(error.contains("index"), "unexpected error: {error}");
+            target_index: 8,
+        };
+        assert!(store.save(config.clone()).is_err());
+        assert_eq!(fs::read(dir.path()).unwrap(), before);
+        config.audio.output.target_index = 7;
+        config.audio.input = AudioChannelConfig {
+            source: AudioSource::Voicemeeter,
+            target_index: 2,
+        };
+        store.save(config.clone()).unwrap();
+        assert_eq!(project(&config, Some("DISPLAY2")).audio, config.audio);
+        assert_eq!(
+            ConfigStore::open(dir.path())
+                .snapshot()
+                .unwrap()
+                .config
+                .audio,
+            config.audio
+        );
+    }
 
-        let mut missing = defaults();
-        missing.widgets.right[6].audio = Some(WidgetAudio {
-            source: AudioSource::Voicemeeter,
-            target: None,
-            label: None,
-            enabled: None,
-        });
-        assert!(store.save(missing).is_err(), "routed audio needs a target");
+    #[test]
+    fn legacy_audio_migrates_on_read_without_writing_the_file() {
+        let dir = Directory::new();
+        let mut legacy = serde_json::to_value(defaults()).unwrap();
+        legacy["version"] = serde_json::json!(1);
+        legacy.as_object_mut().unwrap().remove("audio");
+        legacy["widgets"]["right"][2]["audio"] = serde_json::json!({"source":"voicemeeter","target":{"kind":"strip","index":3},"label":"old","enabled":false});
+        legacy["monitors"] = serde_json::json!({"DISPLAY2":{"widgets":{"volume":{"audio":{"source":"voicemeeter","target":{"kind":"bus","index":7}},"tooltip":false}}}});
+        let text = legacy.to_string();
+        fs::create_dir_all(dir.path().parent().unwrap()).unwrap();
+        fs::write(dir.path(), &text).unwrap();
+        let store = ConfigStore::open(dir.path());
+        let migrated = store.snapshot().unwrap();
+        assert!(migrated.error.is_none());
+        assert_eq!(migrated.config.version, 2);
+        assert_eq!(migrated.config.audio, AudioConfig::default());
+        assert_eq!(
+            migrated.config.monitors["DISPLAY2"]
+                .widgets
+                .as_ref()
+                .unwrap()["volume"]
+                .tooltip,
+            Some(false)
+        );
+        assert_eq!(fs::read_to_string(dir.path()).unwrap(), text);
+        store.save(migrated.config).unwrap();
+        let saved: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(dir.path()).unwrap()).unwrap();
+        assert_eq!(saved["version"], 2);
+        assert!(saved["widgets"]["right"][2].get("audio").is_none());
+    }
 
-        let mut valid = defaults();
-        valid.widgets.right[6].audio = Some(WidgetAudio {
-            source: AudioSource::Voicemeeter,
-            target: Some(AudioTarget {
-                kind: AudioTargetKind::Bus,
-                index: 7,
-            }),
-            label: Some("Headphones".into()),
-            enabled: None,
-        });
-        assert!(store.save(valid).is_ok());
+    #[test]
+    fn version_two_rejects_legacy_audio_fields() {
+        for field in ["label", "enabled", "kind", "target"] {
+            let mut value = serde_json::to_value(defaults()).unwrap();
+            value["audio"]["output"][field] = serde_json::json!("legacy");
+            assert!(parse(&value.to_string()).is_err(), "accepted {field}");
+        }
+        let mut value = serde_json::to_value(defaults()).unwrap();
+        value["widgets"]["right"][2]["audio"] = serde_json::json!({"source":"windows"});
+        assert!(parse(&value.to_string()).is_err());
+        value["widgets"]["right"][2]
+            .as_object_mut()
+            .unwrap()
+            .remove("audio");
+        value["monitors"] =
+            serde_json::json!({"DISPLAY2":{"widgets":{"volume":{"audio":{"source":"windows"}}}}});
+        assert!(parse(&value.to_string()).is_err());
     }
 
     #[test]
@@ -939,7 +1011,6 @@ mod tests {
             interval_ms: 2_000,
             format: WidgetFormat::Label,
             tooltip: true,
-            audio: None,
             margin_x: None,
         });
         assert!(store.save(invalid).unwrap_err().contains("duplicated"));
@@ -1128,7 +1199,7 @@ mod tests {
     fn unknown_versions_and_fields_are_rejected() {
         let mut value: serde_json::Value =
             serde_json::from_str(&serde_json::to_string(&defaults()).unwrap()).unwrap();
-        value["version"] = serde_json::json!(2);
+        value["version"] = serde_json::json!(3);
         assert!(parse(&value.to_string()).unwrap_err().contains("version"));
         value["version"] = serde_json::json!(1);
         value["bar"]["height"] = serde_json::json!(12);

@@ -7,33 +7,28 @@ import {
   type VmTarget
 } from '@/services/system/bridge'
 
-/**
- * Pushes audio routing for all volume/microphone widgets in the given widget
- * arrays to the native worker. Called by the bar on mount and on config changes
- * so that routing takes effect even for widgets that are not currently rendered
- * (e.g. disabled widgets that may be enabled later). The worker owns the
- * last-write-wins semantics per channel.
- */
-export function useAudioRouting({ left, center, right }: Config['widgets']) {
+/** Every bar sends the same two global routes, independent of its widget layout. */
+export function useAudioRouting(audio: Config['audio']) {
   useEffect(() => {
-    const allWidgets = [...left, ...center, ...right]
-    const routes = new Map<AudioChannel, VmTarget | null>()
-    for (const widget of allWidgets) {
-      if (widget.type !== 'volume' && widget.type !== 'microphone') continue
-      const audio = widget.audio
-      const disabled = audio?.enabled === false
-      const target: VmTarget | null =
-        !disabled && audio?.source === 'voicemeeter' && audio.target
-          ? { kind: audio.target.kind, index: audio.target.index }
+    const routes: [AudioChannel, VmTarget | null][] = [
+      [
+        'volume',
+        audio.output.source === 'voicemeeter'
+          ? { kind: 'bus', index: audio.output.targetIndex }
           : null
-      routes.set(widget.type, target)
-    }
-    for (const [channel, target] of routes) {
+      ],
+      [
+        'microphone',
+        audio.input.source === 'voicemeeter'
+          ? { kind: 'strip', index: audio.input.targetIndex }
+          : null
+      ]
+    ]
+    for (const [channel, target] of routes)
       void bridge.setChannelSource?.(channel, target).catch((error) => {
         useConfig.setState({
           error: error instanceof Error ? error.message : String(error)
         })
       })
-    }
-  }, [left, center, right])
+  }, [audio])
 }

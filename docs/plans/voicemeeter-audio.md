@@ -9,29 +9,34 @@ strips/buses instead of the Windows default endpoints. Strata reads and writes t
 Voicemeeter engine through the vendor remote DLL; it never mirrors Windows mute
 (today) and never falls back to Windows or demo values.
 
-## Configuration (Zod schema v1, additive)
+## Configuration (schema version 2)
+
+Audio is global, independent of widget instances and monitor layouts:
 
 ```json
 {
-  "id": "volume",
-  "type": "volume",
+  "version": 2,
   "audio": {
-    "source": "voicemeeter",
-    "target": { "kind": "bus", "index": 0 },
-    "label": "A1 fones"
+    "output": { "source": "voicemeeter", "targetIndex": 0 },
+    "input": { "source": "windows", "targetIndex": 0 }
   }
 }
 ```
 
-- `source` defaults to `windows`; `target` is required when `source=voicemeeter`.
-- `enabled` is optional (default `true`); `false` keeps the stored target/label
-  while the widget drives the Windows endpoints again — this is what the
-  popups' configuration checkbox writes.
-- Guides for the reference variant Voicemeeter Banana x64: strips 0-4
-  (3 physical + V1/V2), buses 0-4 (A1-A3 + B1/B2). Basic ships 3 strips / 2 buses,
-  Potato 8/8; the worker bounds-checks indices against `VBVMR_GetVoicemeeterType`.
-- `label` is optional; the pill shows `Strip n` / `Bus n` otherwise.
-- Old configs stay untouched (`audio` is optional on every widget).
+- Each channel defaults to Windows and index 0. Output always targets a bus;
+  input always targets a strip. The destination kind is derived, never editable.
+- Settings → Áudio opens one page with output/input sections, each with a source selector and, for
+  Voicemeeter, a live target selector. An unavailable saved target stays visible;
+  without a live list, a bounded index field (0–7) remains available.
+- Source changes retain the index. Windows ignores it; choosing Voicemeeter again
+  reuses it. There are no per-widget labels, enable flags or monitor overrides.
+- Version 1 documents migrate on read: all old widget/monitor audio blocks are
+  removed and both channels reset to Windows/index 0. Other preferences survive.
+  Loading never rewrites an existing file; the next explicit save writes version 2.
+- Version 2 rejects legacy audio fields and per-widget audio blocks in both the
+  frontend and native validator. Failed edits preserve the last good document.
+- Banana x64 has strips 0–4 and buses 0–4; Basic has 3 strips / 2 buses, Potato 8/8.
+  The worker validates indices against the running application as well.
 
 ## Level semantics
 
@@ -48,9 +53,9 @@ Voicemeeter engine through the vendor remote DLL; it never mirrors Windows mute
 - The shared metrics worker owns the remote session on its single thread:
   `VBVMR_Login/Logout`, `IsParametersDirty`, get/set float. Polling happens inside the
   existing 2000 ms wake cycle; snapshots are deduplicated like the WASAPI channel.
-- Routing is global per channel with last-write-wins semantics. Two widgets sharing a
-  channel but configured with different Voicemeeter targets cannot be served at the
-  same time — this is an intentional MVP limitation (recorded here, noted in AGENTS.md).
+- Routing is global per channel. Every bar sends the same output/input settings,
+  including bars without audio widgets; widget order and monitor overrides cannot
+  select a different target.
 - When the DLL or the Voicemeeter application is absent, a routed channel publishes
   `unavailable` (fronted by `Voicemeeter não está em execução` / `não está instalado`
   in read/write errors). Recovering happens automatically on the next poll.
@@ -59,53 +64,21 @@ Voicemeeter engine through the vendor remote DLL; it never mirrors Windows mute
   Windows endpoints; Voicemeeter routing only changes what the mute button and the
   slider act on.
 
-## Routing menu (audio popups)
+## Engine discovery and consumers
 
-- New native channel `voicemeeter`: publishes a `Snapshot` — `{ application,
-strips[], buses[] }` with `index`, engine `slot` (`A1..A5`/`B1..` for buses,
-  `Hardware n`/`Vn..` for strips), `physical` flag, device/label `name`
-  (`Device.name` via `VBVMR_GetParameterStringA`), `gain`, `mute`. Published while
-  the channel is subscribed **or** any routed audio channel is active; otherwise
-  `unavailable` (never demo fallback).
-- Names come from `VBVMR_GetParameterStringA("Strip[i].Device.name")` /
-  `"Bus[i].Device.name"`, falling back to `Strip[i].Label` and then to an empty
-  string (the UI shows only the slot). Validated live on a Banana install:
-  strips read `Mic`, `CABLE Output (VB-Audio Virtual Cable)`, `Windows`,
-  `Discord`; `Bus[0]` (A1) read its assigned device.
-- Frontend: `src/hooks/useVoicemeeterCapability.ts` caches the
-  `capabilities` command; both audio popups carry a gear button
-  (`Configurações do Voicemeeter`, same Dialog-`Settings` pattern as the
-  reminders popup) that opens a settings view — `src/features/audio/VoicemeeterSettings.tsx`.
-  The view has a `Usar Voicemeeter` checkbox plus a radio list of every strip
-  (microphone) or bus (volume); the engine list arrives on the dedicated
-  `voicemeeter` channel. The checkbox writes the `audio.enabled` flag:
-  `enabled: false` keeps the stored target while the widget drives the Windows
-  endpoints again; re-enabling restores the previous target (or defaults to
-  index 0 when nothing was stored). When the engine is not running the view
-  keeps the Windows note plus a notice instead of the list.
-- `--probe-vm`: one-shot diagnostic that logs the live snapshot and round-trips
-  mute + gain (+1 dB, restored) on `Bus[0]`/`Strip[0]`. On the reference install
-  (Banana) all round-trips pass, proving the native write path; the reported
-  "sliders/mute do not control Voicemeeter" symptom was a misconfigured widget
-  (wrong/absent `audio` block), which the menu now prevents.
+The `voicemeeter` channel publishes `{ application, strips[], buses[] }` with
+index, slot, physical flag, assigned device name, gain and mute. Names come from
+`VBVMR_GetParameterStringA`, with the existing engine label fallback.
 
-## Files
+`src/settings/AudioSettings.tsx` edits the global channels in the shared draft.
+`src/hooks/useAudioRouting.ts` derives bus/strip targets and pushes both routes
+on startup and configuration events. Controllers read the global channel for
+labels and tooltips (`Bus n` / `Strip n`); there is no custom label override.
+Device popups retain daily Windows endpoint switching and volume/mute controls.
 
-- `src-tauri/src/voicemeeter.rs` — remote API binding behind a `RemoteApi` trait,
-  parameter names, percent↔dB mapping, session client, strip/bus snapshot with
-  device names, `--probe-vm`, tests with a fake API.
-- `src-tauri/src/metrics.rs` — worker routing (`Request::Source`), VM poll/publish
-  (routed channels + the `voicemeeter` menu channel), VM writes for routed
-  channels.
-- `src/services/configuration/config.ts` — `audio` widget settings and helpers.
-- `src/hooks/useAudioSource.ts` — pushes the routing from the widgets on config change.
-- `src/hooks/useVoicemeeterCapability.ts`, `src/features/audio/VoicemeeterSettings.tsx` —
-  the capability cache and the gear settings view of both audio popups.
-- `src/stores/config.ts` — `setWidgetAudio` persistence action.
-- `src/services/system/bridge.ts` — `voicemeeter` channel types and the
-  `capabilities` adapter call.
-- `src/features/volume/` and `src/features/microphone/` — pill text/tooltip routing
-  awareness.
+`--probe-vm` is a diagnostic that temporarily round-trips mute and gain on
+Bus[0]/Strip[0], restoring them. It does not prove global configuration propagation
+across multiple bars; that requires a separate native acceptance run.
 
 ## Validation
 

@@ -14,7 +14,7 @@ import { LayoutEditor } from '../settings/LayoutEditor'
 function Editor({ centerTypes = [] }: { centerTypes?: WidgetType[] }) {
   const [draft, setDraft] = useState(() =>
     configSchema.parse({
-      version: 1,
+      version: 2,
       bar: {},
       widgets: {
         left: [
