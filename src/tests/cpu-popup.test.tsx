@@ -21,9 +21,9 @@ function observation(): CpuData {
     logicalProcessors: metric(12),
     temperatureCelsius: metric(42.5),
     temperatureSensor: {
-      provider: 'msiAfterburner',
-      sourceId: 128,
-      instance: 4294967295,
+      provider: 'libreHardwareMonitor',
+      hardwareId: '/hardware/0',
+      sensorId: '/hardware/0/temperature/0',
       name: 'CPU temperature'
     },
     history: [
@@ -57,13 +57,13 @@ it('shows independent CPU indicators and both observed graphs', () => {
     screen.getByRole('group', { name: /Temperatura do pacote da CPU/ })
   ).toBeVisible()
 })
-it('keeps Windows readings usable when Afterburner is unavailable', () => {
+it('keeps other readings usable when thermal sensors are unavailable', () => {
   const data = observation()
   data.temperatureCelsius = {
     status: 'unavailable',
     value: null,
     updatedAt: null,
-    error: 'Afterburner not running'
+    error: 'Sensor not exposed by LHM'
   }
   data.temperatureSensor = null
   data.history[0].temperatureCelsius = null
@@ -78,7 +78,7 @@ it('keeps Windows readings usable when Afterburner is unavailable', () => {
   )
   expect(screen.getByText('3.98 GHz')).toBeVisible()
   expect(screen.getByText('Indisponível')).toBeVisible()
-  expect(screen.getByText(/requer MSI Afterburner/)).toBeVisible()
+  expect(screen.getByText(/Sensor de temperatura indispon�vel/)).toBeVisible()
   // The unavailable sensor reads as a gap, never as an invented point.
   expect(screen.getByText(/1 leitura indisponível/)).toBeVisible()
 })

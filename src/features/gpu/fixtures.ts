@@ -26,9 +26,9 @@ export function gpuFixture(at = GPU_FIXTURE_TIME): GpuData {
     powerWatts: metric(20.6),
     fanPercent: metric(0),
     temperatureSensor: {
-      provider: 'msiAfterburner',
-      sourceId: 0,
-      gpu: 0,
+      provider: 'libreHardwareMonitor',
+      hardwareId: '/hardware/0',
+      sensorId: '/hardware/0/temperature/0',
       name: 'GeForce RTX 3060 Ti'
     },
     history: Array.from({ length: 61 }, (_, i) => ({

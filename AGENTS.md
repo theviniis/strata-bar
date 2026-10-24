@@ -22,11 +22,10 @@ pass; the komorebi and GPU widgets are recorded exceptions (`docs/plans/komorebi
     `configuration/config.ts`.
   - `src/stores/` — Zustand stores, e.g. `config.ts`.
   - `src/tests/` — Vitest + Testing Library suites and `setup.ts`.
-- `src-tauri/` — Rust/Tauri host: `src/main.rs`, `src/desktop.rs` (AppBar host), `src/metrics.rs`
-  (collectors), `src/gpu.rs` + `src/gpu_windows.rs` (GPU collector and its DXGI/PDH source),
-  `src/disk.rs` + `src/disk_windows.rs` (disk volume collector and its Win32 source),
-  `src/afterburner.rs` + `src/mahm_windows.rs` (read-only MSI Afterburner sensors),
-  `src/komorebi.rs` (named-pipe workspace viewer).
+- `src-tauri/` - Rust/Tauri host: AppBar windows, audio and bridge contracts.
+  `src/sensors.rs` consumes the installed sensor service on a separate IPC thread.
+- `sensor-service/` - C#/.NET 10 Windows service with pinned LibreHardwareMonitorLib;
+  CPU/GPU/RAM readings and Windows complements for topology, cache, paging and volumes.
 - `scripts/` — PowerShell validation helpers: `measure-idle.ps1`, `test-live-geometry.ps1`.
 - `docs/` — design notes, plan and recorded evidence (`docs/evidence/`, `docs/performance/`).
 - `research/` — **gitignored, read-only** upstream YASB checkout used as reference; never port code from it.
@@ -123,7 +122,9 @@ flowchart TD
   Bridge -->|browser| Mock[Demo adapter]
   Tooltip -->|browser| Noop[Demo adapter: no-op]
   Native --> Cmd[Tauri commands: subscribe / unsubscribe / set_volume / komorebi_action / overlay_show / overlay_hide / quit]
-  Cmd --> Metrics[metrics.rs collectors: CPU, GPU, RAM, Disk, Core Audio]
+  Cmd --> Metrics[metrics.rs transport and Core Audio]
+  Metrics --> SensorClient[sensors.rs cache and IPC thread]
+  SensorClient --> SensorService[C# service: LHM and Windows complements]
   Cmd --> Desktop[desktop.rs AppBar host]
   Cmd --> Surface[desktop.rs overlay surface]
   Metrics -->|events system:channel| Native
@@ -147,10 +148,10 @@ flowchart TD
   browser studio reads the demo one (its `komorebi` entry is the one non-scalar preview value).
 - Native event envelope: `{ status: 'ready'|'loading'|'error', data, timestamp, error? }`; the event name
   identifies the channel. Subscribe returns `{ token, initial }` after the listener installs; a live event
-  beats the initial snapshot. CPU/RAM polling (fixed 2000 ms in the MVP) pauses with no subscribers; Core
+  beats the initial snapshot. CPU/GPU/RAM/disk snapshots come from the installed sensor service; its 2000 ms collection pauses with no subscribers; Core
   Audio uses endpoint callbacks and default-device notifications, not polling; the clock aligns to minute
   boundaries; komorebi streams named-pipe notifications (no polling, `intervalMs` ignored) and projects one
-  payload per bar window filtered to that window's monitor. One shared native worker serves all monitors.
+  payload per bar window filtered to that window's monitor. One audio/transport worker and a separate sensor-pipe client serve all monitors; one machine-wide sensor service serves all sessions.
 - AppBar host (`desktop.rs`): one undecorated, taskbar-hidden window per monitor; `ABM_NEW`/`QUERYPOS`/
   `SETPOS`/`REMOVE` with callback handling, plus Explorer-restart and display/DPI messages. Geometry is
   verified with direct `GetWindowRect` reads. A named per-session mutex prevents duplicate bars. Always call
@@ -187,13 +188,10 @@ flowchart TD
   `popover.test.tsx`, `resource-graph.test.tsx`, `widget-hover.test.tsx`, `widget-popup.test.tsx`
   (117 tests; seven failures in `audio-outputs.test.tsx`, `widget-popup.test.tsx` and
   `resource-graph.test.tsx` pre-date the GPU work and must be fixed).
-- Native unit tests: `cargo test --manifest-path src-tauri/Cargo.toml` (68 tests: CPU accounting, physical
-  RAM, disk volume projection/skipping and Windows drive-type mapping, GPU collector composition/partial
-  failure/bounds and MAHM
-  parsing, channel/interval validation, window
-  ownership, per-monitor cleanup, negative/scaled monitor geometry, komorebi projection/state bounds,
-  `komorebic` argument allowlist, stream framing, floating frame style/click-through, overlay request
-  validation and overlay placement).
+- Native unit tests: `cargo test --manifest-path src-tauri/Cargo.toml`; sensor cache tests cover
+  bounded frames, atomic validation, freshness, independent failures and identity resets.
+- Sensor service: `dotnet test sensor-service/Strata.SensorService.Tests`; requires the .NET 10 SDK.
+  Tests include pinned LHM cache behavior and real local named-pipe lifecycle without elevation.
 - Integration / e2e: there is no automated e2e harness. Verify natively on Windows using `--probe`,
   `scripts/measure-idle.ps1`, `scripts/test-live-geometry.ps1` (which also fails when a visible overlay ever
   reports `komorebiEligible`) and the recorded JSON under `docs/evidence/`
@@ -244,8 +242,8 @@ flowchart TD
 - Channels: native capability map is returned by the `capabilities` command in `src-tauri/src/main.rs`;
   frontend adapters live in `src/services/system/bridge.ts`. Unsupported channels reject subscription;
   `komorebi` is reported by capability and, when komorebi or `komorebic.exe` is absent, subscribes to a
-  streamed `unavailable` status instead of rejecting. `gpu` reports per-metric `unavailable` when a sensor
-  (for example a missing MSI Afterburner) is absent and always keeps its vendor-neutral readings.
+  streamed `unavailable` status instead of rejecting. Hardware channels consume the installed LHM service; unsupported sensors are independently
+  `unavailable`, and an absent/stale service never falls back to demo or another collector.
   `volume`/`microphone` can be routed through Voicemeeter (Banana/Potato) instead of the Windows default
   endpoints: `set_channel_source` sends the configured strip/bus per widget, the shared worker owns the
   routing globally per channel (last write wins) and a routed channel publishes `unavailable` when the
@@ -281,6 +279,14 @@ flowchart TD
 - [docs/evidence/](docs/evidence/) and [docs/performance/](docs/performance/) — recorded validation JSON.
 - [README.md](README.md) — high-level develop/validate instructions.
 - `> TODO: add ADRs and a docs/ARCH index if architecture decisions multiply.`
+
+## Sensor service changes
+
+For sensor selection, IPC, driver packaging, installer lifecycle or hardware validation, read
+`docs/plans/lhm-sensors.md`. Keep the bar unelevated, the pipe read-only and SCM-verified,
+and the driver signed. Record runtime evidence separately from tests; installation/rollback
+and unsupported hardware need their own acceptance runs. Build tools own
+`sensor-service/**/bin`, `obj` and `artifacts`.
 
 ## Agent skills
 

@@ -29,9 +29,9 @@ function observation(): GpuData {
     powerWatts: metric(20.6),
     fanPercent: metric(0),
     temperatureSensor: {
-      provider: 'msiAfterburner',
-      sourceId: 0,
-      gpu: 0,
+      provider: 'libreHardwareMonitor',
+      hardwareId: '/hardware/0',
+      sensorId: '/hardware/0/temperature/0',
       name: 'GeForce RTX 3060 Ti'
     },
     history: [
@@ -68,7 +68,7 @@ it('shows independent GPU indicators and both observed graphs', () => {
     screen.getByRole('group', { name: /Temperatura da GPU/ })
   ).toBeVisible()
 })
-it('keeps Windows readings usable when Afterburner is unavailable', () => {
+it('keeps other readings usable when thermal sensors are unavailable', () => {
   const data = observation()
   const unavailable = (error: string) => ({
     status: 'unavailable' as const,
@@ -76,9 +76,9 @@ it('keeps Windows readings usable when Afterburner is unavailable', () => {
     updatedAt: null,
     error
   })
-  data.temperatureCelsius = unavailable('Afterburner not running')
-  data.powerWatts = unavailable('Afterburner not running')
-  data.fanPercent = unavailable('Afterburner not running')
+  data.temperatureCelsius = unavailable('Sensor not exposed by LHM')
+  data.powerWatts = unavailable('Sensor not exposed by LHM')
+  data.fanPercent = unavailable('Sensor not exposed by LHM')
   data.temperatureSensor = null
   data.history[0].temperatureCelsius = null
   data.history[0].temperatureUpdatedAt = null
@@ -94,7 +94,11 @@ it('keeps Windows readings usable when Afterburner is unavailable', () => {
   expect(screen.getByText('1.5 GiB / 8.0 GiB')).toBeVisible()
   expect(screen.getByText('322.0 MiB / 16.0 GiB')).toBeVisible()
   expect(screen.getAllByText('Indisponível')).toHaveLength(3)
-  expect(screen.getByText(/requerem MSI Afterburner/)).toBeVisible()
+  expect(
+    screen.getByText(
+      /Sensores de temperatura, consumo e ventoinha indispon�veis/
+    )
+  ).toBeVisible()
   // The unavailable sensor reads as a gap, never as an invented point.
   expect(screen.getByText(/1 leitura indisponível/)).toBeVisible()
 })

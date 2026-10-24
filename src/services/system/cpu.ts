@@ -40,9 +40,9 @@ const cpuSchema = z
     temperatureCelsius: temperature,
     temperatureSensor: z
       .object({
-        provider: z.literal('msiAfterburner'),
-        sourceId: z.literal(128),
-        instance: z.literal(4294967295),
+        provider: z.literal('libreHardwareMonitor'),
+        hardwareId: z.string().min(1).max(4096),
+        sensorId: z.string().min(1).max(4096),
         name: z.string()
       })
       .strict()

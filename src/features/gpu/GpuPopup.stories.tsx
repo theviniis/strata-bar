@@ -38,7 +38,7 @@ export const Stale: Story = {
     now: GPU_FIXTURE_TIME + 10000
   }
 }
-export const WithoutAfterburner: Story = {
+export const WithoutThermalSensors: Story = {
   args: {
     event: {
       status: 'ready',

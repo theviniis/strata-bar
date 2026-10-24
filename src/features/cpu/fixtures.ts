@@ -18,9 +18,9 @@ export function cpuFixture(at = CPU_FIXTURE_TIME): CpuData {
     logicalProcessors: metric(12),
     temperatureCelsius: metric(42.5),
     temperatureSensor: {
-      provider: 'msiAfterburner',
-      sourceId: 128,
-      instance: 4294967295,
+      provider: 'libreHardwareMonitor',
+      hardwareId: '/hardware/0',
+      sensorId: '/hardware/0/temperature/0',
       name: 'CPU temperature'
     },
     history: Array.from({ length: 61 }, (_, i) => ({

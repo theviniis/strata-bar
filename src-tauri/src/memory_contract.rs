@@ -1,8 +1,8 @@
 //! Canonical memory wire contract. Timestamps are Unix milliseconds; sizes bytes.
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-#[derive(Clone, Debug, Serialize, TS, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum MemoryMetricStatus {
     Ready,
@@ -11,8 +11,9 @@ pub enum MemoryMetricStatus {
     NotConfigured,
 }
 
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct MemoryMetric {
     pub status: MemoryMetricStatus,
     pub value: Option<f64>,
@@ -20,16 +21,18 @@ pub struct MemoryMetric {
     pub error: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct MemoryPoint {
     pub sequence: u32,
     pub timestamp: f64,
     pub percent: Option<f64>,
 }
 
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct MemoryData {
     pub sequence: u32,
     pub sampled_at: f64,

@@ -1,5 +1,10 @@
 # GPU resource channel, widget and popup
 
+> Sensor-source update: the LHM service supersedes the original PDH/MAHM source
+> descriptions below. Those descriptions and recorded evidence describe the
+> previous implementation. See [LHM migration](lhm-sensors.md) for the new architecture,
+> installation requirements and outstanding native acceptance gates.
+
 Status: delivered. The native `--check-popups` run (both monitors) and the startup
 `--probe` are recorded under `docs/evidence/`. This is the tracking document for
 the GPU delivery; every checkbox below is ticked as the work lands.

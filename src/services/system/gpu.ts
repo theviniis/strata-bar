@@ -48,9 +48,9 @@ const gpuSchema = z
     fanPercent: percent,
     temperatureSensor: z
       .object({
-        provider: z.literal('msiAfterburner'),
-        sourceId: z.literal(0),
-        gpu: quantity.int(),
+        provider: z.literal('libreHardwareMonitor'),
+        hardwareId: z.string().min(1).max(4096),
+        sensorId: z.string().min(1).max(4096),
         name: z.string()
       })
       .strict()

@@ -15,7 +15,7 @@
     "typecheck": "pnpm generate:popups && pnpm generate:config-schema && tsc -b",
     "check": "pnpm generate:popups && pnpm generate:config-schema && prettier --check . && eslint . && tsc -b && vitest run",
     "desktop": "powershell -NoProfile -File scripts/check-desktop.ps1 && tauri dev",
-    "package:windows": "tauri build",
+    "package:windows": "tauri build --config src-tauri/tauri.sensors.conf.json",
     "format": "pnpm generate:popups && pnpm generate:config-schema && prettier --write .",
     "format:check": "pnpm generate:popups && pnpm generate:config-schema && prettier --check .",
     "generate:config-schema": "node --experimental-strip-types scripts/generate-config-schema.ts",

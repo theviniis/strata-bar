@@ -1,5 +1,10 @@
 # Native MVP — Windows 11
 
+> Sensor-source update: the LHM service supersedes the original PDH/MAHM source
+> descriptions below. Those descriptions and recorded evidence describe the
+> previous implementation. See [LHM migration](plans/lhm-sensors.md) for the new architecture,
+> installation requirements and outstanding native acceptance gates.
+
 This supersedes the foundation-only status in `validation.md`. Success is the native bar, not the browser studio.
 
 ## Implemented

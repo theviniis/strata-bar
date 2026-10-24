@@ -1,0 +1,204 @@
+{
+  "version": 1,
+  "type": "snapshot",
+  "instanceId": "1a6342d5dced4dd3886ac65baae22f3d",
+  "sequence": 2,
+  "sampledAt": 1792808192365,
+  "channels": {
+    "cpu": {
+      "identity": "/intelcpu/0",
+      "data": {
+        "percent": {
+          "status": "ready",
+          "value": 92.19999694824219,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "frequencyHz": {
+          "status": "unavailable",
+          "value": null,
+          "updatedAt": null,
+          "error": "Core clocks unavailable"
+        },
+        "physicalCores": {
+          "status": "ready",
+          "value": 6,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "logicalProcessors": {
+          "status": "ready",
+          "value": 12,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "maxFrequencyHz": {
+          "status": "ready",
+          "value": 2904000000,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "temperatureCelsius": {
+          "status": "unavailable",
+          "value": null,
+          "updatedAt": null,
+          "error": "CPU package temperature unavailable"
+        },
+        "temperatureSensor": null
+      }
+    },
+    "gpu": {
+      "identity": "000000000000BE6C",
+      "data": {
+        "adapter": {
+          "name": "NVIDIA GeForce RTX 3060 Ti",
+          "vendorId": 4318,
+          "deviceId": 9353,
+          "dedicatedBytes": 8413773824
+        },
+        "percent": {
+          "status": "ready",
+          "value": 23,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "memoryUsedBytes": {
+          "status": "ready",
+          "value": 3044016128,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "memoryTotalBytes": {
+          "status": "ready",
+          "value": 8589934592,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "sharedUsedBytes": {
+          "status": "ready",
+          "value": 214392832,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "sharedTotalBytes": {
+          "status": "ready",
+          "value": 17127415808,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "temperatureCelsius": {
+          "status": "ready",
+          "value": 53,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "powerWatts": {
+          "status": "ready",
+          "value": 41.428001403808594,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "fanPercent": {
+          "status": "ready",
+          "value": 53,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "temperatureSensor": {
+          "provider": "libreHardwareMonitor",
+          "hardwareId": "/gpu-nvidia/0",
+          "sensorId": "/gpu-nvidia/0/temperature/0",
+          "name": "GPU Core"
+        }
+      }
+    },
+    "memory": {
+      "identity": "physical-memory",
+      "data": {
+        "totalBytes": {
+          "status": "ready",
+          "value": 34254831616,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "availableBytes": {
+          "status": "ready",
+          "value": 12211916800,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "usedBytes": {
+          "status": "ready",
+          "value": 22042914816,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "percent": {
+          "status": "ready",
+          "value": 64.34979760841689,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "cachedBytes": {
+          "status": "ready",
+          "value": 12465213440,
+          "updatedAt": 1792808192365,
+          "error": null
+        },
+        "pagingFileBytes": {
+          "status": "ready",
+          "value": 239857664,
+          "updatedAt": 1792808192365,
+          "error": null
+        }
+      }
+    },
+    "disk": {
+      "identity": "windows-volumes",
+      "data": {
+        "volumes": [
+          {
+            "mount": "C:",
+            "label": "Sistema",
+            "kind": "fixed",
+            "totalBytes": 1023111327744,
+            "freeBytes": 544109248512,
+            "usedBytes": 479002079232,
+            "percent": 46.818177674585826
+          },
+          {
+            "mount": "D:",
+            "label": "Arquivos",
+            "kind": "fixed",
+            "totalBytes": 8001545039872,
+            "freeBytes": 3576910004224,
+            "usedBytes": 4424635035648,
+            "percent": 55.29725838697248
+          },
+          {
+            "mount": "Z:",
+            "label": null,
+            "kind": "remote",
+            "totalBytes": 1081101176832,
+            "freeBytes": 1033409564672,
+            "usedBytes": 47691612160,
+            "percent": 4.411392123330483
+          }
+        ]
+      }
+    }
+  },
+  "diagnostics": {
+    "lhmVersion": "0.9.6",
+    "pawnIoVersion": null,
+    "errors": {},
+    "sources": {
+      "primary": "libreHardwareMonitor",
+      "topology": "windows",
+      "cache": "windowsPdh",
+      "paging": "windowsEnumPageFiles",
+      "volumes": "windows",
+      "gpuIdentity": "windowsDxgi"
+    }
+  }
+}

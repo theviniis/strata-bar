@@ -130,8 +130,8 @@ export function CpuPopup({
         </dl>
         <p className="mt-3 text-caption text-muted-foreground">
           {data.temperatureSensor
-            ? `MSI Afterburner · ${data.temperatureSensor.name}`
-            : 'Temperatura requer MSI Afterburner com o sensor do pacote ativo'}
+            ? `Libre Hardware Monitor · ${data.temperatureSensor.name}`
+            : 'Sensor de temperatura indispon�vel'}
         </p>
       </CardContent>
     </section>

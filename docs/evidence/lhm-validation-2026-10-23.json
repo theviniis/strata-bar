@@ -1,0 +1,67 @@
+{
+  "sourceCommit": "7fea6e394d1cab19ad6320df59ae450e644e86ee",
+  "elevated": false,
+  "driverModuleLoaded": false,
+  "frontendFocused": {
+    "passed": 28,
+    "failed": 0,
+    "total": 28
+  },
+  "frontendFull": {
+    "passed": 437,
+    "failed": 17,
+    "total": 454,
+    "note": "pnpm check passed formatting/lint/typecheck, then failed UI tests; simultaneous native builds increased timing variability."
+  },
+  "baselineUiSubset": {
+    "failedNames": [
+      "controls outputs selection, mute, slider, pending and errors by props",
+      "controls inputs selection, mute, slider, pending and errors by props",
+      "keeps level controls pending until the command settles and exposes failures",
+      "commits popup volume with keyboard and follows external changes",
+      "edits the shared curve radius and allows square edges",
+      "loads the existing connection without opening settings so Calendar event creation stays available",
+      "renders CPU states and presentation only from props and forwards refs and events",
+      "renders GPU states and presentation only from props and forwards refs and events",
+      "renders RAM states and presentation only from props and forwards refs and events",
+      "commits popup volume with keyboard and follows external changes",
+      "renders popup pending and error props and dispatches grouped actions through callbacks",
+      "restores the last menu and monitor after reopening without saving the draft",
+      "remembers JSON and an explicit Todos selection across reopens",
+      "retains the remembered monitor through a failed discovery and restores it on retry",
+      "removes a widget only from the selected monitor and restores it through the preview catalog",
+      "edits mixed widget fields globally without overwriting unrelated monitor values",
+      "loads the saved configuration and applies the edited layout through native save",
+      "reverts by reloading the saved file and restores defaults only after Apply",
+      "shows one section at a time and preserves the draft across sidebar navigation",
+      "recovers applied agent visibility after reopening and preserves saved values on a failed save",
+      "follows system theme changes and removes the listener on unmount",
+      "provides an interactive, themed demo without native subscriptions or commands"
+    ],
+    "passed": 77,
+    "failed": 22,
+    "total": 99
+  },
+  "rust": {
+    "sensorTests": 9,
+    "passed": 191,
+    "failed": 0,
+    "ignored": 21
+  },
+  "csharp": {
+    "passed": 10,
+    "failed": 0
+  },
+  "geometry": {
+    "context": "Existing running bars, observed by the new probe; new service not installed.",
+    "passed": true,
+    "files": [
+      "live-geometry-20261023-234610-019.json",
+      "overlay-geometry-20261023-234610-019.json"
+    ],
+    "configuredHeight": 33
+  },
+  "cleanInstallAcceptance": "pending",
+  "localSystemCollectionAcceptance": "pending",
+  "additionalHardwareAcceptance": "pending"
+}

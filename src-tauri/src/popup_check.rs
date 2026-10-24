@@ -101,7 +101,7 @@ fn check_resource_content(app: &AppHandle, feature: &'static str) -> Value {
         if ready {
             let diagnostics = app.state::<crate::metrics::Metrics>().diagnostics();
             let data = diagnostics["channels"][feature]["data"].clone();
-            // Temperature, power and fan come from MSI Afterburner and may be
+            // Temperature, power and fan come from LHM and may be
             // independently unavailable, so only the vendor-neutral readings
             // are required to be ready here.
             let fields: &[&str] = match feature {

@@ -8,3 +8,8 @@ src/popups/.generated/
 .worktrees
 storybook-static/
 debug-storybook.log
+
+# Sensor service build and staged installer resources
+sensor-service/**/bin/
+sensor-service/**/obj/
+sensor-service/artifacts/

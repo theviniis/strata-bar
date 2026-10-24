@@ -29,7 +29,7 @@ Current native event envelope: `{status:'ready'|'loading'|'error', data, timesta
 
 ## Windows capability map
 
-CPU: GetSystemTimes deltas or PDH (benchmark and document semantics). RAM: GlobalMemoryStatusEx. Network: GetIfTable2 counter deltas with monotonic clock. GPU: DXGI adapter enumeration (skip software adapters, prefer the largest dedicated VRAM) plus PDH `GPU Engine`/`GPU Adapter Memory` counters keyed by the adapter LUID for utilisation and dedicated/shared bytes, with the shared denominator taken as half of physical RAM; temperature, power draw and fan speed come from the read-only MAHM mapping and stay independently unavailable without MSI Afterburner. NVML/ADL temperature providers remain out of scope. Disk: GetLogicalDrives, then GetDiskFreeSpaceExW and GetVolumeInformationW per mount, projecting only volumes with readable storage; each volume keeps GetDriveTypeW's classification so mapped network drives are reported rather than silently dropped. Audio: Core Audio endpoint callbacks and setters. Media: Windows GSMTC WinRT sessions/events. Focus: WinEvent hook/GetWindowTextW. Desktop: documented IVirtualDesktopManager supports window membership, not full desktop enumeration/switching; defer unsupported private COM interfaces. Own tray: Shell_NotifyIcon/Tauri tray; foreign tray hosting is separate and deferred. Monitor: EnumDisplayMonitors/GetMonitorInfo and DPI awareness. Launcher: ShellExecuteEx allowlist. Power: restricted native commands with explicit action validation.
+CPU/GPU/RAM/volumes: the bundled `Strata.SensorService` owns LHM and Windows complements. Rust consumes versioned named-pipe snapshots on a separate thread and publishes the existing channels. See [sensor service](plans/lhm-sensors.md) for source semantics and privileges. Audio: Core Audio endpoint callbacks and setters. Media: Windows GSMTC WinRT sessions/events. Focus: WinEvent hook/GetWindowTextW. Desktop: documented IVirtualDesktopManager supports window membership, not full desktop enumeration/switching; defer unsupported private COM interfaces. Own tray: Shell_NotifyIcon/Tauri tray; foreign tray hosting is separate and deferred. Monitor: EnumDisplayMonitors/GetMonitorInfo and DPI awareness. Launcher: ShellExecuteEx allowlist. Power: restricted native commands with explicit action validation.
 
 AppBar owner must register callback messages, negotiate rectangle, handle ABN_POSCHANGED, taskbar recreation, DPI and monitor removal, and always ABM_REMOVE on exit. Transparent borderless always-on-top windows alone are insufficient. Reserve workspace opt-in until validated. Popovers may require separate windows to avoid clipping to a 36px host. Mica/acrylic needs OS support checks and fallback CSS.
 
@@ -65,13 +65,29 @@ The `komorebi` channel is event-driven, not polled: `src-tauri/src/komorebi.rs` 
 
 ## GPU resource channel
 
-`gpu` is polled on the same 2 s tick as CPU and RAM by one shared collector (`src-tauri/src/gpu.rs`). `src-tauri/src/gpu_windows.rs` enumerates DXGI adapters, skips `DXGI_ADAPTER_FLAG_SOFTWARE` and picks the largest `DedicatedVideoMemory`, then reads `\GPU Engine(*)\Utilization Percentage` and `\GPU Adapter Memory(*)\{Dedicated,Shared} Usage` through `PdhGetFormattedCounterArrayW`, matching instances by the adapter LUID embedded in the PDH instance name. Engine instances are summed per engine type and the busiest type is reported, clamped to `0..=100`; the shared denominator is half of physical RAM (`GlobalMemoryStatusEx`), matching the documented WDDM/Task Manager convention. Temperature, power draw and fan speed are read from the same read-only MAHM v2 mapping as the CPU package sensor, matched to the selected adapter by `VEN_`/`DEV_` (a sole GPU entry may be used without a match) and validated as temperature `0..=200`, fan `0..=100`, power `0..=2000`.
+CPU/GPU/RAM/disk snapshots come from one machine-wide C# service using LHM 0.9.6.
+The bar verifies the pipe server PID against SCM before sending subscriptions.
+The IPC thread maintains a bounded cache and channel histories; audio does not wait
+for the service. Values remain independent `ready`/`error`/`unavailable` metrics.
+Repeated frames add no observations; equal values on fresh samples do. Six seconds
+without a fresh channel snapshot marks the last value as failed without renewing
+its timestamp. Service restart, device/sensor change and clock regression reset histories.
 
-Per-metric status is independent: `ready`, `error` (previously known value, failed read) or `unavailable` (never read). A stopped fan reports a real `0 %`, not `unavailable`. Schema-validated readings are cached and reused so a single failed read does not zero a metric. The collector keeps 61 points over 120 s, clears history on clock regression and records a null temperature observation when the Afterburner producer timestamp has not moved, so the temperature line stays honest about repeated samples. A failed instrument (PDH counters unavailable) is retried after a delay, and counters resume after sleep/resume.
+GPU selection still prefers the largest dedicated DXGI adapter. LHM's PnP instance
+is resolved to an exact D3D interface/LUID; ambiguous matches remain unavailable.
+Fan RPM is never treated as percentage. GPU usage follows the LHM GPU-core sensor;
+this differs from the former busiest-PDH-engine definition. LHM dedicated memory
+capacity can differ from DXGI's reservation-adjusted capacity.
 
 ## Disk resource channel
 
-`disk` is polled on the same 2 s tick as CPU, RAM and GPU. `src-tauri/src/disk_windows.rs` enumerates the drive letters `GetLogicalDrives` currently reports, reads each one's capacity with `GetDiskFreeSpaceExW` and its optional label with `GetVolumeInformationW`, and keeps `GetDriveTypeW`'s classification in the payload; a letter with no readable storage (empty removable or optical media, a disconnected share) is simply absent, so the bar never shows a placeless volume. `src-tauri/src/disk.rs` owns the projection: it derives `usedBytes` and `percent` from the raw total/free pair, drops a volume with zero capacity or a free figure above its total, and orders volumes by mount. The frontend contract (`src/services/system/disk.ts`) re-validates the same invariants — non-negative bounded bytes, `free ≤ total`, `used = total − free`, rounded percent consistent with the byte counts, a known `kind` and mounts strictly ascending — and rejects an internally inconsistent payload instead of substituting demo values. The widget (`src/features/disk/Disk.tsx`) renders one `Progress` bar per volume, shared by the native bar and the studio demo, and `src/features/disk/presentation.ts` filters out `remote`/`unknown` kinds so only the local devices Explorer lists under "Dispositivos e unidades" appear; the same list with used/free/total bytes is the `disk` popup (`src/features/disk/DiskPopup.tsx`).
+The service enumerates mounted drive letters and uses Windows capacity, label and
+drive-type information. It reports raw bytes and derived percentages; empty or
+unreadable media are omitted. Physical SMART collection is disabled because this
+version displays volumes rather than physical disk health. The existing frontend
+continues validating ordering and arithmetic and filtering remote/unknown volumes.
+Mapped drives belong to the service's SYSTEM session, not an interactive user's
+mapped-drive namespace.
 
 ## Configuration and security
 

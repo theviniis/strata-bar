@@ -22,28 +22,20 @@ mod reminders_contract;
 mod spotify;
 mod tray;
 
-mod afterburner;
 mod audio_policy;
 mod config;
 mod config_contract;
-mod cpu;
 mod cpu_contract;
-mod cpu_windows;
 mod desktop;
 mod monitors;
 #[cfg(debug_assertions)]
 mod monitor_check;
-mod disk;
 mod disk_contract;
-mod disk_windows;
-mod gpu;
 mod gpu_contract;
-mod gpu_windows;
 mod komorebi;
-mod mahm_windows;
-mod memory;
 mod memory_contract;
 mod metrics;
+mod sensors;
 #[cfg(debug_assertions)]
 mod popup_check;
 mod popup_ids;

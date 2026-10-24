@@ -20,9 +20,9 @@ function observation(): CpuData {
     logicalProcessors: metric(12),
     temperatureCelsius: metric(42),
     temperatureSensor: {
-      provider: 'msiAfterburner',
-      sourceId: 128,
-      instance: 4294967295,
+      provider: 'libreHardwareMonitor',
+      hardwareId: '/hardware/0',
+      sensorId: '/hardware/0/temperature/0',
       name: 'CPU temperature'
     },
     history: [

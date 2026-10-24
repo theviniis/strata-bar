@@ -126,9 +126,9 @@ it('accepts a repeated temperature marker but rejects a stale one', async () => 
     error: null
   }
   data.temperatureSensor = {
-    provider: 'msiAfterburner',
-    sourceId: 0,
-    gpu: 0,
+    provider: 'libreHardwareMonitor',
+    hardwareId: '/hardware/0',
+    sensorId: '/hardware/0/temperature/0',
     name: 'GeForce RTX 3060 Ti'
   }
   data.history = [

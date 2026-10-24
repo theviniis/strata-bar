@@ -74,9 +74,6 @@ pub fn envelope(status: &str, data: Value) -> Value {
 fn error(e: impl std::fmt::Display) -> Value {
     json!({"status":"error","data":null,"error":e.to_string(),"timestamp":timestamp()})
 }
-pub fn memory() -> windows::core::Result<Value> {
-    Ok(serde_json::to_value(crate::memory::MemoryCollector::default().collect()).expect("Memory contract serializes"))
-}
 unsafe fn endpoint(
     enumerator: &IMMDeviceEnumerator,
     flow: EDataFlow,
@@ -103,6 +100,7 @@ struct Data {
     latest: HashMap<String, Value>,
     incoming: HashMap<String,u64>,
     emitted: HashMap<String,u64>,
+    sensor_service: Value,
 }
 #[derive(Clone)]
 pub struct Metrics {
@@ -292,7 +290,7 @@ impl Metrics {
             })
             .collect();
         let d = self.data.lock().unwrap();
-        json!({"subscribers":d.subs.len(),"channels":d.latest,"collectorThreads":1,"intervals":intervals,"incoming":d.incoming,"emitted":d.emitted})
+        json!({"subscribers":d.subs.len(),"channels":d.latest,"collectorThreads":1,"sensorClientThreads":1,"sensorService":d.sensor_service,"intervals":intervals,"incoming":d.incoming,"emitted":d.emitted})
     }
     pub fn stop(&self) {
         let _ = self.tx.send(Request::Stop);
@@ -319,10 +317,7 @@ impl Metrics {
                 }
             }
             let mut audio: [Option<(IAudioEndpointVolume, IAudioEndpointVolumeCallback)>; 2] = [None, None];
-            let mut cpu_collector = crate::cpu::CpuCollector::new(crate::cpu_windows::WindowsCpuSource::default());
-            let mut gpu_collector = crate::gpu::GpuCollector::new(crate::gpu_windows::WindowsGpuSource::default());
-            let mut disk_collector = crate::disk::DiskCollector::new(crate::disk_windows::WindowsDiskSource);
-            let mut memory_collector = crate::memory::MemoryCollector::default();
+            let sensor_client = crate::sensors::Client::new();
             let mut voicemeeter = crate::voicemeeter::Client::native();
             let mut sources: HashMap<String, crate::voicemeeter::Target> = HashMap::new();
             let mut vm_published = false;
@@ -438,6 +433,9 @@ impl Metrics {
                     volume_active[index] = active_volume && !sources.contains_key(volume_channel);
                 }
                 let now = Instant::now();
+                let wanted: Vec<_> = POLLED.into_iter().filter(|c| self.active(c)).collect();
+                sensor_client.subscribe(&wanted);
+                self.data.lock().unwrap().sensor_service = sensor_client.diagnostics();
                 let mut collected = false;
                 for channel in POLLED {
                     let Some(interval) = self.interval(channel) else {
@@ -448,29 +446,14 @@ impl Metrics {
                         continue;
                     }
                     collected = true;
-                    match channel {
-                        "cpu" => {
-                            let sample=cpu_collector.collect();
-                            self.publish(&app,"cpu",envelope("ready",serde_json::to_value(sample).expect("CPU contract serializes")));
-                        }
-                        "gpu" => {
-                            let sample = gpu_collector.collect();
-                            self.publish(&app, "gpu", envelope("ready", serde_json::to_value(sample).expect("GPU contract serializes")));
-                        }
-                        "disk" => match disk_collector.collect() {
-                            Ok(sample) => self.publish(&app, "disk", envelope("ready", serde_json::to_value(sample).expect("Disk contract serializes"))),
-                            Err(e) => self.publish(&app, "disk", error(e)),
-                        },
-                        "memory" => {
-                            let sample = memory_collector.collect();
-                            self.publish(&app, "memory", envelope("ready", serde_json::to_value(sample).expect("Memory contract serializes")));
-                        }
-                        _ => {}
+                    match sensor_client.sample(channel) {
+                        Ok(sample) => self.publish(&app, channel, envelope("ready", sample)),
+                        Err(e) => self.publish(&app, channel, error(e)),
                     }
                 }
                 if collected {
                     ticks+=1;
-                    if ticks==10{let report=json!({"metrics":self.diagnostics(),"windows":crate::desktop::profile()});if let Err(e)=std::fs::write(std::env::temp_dir().join("strata-runtime-profile.json"),report.to_string()){eprintln!("Runtime profile: {e}");}}
+                    if ticks==10{let report=json!({"metrics":self.diagnostics(),"windows":crate::desktop::profile(),"sensors":sensor_client.diagnostics()});if let Err(e)=std::fs::write(std::env::temp_dir().join("strata-runtime-profile.json"),report.to_string()){eprintln!("Runtime profile: {e}");}}
                 }
                 match rx.recv_timeout(timer.next_wait(Instant::now())) {
                     Ok(Request::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
@@ -615,38 +598,25 @@ pub fn probe() -> Result<Value, String> {
             .ok()
             .map_err(|e| e.to_string())?;
         let result = (|| {
-            let mut collector=crate::cpu::CpuCollector::new(crate::cpu_windows::WindowsCpuSource::default());
-            let mut gpu_collector=crate::gpu::GpuCollector::new(crate::gpu_windows::WindowsGpuSource::default());
-            let mut disk_collector=crate::disk::DiskCollector::new(crate::disk_windows::WindowsDiskSource);
-            collector.collect();
-            gpu_collector.collect();
-            std::thread::sleep(Duration::from_secs(2));
-            let cpu=collector.collect();
-            let gpu=gpu_collector.collect();
-            let mem = memory().map_err(|e| e.to_string())?;
-            let disk = disk_collector.collect();
+            let sensors = crate::sensors::Client::new();
+            sensors.subscribe(&POLLED);
+            let deadline = Instant::now() + Duration::from_secs(8);
+            while Instant::now() < deadline && POLLED.iter().any(|c| sensors.sample(c).is_err()) {
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            let cpu = sensors.sample("cpu");
+            let gpu = sensors.sample("gpu");
+            let mem = sensors.sample("memory");
+            let disk = sensors.sample("disk");
             let en: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
                 .map_err(|e| e.to_string())?;
             let audio = endpoint(&en, eRender).and_then(|e| audio_read(&e));
             Ok(
-                json!({"cpu":cpu,"gpu":gpu,"memory":mem,"disk":disk,"volume":audio.map_err(|e|e.to_string()),"microphone":endpoint(&en, eCapture).and_then(|e|audio_read(&e)).map_err(|e|e.to_string()),"audioInputs":crate::audio_policy::endpoints(&en, eCapture).map_err(|e|e.to_string()),"audioOutputs":crate::audio_policy::outputs(&en).map_err(|e|e.to_string()),"timestamp":timestamp()}),
+                json!({"cpu":cpu,"gpu":gpu,"memory":mem,"disk":disk,"sensors":sensors.diagnostics(),"volume":audio.map_err(|e|e.to_string()),"microphone":endpoint(&en, eCapture).and_then(|e|audio_read(&e)).map_err(|e|e.to_string()),"audioInputs":crate::audio_policy::endpoints(&en, eCapture).map_err(|e|e.to_string()),"audioOutputs":crate::audio_policy::outputs(&en).map_err(|e|e.to_string()),"timestamp":timestamp()}),
             )
         })();
         CoUninitialize();
         result
-    }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn real_windows_memory_is_bounded() {
-        let m = memory().unwrap();
-        assert!(m["totalBytes"]["value"].as_f64().unwrap() > 0.);
-        assert!(m["sampledAt"].as_f64().unwrap() > 0.);
-        if let Some(percent) = m["percent"]["value"].as_f64() {
-            assert!((0.0..=100.0).contains(&percent));
-        }
     }
 }
 #[cfg(test)]

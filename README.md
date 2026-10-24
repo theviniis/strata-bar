@@ -73,7 +73,7 @@ record for the exact observation. It is not a claim that all native geometry gat
 | `pnpm typecheck`       | Type-check with `tsc -b` (no emit).                |
 | `pnpm check`           | Full gate: format, lint, types and tests.          |
 | `pnpm desktop`         | Run the native Tauri host with dev tooling.        |
-| `pnpm package:windows` | Build the NSIS installer (`tauri build`).          |
+| `pnpm package:windows` | Build the complete offline NSIS installer.         |
 | `pnpm format`          | Format with Prettier.                              |
 | `pnpm format:check`    | Check formatting without writing.                  |
 
@@ -115,11 +115,20 @@ event-driven audio.
 
 - Native Settings edits content configuration, including theme and widget layout. Native geometry changes
   (height, position and always-on-top), transparency/backdrops and autostart remain separate follow-ups.
-- CPU uses `GetSystemTimes` elapsed CPU time and can differ from Task Manager's frequency-adjusted utility.
-- GPU utilisation and dedicated/shared memory come from DXGI + PDH and stay available without extra
-  software; temperature, power draw and fan speed come from the read-only MSI Afterburner mapping and are
-  reported independently unavailable when it is not running. GPU overclocking/tuning and per-process GPU
-  attribution are out of scope (`docs/plans/gpu-popup.md`).
+- CPU, GPU and RAM use the bundled LibreHardwareMonitorLib service; Windows APIs
+  complement topology, cache, paging and mounted volumes. Missing sensors remain
+  unavailable. MSI Afterburner and the Libre Hardware Monitor GUI are not required.
+- The x64 NSIS installer includes .NET 10, the service and signed PawnIO driver,
+  plus an offline WebView2 installer. Installation requires UAC; the bar stays
+  unelevated. The standalone bar executable needs the installed service.
+- Building the desktop package requires the **.NET 10 SDK** in addition to Rust,
+  Node and pnpm. `pnpm package:windows` stages the self-contained service and
+  verifies the pinned driver before packaging. Build-time downloads are required
+  on the first build; installed sensors perform no downloads.
+- Service tests: `dotnet test sensor-service/Strata.SensorService.Tests`.
+  Build the service alone with `powershell -File scripts/build-sensors.ps1`.
+  See [sensor architecture and validation](docs/plans/lhm-sensors.md) for
+  development, diagnostics, upgrade/rollback and remaining acceptance gates.
 - Music ships under the authorized [media exception](docs/plans/music-widget.md), with GSMTC playback, application volume and an independent Spotify account connection.
 - Network, tray cloning and autostart are deferred until the core
   MVP passes its acceptance gates.

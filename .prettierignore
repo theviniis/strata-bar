@@ -7,3 +7,5 @@ src/services/system/*.generated.ts
 .agents
 
 storybook-static/
+
+sensor-service/

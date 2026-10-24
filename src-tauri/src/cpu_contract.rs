@@ -1,8 +1,8 @@
 //! CPU wire contract. Frequencies are Hz; timestamps are Unix milliseconds.
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-#[derive(Clone, Debug, Serialize, TS, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum CpuMetricStatus {
     Ready,
@@ -10,8 +10,9 @@ pub enum CpuMetricStatus {
     Unavailable,
 }
 
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct CpuMetric {
     pub status: CpuMetricStatus,
     pub value: Option<f64>,
@@ -19,17 +20,19 @@ pub struct CpuMetric {
     pub error: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct CpuTemperatureSensor {
     pub provider: String,
-    pub source_id: u32,
-    pub instance: u32,
+    pub hardware_id: String,
+    pub sensor_id: String,
     pub name: String,
 }
 
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct CpuPoint {
     pub sequence: u32,
     pub timestamp: f64,
@@ -40,8 +43,9 @@ pub struct CpuPoint {
     pub temperature_updated_at: Option<f64>,
 }
 
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct CpuData {
     pub sequence: u32,
     pub sampled_at: f64,

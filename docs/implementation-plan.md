@@ -1,5 +1,10 @@
 # Incremental implementation plan
 
+> Sensor-source update: the LHM service supersedes the original PDH/MAHM source
+> descriptions below. Those descriptions and recorded evidence describe the
+> previous implementation. See [LHM migration](plans/lhm-sensors.md) for the new architecture,
+> installation requirements and outstanding native acceptance gates.
+
 ## MVP acceptance correction — 2026-10-17
 
 The primary deliverable is a functioning Windows 11 status bar, not the browser studio. Gate further widget expansion on: real CPU/RAM/clock/volume, volume/mute control, one correctly reserved bar on each monitor, cleanup on exit, and recorded production resource measurements. Browser prototype completion is not MVP success. GPU, network and all Phase 2/3 widgets remain out of this gate; GPU later ships under the recorded exception below.

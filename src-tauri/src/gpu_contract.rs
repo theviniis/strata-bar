@@ -1,9 +1,9 @@
 //! GPU wire contract. Sizes are bytes; power watts; percentages 0-100;
 //! timestamps Unix milliseconds.
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-#[derive(Clone, Debug, Serialize, TS, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum GpuMetricStatus {
     Ready,
@@ -11,8 +11,9 @@ pub enum GpuMetricStatus {
     Unavailable,
 }
 
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct GpuMetric {
     pub status: GpuMetricStatus,
     pub value: Option<f64>,
@@ -20,8 +21,9 @@ pub struct GpuMetric {
     pub error: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct GpuAdapter {
     pub name: String,
     pub vendor_id: u32,
@@ -29,19 +31,19 @@ pub struct GpuAdapter {
     pub dedicated_bytes: f64,
 }
 
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct GpuSensor {
     pub provider: String,
-    /// Afterburner monitoring source ID; `0` is GPU temperature.
-    pub source_id: u32,
-    /// Afterburner GPU index, zero based.
-    pub gpu: u32,
+    pub hardware_id: String,
+    pub sensor_id: String,
     pub name: String,
 }
 
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct GpuPoint {
     pub sequence: u32,
     pub timestamp: f64,
@@ -53,8 +55,9 @@ pub struct GpuPoint {
     pub temperature_updated_at: Option<f64>,
 }
 
-#[derive(Clone, Debug, Serialize, TS)]
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct GpuData {
     pub sequence: u32,
     pub sampled_at: f64,

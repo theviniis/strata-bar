@@ -97,9 +97,8 @@ export function ResourceGraph({
                   if (typeof offset !== 'number') return 'Histórico observado'
                   // Age is measured against the clock, not against the
                   // window's own end, so a reading that landed a second ago
-                  // does not claim to be from this instant. Afterburner
-                  // reports whole seconds, so it can sit a moment ahead of a
-                  // clock that was last read before it landed.
+                  // does not claim to be from this instant. A service sample
+                  // can sit ahead of a clock value read before it arrived.
                   const age =
                     RESOURCE_HISTORY_SECONDS - offset + (now - anchor) / 1000
                   return `${Math.max(0, Math.round(age))} s atrás`

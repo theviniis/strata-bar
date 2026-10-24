@@ -142,8 +142,8 @@ export function GpuPopup({
         <p className="mt-3 text-caption text-muted-foreground">
           {data.adapter ? `${data.adapter.name} · ` : ''}
           {data.temperatureSensor && !temperatureStale
-            ? `MSI Afterburner · ${data.temperatureSensor.name}`
-            : 'Temperatura, consumo e ventoinha requerem MSI Afterburner'}
+            ? `Libre Hardware Monitor · ${data.temperatureSensor.name}`
+            : 'Sensores de temperatura, consumo e ventoinha indispon�veis'}
         </p>
       </CardContent>
     </section>
