@@ -52,13 +52,13 @@ function PanelElement({
 const MotionPanel = motion.create(PanelElement)
 
 const tabsListVariants = cva(
-  'inline-flex items-center justify-center rounded-lg bg-muted text-muted-foreground',
+  'inline-flex items-center justify-center rounded-lg bg-muted/30 text-muted-foreground gap-1 backdrop-blur-md ring-1 ring-inset ring-border/50 shadow-sm shadow-foreground/5 inset-shadow-[0_1px_0] inset-shadow-background/40',
   {
     variants: {
       size: {
-        default: 'h-9 p-1',
-        sm: 'h-7 p-1',
-        xs: 'h-6 p-0.5'
+        default: 'p-1.5',
+        sm: 'p-1',
+        xs: 'p-0.5'
       }
     },
     defaultVariants: {
@@ -68,7 +68,7 @@ const tabsListVariants = cva(
 )
 
 const tabsTriggerVariants = cva(
-  'relative isolate inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-active:text-foreground',
+  'cursor-pointer relative isolate inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-active:text-primary-foreground bg-muted-transparent not-data-active:inset-shadow-[0_1px_0] not-data-active:inset-shadow-background/40',
   {
     variants: {
       size: {
@@ -116,15 +116,11 @@ function TabsList({
   return (
     <TabsSizeContext.Provider value={resolvedSize}>
       <LayoutGroup id={id}>
-        <SlidingHighlight highlightClassName="bg-background/60">
+        <SlidingHighlight highlightClassName="bg-muted/50">
           <TabsPrimitive.List
             data-slot="tabs-list"
             data-size={resolvedSize}
-            className={cn(
-              tabsListVariants({ size: resolvedSize }),
-              'gap-1',
-              className
-            )}
+            className={cn(tabsListVariants({ size: resolvedSize }), className)}
             {...props}
           />
         </SlidingHighlight>
@@ -153,7 +149,7 @@ function TabsTrigger({
               aria-hidden="true"
               data-slot="tabs-indicator"
               layoutId="tabs-indicator"
-              className="pointer-events-none absolute inset-0 -z-10 rounded-md bg-background shadow"
+              className="pointer-events-none absolute inset-0 -z-10 rounded-md bg-primary shadow border border-primary"
               transition={
                 reducedMotion
                   ? { duration: 0 }
@@ -193,10 +189,6 @@ function TabsContent({
           state.orientation === 'vertical' ? { y: offset } : { x: offset }
         const exitMovement =
           state.orientation === 'vertical' ? { y: -offset } : { x: -offset }
-
-        // `hidden` settles after Base UI's transition lifecycle. `inert`
-        // follows selection immediately, so the outgoing panel must leave
-        // normal flow now instead of stacking above the incoming panel.
         return (
           <AnimatePresence
             initial={false}
