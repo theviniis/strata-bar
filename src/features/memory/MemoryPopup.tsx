@@ -1,9 +1,3 @@
-import {
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { MemoryData } from '@/services/system/memory.generated'
 import { MemoryGraph } from './MemoryGraph'
@@ -38,12 +32,8 @@ export function MemoryPopup({
     ['Utilização', data.percent, 'percent']
   ] as const
   return (
-    <section aria-label="Detalhes da memória">
-      <CardHeader>
-        <CardTitle>Memória</CardTitle>
-        <CardDescription>
-          Visualize informações sobre a memória RAM
-        </CardDescription>
+    <section aria-label="Detalhes da memória" className="p-4">
+      <div>
         {demo && (
           <p className="text-caption text-muted-foreground">
             Dados de demonstração · ilustrativos
@@ -54,28 +44,21 @@ export function MemoryPopup({
             {event.error} · última leitura desatualizada
           </p>
         )}
-      </CardHeader>
-      <CardContent>
-        <MemoryGraph history={data.history} now={now} />
-        <dl className="grid grid-cols-2 gap-3 text-caption">
-          {fields.map(([label, metric, unit]) => (
-            <div key={label}>
-              <dt className="text-muted-foreground">{label}</dt>
-              <dd
-                title={metric.error ?? undefined}
-                className="mt-1 font-medium tabular-nums"
-              >
-                {formatMemoryMetric(
-                  metric,
-                  unit,
-                  now,
-                  event.status === 'ready'
-                )}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </CardContent>
+      </div>
+      <MemoryGraph history={data.history} now={now} />
+      <dl className="grid grid-cols-2 gap-3 text-caption">
+        {fields.map(([label, metric, unit]) => (
+          <div key={label}>
+            <dt className="text-muted-foreground">{label}</dt>
+            <dd
+              title={metric.error ?? undefined}
+              className="mt-1 font-medium tabular-nums"
+            >
+              {formatMemoryMetric(metric, unit, now, event.status === 'ready')}
+            </dd>
+          </div>
+        ))}
+      </dl>
     </section>
   )
 }

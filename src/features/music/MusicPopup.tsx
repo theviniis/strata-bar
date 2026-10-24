@@ -1,11 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card'
+import { CardFooter } from '@/components/ui/card'
 import { ScrollingText } from '@/components/ui/scrolling-text'
 
 import { Button } from '@/components/ui/button'
@@ -84,18 +77,15 @@ export function MusicPopup({
   } = controls
 
   return (
-    <Card className="w-90">
-      <CardHeader>
-        <CardTitle>Player de música</CardTitle>
-        <CardDescription>
-          {demo
-            ? 'Demonstração · Controle a sua mídia'
-            : 'Controle a sua mídia'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div className="w-90">
+      {demo && (
+        <p className="text-muted-foreground text-caption">
+          Versão de demonstração
+        </p>
+      )}
+      <div className="p-4">
         {getMediaComponent({ status: event.status, media, controls })}
-      </CardContent>
+      </div>
       {volumeReady && (
         <MusicVolumeFooter
           muteReady={muteReady}
@@ -107,7 +97,7 @@ export function MusicPopup({
           commitVolume={commitVolume}
         />
       )}
-    </Card>
+    </div>
   )
 }
 

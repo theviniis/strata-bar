@@ -1,13 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { type ButtonLoadingProps } from '@/components/ui/button-loading'
-import {
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card'
+import { CardFooter } from '@/components/ui/card'
 import {
   Empty,
   EmptyDescription,
@@ -55,89 +49,79 @@ export function AudioOutputs({
   const Icon = muted ? VolumeX : Volume2
 
   return (
-    <>
-      <div className="flex flex-col">
-        <CardHeader>
-          <div className="flex items-center justify-between gap-2">
-            <CardTitle>Saída de áudio</CardTitle>
-          </div>
-          <CardDescription>
-            Controle o volume e a saída de áudio
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {volume.status === 'unavailable' && (
-            <p>Configure a fonte em Configurações → Áudio → Saída de áudio.</p>
-          )}
-          <div className="" aria-busy={pending !== null}>
-            {outputs.status === 'loading' && <EmptyOutputItems />}
-            {outputs.status === 'error' && (
-              <p role="alert" className="p-3 text-destructive">
-                {outputs.error}
-              </p>
-            )}
-            {outputs.status === 'error' && (
-              <Button variant={'destructive'} onClick={retry}>
-                Tentar novamente
-              </Button>
-            )}
-            {outputs.status === 'unavailable' && (
-              <p className="p-3">Saídas de áudio indisponíveis.</p>
-            )}
-            {data?.devices.length === 0 && (
-              <p className="p-3">Nenhuma saída de áudio disponível.</p>
-            )}
-            <ButtonGroup
-              orientation="vertical"
-              aria-label="Audio device controls"
-            >
-              {data?.devices.map((device) => (
-                <AudioOutputContentItem
-                  key={device.id}
-                  isActive={device.id === data.defaultDeviceId}
-                  device={device}
-                  onClick={() => void select(device.id)}
-                  disabled={pending !== null}
-                  isLoading={pending === device.id}
-                />
-              ))}
-            </ButtonGroup>
-          </div>
-          {error && (
-            <p role="alert" className="px-3 py-1 text-destructive">
-              {error}
+    <section aria-label="Saída de audio">
+      <div className="p-4">
+        {volume.status === 'unavailable' && (
+          <p>Configure a fonte em Configurações → Áudio → Saída de áudio.</p>
+        )}
+        <div className="" aria-busy={pending !== null}>
+          {outputs.status === 'loading' && <EmptyOutputItems />}
+          {outputs.status === 'error' && (
+            <p role="alert" className="p-3 text-destructive">
+              {outputs.error}
             </p>
           )}
-        </CardContent>
-        <CardFooter className="gap-4">
-          <Button
-            disabled={volume.status !== 'ready' || pending !== null}
-            aria-pressed={muted}
-            aria-label={muted ? 'Ativar som' : 'Silenciar'}
-            onClick={() => void mute()}
-            variant="ghost"
-            size="icon"
+          {outputs.status === 'error' && (
+            <Button variant={'destructive'} onClick={retry}>
+              Tentar novamente
+            </Button>
+          )}
+          {outputs.status === 'unavailable' && (
+            <p className="p-3">Saídas de áudio indisponíveis.</p>
+          )}
+          {data?.devices.length === 0 && (
+            <p className="p-3">Nenhuma saída de áudio disponível.</p>
+          )}
+          <ButtonGroup
+            orientation="vertical"
+            aria-label="Audio device controls"
           >
-            <Icon size={16} />
-          </Button>
-          <Slider
-            value={[level]}
-            max={100}
-            step={1}
-            aria-label="Volume"
-            disabled={volume.status !== 'ready' || pending !== null}
-            onValueChange={(value) => setDraft(value[0])}
-            onValueCommit={(value) => void setLevel(value[0])}
-          />
-          <WidgetItemOutput
-            aria-label="Volume atual"
-            className="min-w-8 text-right"
-          >
-            {volume.status === 'ready' ? level : '—'}
-          </WidgetItemOutput>
-        </CardFooter>
+            {data?.devices.map((device) => (
+              <AudioOutputContentItem
+                key={device.id}
+                isActive={device.id === data.defaultDeviceId}
+                device={device}
+                onClick={() => void select(device.id)}
+                disabled={pending !== null}
+                isLoading={pending === device.id}
+              />
+            ))}
+          </ButtonGroup>
+        </div>
+        {error && (
+          <p role="alert" className="px-3 py-1 text-destructive">
+            {error}
+          </p>
+        )}
       </div>
-    </>
+      <CardFooter className="gap-4">
+        <Button
+          disabled={volume.status !== 'ready' || pending !== null}
+          aria-pressed={muted}
+          aria-label={muted ? 'Ativar som' : 'Silenciar'}
+          onClick={() => void mute()}
+          variant="ghost"
+          size="icon"
+        >
+          <Icon size={16} />
+        </Button>
+        <Slider
+          value={[level]}
+          max={100}
+          step={1}
+          aria-label="Volume"
+          disabled={volume.status !== 'ready' || pending !== null}
+          onValueChange={(value) => setDraft(value[0])}
+          onValueCommit={(value) => void setLevel(value[0])}
+        />
+        <WidgetItemOutput
+          aria-label="Volume atual"
+          className="min-w-8 text-right"
+        >
+          {volume.status === 'ready' ? level : '—'}
+        </WidgetItemOutput>
+      </CardFooter>
+    </section>
   )
 }
 interface AudioOutputContentItemProps extends Omit<

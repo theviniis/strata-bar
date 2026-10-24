@@ -1,13 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { type ButtonLoadingProps } from '@/components/ui/button-loading'
-import {
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card'
+import { CardFooter } from '@/components/ui/card'
 import {
   Empty,
   EmptyDescription,
@@ -55,103 +49,91 @@ export function AudioInputs({
   const Icon = muted ? MicOff : Mic
 
   return (
-    <>
-      <div className="flex flex-col">
-        <CardHeader>
-          <div className="flex items-center justify-between gap-2">
-            <CardTitle>Entrada de áudio</CardTitle>
-          </div>
-          <CardDescription>
-            Controle o volume e a entrada de áudio
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {volume.status === 'unavailable' && (
-            <p>
-              Configure a fonte em Configurações → Áudio → Entrada de áudio.
+    <section aria-label="Entrada de audio">
+      <div className="p-4">
+        {volume.status === 'unavailable' && (
+          <p>Configure a fonte em Configurações → Áudio → Entrada de áudio.</p>
+        )}
+        <div aria-busy={pending !== null}>
+          {inputs.status === 'loading' && <EmptyInputItems />}
+          {inputs.status === 'error' && (
+            <p role="alert" className="p-3 text-destructive">
+              {inputs.error}
             </p>
           )}
-          <div className="" aria-busy={pending !== null}>
-            {inputs.status === 'loading' && <EmptyInputItems />}
-            {inputs.status === 'error' && (
-              <p role="alert" className="p-3 text-destructive">
-                {inputs.error}
-              </p>
-            )}
-            {inputs.status === 'error' && (
-              <Button variant={'destructive'} onClick={retry}>
-                Tentar novamente
-              </Button>
-            )}
-            {inputs.status === 'unavailable' && (
-              <p className="p-3">Entradas de áudio indisponíveis.</p>
-            )}
-            {data?.devices.length === 0 && (
-              <p className="p-3">Nenhuma entrada de áudio disponível.</p>
-            )}
-            <ButtonGroup orientation="vertical" aria-label="Microfones">
-              {data?.devices.map((device) => (
-                <AudioInputContentItem
-                  key={device.id}
-                  isActive={device.id === data.defaultDeviceId}
-                  device={device}
-                  onClick={() => void select(device.id)}
-                  disabled={pending !== null}
-                  isLoading={pending === device.id}
-                />
-              ))}
-            </ButtonGroup>
-          </div>
-          {error && (
-            <p role="alert" className="px-3 py-1 text-destructive">
-              {error}
-            </p>
+          {inputs.status === 'error' && (
+            <Button variant={'destructive'} onClick={retry}>
+              Tentar novamente
+            </Button>
           )}
-        </CardContent>
-        {volume.status === 'error' && (
-          <p role="alert">
-            {volume.error}
-            <Button onClick={retry}>Tentar novamente</Button>
+          {inputs.status === 'unavailable' && (
+            <p className="p-3">Entradas de áudio indisponíveis.</p>
+          )}
+          {data?.devices.length === 0 && (
+            <p className="p-3">Nenhuma entrada de áudio disponível.</p>
+          )}
+          <ButtonGroup orientation="vertical" aria-label="Microfones">
+            {data?.devices.map((device) => (
+              <AudioInputContentItem
+                key={device.id}
+                isActive={device.id === data.defaultDeviceId}
+                device={device}
+                onClick={() => void select(device.id)}
+                disabled={pending !== null}
+                isLoading={pending === device.id}
+              />
+            ))}
+          </ButtonGroup>
+        </div>
+        {error && (
+          <p role="alert" className="px-3 py-1 text-destructive">
+            {error}
           </p>
         )}
-        {volume.status === 'unavailable' && <p>Microfone indisponível.</p>}
-        <CardFooter className="gap-4">
-          <Button
-            disabled={
-              volume.status !== 'ready' ||
-              !data?.defaultDeviceId ||
-              pending !== null
-            }
-            aria-pressed={muted}
-            aria-label={muted ? 'Ativar microfone' : 'Silenciar microfone'}
-            onClick={() => void mute()}
-            variant="ghost"
-            size="icon"
-          >
-            <Icon size={16} />
-          </Button>
-          <Slider
-            value={[level]}
-            max={100}
-            step={1}
-            aria-label="Volume"
-            disabled={
-              volume.status !== 'ready' ||
-              !data?.defaultDeviceId ||
-              pending !== null
-            }
-            onValueChange={(value) => setDraft(value[0])}
-            onValueCommit={(value) => void setLevel(value[0])}
-          />
-          <WidgetItemOutput
-            aria-label="Volume atual"
-            className="min-w-8 text-right"
-          >
-            {volume.status === 'ready' ? level : '—'}
-          </WidgetItemOutput>
-        </CardFooter>
       </div>
-    </>
+      {volume.status === 'error' && (
+        <p role="alert">
+          {volume.error}
+          <Button onClick={retry}>Tentar novamente</Button>
+        </p>
+      )}
+      {volume.status === 'unavailable' && <p>Microfone indisponível.</p>}
+      <CardFooter className="gap-4">
+        <Button
+          disabled={
+            volume.status !== 'ready' ||
+            !data?.defaultDeviceId ||
+            pending !== null
+          }
+          aria-pressed={muted}
+          aria-label={muted ? 'Ativar microfone' : 'Silenciar microfone'}
+          onClick={() => void mute()}
+          variant="ghost"
+          size="icon"
+        >
+          <Icon size={16} />
+        </Button>
+        <Slider
+          value={[level]}
+          max={100}
+          step={1}
+          aria-label="Volume"
+          disabled={
+            volume.status !== 'ready' ||
+            !data?.defaultDeviceId ||
+            pending !== null
+          }
+          onValueChange={(value) => setDraft(value[0])}
+          onValueCommit={(value) => void setLevel(value[0])}
+        />
+        <WidgetItemOutput
+          aria-label="Volume atual"
+          className="min-w-8 text-right"
+        >
+          {volume.status === 'ready' ? level : '—'}
+        </WidgetItemOutput>
+      </CardFooter>
+    </section>
   )
 }
 interface AudioInputContentItemProps extends Omit<

@@ -3,12 +3,6 @@ import {
   newestTimestamp,
   projectResourceWindow
 } from '@/components/resource-graph'
-import {
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { GpuData } from '@/services/system/gpu.generated'
 import {
@@ -91,12 +85,8 @@ export function GpuPopup({
   ] as const
   const temperatureStale = isGpuMetricStale(data.temperatureCelsius, now, ready)
   return (
-    <section aria-label="Detalhes da GPU">
-      <CardHeader>
-        <CardTitle>GPU</CardTitle>
-        <CardDescription>
-          Utilização, memória, temperatura e consumo da placa
-        </CardDescription>
+    <section className="p-4" aria-label="Detalhes da GPU">
+      <div>
         {demo && (
           <p className="text-caption text-muted-foreground">
             Dados de demonstração · ilustrativos
@@ -107,45 +97,43 @@ export function GpuPopup({
             {event.error} · última leitura desatualizada
           </p>
         )}
-      </CardHeader>
-      <CardContent>
-        <ResourceGraph
-          points={data.history.map((p) => ({ ...p, value: p.percent }))}
-          now={now}
-          label="Utilização"
-          description="Utilização da GPU"
-          unit="%"
-        />
-        <ResourceGraph
-          points={temperaturePoints}
-          now={now}
-          label="Temperatura"
-          description="Temperatura da GPU"
-          unit="°C"
-          maxGapMs={6000}
-          maximum={maximum}
-          color="var(--chart-5)"
-        />
-        <dl className="grid grid-cols-2 gap-3 text-caption">
-          {fields.map(([label, value, error]) => (
-            <div key={label}>
-              <dt className="text-muted-foreground">{label}</dt>
-              <dd
-                title={error ?? undefined}
-                className="mt-1 font-medium tabular-nums"
-              >
-                {value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-        <p className="mt-3 text-caption text-muted-foreground">
-          {data.adapter ? `${data.adapter.name} · ` : ''}
-          {data.temperatureSensor && !temperatureStale
-            ? `Libre Hardware Monitor · ${data.temperatureSensor.name}`
-            : 'Sensores de temperatura, consumo e ventoinha indispon�veis'}
-        </p>
-      </CardContent>
+      </div>
+      <ResourceGraph
+        points={data.history.map((p) => ({ ...p, value: p.percent }))}
+        now={now}
+        label="Utilização"
+        description="Utilização da GPU"
+        unit="%"
+      />
+      <ResourceGraph
+        points={temperaturePoints}
+        now={now}
+        label="Temperatura"
+        description="Temperatura da GPU"
+        unit="°C"
+        maxGapMs={6000}
+        maximum={maximum}
+        color="var(--chart-5)"
+      />
+      <dl className="grid grid-cols-2 gap-3 text-caption">
+        {fields.map(([label, value, error]) => (
+          <div key={label}>
+            <dt className="text-muted-foreground">{label}</dt>
+            <dd
+              title={error ?? undefined}
+              className="mt-1 font-medium tabular-nums"
+            >
+              {value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-3 text-caption text-muted-foreground">
+        {data.adapter ? `${data.adapter.name} · ` : ''}
+        {data.temperatureSensor && !temperatureStale
+          ? `Libre Hardware Monitor · ${data.temperatureSensor.name}`
+          : 'Sensores de temperatura, consumo e ventoinha indispon�veis'}
+      </p>
     </section>
   )
 }
