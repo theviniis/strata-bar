@@ -1,0 +1,47 @@
+{
+  "capturedAt": "2026-10-24T01:28:23.3098596-03:00",
+  "scenario": "User opening native widget popups during installed sensor stability run",
+  "bars": [
+    {
+      "client": [3440, 49],
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "rect": [0, 0, 3440, 49],
+      "reservationRect": [0, 0, 3440, 33],
+      "title": "Strata · \\\\.\\DISPLAY1",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "client": [1920, 49],
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "rect": [724, -1080, 2644, -1031],
+      "reservationRect": [724, -1080, 2644, -1047],
+      "title": "Strata · \\\\.\\DISPLAY2",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    }
+  ],
+  "overlay": {
+    "counters": {
+      "hides": 0,
+      "positions": 0,
+      "shows": 0
+    },
+    "present": true,
+    "window": {
+      "clickThrough": false,
+      "komorebiEligible": false,
+      "rect": [1322, 33, 1673, 623],
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    }
+  },
+  "note": "An interactive popup is expected to receive mouse input; the legacy geometry script assumes tooltip-only click-through."
+}

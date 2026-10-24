@@ -79,9 +79,17 @@ the audio/transport worker only accesses a cache. Reconnect delay grows from 1 t
 30 seconds. A session closes when all its subscriptions disappear.
 
 One service collector combines subscriptions from all clients and collects each
-requested group once per 2-second tick. Empty subscriptions pause hardware reads
-and close LHM handles. Client disconnect/lease expiry removes demand. Device
-rediscovery runs every 30 seconds, after resume notifications and on tick gaps.
+requested group once per 2-second tick. The supported CPU/GPU/RAM inventory opens
+once when a hardware session starts; changes in client demand reuse that inventory
+and update only requested groups. Discovery time precedes the observation timestamp.
+Empty subscriptions pause hardware reads
+and close LHM handles. Client disconnect/lease expiry removes demand. Lightweight
+device-identity checks run every 30 seconds. Stable hardware keeps its LHM and
+PDH sessions; selected-GPU replacement or hardware-update failure triggers
+rediscovery (failed updates retry on the 30-second cadence). Unsupported hardware
+alone never tears down working sensors; installation/driver repair restarts the
+service, and resume also rediscovers devices.
+Resume notifications and tick gaps also reset the collector.
 A 20-second watchdog exits a blocked service so SCM can restart it; stale metrics
 already become errors after 6 seconds. SCM crash recovery delays are 5/15/30 seconds.
 
@@ -107,7 +115,7 @@ implementations fail closed. Future LHM upgrades must revalidate this behavior.
 | CPU frequency              | Mean of available non-effective per-core LHM clocks, MHz converted to Hz; unavailable without clocks. This replaces PDH frequency semantics.                                   |
 | CPU topology/nominal clock | Windows WMI counts and core-weighted MaxClockSpeed; these are explicit complements.                                                                                            |
 | CPU temperature            | Package sensor; AMD Tdie preferred to Tctl; highest core only when package is absent. Highest selected package across CPUs.                                                    |
-| GPU identity               | Largest dedicated DXGI hardware adapter; exact LHM PnP instance resolves to D3D interface/LUID. Ambiguous/missing match exposes no LHM metrics.                                |
+| GPU identity               | Largest dedicated DXGI hardware adapter; its physical PnP instance matches LHM exactly. Unique LUID fallback only without physical identity; ambiguity exposes no LHM metrics. |
 | GPU use/memory             | LHM GPU-core usage and binary SmallData bytes. This differs from busiest PDH engine usage. Capacity uses LHM when exposed, DXGI otherwise.                                     |
 | GPU thermal/power/fan      | GPU core temperature, explicitly named package/board power in watts, highest valid fan percentage. RPM is never converted.                                                     |
 | RAM                        | LHM physical used/available GiB converted to bytes; total is their sum. Used includes modified pages, unlike the former Task-Manager-style subtraction.                        |
@@ -140,3 +148,90 @@ upgrade/rollback/repair, uninstall with shared PawnIO, driver reboot/block cases
 service crash/resume, Intel/AMD CPU and NVIDIA/AMD/Intel GPU coverage, and controlled
 idle/load comparison including service costs. Unsupported hardware must be recorded
 as such. Existing evidence files remain historical and are not rewritten.
+
+### Installed-service check, 2026-10-24
+
+The first installed run exposed a Rust transport bug: a nonblocking pipe read
+without available bytes is converted by `std::fs` to `Ok(0)`. Treating that as
+EOF disconnected the bar before the service could reply. The client now peeks
+for available bytes before reading, with the existing deadline and cancellation.
+A delayed-response Windows pipe test reproduces the old failure and passes with
+the fix. The installed-service integration test is opt-in:
+
+```powershell
+cargo test --manifest-path src-tauri/Cargo.toml installed_service_delivers_all_sensor_channels -- --ignored --nocapture
+```
+
+The corrected client received real CPU load/temperature, RAM and volumes from the
+installed LocalSystem service. GPU channel delivery succeeded, but GPU metrics
+remained unavailable because physical-adapter matching failed under the service.
+Service diagnostics include the selected adapter LUID and each LHM candidate's
+hardware ID, PnP instance and resolved LUID.
+
+### GPU physical-identity correction, 2026-10-24
+
+The installed LocalSystem service selected DXGI LUID `000000000003C871`, while
+LHM's same physical RTX 3060 Ti resolved to `000000000000BE6C`. Comparing these
+logical aliases incorrectly rejected every GPU sensor. The service now opens the
+selected DXGI LUID directly and queries its physical PnP hardware key using
+[D3DKMTQueryAdapterInfo](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/d3dkmthk/nf-d3dkmthk-d3dkmtqueryadapterinfo).
+It normalizes the registry/interface form to the complete PnP instance and requires
+one unique LHM match. Multiple physical adapters and contradictory identities fail
+closed; model names, vendor/device IDs and enumeration indices never select a GPU.
+
+The regression was reproduced before the correction. After updating the installed
+service, the production executable and the following live test returned all eight
+GPU metrics as ready under LocalSystem, including a legitimate zero fan reading:
+
+```powershell
+cargo test --manifest-path src-tauri/Cargo.toml installed_service_gpu_metrics_are_ready -- --ignored --nocapture
+```
+
+CPU, RAM and volumes also remained available. Evidence is recorded separately in
+`docs/evidence/gpu-physical-identity-fix-2026-10-24.json`. This validates the available
+Intel/NVIDIA machine; AMD/Intel GPU and clean-VM distribution coverage remain open.
+For developer repairs, stage with `scripts/build-sensors.ps1`, then run
+`scripts/update-sensor-service.ps1` in elevated PowerShell. It uses the installer
+validation, backup and rollback while the running bar reconnects automatically.
+
+### Periodic collection interruptions, 2026-10-24
+
+A continuous installed-service test reproduced simultaneous CPU/GPU/RAM/disk
+expiry. An independent pipe reader saw the same frozen sequence with the same
+service instance. Stage timings then measured 4547–4613 ms spent reopening LHM
+every 30 seconds, despite unchanged hardware. Combined with the 2-second tick,
+this exceeded the existing 6-second freshness limit.
+
+The collector now checks the selected physical GPU identity without closing
+working sessions. CPU/RAM inventory is stable until reboot on supported PCs.
+An additional startup repro exposed the same teardown on changing channel demand;
+the inventory is now reused across subscription additions/removals as well.
+Hardware changes, explicit resets and failed hardware updates retain recovery
+paths; failed identity discovery leaves working sensors intact. Freshness limits,
+managed observation-cache clearing and native failure semantics are unchanged.
+Diagnostics expose process ID, discovery count and per-stage durations; Rust
+also reports connection counts, last transport error and per-channel receipt age.
+
+Continuous validation uses the real SCM-verified Rust client, including a second
+client repeatedly subscribing/unsubscribing to exercise shared demand:
+
+```powershell
+$env:SENSOR_SOAK_SECONDS = '3600'
+$env:SENSOR_SOAK_REPORT = "$env:TEMP/strata-sensor-soak.jsonl" # must not exist
+cargo test --manifest-path src-tauri/Cargo.toml installed_service_remains_fresh -- --ignored --nocapture
+```
+
+`scripts/observe-sensors.ps1 -Seconds 90` independently captures raw pipe frames
+and stage timings; it does not replace the authenticated Rust test. For actual
+bar event delivery, set `STRATA_SENSOR_TRACE` to a new local JSONL path before
+launching the installed executable. Tracing is opt-in, stops on write failure,
+after 65 minutes or at 128 MiB, and never overwrites a file. Traces can grow substantially during a long run;
+keep raw traces outside the repository and record their hashes plus summaries.
+
+The installed correction completed 717649 ms (just under 12 minutes) of continuous
+Rust-client observation with zero failing observations before the user deferred
+the one-hour test. The background soak process was stopped. This is a successful
+short run, not a passed one-hour gate; deliberate service-restart recovery and
+physical suspend/resume remain pending. See
+`docs/evidence/sensor-stability-validation-deferred-2026-10-24.json` and the earlier
+checkpoint for the recorded results.

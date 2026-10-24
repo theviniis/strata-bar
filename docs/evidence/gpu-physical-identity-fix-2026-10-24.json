@@ -1,0 +1,259 @@
+{
+  "capturedAt": "2026-10-24T00:49:23.3799575-03:00",
+  "scenario": "Installed production executable consuming corrected LocalSystem GPU service",
+  "before": {
+    "selectedLuid": "000000000003C871",
+    "error": "GPU physical identity missing or ambiguous",
+    "candidateLuid": "000000000000BE6C"
+  },
+  "service": {
+    "processId": 20264,
+    "account": "LocalSystem",
+    "state": "Running"
+  },
+  "gpu": {
+    "Ok": {
+      "adapter": {
+        "dedicatedBytes": 8413773824,
+        "deviceId": 9353,
+        "name": "NVIDIA GeForce RTX 3060 Ti",
+        "vendorId": 4318
+      },
+      "fanPercent": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 0
+      },
+      "history": [
+        {
+          "percent": 26,
+          "sequence": 1,
+          "temperatureCelsius": 50,
+          "temperatureUpdatedAt": 1792813718612,
+          "timestamp": 1792813718612.0
+        }
+      ],
+      "memoryTotalBytes": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 8589934592
+      },
+      "memoryUsedBytes": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 1929379840
+      },
+      "percent": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 26
+      },
+      "powerWatts": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 34.20199966430664
+      },
+      "sampledAt": 1792813718612.0,
+      "sequence": 1,
+      "sharedTotalBytes": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 17127415808
+      },
+      "sharedUsedBytes": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 183205888
+      },
+      "temperatureCelsius": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 50
+      },
+      "temperatureSensor": {
+        "hardwareId": "/gpu-nvidia/0",
+        "name": "GPU Core",
+        "provider": "libreHardwareMonitor",
+        "sensorId": "/gpu-nvidia/0/temperature/0"
+      }
+    }
+  },
+  "cpu": {
+    "Ok": {
+      "frequencyHz": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 4005513916.015625
+      },
+      "history": [
+        {
+          "percent": 34.25,
+          "sequence": 1,
+          "temperatureCelsius": 48,
+          "temperatureUpdatedAt": 1792813718612,
+          "timestamp": 1792813718612.0
+        }
+      ],
+      "logicalProcessors": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 12
+      },
+      "maxFrequencyHz": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 2904000000
+      },
+      "percent": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 34.25
+      },
+      "physicalCores": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 6
+      },
+      "sampledAt": 1792813718612.0,
+      "sequence": 1,
+      "temperatureCelsius": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 48
+      },
+      "temperatureSensor": {
+        "hardwareId": "/intelcpu/0",
+        "name": "CPU Package",
+        "provider": "libreHardwareMonitor",
+        "sensorId": "/intelcpu/0/temperature/8"
+      }
+    }
+  },
+  "memory": {
+    "Ok": {
+      "availableBytes": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 17992417280
+      },
+      "cachedBytes": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 16338399232
+      },
+      "history": [
+        {
+          "percent": 47.47480448394331,
+          "sequence": 1,
+          "timestamp": 1792813718612.0
+        }
+      ],
+      "pagingFileBytes": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 176156672
+      },
+      "percent": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 47.47480448394331
+      },
+      "sampledAt": 1792813718612.0,
+      "sequence": 1,
+      "totalBytes": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 34254831616
+      },
+      "usedBytes": {
+        "error": null,
+        "status": "ready",
+        "updatedAt": 1792813718612,
+        "value": 16262414336
+      }
+    }
+  },
+  "disk": {
+    "Ok": {
+      "sampledAt": 1792813718612.0,
+      "sequence": 1,
+      "volumes": [
+        {
+          "freeBytes": 540860125184,
+          "kind": "fixed",
+          "label": "Sistema",
+          "mount": "C:",
+          "percent": 47.13575047823804,
+          "totalBytes": 1023111327744,
+          "usedBytes": 482251202560
+        },
+        {
+          "freeBytes": 3575068499968,
+          "kind": "fixed",
+          "label": "Arquivos",
+          "mount": "D:",
+          "percent": 55.3202727454098,
+          "totalBytes": 8001545039872,
+          "usedBytes": 4426476539904
+        }
+      ]
+    }
+  },
+  "diagnostics": {
+    "error": null,
+    "instanceId": "4468d5070f5040daa868e601932eeff7",
+    "sequence": 65,
+    "service": {
+      "errors": {},
+      "gpuIdentity": {
+        "association": "physicalPnpInstance",
+        "candidates": [
+          {
+            "hardwareId": "/gpu-nvidia/0",
+            "name": "NVIDIA GeForce RTX 3060 Ti",
+            "pnpInstanceId": "PCI\\VEN_10DE&DEV_2489&SUBSYS_884F1043&REV_A1\\4&35e0aeb3&0&0008",
+            "resolvedLuid": "000000000000BE6C"
+          }
+        ],
+        "physicalAdapterCount": 1,
+        "physicalPnpKey": "\\REGISTRY\\MACHINE\\SYSTEM\\ControlSet001\\Enum\\PCI\\VEN_10DE&DEV_2489&SUBSYS_884F1043&REV_A1\\4&35e0aeb3&0&0008\\Device Parameters",
+        "selectedLuid": "000000000003C871",
+        "selectedPnpInstanceId": "PCI\\VEN_10DE&DEV_2489&SUBSYS_884F1043&REV_A1\\4&35E0AEB3&0&0008"
+      },
+      "lhmVersion": "0.9.6",
+      "pawnIoVersion": "2.2.0.0",
+      "sources": {
+        "cache": "windowsPdh",
+        "gpuIdentity": "windowsDxgi",
+        "paging": "windowsEnumPageFiles",
+        "primary": "libreHardwareMonitor",
+        "topology": "windows",
+        "volumes": "windows"
+      }
+    }
+  },
+  "validation": {
+    "liveGpu": "installed_service_gpu_metrics_are_ready passed (all eight metrics ready)",
+    "csharp": "16 passed",
+    "rust": "192 passed, 23 ignored"
+  }
+}

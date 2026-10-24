@@ -57,6 +57,10 @@ struct Cache {
     channels: HashMap<String, Cached>,
     diagnostics: Value,
     error: Option<String>,
+    connections: u64,
+    disconnects: u64,
+    last_transport_error: Option<String>,
+    connected: bool,
 }
 fn number(value: &Value) -> Option<f64> {
     value
@@ -402,7 +406,13 @@ impl Client {
                     }
                     let result = session(&wanted, &stopped, &shared);
                     if let Err(e) = result {
-                        shared.lock().unwrap_or_else(|e| e.into_inner()).error = Some(e);
+                        {
+                            let mut cache = shared.lock().unwrap_or_else(|e| e.into_inner());
+                            cache.error = Some(e.clone());
+                            cache.last_transport_error = Some(e);
+                            cache.disconnects += 1;
+                            cache.connected = false;
+                        }
                         let until = Instant::now() + Duration::from_secs(delay);
                         while Instant::now() < until
                             && !stopped.load(Ordering::Acquire)
@@ -412,6 +422,7 @@ impl Client {
                         }
                         delay = (delay * 2).min(30);
                     } else {
+                        shared.lock().unwrap_or_else(|e| e.into_inner()).connected = false;
                         delay = 1;
                     }
                 }
@@ -439,7 +450,11 @@ impl Client {
     }
     pub fn diagnostics(&self) -> Value {
         let cache = self.cache.lock().unwrap_or_else(|e| e.into_inner());
-        json!({"instanceId":cache.instance,"sequence":cache.sequence,"error":cache.error,"service":cache.diagnostics})
+        let now = Instant::now();
+        let channels: serde_json::Map<String, Value> = cache.channels.iter().map(|(name, channel)| {
+            (name.clone(), json!({"ageMs":now.saturating_duration_since(channel.received).as_millis() as u64,"sampledAt":channel.value["sampledAt"],"sequence":channel.value["sequence"]}))
+        }).collect();
+        json!({"instanceId":cache.instance,"sequence":cache.sequence,"error":cache.error,"service":cache.diagnostics,"channels":channels,"connected":cache.connected,"connections":cache.connections,"disconnects":cache.disconnects,"lastTransportError":cache.last_transport_error})
     }
 }
 impl Drop for Client {
@@ -456,6 +471,11 @@ fn session(active: &AtomicU8, stop: &AtomicBool, cache: &Mutex<Cache>) -> Result
         .open(r"\\.\pipe\Strata.SensorService.v1")
         .map_err(|e| format!("Sensor service unavailable: {e}"))?;
     verify_server(&pipe)?;
+    {
+        let mut cache = cache.lock().unwrap_or_else(|e| e.into_inner());
+        cache.connections += 1;
+        cache.connected = true;
+    }
     unsafe {
         SetNamedPipeHandleState(HANDLE(pipe.as_raw_handle()), Some(&PIPE_NOWAIT), None, None)
             .map_err(|e| e.to_string())?;
@@ -528,6 +548,27 @@ fn transfer(
         if stop.load(Ordering::Acquire) || Instant::now() >= deadline {
             return Err("Sensor pipe deadline exceeded".into());
         }
+        if !write {
+            // std::fs maps ERROR_NO_DATA to Ok(0) on Windows pipes. In NOWAIT
+            // mode that means "not yet", not EOF. Peek distinguishes an idle
+            // connected peer from a genuinely closed pipe before reading.
+            let mut available = 0;
+            unsafe {
+                PeekNamedPipe(
+                    HANDLE(pipe.as_raw_handle()),
+                    None,
+                    0,
+                    None,
+                    Some(&mut available),
+                    None,
+                )
+                .map_err(|e| format!("Sensor pipe read: {e}"))?;
+            }
+            if available == 0 {
+                thread::sleep(Duration::from_millis(20));
+                continue;
+            }
+        }
         let result = if write {
             pipe.write(&bytes[offset..])
         } else {
@@ -584,6 +625,245 @@ fn verify_server(pipe: &File) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    #[ignore = "Requires installed service; SENSOR_SOAK_SECONDS defaults to 90"]
+    fn installed_service_remains_fresh() {
+        let client = Client::new();
+        client.subscribe(&CHANNELS);
+        let seconds = std::env::var("SENSOR_SOAK_SECONDS")
+            .ok()
+            .and_then(|s| s.parse::<u64>().ok())
+            .unwrap_or(90);
+        let started = Instant::now();
+        let mut supported = Vec::new();
+        let mut failures = 0;
+        let mut previous = Vec::new();
+        let popup = Client::new();
+        let mut report = std::env::var_os("SENSOR_SOAK_REPORT").map(|path| {
+            OpenOptions::new()
+                .create_new(true)
+                .write(true)
+                .open(path)
+                .expect("Create soak report")
+        });
+        while started.elapsed() < Duration::from_secs(seconds) {
+            popup.subscribe(if started.elapsed().as_secs() % 10 < 5 {
+                &["cpu", "gpu", "memory", "disk"]
+            } else {
+                &[]
+            });
+            let mut interrupted = Vec::new();
+            let mut samples = serde_json::Map::new();
+            for channel in CHANNELS {
+                match client.sample(channel) {
+                    Ok(data) => {
+                        if crate::metrics::timestamp() as f64
+                            - data["sampledAt"].as_f64().unwrap_or(0.)
+                            > 6000.
+                        {
+                            interrupted.push(format!("{channel}: observation expired"));
+                        }
+                        for key in fields(channel) {
+                            let pair = (channel, *key);
+                            if data[*key]["status"] == "ready" {
+                                if !supported.contains(&pair) {
+                                    supported.push(pair);
+                                }
+                            } else if supported.contains(&pair) {
+                                interrupted.push(format!("{channel}.{key}"));
+                            }
+                        }
+                        samples.insert(channel.into(), data);
+                    }
+                    Err(error) if started.elapsed() > Duration::from_secs(10) => {
+                        interrupted.push(format!("{channel}: {error}"));
+                    }
+                    Err(_) => {}
+                }
+            }
+            if !interrupted.is_empty() {
+                failures += 1;
+            }
+            if interrupted != previous {
+                println!(
+                    "TRANSITION elapsed={:?} interrupted={interrupted:?}; diagnostics={}",
+                    started.elapsed(),
+                    client.diagnostics()
+                );
+                previous = interrupted.clone();
+            }
+            if let Some(file) = &mut report {
+                writeln!(file, "{}", json!({"observedAt":crate::metrics::timestamp(),"elapsedMs":started.elapsed().as_millis() as u64,"interrupted":interrupted,"samples":samples,"diagnostics":client.diagnostics()})).unwrap();
+            }
+            thread::sleep(Duration::from_millis(500));
+        }
+        println!("SOAK seconds={seconds} failingObservations={failures} supported={supported:?}; diagnostics={}", client.diagnostics());
+        assert!(!supported.is_empty(), "No supported readings received");
+        assert_eq!(failures, 0, "Sensor interruptions detected");
+    }
+    #[test]
+    #[ignore = "Requires installed service; restart it after READY_FOR_RESTART is printed"]
+    fn installed_service_recovers_after_restart() {
+        let client = Client::new();
+        client.subscribe(&CHANNELS);
+        let started = Instant::now();
+        while CHANNELS
+            .iter()
+            .any(|channel| client.sample(channel).is_err())
+        {
+            assert!(
+                started.elapsed() < Duration::from_secs(30),
+                "Initial service unavailable: {}",
+                client.diagnostics()
+            );
+            thread::sleep(Duration::from_millis(100));
+        }
+        let instance = client.diagnostics()["instanceId"].clone();
+        let supported: Vec<_> = CHANNELS
+            .iter()
+            .flat_map(|channel| {
+                let data = client.sample(channel).unwrap();
+                fields(channel).iter().filter_map(move |key| {
+                    (data[*key]["status"] == "ready").then_some((*channel, *key))
+                })
+            })
+            .collect();
+        println!("READY_FOR_RESTART instance={instance}");
+        std::io::stdout().flush().unwrap();
+        let deadline = Instant::now() + Duration::from_secs(90);
+        while Instant::now() < deadline {
+            if client.diagnostics()["instanceId"] != instance
+                && CHANNELS
+                    .iter()
+                    .all(|channel| client.sample(channel).is_ok())
+                && supported.iter().all(|(channel, key)| {
+                    client
+                        .sample(channel)
+                        .is_ok_and(|data| data[*key]["status"] == "ready")
+                })
+            {
+                println!(
+                    "RECOVERED elapsed={:?}; diagnostics={}",
+                    started.elapsed(),
+                    client.diagnostics()
+                );
+                return;
+            }
+            thread::sleep(Duration::from_millis(100));
+        }
+        panic!(
+            "Service did not recover after restart: {}",
+            client.diagnostics()
+        );
+    }
+    #[test]
+    #[ignore = "Requires the installed service and a GPU exposing all current metrics"]
+    fn installed_service_gpu_metrics_are_ready() {
+        let client = Client::new();
+        client.subscribe(&["gpu"]);
+        let until = Instant::now() + Duration::from_secs(15);
+        while Instant::now() < until {
+            if let Ok(gpu) = client.sample("gpu") {
+                if fields("gpu")
+                    .iter()
+                    .all(|key| gpu[*key]["status"] == "ready")
+                {
+                    println!("Live GPU readings: {gpu}");
+                    println!("Physical association: {}", client.diagnostics());
+                    return;
+                }
+            }
+            thread::sleep(Duration::from_millis(100));
+        }
+        panic!(
+            "GPU metrics unavailable: {:?}; {}",
+            client.sample("gpu"),
+            client.diagnostics()
+        );
+    }
+    #[test]
+    #[ignore = "Requires the installed Strata.SensorService and real hardware"]
+    fn installed_service_delivers_all_sensor_channels() {
+        let client = Client::new();
+        client.subscribe(&CHANNELS);
+        let until = Instant::now() + Duration::from_secs(30);
+        while Instant::now() < until {
+            if CHANNELS
+                .iter()
+                .all(|channel| client.sample(channel).is_ok())
+            {
+                println!(
+                    "Installed service delivered all channels: {}",
+                    client.diagnostics()
+                );
+                return;
+            }
+            thread::sleep(Duration::from_millis(100));
+        }
+        panic!(
+            "Installed service did not supply sensor channels: {}",
+            client.diagnostics()
+        );
+    }
+    #[test]
+    fn nonblocking_pipe_waits_for_a_delayed_response() {
+        use std::os::windows::io::FromRawHandle;
+        use windows::{
+            core::PCWSTR,
+            Win32::Storage::FileSystem::{FlushFileBuffers, FILE_FLAGS_AND_ATTRIBUTES},
+        };
+        let name = format!(r"\\.\pipe\strata-transfer-test-{}", rand::random::<u64>());
+        let server_name = name.clone();
+        let (ready, connected) = std::sync::mpsc::sync_channel(1);
+        let server = thread::spawn(move || unsafe {
+            let wide: Vec<u16> = server_name.encode_utf16().chain(Some(0)).collect();
+            let handle = CreateNamedPipeW(
+                PCWSTR(wide.as_ptr()),
+                FILE_FLAGS_AND_ATTRIBUTES(3),
+                NAMED_PIPE_MODE(0),
+                1,
+                4096,
+                4096,
+                0,
+                None,
+            );
+            assert!(!handle.is_invalid());
+            let mut file = File::from_raw_handle(handle.0);
+            ready.send(()).unwrap();
+            let _ = ConnectNamedPipe(handle, None);
+            let mut request = [0];
+            file.read_exact(&mut request).unwrap();
+            thread::sleep(Duration::from_millis(150));
+            let _ = file.write_all(&[42]);
+            let _ = FlushFileBuffers(handle);
+        });
+        connected.recv().unwrap();
+        let mut pipe = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&name)
+            .unwrap();
+        unsafe {
+            SetNamedPipeHandleState(HANDLE(pipe.as_raw_handle()), Some(&PIPE_NOWAIT), None, None)
+                .unwrap();
+        }
+        pipe.write_all(&[1]).unwrap();
+        let mut response = [0];
+        let result = transfer(
+            &mut pipe,
+            &mut response,
+            false,
+            Instant::now() + Duration::from_secs(2),
+            &AtomicBool::new(false),
+        );
+        drop(pipe);
+        server.join().unwrap();
+        assert!(
+            result.is_ok(),
+            "Delayed response treated as disconnect: {result:?}"
+        );
+        assert_eq!(response, [42]);
+    }
     fn recorded() -> Snapshot {
         serde_json::from_str(include_str!(
             "../../docs/evidence/lhm-unprivileged-2026-10-23.json"

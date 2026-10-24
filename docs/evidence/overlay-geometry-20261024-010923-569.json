@@ -1,0 +1,10 @@
+{
+  "present": true,
+  "komorebiEligible": false,
+  "toolWindow": true,
+  "topmost": true,
+  "clickThrough": true,
+  "visible": false,
+  "rect": [26, 59, 162, 98],
+  "passed": true
+}

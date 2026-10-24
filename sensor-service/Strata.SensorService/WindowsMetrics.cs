@@ -5,6 +5,19 @@ namespace Strata.SensorService;
 
 internal sealed class WindowsMetrics : IDisposable
 {
+    internal static string HardwareIdentity(string[] channels)
+    {
+        // CPU/RAM inventory changes require a reboot on supported Windows PCs.
+        // DXGI detects replacement of the selected GPU, including hot-plugged
+        // adapters; use the same physical identity as sensor selection.
+        string gpu = "";
+        if (channels.Contains("gpu"))
+        {
+            var adapter = Adapter();
+            gpu = adapter.PnpInstanceId ?? adapter.Luid.ToString("X16");
+        }
+        return $"{Environment.ProcessorCount}:{gpu}";
+    }
     private nint query;
     private readonly List<nint> counters = [];
     private (uint Physical, uint Logical, double Nominal)? topology;
@@ -107,7 +120,8 @@ internal sealed class WindowsMetrics : IDisposable
         return result.ToArray();
     }
 
-    internal record AdapterInfo(string Name, uint VendorId, uint DeviceId, ulong DedicatedBytes, ulong Luid);
+    internal record AdapterInfo(string Name, uint VendorId, uint DeviceId, ulong DedicatedBytes, ulong Luid,
+        string? PnpInstanceId = null, string? PhysicalPnpKey = null, uint? PhysicalAdapterCount = null);
     public static unsafe AdapterInfo Adapter()
     {
         Guid iid = new("770aae78-f26f-4dba-a829-253c83d1b387");
@@ -134,11 +148,40 @@ internal sealed class WindowsMetrics : IDisposable
                 }
                 finally { Release(adapter); }
             }
-            return selected ?? throw new IOException("No hardware GPU available");
+            if (selected is null) throw new IOException("No hardware GPU available");
+            string? key = PhysicalPnpKey(selected.Luid, out uint? count);
+            return selected with { PnpInstanceId = Selection.NormalizePnpInstanceId(key), PhysicalPnpKey = key, PhysicalAdapterCount = count };
         }
         finally { Release(factory); }
     }
     private static unsafe void Release(nint pointer) => ((delegate* unmanaged[Stdcall]<nint, uint>)(*(nint**)pointer)[2])(pointer);
+    internal static unsafe string? PhysicalPnpKey(ulong luid, out uint? physicalCount)
+    {
+        physicalCount = null;
+        // ABI/constants: Windows SDK d3dkmthk.h. Query the selected DXGI LUID
+        // directly; do not reopen by a device name from another logical adapter.
+        var open = new OpenFromLuid { Luid = new Luid { Low = (uint)luid, High = (int)(luid >> 32) } };
+        if (D3DKMTOpenAdapterFromLuid(ref open) < 0) return null;
+        try
+        {
+            uint count = 0;
+            var query = new QueryAdapter { Handle = open.Handle, Type = 30, Data = (nint)(&count), Size = sizeof(uint) };
+            // A linked multi-physical adapter has no single physical identity.
+            if (D3DKMTQueryAdapterInfo(ref query) < 0) return null;
+            physicalCount = count;
+            if (count != 1) return null;
+            char[] buffer = new char[4096];
+            uint characters = (uint)buffer.Length;
+            fixed (char* destination = buffer)
+            {
+                var pnp = new PhysicalPnp { Index = 0, KeyType = 1, Destination = (nint)destination, Characters = (nint)(&characters) };
+                query = new QueryAdapter { Handle = open.Handle, Type = 41, Data = (nint)(&pnp), Size = (uint)sizeof(PhysicalPnp) };
+                if (D3DKMTQueryAdapterInfo(ref query) < 0 || characters is 0 or > 4096 || buffer[characters - 1] != '\0') return null;
+                return new string(buffer, 0, (int)characters - 1);
+            }
+        }
+        finally { uint handle = open.Handle; D3DKMTCloseAdapter(ref handle); }
+    }
     public static ulong? DeviceLuid(string? device)
     {
         if (string.IsNullOrEmpty(device)) return null;
@@ -179,6 +222,9 @@ internal sealed class WindowsMetrics : IDisposable
     [StructLayout(LayoutKind.Sequential)] private struct MemoryStatus { public uint Length, Load; public ulong TotalPhysical, AvailablePhysical, TotalPageFile, AvailablePageFile, TotalVirtual, AvailableVirtual, AvailableExtended; }
     [StructLayout(LayoutKind.Sequential)] private struct Luid { public uint Low; public int High; }
     [StructLayout(LayoutKind.Sequential)] private struct OpenAdapter { public nint Name; public uint Handle; public Luid Luid; }
+    [StructLayout(LayoutKind.Sequential)] private struct OpenFromLuid { public Luid Luid; public uint Handle; }
+    [StructLayout(LayoutKind.Sequential)] private struct QueryAdapter { public uint Handle, Type; public nint Data; public uint Size; }
+    [StructLayout(LayoutKind.Sequential)] private struct PhysicalPnp { public uint Index, KeyType; public nint Destination, Characters; }
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)] private unsafe struct AdapterDescription
     { public fixed char Description[128]; public uint VendorId, DeviceId, SubSystemId, Revision; public nuint DedicatedVideoMemory, DedicatedSystemMemory, SharedSystemMemory; public Luid Luid; public uint Flags; }
     private delegate bool PageFileCallback(nint context, ref PageFile info, [MarshalAs(UnmanagedType.LPWStr)] string name);
@@ -192,6 +238,8 @@ internal sealed class WindowsMetrics : IDisposable
     [DllImport("dxgi.dll")] private static extern int CreateDXGIFactory1(ref Guid iid, out nint factory);
     [DllImport("gdi32.dll")] private static extern int D3DKMTOpenAdapterFromDeviceName(ref OpenAdapter adapter);
     [DllImport("gdi32.dll")] private static extern int D3DKMTCloseAdapter(ref uint handle);
+    [DllImport("gdi32.dll")] private static extern int D3DKMTOpenAdapterFromLuid(ref OpenFromLuid adapter);
+    [DllImport("gdi32.dll")] private static extern int D3DKMTQueryAdapterInfo(ref QueryAdapter query);
     [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode, EntryPoint = "CM_Get_Device_Interface_List_SizeW")]
     private static extern uint CM_Get_Device_Interface_List_Size(out uint size, ref Guid cls, string? device, uint flags);
     [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode, EntryPoint = "CM_Get_Device_Interface_ListW")]

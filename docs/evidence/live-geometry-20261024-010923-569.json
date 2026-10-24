@@ -1,0 +1,24 @@
+[
+  {
+    "title": "Strata · \\\\.\\DISPLAY1",
+    "monitor": [0, 0, 3440, 1440],
+    "actualWindow": [0, 0, 3440, 49],
+    "reservation": [0, 0, 3440, 33],
+    "workArea": [0, 33, 3440, 1440],
+    "komorebiEligible": false,
+    "toolWindow": true,
+    "topmost": true,
+    "passed": true
+  },
+  {
+    "title": "Strata · \\\\.\\DISPLAY2",
+    "monitor": [724, -1080, 2644, 0],
+    "actualWindow": [724, -1080, 2644, -1031],
+    "reservation": [724, -1080, 2644, -1047],
+    "workArea": [724, -1047, 2644, 0],
+    "komorebiEligible": false,
+    "toolWindow": true,
+    "topmost": true,
+    "passed": true
+  }
+]

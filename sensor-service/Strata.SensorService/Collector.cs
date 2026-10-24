@@ -20,10 +20,44 @@ public static class Selection
         return fans.Length > 0 ? Reading.Ready(fans.Max(s => s.Value!.Value), at, 100)
             : Reading.Missing("Fan percentage unavailable; RPM is not percentage");
     }
-    public static T? MatchGpu<T>(IEnumerable<T> devices, Func<T, ulong?> identity, ulong luid) where T : class
+    public static T? MatchGpu<T>(IEnumerable<T> devices, Func<T, ulong?> identity, ulong luid,
+        string? selectedPnpInstanceId = null, Func<T, string?>? pnpIdentity = null,
+        uint? physicalAdapterCount = null) where T : class
     {
-        var matches = devices.Where(d => identity(d) == luid).Take(2).ToArray();
+        if (physicalAdapterCount is not null and not 1) return null;
+        // DXGI and device-name queries can expose distinct logical adapter
+        // LUIDs for the same physical GPU in Session 0. Prefer the complete
+        // physical PnP instance, never model/vendor/device or enumeration order.
+        var pnp = NormalizePnpInstanceId(selectedPnpInstanceId);
+        if (selectedPnpInstanceId is not null && (pnp is null || pnpIdentity is null)) return null;
+        var matches = devices.Where(d => pnp is not null
+            ? NormalizePnpInstanceId(pnpIdentity!(d)) == pnp
+            : identity(d) == luid).Take(2).ToArray();
         return matches.Length == 1 ? matches[0] : null;
+    }
+    public static string? NormalizePnpInstanceId(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        string path = value.TrimEnd('\0').Trim().Replace('/', '\\');
+        if (path.StartsWith(@"\REGISTRY\MACHINE\SYSTEM\", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith(@"HKEY_LOCAL_MACHINE\SYSTEM\", StringComparison.OrdinalIgnoreCase))
+        {
+            int marker = path.IndexOf(@"\Enum\", StringComparison.OrdinalIgnoreCase);
+            if (marker < 0) return null;
+            path = path[(marker + 6)..];
+            const string parameters = @"\Device Parameters";
+            if (path.EndsWith(parameters, StringComparison.OrdinalIgnoreCase)) path = path[..^parameters.Length];
+        }
+        if (path.StartsWith(@"\\?\", StringComparison.Ordinal))
+        {
+            path = path[4..];
+            int suffix = path.LastIndexOf("#{", StringComparison.Ordinal);
+            if (suffix < 0 || !Guid.TryParse(path[(suffix + 1)..], out _)) return null;
+            path = path[..suffix].Replace('#', '\\');
+        }
+        string[] parts = path.Split('\\');
+        return parts.Length == 3 && parts.All(p => p.Length > 0 && p is not "." and not "..") &&
+            !path.Any(char.IsControl) ? path.ToUpperInvariant() : null;
     }
     public static SensorValue? CpuTemperature(IEnumerable<SensorValue> sensors)
     {
@@ -65,44 +99,83 @@ public static class ObservationCache
 
 public sealed class Collector : IDisposable
 {
+    private readonly Func<long> tick;
+    private readonly Func<string[], string> hardwareIdentity;
+    public Collector() : this(() => Environment.TickCount64, WindowsMetrics.HardwareIdentity) { }
+    internal Collector(Func<long> tick, Func<string[], string> hardwareIdentity)
+    { this.tick = tick; this.hardwareIdentity = hardwareIdentity; }
     private Computer? computer;
-    private string[] enabled = [];
     private readonly string instance = Guid.NewGuid().ToString("N");
     private ulong sequence;
     private long discovered;
+    private string? discoveredIdentity;
+    private bool needsRediscovery;
+    internal long DiscoveryCount { get; private set; }
     private readonly WindowsMetrics windows = new();
     private readonly Dictionary<string, string> errors = new();
+    private object? gpuIdentity;
 
     public void Reset()
     {
         computer?.Close();
         computer = null;
-        enabled = [];
+        discoveredIdentity = null;
+        needsRediscovery = false;
         windows.Reset();
     }
 
     public Snapshot Collect(string[] channels)
     {
-        long at = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        var timing = new Dictionary<string, long>();
         errors.Clear();
+        gpuIdentity = null;
         string[] wanted = channels.Where(c => c is "cpu" or "gpu" or "memory").Order().ToArray();
         if (wanted.Length == 0 && computer is not null) Reset();
-        if (wanted.Length > 0 && (!wanted.SequenceEqual(enabled) || Environment.TickCount64 - discovered > 30000))
+        string? identity = discoveredIdentity;
+        bool changed = computer is null;
+        bool discoveryDue = tick() - discovered > 30000;
+        if (wanted.Length > 0 && (changed || discoveryDue))
+        {
+            // Rediscover device identity without tearing down working driver and
+            // PDH sessions. Reopening LHM takes several seconds on real hardware
+            // and used to expire every channel once per discovery interval.
+            try { identity = hardwareIdentity(["cpu", "gpu", "memory"]); }
+            catch (Exception e) { errors["discovery"] = e.Message; }
+            discovered = tick();
+        }
+        if (wanted.Length > 0 && (changed || identity != discoveredIdentity || (needsRediscovery && discoveryDue)))
         {
             Reset();
             computer = new Computer
             {
-                IsCpuEnabled = wanted.Contains("cpu"), IsGpuEnabled = wanted.Contains("gpu"),
-                IsMemoryEnabled = wanted.Contains("memory"), IsMotherboardEnabled = false,
+                // Discover the supported inventory once per active session.
+                // Changing client demand must not close live sensors. Only the
+                // requested hardware groups are updated below.
+                IsCpuEnabled = true, IsGpuEnabled = true,
+                IsMemoryEnabled = true, IsMotherboardEnabled = false,
                 IsControllerEnabled = false, IsNetworkEnabled = false, IsStorageEnabled = false
             };
-            try { computer.Open(); enabled = wanted; discovered = Environment.TickCount64; }
+            try { computer.Open(); discovered = tick(); discoveredIdentity = identity; DiscoveryCount++; }
             catch (Exception e) { errors["open"] = e.Message; Reset(); }
         }
-        foreach (var hardware in computer?.Hardware ?? []) Update(hardware);
+        timing["discoveryMs"] = timer.ElapsedMilliseconds;
+        long at = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var updatedHardware = new List<string>();
+        foreach (var hardware in computer?.Hardware ?? [])
+        {
+            bool requested = hardware is GenericCpu ? wanted.Contains("cpu")
+                : hardware is GenericGpu ? wanted.Contains("gpu")
+                : hardware.Identifier.ToString() == "/ram" && wanted.Contains("memory");
+            if (!requested) continue;
+            Update(hardware);
+            updatedHardware.Add(hardware.Identifier.ToString());
+        }
+        timing["updateMs"] = timer.ElapsedMilliseconds - timing["discoveryMs"];
         var result = new Dictionary<string, ChannelSample>();
         foreach (string channel in channels)
         {
+            long start = timer.ElapsedMilliseconds;
             try
             {
                 result[channel] = channel switch
@@ -113,10 +186,11 @@ public sealed class Collector : IDisposable
                 };
             }
             catch (Exception e) { errors[channel] = e.Message; }
+            timing[channel + "Ms"] = timer.ElapsedMilliseconds - start;
         }
         return new(1, "snapshot", instance, ++sequence, at, result,
-            new { lhmVersion = "0.9.6", pawnIoVersion = LibreHardwareMonitor.PawnIo.PawnIo.Version?.ToString(),
-                errors = new Dictionary<string, string>(errors), sources = new { primary = "libreHardwareMonitor", topology = "windows", cache = "windowsPdh",
+            new { processId = Environment.ProcessId, discoveryCount = DiscoveryCount, updatedHardware, timing, lhmVersion = "0.9.6", pawnIoVersion = LibreHardwareMonitor.PawnIo.PawnIo.Version?.ToString(),
+                errors = new Dictionary<string, string>(errors), gpuIdentity, sources = new { primary = "libreHardwareMonitor", topology = "windows", cache = "windowsPdh",
                     paging = "windowsEnumPageFiles", volumes = "windows", gpuIdentity = "windowsDxgi" } });
     }
 
@@ -127,7 +201,7 @@ public sealed class Collector : IDisposable
             foreach (var sensor in hardware.Sensors) ObservationCache.Clear(sensor);
             hardware.Update();
         }
-        catch (Exception e) { errors[hardware.Identifier.ToString()] = e.Message; }
+        catch (Exception e) { errors[hardware.Identifier.ToString()] = e.Message; needsRediscovery = true; }
         foreach (var child in hardware.SubHardware) Update(child);
     }
     private SensorValue[] Sensors(IHardware hardware) =>
@@ -178,8 +252,24 @@ public sealed class Collector : IDisposable
     private ChannelSample Gpu(long at)
     {
         var adapter = WindowsMetrics.Adapter();
-        GenericGpu? gpu = Selection.MatchGpu((computer?.Hardware ?? []).OfType<GenericGpu>(),
-            g => WindowsMetrics.DeviceLuid(g.DeviceId), adapter.Luid);
+        var candidates = (computer?.Hardware ?? []).OfType<GenericGpu>().Select(g => new
+        {
+            Hardware = g,
+            PnpInstanceId = g.DeviceId,
+            Luid = WindowsMetrics.DeviceLuid(g.DeviceId)
+        }).ToArray();
+        GenericGpu? gpu = Selection.MatchGpu(candidates, g => g.Luid, adapter.Luid,
+            adapter.PnpInstanceId, g => g.PnpInstanceId, adapter.PhysicalAdapterCount)?.Hardware;
+        gpuIdentity = new
+        {
+            selectedLuid = adapter.Luid.ToString("X16"),
+            selectedPnpInstanceId = adapter.PnpInstanceId,
+            physicalPnpKey = adapter.PhysicalPnpKey,
+            physicalAdapterCount = adapter.PhysicalAdapterCount,
+            association = adapter.PnpInstanceId is not null ? "physicalPnpInstance" : "luid",
+            candidates = candidates.Select(g => new { hardwareId = g.Hardware.Identifier.ToString(),
+                g.Hardware.Name, g.PnpInstanceId, resolvedLuid = g.Luid?.ToString("X16") }).ToArray()
+        };
         var sensors = gpu is null ? [] : Sensors(gpu);
         var temperature = Selection.Named(sensors, SensorType.Temperature, "GPU Core", "GPU");
         var power = Selection.Named(sensors, SensorType.Power, "GPU Package", "GPU Power", "GPU Total", "GPU Board Power");
@@ -199,6 +289,8 @@ public sealed class Collector : IDisposable
             ["fanPercent"] = Selection.FanPercentage(sensors, at),
             ["temperatureSensor"] = gpu is null || temperature is null ? null : Identity(gpu, temperature)
         };
+        // An unsupported/ambiguous adapter is not an Update failure. Reopening
+        // all working hardware every 30 seconds would recreate global outages.
         if (gpu is null) errors["gpuMatch"] = "GPU physical identity missing or ambiguous";
         return new(adapter.Luid.ToString("X16"), data);
     }

@@ -1,0 +1,238 @@
+{
+  "cause": "Windows nonblocking pipe ERROR_NO_DATA is mapped by std::fs to Ok(0), incorrectly treated as EOF.",
+  "before": "All four channels: Sensor service disconnected",
+  "regression": "nonblocking_pipe_waits_for_a_delayed_response failed before the fix and passed afterwards",
+  "after": {
+    "cpu": {
+      "Ok": {
+        "frequencyHz": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792811578514,
+          "value": 4005896484.375
+        },
+        "history": [
+          {
+            "percent": 65.97000122070312,
+            "sequence": 1,
+            "temperatureCelsius": 57,
+            "temperatureUpdatedAt": 1792811578514,
+            "timestamp": 1792811578514.0
+          }
+        ],
+        "logicalProcessors": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792811578514,
+          "value": 12
+        },
+        "maxFrequencyHz": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792811578514,
+          "value": 2904000000
+        },
+        "percent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792811578514,
+          "value": 65.97000122070312
+        },
+        "physicalCores": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792811578514,
+          "value": 6
+        },
+        "sampledAt": 1792811578514.0,
+        "sequence": 1,
+        "temperatureCelsius": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792811578514,
+          "value": 57
+        },
+        "temperatureSensor": {
+          "hardwareId": "/intelcpu/0",
+          "name": "CPU Package",
+          "provider": "libreHardwareMonitor",
+          "sensorId": "/intelcpu/0/temperature/8"
+        }
+      }
+    },
+    "gpu": {
+      "Ok": {
+        "adapter": {
+          "dedicatedBytes": 8413773824,
+          "deviceId": 9353,
+          "name": "NVIDIA GeForce RTX 3060 Ti",
+          "vendorId": 4318
+        },
+        "fanPercent": {
+          "error": "Fan percentage unavailable; RPM is not percentage",
+          "status": "unavailable",
+          "updatedAt": null,
+          "value": null
+        },
+        "history": [
+          {
+            "percent": null,
+            "sequence": 1,
+            "temperatureCelsius": null,
+            "temperatureUpdatedAt": null,
+            "timestamp": 1792811578514.0
+          }
+        ],
+        "memoryTotalBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792811578514,
+          "value": 8413773824
+        },
+        "memoryUsedBytes": {
+          "error": "Sensor not exposed by LHM",
+          "status": "unavailable",
+          "updatedAt": null,
+          "value": null
+        },
+        "percent": {
+          "error": "Sensor not exposed by LHM",
+          "status": "unavailable",
+          "updatedAt": null,
+          "value": null
+        },
+        "powerWatts": {
+          "error": "Sensor not exposed by LHM",
+          "status": "unavailable",
+          "updatedAt": null,
+          "value": null
+        },
+        "sampledAt": 1792811578514.0,
+        "sequence": 1,
+        "sharedTotalBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792811578514,
+          "value": 17127415808
+        },
+        "sharedUsedBytes": {
+          "error": "Sensor not exposed by LHM",
+          "status": "unavailable",
+          "updatedAt": null,
+          "value": null
+        },
+        "temperatureCelsius": {
+          "error": "Sensor not exposed by LHM",
+          "status": "unavailable",
+          "updatedAt": null,
+          "value": null
+        },
+        "temperatureSensor": null
+      }
+    },
+    "memory": {
+      "Ok": {
+        "availableBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792811578514,
+          "value": 13990477824
+        },
+        "cachedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792811578514,
+          "value": 13066436608
+        },
+        "history": [
+          {
+            "percent": 59.15765115755167,
+            "sequence": 1,
+            "timestamp": 1792811578514.0
+          }
+        ],
+        "pagingFileBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792811578514,
+          "value": 217427968
+        },
+        "percent": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792811578514,
+          "value": 59.15765115755167
+        },
+        "sampledAt": 1792811578514.0,
+        "sequence": 1,
+        "totalBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792811578514,
+          "value": 34254831616
+        },
+        "usedBytes": {
+          "error": null,
+          "status": "ready",
+          "updatedAt": 1792811578514,
+          "value": 20264353792
+        }
+      }
+    },
+    "disk": {
+      "Ok": {
+        "sampledAt": 1792811578514.0,
+        "sequence": 1,
+        "volumes": [
+          {
+            "freeBytes": 538983862272,
+            "kind": "fixed",
+            "label": "Sistema",
+            "mount": "C:",
+            "percent": 47.31913843037197,
+            "totalBytes": 1023111327744,
+            "usedBytes": 484127465472
+          },
+          {
+            "freeBytes": 3574770176000,
+            "kind": "fixed",
+            "label": "Arquivos",
+            "mount": "D:",
+            "percent": 55.32400107495757,
+            "totalBytes": 8001545039872,
+            "usedBytes": 4426774863872
+          }
+        ]
+      }
+    },
+    "sensors": {
+      "error": null,
+      "instanceId": "10f0286a64554605bf37be937977ae23",
+      "sequence": 6,
+      "service": {
+        "errors": {
+          "gpuMatch": "GPU physical identity missing or ambiguous"
+        },
+        "lhmVersion": "0.9.6",
+        "pawnIoVersion": "2.2.0.0",
+        "sources": {
+          "cache": "windowsPdh",
+          "gpuIdentity": "windowsDxgi",
+          "paging": "windowsEnumPageFiles",
+          "primary": "libreHardwareMonitor",
+          "topology": "windows",
+          "volumes": "windows"
+        }
+      }
+    }
+  },
+  "testedClient": "workspace debug executable against installed LocalSystem service",
+  "installedBarUpdated": false,
+  "gpuStatus": "Physical adapter match failed; updated service diagnostics require reinstall",
+  "tests": {
+    "rustPassed": 192,
+    "rustIgnored": 22,
+    "csharpPassed": 10,
+    "installedServiceIntegrationPassed": true
+  }
+}

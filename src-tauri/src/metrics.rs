@@ -318,6 +318,13 @@ impl Metrics {
             }
             let mut audio: [Option<(IAudioEndpointVolume, IAudioEndpointVolumeCallback)>; 2] = [None, None];
             let sensor_client = crate::sensors::Client::new();
+            let mut sensor_trace = std::env::var_os("STRATA_SENSOR_TRACE").and_then(|path| {
+                match std::fs::OpenOptions::new().create_new(true).write(true).open(path) {
+                    Ok(file) => Some(file),
+                    Err(error) => { eprintln!("Sensor trace: {error}"); None }
+                }
+            });
+            let sensor_trace_started = Instant::now();
             let mut voicemeeter = crate::voicemeeter::Client::native();
             let mut sources: HashMap<String, crate::voicemeeter::Target> = HashMap::new();
             let mut vm_published = false;
@@ -452,6 +459,22 @@ impl Metrics {
                     }
                 }
                 if collected {
+                    // Diagnostic capture must not grow for the lifetime of a
+                    // user's bar. Leave five minutes beyond the one-hour soak
+                    // for the deliberate service-restart check.
+                    if sensor_trace_started.elapsed() >= Duration::from_secs(65 * 60)
+                        || sensor_trace.as_ref().is_some_and(|file| file.metadata().is_ok_and(|m| m.len() >= 128 * 1024 * 1024))
+                    {
+                        sensor_trace = None;
+                    }
+                    if let Some(file) = &mut sensor_trace {
+                        use std::io::Write;
+                        let report = json!({"observedAt":timestamp(),"metrics":self.diagnostics(),"sensors":sensor_client.diagnostics()});
+                        if let Err(error) = writeln!(file, "{report}") {
+                            eprintln!("Sensor trace: {error}");
+                            sensor_trace = None;
+                        }
+                    }
                     ticks+=1;
                     if ticks==10{let report=json!({"metrics":self.diagnostics(),"windows":crate::desktop::profile(),"sensors":sensor_client.diagnostics()});if let Err(e)=std::fs::write(std::env::temp_dir().join("strata-runtime-profile.json"),report.to_string()){eprintln!("Runtime profile: {e}");}}
                 }

@@ -5,6 +5,61 @@ using SensorValue = Strata.SensorService.SensorValue;
 
 public sealed class SensorsTests
 {
+    [Fact]
+    public void UnchangedHardwareDoesNotReopenAtThirtySeconds()
+    {
+        long tick = 0;
+        using var collector = new Collector(() => tick, _ => "same-hardware");
+        collector.Collect(["memory"]);
+        Assert.Equal(1, collector.DiscoveryCount);
+        tick = 31000;
+        collector.Collect(["memory"]);
+        Assert.Equal(1, collector.DiscoveryCount);
+    }
+    [Fact]
+    public void RediscoveryDetectsReplacementAndResetReopensEvenWithSameIdentity()
+    {
+        long tick = 0;
+        string identity = "first";
+        using var collector = new Collector(() => tick, _ => identity);
+        collector.Collect(["memory"]);
+        identity = "replacement";
+        tick = 31000;
+        collector.Collect(["memory"]);
+        Assert.Equal(2, collector.DiscoveryCount);
+        collector.Reset();
+        collector.Collect(["memory"]);
+        Assert.Equal(3, collector.DiscoveryCount);
+    }
+    [Fact]
+    public void DiscoveryFailureDoesNotDiscardWorkingSensors()
+    {
+        long tick = 0;
+        using var collector = new Collector(() => tick,
+            _ => tick == 0 ? "same" : throw new IOException("discovery failed"));
+        collector.Collect(["memory"]);
+        tick = 31000;
+        var sample = collector.Collect(["memory"]);
+        Assert.Equal(1, collector.DiscoveryCount);
+        Assert.Equal("ready", Assert.IsType<Reading>(sample.Channels["memory"].Data["totalBytes"]).Status);
+    }
+    [Fact]
+    public void ChangingDemandKeepsTheExistingHardwareSession()
+    {
+        using var collector = new Collector(() => 0, _ => "same-hardware");
+        var first = collector.Collect(["memory"]);
+        var diagnostics = System.Text.Json.JsonSerializer.SerializeToElement(first.Diagnostics, Protocol.Json);
+        Assert.Equal(new[] { "/ram" }, diagnostics.GetProperty("updatedHardware").EnumerateArray().Select(x => x.GetString()));
+        var added = collector.Collect(["cpu", "memory"]);
+        Assert.Equal(1, collector.DiscoveryCount);
+        Assert.Equal(2, added.Channels.Count);
+        var removed = collector.Collect(["memory"]);
+        Assert.Equal(1, collector.DiscoveryCount);
+        Assert.Single(removed.Channels);
+        collector.Collect([]);
+        collector.Collect(["memory"]);
+        Assert.Equal(2, collector.DiscoveryCount);
+    }
     private static SensorValue Temperature(string name, double? value) => new(name, name, SensorType.Temperature, value);
     [Fact]
     public void CpuUsesDieBeforeControlAndPackageBeforeCore()
@@ -41,6 +96,40 @@ public sealed class SensorsTests
         Assert.Equal(3500, Selection.CoreClocks(values).Average(s => s.Value));
     }
     private sealed record Gpu(string Model, ulong? Luid);
+    private sealed record PhysicalGpu(string PnpInstanceId, ulong Luid);
+    [Fact]
+    public void SamePhysicalGpuMatchesWhenServiceAndD3dLuidsDiffer()
+    {
+        const string instance = @"PCI\VEN_10DE&DEV_2489&SUBSYS_884F1043&REV_A1\4&35e0aeb3&0&0008";
+        var gpu = new PhysicalGpu(instance, 0xBE6C);
+        Assert.Same(gpu, Selection.MatchGpu(new[] { gpu }, g => g.Luid, 0x3C871,
+            instance, g => g.PnpInstanceId));
+    }
+    [Fact]
+    public void PhysicalIdentityRejectsOtherInstancesAndDuplicatesEvenWithMatchingLuid()
+    {
+        var first = new PhysicalGpu(@"PCI\VEN_10DE&DEV_2489\FIRST", 1);
+        var second = new PhysicalGpu(@"PCI\VEN_10DE&DEV_2489\SECOND", 2);
+        Assert.Same(second, Selection.MatchGpu(new[] { first, second }, g => g.Luid, 1,
+            second.PnpInstanceId.ToLowerInvariant(), g => g.PnpInstanceId));
+        Assert.Null(Selection.MatchGpu(new[] { first }, g => g.Luid, 1,
+            second.PnpInstanceId, g => g.PnpInstanceId));
+        Assert.Null(Selection.MatchGpu(new[] { first, first }, g => g.Luid, 1,
+            first.PnpInstanceId, g => g.PnpInstanceId));
+        Assert.Null(Selection.MatchGpu(new[] { first }, g => g.Luid, 1,
+            first.PnpInstanceId, g => g.PnpInstanceId, physicalAdapterCount: 2));
+    }
+    [Theory]
+    [InlineData(@"\Registry\Machine\System\ControlSet001\Enum\PCI\VEN_10DE&DEV_2489\INSTANCE")]
+    [InlineData(@"\Registry\Machine\System\ControlSet001\Enum\PCI\VEN_10DE&DEV_2489\INSTANCE\Device Parameters")]
+    [InlineData(@"PCI\VEN_10DE&DEV_2489\INSTANCE")]
+    [InlineData(@"\\?\PCI#VEN_10DE&DEV_2489#INSTANCE#{1ca05180-a699-450a-9a0c-de4fbe3ddd89}")]
+    public void PhysicalHardwareKeysNormalizeToCompleteInstance(string path)
+    {
+        Assert.Equal(@"PCI\VEN_10DE&DEV_2489\INSTANCE", Selection.NormalizePnpInstanceId(path));
+        Assert.Null(Selection.NormalizePnpInstanceId(@"PCI\VEN_10DE&DEV_2489"));
+        Assert.Null(Selection.NormalizePnpInstanceId(@"PCI\VEN_10DE&DEV_2489\.."));
+    }
     [Fact]
     public void SameModelGpusAreMatchedOnlyByPhysicalIdentity()
     {

@@ -1,0 +1,9 @@
+{
+  "fix": "Wait for available pipe bytes before reading",
+  "installer": "D:\\code\\strata\\src-tauri\\target\\sensor-validation\\release\\bundle\\nsis\\Strata_0.1.0_x64-setup.exe",
+  "bytes": 257806427,
+  "sha256": "b5a5db5a615e755a473c8fab373d38762955898bb74d8a4f7b2bd426783e7e1c",
+  "includesGpuIdentityDiagnostics": true,
+  "requiresUserReinstall": true,
+  "remainingIssue": "GPU physical adapter association under LocalSystem"
+}

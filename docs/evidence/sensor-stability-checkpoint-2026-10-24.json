@@ -1,0 +1,423 @@
+{
+  "capturedAt": "2026-10-24T01:47:03.1260918-03:00",
+  "status": "Correction installed; continuous validation checkpoint, not the completed one-hour gate",
+  "rootCauses": [
+    "Unconditional LHM teardown/reopen every 30 seconds blocked all collection",
+    "Channel-demand changes reopened already working sensors during startup"
+  ],
+  "before": {
+    "scenario": "Instrumented installed service before the periodic-discovery fix",
+    "observations": 146,
+    "maxSnapshotAgeMs": 6400.0,
+    "observationsBeyondFreshness": 2,
+    "discoveryDurationsMs": [4547, 4613],
+    "sha256": "8B9CBD0D5EB6925B65B0BBE30197F990B435017BC03986CBD80A454FB18FAA7A",
+    "rustSoakBefore": {
+      "failingMetricObservations": 315,
+      "result": "failed",
+      "seconds": 90
+    },
+    "regressionBefore": {
+      "actualDiscoveryCount": 2,
+      "expectedDiscoveryCount": 1,
+      "result": "failed"
+    }
+  },
+  "startupBefore": {
+    "path": "C:\\Users\\thevi\\AppData\\Local\\Temp\\strata-sensor-soak-final-20261024.jsonl",
+    "sha256": "7F193FC1F69A5732620650587995E3B6BB0ECD31B26AB5613DF6922A5816667D",
+    "observations": 235,
+    "firstObservedAt": 1792815569641,
+    "lastObservedAt": 1792815689167,
+    "durationMs": 119526,
+    "warmupSeconds": 10,
+    "failingObservations": 7,
+    "maxObservationGapMs": 525,
+    "maxSnapshotAgeMs": 13176,
+    "supportedMetrics": [
+      "cpu.frequencyHz",
+      "cpu.logicalProcessors",
+      "cpu.maxFrequencyHz",
+      "cpu.percent",
+      "cpu.physicalCores",
+      "cpu.temperatureCelsius",
+      "gpu.fanPercent",
+      "gpu.memoryTotalBytes",
+      "gpu.memoryUsedBytes",
+      "gpu.percent",
+      "gpu.powerWatts",
+      "gpu.sharedTotalBytes",
+      "gpu.sharedUsedBytes",
+      "gpu.temperatureCelsius",
+      "memory.availableBytes",
+      "memory.cachedBytes",
+      "memory.pagingFileBytes",
+      "memory.percent",
+      "memory.totalBytes",
+      "memory.usedBytes"
+    ],
+    "instances": ["5770060f7b444628bf7e60ae33135f6b"],
+    "interruptions": [
+      {
+        "startedAt": 1792815579681,
+        "endedAt": 1792815583196,
+        "durationMs": 3515,
+        "affected": [
+          "cpu: expired snapshot",
+          "cpu.frequencyHz: error",
+          "cpu.logicalProcessors: error",
+          "cpu.maxFrequencyHz: error",
+          "cpu.percent: error",
+          "cpu.physicalCores: error",
+          "cpu.temperatureCelsius: error",
+          "gpu: missing snapshot",
+          "memory: missing snapshot",
+          "disk: missing snapshot"
+        ],
+        "diagnostics": {
+          "channels": {
+            "cpu": {
+              "ageMs": 9496,
+              "sampledAt": 1792815569518.0,
+              "sequence": 1
+            }
+          },
+          "connected": true,
+          "connections": 2,
+          "disconnects": 1,
+          "error": "Sensor snapshot time is outside the freshness window",
+          "instanceId": "5770060f7b444628bf7e60ae33135f6b",
+          "lastTransportError": "Sensor snapshot time is outside the freshness window",
+          "sequence": 1,
+          "service": {
+            "discoveryCount": 1,
+            "errors": {},
+            "gpuIdentity": null,
+            "lhmVersion": "0.9.6",
+            "pawnIoVersion": "2.2.0.0",
+            "processId": 29232,
+            "sources": {
+              "cache": "windowsPdh",
+              "gpuIdentity": "windowsDxgi",
+              "paging": "windowsEnumPageFiles",
+              "primary": "libreHardwareMonitor",
+              "topology": "windows",
+              "volumes": "windows"
+            },
+            "timing": {
+              "cpuMs": 85,
+              "discoveryMs": 273,
+              "updateMs": 100
+            }
+          }
+        }
+      }
+    ],
+    "lastDiagnostics": {
+      "channels": {
+        "cpu": {
+          "ageMs": 1409,
+          "sampledAt": 1792815687505.0,
+          "sequence": 55
+        },
+        "disk": {
+          "ageMs": 1409,
+          "sampledAt": 1792815687505.0,
+          "sequence": 54
+        },
+        "gpu": {
+          "ageMs": 1409,
+          "sampledAt": 1792815687505.0,
+          "sequence": 54
+        },
+        "memory": {
+          "ageMs": 1409,
+          "sampledAt": 1792815687505.0,
+          "sequence": 54
+        }
+      },
+      "connected": true,
+      "connections": 2,
+      "disconnects": 1,
+      "error": null,
+      "instanceId": "5770060f7b444628bf7e60ae33135f6b",
+      "lastTransportError": "Sensor snapshot time is outside the freshness window",
+      "sequence": 57,
+      "service": {
+        "discoveryCount": 3,
+        "errors": {},
+        "gpuIdentity": {
+          "association": "physicalPnpInstance",
+          "candidates": [
+            {
+              "hardwareId": "/gpu-nvidia/0",
+              "name": "NVIDIA GeForce RTX 3060 Ti",
+              "pnpInstanceId": "PCI\\VEN_10DE&DEV_2489&SUBSYS_884F1043&REV_A1\\4&35e0aeb3&0&0008",
+              "resolvedLuid": "000000000000BE6C"
+            }
+          ],
+          "physicalAdapterCount": 1,
+          "physicalPnpKey": "\\REGISTRY\\MACHINE\\SYSTEM\\ControlSet001\\Enum\\PCI\\VEN_10DE&DEV_2489&SUBSYS_884F1043&REV_A1\\4&35e0aeb3&0&0008\\Device Parameters",
+          "selectedLuid": "000000000003C871",
+          "selectedPnpInstanceId": "PCI\\VEN_10DE&DEV_2489&SUBSYS_884F1043&REV_A1\\4&35E0AEB3&0&0008"
+        },
+        "lhmVersion": "0.9.6",
+        "pawnIoVersion": "2.2.0.0",
+        "processId": 29232,
+        "sources": {
+          "cache": "windowsPdh",
+          "gpuIdentity": "windowsDxgi",
+          "paging": "windowsEnumPageFiles",
+          "primary": "libreHardwareMonitor",
+          "topology": "windows",
+          "volumes": "windows"
+        },
+        "timing": {
+          "cpuMs": 0,
+          "discoveryMs": 0,
+          "diskMs": 0,
+          "gpuMs": 2,
+          "memoryMs": 0,
+          "updateMs": 183
+        }
+      }
+    }
+  },
+  "installer": {
+    "installedSuccessfully": true,
+    "serviceSha256": "FA7E6B1654C07C15EFDBB1E11217B64EC49FD65E140C1F93B856782CD1C0D131",
+    "sha256": "7A71554BDD23E3925BB8A6DDF14657B30346CF8E30A369D3151C4A1997C4795D",
+    "path": "D:/code/strata/src-tauri/target/release/bundle/nsis/Strata_0.1.0_x64-setup.exe"
+  },
+  "soak": {
+    "path": "C:\\Users\\thevi\\AppData\\Local\\Temp\\strata-sensor-acceptance-checkpoint.jsonl",
+    "sha256": "140B6F8602051D90FE125F0CE3BE7298663A7562BDAAC2DB2C502C49DB555394",
+    "observations": 1254,
+    "firstObservedAt": 1792816565429,
+    "lastObservedAt": 1792817215872,
+    "durationMs": 650443,
+    "warmupSeconds": 10,
+    "failingObservations": 0,
+    "maxObservationGapMs": 543,
+    "maxSnapshotAgeMs": 2771,
+    "supportedMetrics": [
+      "cpu.frequencyHz",
+      "cpu.logicalProcessors",
+      "cpu.maxFrequencyHz",
+      "cpu.percent",
+      "cpu.physicalCores",
+      "cpu.temperatureCelsius",
+      "gpu.fanPercent",
+      "gpu.memoryTotalBytes",
+      "gpu.memoryUsedBytes",
+      "gpu.percent",
+      "gpu.powerWatts",
+      "gpu.sharedTotalBytes",
+      "gpu.sharedUsedBytes",
+      "gpu.temperatureCelsius",
+      "memory.availableBytes",
+      "memory.cachedBytes",
+      "memory.pagingFileBytes",
+      "memory.percent",
+      "memory.totalBytes",
+      "memory.usedBytes"
+    ],
+    "instances": ["986f416af20d45f6a86d6b39c4adeb03"],
+    "interruptions": [],
+    "lastDiagnostics": {
+      "channels": {
+        "cpu": {
+          "ageMs": 686,
+          "sampledAt": 1792817214733.0,
+          "sequence": 326
+        },
+        "disk": {
+          "ageMs": 686,
+          "sampledAt": 1792817214733.0,
+          "sequence": 326
+        },
+        "gpu": {
+          "ageMs": 686,
+          "sampledAt": 1792817214733.0,
+          "sequence": 326
+        },
+        "memory": {
+          "ageMs": 686,
+          "sampledAt": 1792817214733.0,
+          "sequence": 326
+        }
+      },
+      "connected": true,
+      "connections": 1,
+      "disconnects": 0,
+      "error": null,
+      "instanceId": "986f416af20d45f6a86d6b39c4adeb03",
+      "lastTransportError": null,
+      "sequence": 329,
+      "service": {
+        "discoveryCount": 1,
+        "errors": {},
+        "gpuIdentity": {
+          "association": "physicalPnpInstance",
+          "candidates": [
+            {
+              "hardwareId": "/gpu-nvidia/0",
+              "name": "NVIDIA GeForce RTX 3060 Ti",
+              "pnpInstanceId": "PCI\\VEN_10DE&DEV_2489&SUBSYS_884F1043&REV_A1\\4&35e0aeb3&0&0008",
+              "resolvedLuid": "000000000000BE6C"
+            }
+          ],
+          "physicalAdapterCount": 1,
+          "physicalPnpKey": "\\REGISTRY\\MACHINE\\SYSTEM\\ControlSet001\\Enum\\PCI\\VEN_10DE&DEV_2489&SUBSYS_884F1043&REV_A1\\4&35e0aeb3&0&0008\\Device Parameters",
+          "selectedLuid": "000000000003C871",
+          "selectedPnpInstanceId": "PCI\\VEN_10DE&DEV_2489&SUBSYS_884F1043&REV_A1\\4&35E0AEB3&0&0008"
+        },
+        "lhmVersion": "0.9.6",
+        "pawnIoVersion": "2.2.0.0",
+        "processId": 22044,
+        "sources": {
+          "cache": "windowsPdh",
+          "gpuIdentity": "windowsDxgi",
+          "paging": "windowsEnumPageFiles",
+          "primary": "libreHardwareMonitor",
+          "topology": "windows",
+          "volumes": "windows"
+        },
+        "timing": {
+          "cpuMs": 0,
+          "discoveryMs": 0,
+          "diskMs": 1,
+          "gpuMs": 1,
+          "memoryMs": 0,
+          "updateMs": 184
+        },
+        "updatedHardware": ["/intelcpu/0", "/ram", "/gpu-nvidia/0"]
+      }
+    }
+  },
+  "installedBar": {
+    "path": "C:\\Users\\thevi\\AppData\\Local\\Temp\\strata-sensor-runtime-checkpoint.jsonl",
+    "sha256": "A7D0479CA6C8B09AD1F21761DC3CB7A51F6FFC0AE132F62EEB30C4EE037EC626",
+    "observations": 331,
+    "firstObservedAt": 1792816556178,
+    "lastObservedAt": 1792817213122,
+    "durationMs": 656944,
+    "warmupSeconds": 10,
+    "failingObservations": 0,
+    "maxObservationGapMs": 2017,
+    "maxSnapshotAgeMs": 2671,
+    "supportedMetrics": [
+      "cpu.frequencyHz",
+      "cpu.logicalProcessors",
+      "cpu.maxFrequencyHz",
+      "cpu.percent",
+      "cpu.physicalCores",
+      "cpu.temperatureCelsius",
+      "gpu.fanPercent",
+      "gpu.memoryTotalBytes",
+      "gpu.memoryUsedBytes",
+      "gpu.percent",
+      "gpu.powerWatts",
+      "gpu.sharedTotalBytes",
+      "gpu.sharedUsedBytes",
+      "gpu.temperatureCelsius",
+      "memory.availableBytes",
+      "memory.cachedBytes",
+      "memory.pagingFileBytes",
+      "memory.percent",
+      "memory.totalBytes",
+      "memory.usedBytes"
+    ],
+    "instances": ["986f416af20d45f6a86d6b39c4adeb03"],
+    "interruptions": [],
+    "lastDiagnostics": {
+      "channels": {
+        "cpu": {
+          "ageMs": 1924,
+          "sampledAt": 1792817210738.0,
+          "sequence": 326
+        },
+        "disk": {
+          "ageMs": 1924,
+          "sampledAt": 1792817210738.0,
+          "sequence": 326
+        },
+        "gpu": {
+          "ageMs": 1924,
+          "sampledAt": 1792817210738.0,
+          "sequence": 326
+        },
+        "memory": {
+          "ageMs": 1924,
+          "sampledAt": 1792817210738.0,
+          "sequence": 326
+        }
+      },
+      "connected": true,
+      "connections": 1,
+      "disconnects": 0,
+      "error": null,
+      "instanceId": "986f416af20d45f6a86d6b39c4adeb03",
+      "lastTransportError": null,
+      "sequence": 327,
+      "service": {
+        "discoveryCount": 1,
+        "errors": {},
+        "gpuIdentity": {
+          "association": "physicalPnpInstance",
+          "candidates": [
+            {
+              "hardwareId": "/gpu-nvidia/0",
+              "name": "NVIDIA GeForce RTX 3060 Ti",
+              "pnpInstanceId": "PCI\\VEN_10DE&DEV_2489&SUBSYS_884F1043&REV_A1\\4&35e0aeb3&0&0008",
+              "resolvedLuid": "000000000000BE6C"
+            }
+          ],
+          "physicalAdapterCount": 1,
+          "physicalPnpKey": "\\REGISTRY\\MACHINE\\SYSTEM\\ControlSet001\\Enum\\PCI\\VEN_10DE&DEV_2489&SUBSYS_884F1043&REV_A1\\4&35e0aeb3&0&0008\\Device Parameters",
+          "selectedLuid": "000000000003C871",
+          "selectedPnpInstanceId": "PCI\\VEN_10DE&DEV_2489&SUBSYS_884F1043&REV_A1\\4&35E0AEB3&0&0008"
+        },
+        "lhmVersion": "0.9.6",
+        "pawnIoVersion": "2.2.0.0",
+        "processId": 22044,
+        "sources": {
+          "cache": "windowsPdh",
+          "gpuIdentity": "windowsDxgi",
+          "paging": "windowsEnumPageFiles",
+          "primary": "libreHardwareMonitor",
+          "topology": "windows",
+          "volumes": "windows"
+        },
+        "timing": {
+          "cpuMs": 0,
+          "discoveryMs": 0,
+          "diskMs": 0,
+          "gpuMs": 1,
+          "memoryMs": 1,
+          "updateMs": 190
+        },
+        "updatedHardware": ["/intelcpu/0", "/ram", "/gpu-nvidia/0"]
+      }
+    }
+  },
+  "barProcessId": 26212,
+  "validation": {
+    "pending": [
+      "Full 3600-second soak still running in background",
+      "Deliberate service restart recovery test not yet executed",
+      "Physical suspend/resume deferred at user request"
+    ],
+    "load": {
+      "startedAt": 1792816698705,
+      "endedAt": 1792816729754,
+      "workers": 3,
+      "durationSeconds": 30
+    },
+    "frontendBridgeTestsPassed": 27,
+    "fullFrontendGate": "formatting, lint and TypeScript passed; 15 frontend tests failed; no frontend source changed",
+    "userAssistedPopupInteraction": "Four native overlay shows and four hides observed during the prior run with identical sensor-service code",
+    "rustUnitTestsPassed": 192,
+    "dotnetTestsPassed": 20
+  }
+}

@@ -73,8 +73,11 @@ Repeated frames add no observations; equal values on fresh samples do. Six secon
 without a fresh channel snapshot marks the last value as failed without renewing
 its timestamp. Service restart, device/sensor change and clock regression reset histories.
 
-GPU selection still prefers the largest dedicated DXGI adapter. LHM's PnP instance
-is resolved to an exact D3D interface/LUID; ambiguous matches remain unavailable.
+GPU selection still prefers the largest dedicated DXGI adapter. Its LUID is queried
+for the physical PnP instance and matched exactly to LHM's instance, because logical
+LUID aliases can differ under LocalSystem. Linked physical adapters and ambiguous
+matches remain unavailable. Unique LUID matching is retained only when physical
+identity is unavailable.
 Fan RPM is never treated as percentage. GPU usage follows the LHM GPU-core sensor;
 this differs from the former busiest-PDH-engine definition. LHM dedicated memory
 capacity can differ from DXGI's reservation-adjusted capacity.
