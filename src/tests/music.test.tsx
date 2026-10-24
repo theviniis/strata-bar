@@ -257,7 +257,6 @@ it('renders artwork values and sends popup controls with session identity', asyn
   }
   data.favorite = { status: 'ready', value: false, reason: null }
   data.capabilities.favorite = true
-  data.capabilities.openPlayer = true
   const onAction = vi.fn(async () => {})
   render(
     <MusicPopupContent event={{ status: 'ready', data }} onAction={onAction} />
@@ -278,7 +277,6 @@ it('renders artwork values and sends popup controls with session identity', asyn
     action: { action: 'seek', positionMs: 33000 }
   })
   for (const [name, action] of [
-    ['Abrir Demonstração', { action: 'openPlayer' }],
     ['Faixa anterior', { action: 'previous' }],
     ['Pausar', { action: 'playPause' }],
     ['Próxima faixa', { action: 'next' }],
