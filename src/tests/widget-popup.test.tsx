@@ -370,7 +370,7 @@ it('provides an interactive, themed demo without native subscriptions or command
   fireEvent.keyDown(slider, { key: 'End' })
   await waitFor(() =>
     expect(within(dialog).getByLabelText('Volume atual')).toHaveTextContent(
-      '100%'
+      '100'
     )
   )
   fireEvent.click(within(dialog).getByRole('button', { name: 'Silenciar' }))

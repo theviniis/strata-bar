@@ -88,6 +88,38 @@ pub unsafe fn audio_read(ep: &IAudioEndpointVolume) -> windows::core::Result<Val
     )
 }
 
+fn vm_interval(available: bool, pending: bool) -> Duration {
+    Duration::from_millis(if !available {
+        2000
+    } else if pending {
+        50
+    } else {
+        100
+    })
+}
+
+struct VmWrite {
+    level: Option<i32>,
+    muted: Option<bool>,
+    submitted: Instant,
+    write_started: Instant,
+    accepted: Instant,
+    reply: mpsc::SyncSender<Result<Value, String>>,
+}
+impl VmWrite {
+    fn observe(&self, value: (i32, bool), now: Instant) -> Result<bool, String> {
+        if self.level.is_none_or(|level| level == value.0)
+            && self.muted.is_none_or(|muted| muted == value.1)
+        {
+            Ok(true)
+        } else if now.duration_since(self.accepted) >= Duration::from_secs(1) {
+            Err("Voicemeeter não confirmou a alteração de áudio".into())
+        } else {
+            Ok(false)
+        }
+    }
+}
+
 struct Sub {
     channel: String,
     window: String,
@@ -101,6 +133,7 @@ struct Data {
     incoming: HashMap<String,u64>,
     emitted: HashMap<String,u64>,
     sensor_service: Value,
+    audio_latency: std::collections::VecDeque<Value>,
 }
 #[derive(Clone)]
 pub struct Metrics {
@@ -114,6 +147,7 @@ enum Request {
         Option<f32>,
         Option<bool>,
         mpsc::SyncSender<Result<Value, String>>,
+        Instant,
     ),
     Output(bool, String, mpsc::SyncSender<Result<Value, String>>),
     Source(
@@ -238,7 +272,7 @@ impl Metrics {
         }
         let (tx, rx) = mpsc::sync_channel(1);
         self.tx
-            .send(Request::Volume(capture, level, muted, tx))
+            .send(Request::Volume(capture, level, muted, tx, Instant::now()))
             .map_err(|e| e.to_string())?;
         rx.recv_timeout(Duration::from_secs(3))
             .map_err(|e| e.to_string())?
@@ -290,7 +324,7 @@ impl Metrics {
             })
             .collect();
         let d = self.data.lock().unwrap();
-        json!({"subscribers":d.subs.len(),"channels":d.latest,"collectorThreads":1,"sensorClientThreads":1,"sensorService":d.sensor_service,"intervals":intervals,"incoming":d.incoming,"emitted":d.emitted})
+        json!({"subscribers":d.subs.len(),"channels":d.latest,"collectorThreads":1,"sensorClientThreads":1,"sensorService":d.sensor_service,"audioLatency":d.audio_latency,"intervals":intervals,"incoming":d.incoming,"emitted":d.emitted})
     }
     pub fn stop(&self) {
         let _ = self.tx.send(Request::Stop);
@@ -328,6 +362,8 @@ impl Metrics {
             let mut voicemeeter = crate::voicemeeter::Client::native();
             let mut sources: HashMap<String, crate::voicemeeter::Target> = HashMap::new();
             let mut vm_published = false;
+            let mut vm_due = Instant::now();
+            let mut vm_pending: HashMap<&'static str, VmWrite> = HashMap::new();
             let mut timer = Timer::default();
             let mut ticks=0;
             let mut devices_active = [false; 2];
@@ -340,12 +376,21 @@ impl Metrics {
                 // is poll-driven).
                 let routed: Vec<&str> = ["volume", "microphone"]
                     .into_iter()
-                    .filter(|channel| sources.contains_key(*channel) && self.active(channel))
+                    .filter(|channel| {
+                        sources.contains_key(*channel)
+                            && (self.active(channel) || vm_pending.contains_key(*channel))
+                    })
                     .collect();
                 let menu_wanted = self.active("voicemeeter");
-                if !routed.is_empty() || menu_wanted {
+                let vm_wanted = !routed.is_empty() || menu_wanted;
+                if vm_wanted && Instant::now() >= vm_due {
+                    let vm_available;
                     match voicemeeter.poll() {
                         Err(_) => {
+                            vm_available = false;
+                            for (_, pending) in vm_pending.drain() {
+                                let _ = pending.reply.send(Err("Voicemeeter indisponível".into()));
+                            }
                             // Never fall through to Windows demo values: routed
                             // channels and the menu stay unavailable until
                             // Voicemeeter is back.
@@ -357,23 +402,67 @@ impl Metrics {
                             }
                         }
                         Ok(state) => {
+                            vm_available = true;
                             for channel in &routed {
                                 let target = sources.get(*channel).copied().expect("filtered");
+                                let read_started = Instant::now();
                                 match voicemeeter.read(target) {
-                                    Ok((level, muted)) => self.publish(
-                                        &app,
-                                        channel,
-                                        envelope("ready", json!({"level": level, "muted": muted})),
-                                    ),
-                                    Err(e) => self.publish(&app, channel, error(e)),
+                                    Ok((level, muted)) => {
+                                        let read_ms = read_started.elapsed().as_secs_f64() * 1000.0;
+                                        let value = json!({"level": level, "muted": muted});
+                                        let outcome = vm_pending
+                                            .get(channel)
+                                            .map(|pending| pending.observe((level, muted), Instant::now()));
+                                        // A stale observation is not a confirmation. Other bars
+                                        // also keep their last confirmed value until the engine catches up.
+                                        if !matches!(outcome, Some(Ok(false))) {
+                                            let publication = Instant::now();
+                                            self.publish(&app, channel, envelope("ready", value.clone()));
+                                            if let Some(pending) = vm_pending.remove(channel) {
+                                                let result = match outcome {
+                                                    Some(Err(error)) => Err(error),
+                                                    _ => Ok(value),
+                                                };
+                                                let report = json!({
+                                                    "channel": channel,
+                                                    "queueMs": pending.write_started.duration_since(pending.submitted).as_secs_f64() * 1000.0,
+                                                    "writeMs": pending.accepted.duration_since(pending.write_started).as_secs_f64() * 1000.0,
+                                                    "confirmationMs": publication.duration_since(pending.accepted).as_secs_f64() * 1000.0,
+                                                    "totalMs": pending.submitted.elapsed().as_secs_f64() * 1000.0,
+                                                    "readMs": read_ms,
+                                                    "publishMs": publication.elapsed().as_secs_f64() * 1000.0,
+                                                    "confirmed": result.is_ok()
+                                                });
+                                                let mut data = self.data.lock().unwrap();
+                                                if data.audio_latency.len() >= 128 {
+                                                    data.audio_latency.pop_front();
+                                                }
+                                                data.audio_latency.push_back(report);
+                                                drop(data);
+                                                let _ = pending.reply.send(result);
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        if let Some(pending) = vm_pending.remove(channel) {
+                                            let _ = pending.reply.send(Err(e.clone()));
+                                        }
+                                        self.publish(&app, channel, error(e));
+                                    }
                                 }
                             }
-                            if menu_wanted && (matches!(state, crate::voicemeeter::Poll::Changed) || !vm_published) {
+                            if menu_wanted
+                                && (matches!(state, crate::voicemeeter::Poll::Changed) || !vm_published)
+                            {
                                 match voicemeeter.snapshot() {
                                     Ok(snapshot) => self.publish(
                                         &app,
                                         "voicemeeter",
-                                        envelope("ready", serde_json::to_value(&snapshot).expect("Voicemeeter snapshot serializes")),
+                                        envelope(
+                                            "ready",
+                                            serde_json::to_value(&snapshot)
+                                                .expect("Voicemeeter snapshot serializes"),
+                                        ),
                                     ),
                                     Err(e) => self.publish(&app, "voicemeeter", error(e)),
                                 }
@@ -381,7 +470,8 @@ impl Metrics {
                             }
                         }
                     }
-                } else {
+                    vm_due = Instant::now() + vm_interval(vm_available, !vm_pending.is_empty());
+                } else if !vm_wanted {
                     vm_published = false;
                 }
                 for (index, flow, devices_channel, volume_channel) in [(0, eRender, "audioOutputs", "volume"), (1, eCapture, "audioInputs", "microphone")] {
@@ -478,12 +568,23 @@ impl Metrics {
                     ticks+=1;
                     if ticks==10{let report=json!({"metrics":self.diagnostics(),"windows":crate::desktop::profile(),"sensors":sensor_client.diagnostics()});if let Err(e)=std::fs::write(std::env::temp_dir().join("strata-runtime-profile.json"),report.to_string()){eprintln!("Runtime profile: {e}");}}
                 }
-                match rx.recv_timeout(timer.next_wait(Instant::now())) {
+                let mut wait = timer.next_wait(Instant::now());
+                if vm_wanted {
+                    wait = wait.min(vm_due.saturating_duration_since(Instant::now()));
+                }
+                match rx.recv_timeout(wait) {
                     Ok(Request::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
                     Ok(Request::Output(capture, id, reply)) => {
                         let flow = if capture { eCapture } else { eRender };
-                        let channel = if capture { "audioInputs" } else { "audioOutputs" };
-                        let result = enumerator.as_ref().map_err(|e| e.to_string()).and_then(|en| crate::audio_policy::select_endpoint(en, &id, flow));
+                        let channel = if capture {
+                            "audioInputs"
+                        } else {
+                            "audioOutputs"
+                        };
+                        let result = enumerator
+                            .as_ref()
+                            .map_err(|e| e.to_string())
+                            .and_then(|en| crate::audio_policy::select_endpoint(en, &id, flow));
                         // Always reread after a partial failure too.
                         if let Ok(en) = &enumerator {
                             match crate::audio_policy::endpoints(en, flow) {
@@ -494,29 +595,46 @@ impl Metrics {
                         changed.store(true, Ordering::Release);
                         let _ = reply.send(result);
                     }
-                    Ok(Request::Volume(capture, level, muted, reply)) => {
+                    Ok(Request::Volume(capture, level, muted, reply, submitted)) => {
                         let channel = if capture { "microphone" } else { "volume" };
-                        let result: Result<Value, String> = match sources.get(channel).copied() {
-                            // Routed through Voicemeeter: the writes land on the
-                            // configured strip/bus, not on any WASAPI endpoint.
-                            Some(target) => voicemeeter
-                                .write(target, level, muted)
-                                .map(|(level, muted)| json!({"level": level, "muted": muted})),
-                            None => {
-                                let flow = if capture { eCapture } else { eRender };
-                                (|| -> windows::core::Result<Value> {
-                                    let e =
-                                        endpoint(enumerator.as_ref().map_err(|e| e.clone())?, flow)?;
-                                    if let Some(v) = level {
-                                        e.SetMasterVolumeLevelScalar(v / 100., std::ptr::null())?;
+                        if let Some(target) = sources.get(channel).copied() {
+                            let write_started = Instant::now();
+                            match voicemeeter.write(target, level, muted) {
+                                Ok(expected) => {
+                                    let pending = VmWrite {
+                                        level: level.map(|_| expected.0),
+                                        muted,
+                                        submitted,
+                                        write_started,
+                                        accepted: Instant::now(),
+                                        reply,
+                                    };
+                                    if let Some(previous) = vm_pending.insert(channel, pending) {
+                                        let _ = previous
+                                            .reply
+                                            .send(Err("Comando substituído por outro controle".into()));
                                     }
-                                    if let Some(v) = muted {
-                                        e.SetMute(v, std::ptr::null())?;
-                                    }
-                                    audio_read(&e)
-                                })()
-                                .map_err(|e| e.to_string())
+                                    vm_due = Instant::now() + Duration::from_millis(50);
+                                }
+                                Err(error) => {
+                                    let _ = reply.send(Err(error));
+                                }
                             }
+                            continue;
+                        }
+                        let result: Result<Value, String> = {
+                            let flow = if capture { eCapture } else { eRender };
+                            (|| -> windows::core::Result<Value> {
+                                let e = endpoint(enumerator.as_ref().map_err(|e| e.clone())?, flow)?;
+                                if let Some(v) = level {
+                                    e.SetMasterVolumeLevelScalar(v / 100., std::ptr::null())?;
+                                }
+                                if let Some(v) = muted {
+                                    e.SetMute(v, std::ptr::null())?;
+                                }
+                                audio_read(&e)
+                            })()
+                            .map_err(|e| e.to_string())
                         };
                         if let Ok(v) = &result {
                             self.publish(&app, channel, envelope("ready", v.clone()));
@@ -524,6 +642,12 @@ impl Metrics {
                         let _ = reply.send(result);
                     }
                     Ok(Request::Source(channel, target, reply)) => {
+                        if sources.get(&channel).copied() != target {
+                            if let Some(pending) = vm_pending.remove(channel.as_str()) {
+                                let _ = pending.reply.send(Err("Rota de áudio alterada".into()));
+                            }
+                            vm_due = Instant::now();
+                        }
                         match target {
                             Some(target) => {
                                 sources.insert(channel.clone(), target);
@@ -537,9 +661,15 @@ impl Metrics {
                         changed.store(true, Ordering::Release);
                         let _ = reply.send(Ok(()));
                     }
-                    Ok(Request::Wake) => { devices_active = [false; 2]; volume_active = [false; 2]; },
+                    Ok(Request::Wake) => {
+                        devices_active = [false; 2];
+                        volume_active = [false; 2];
+                    }
                     _ => {}
                 }
+            }
+            for (_, pending) in vm_pending.drain() {
+                let _ = pending.reply.send(Err("Controle de áudio encerrado".into()));
             }
             for slot in &mut audio {
                 if let Some((e, cb)) = slot.take() {
@@ -645,6 +775,42 @@ pub fn probe() -> Result<Value, String> {
 #[cfg(test)]
 mod channel_source_tests {
     use super::*;
+
+    #[test]
+    fn voicemeeter_confirmation_waits_for_the_engine_and_times_out() {
+        let now = Instant::now();
+        let (reply, _rx) = mpsc::sync_channel(1);
+        let pending = VmWrite {
+            level: Some(85),
+            muted: Some(true),
+            submitted: now,
+            write_started: now,
+            accepted: now,
+            reply,
+        };
+        assert_eq!(pending.observe((50, false), now), Ok(false));
+        assert_eq!(
+            pending.observe((85, true), now + Duration::from_millis(50)),
+            Ok(true)
+        );
+        assert!(pending
+            .observe((50, false), now + Duration::from_secs(1))
+            .is_err());
+        let pending = VmWrite {
+            level: None,
+            muted: Some(true),
+            ..pending
+        };
+        assert_eq!(pending.observe((32, true), now), Ok(true));
+    }
+
+    #[test]
+    fn voicemeeter_cadence_is_fast_when_active_and_backs_off_when_absent() {
+        assert_eq!(vm_interval(true, true), Duration::from_millis(50));
+        assert_eq!(vm_interval(true, false), Duration::from_millis(100));
+        assert_eq!(vm_interval(false, true), Duration::from_secs(2));
+        assert_eq!(vm_interval(false, false), Duration::from_secs(2));
+    }
 
     #[test]
     fn routing_validates_the_channel_and_target() {

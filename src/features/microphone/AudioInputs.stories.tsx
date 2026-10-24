@@ -28,7 +28,6 @@ const meta = {
     muted: false,
     select: fn(),
     mute: fn(),
-    setDraft: fn(),
     setLevel: fn(),
     retry: fn()
   }
@@ -79,7 +78,6 @@ function InteractiveAudio(props: AudioInputsProps) {
           current ? { ...current, defaultDeviceId: id } : null
         )
       }
-      setDraft={setLevel}
       setLevel={setLevel}
       mute={() => setMuted((current) => !current)}
     />

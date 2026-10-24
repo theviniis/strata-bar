@@ -59,12 +59,16 @@ beforeEach(() => {
     ...host.output,
     defaultDeviceId: 'headphones'
   })
-  host.mute.mockResolvedValue(undefined)
+  host.mute.mockImplementation(async (change) => ({
+    level: 64,
+    muted: false,
+    ...change
+  }))
   host.hide.mockResolvedValue(undefined)
   host.resize.mockResolvedValue({ arrowX: 160 })
 })
 
-it('keeps level controls pending until the command settles and exposes failures', async () => {
+it('keeps level controls responsive during a command and exposes failures', async () => {
   let reject!: (error: Error) => void
   host.mute.mockReturnValueOnce(
     new Promise((_resolve, fail) => {
@@ -75,12 +79,12 @@ it('keeps level controls pending until the command settles and exposes failures'
   const slider = await screen.findByRole('slider', { name: 'Volume' })
   fireEvent.keyDown(slider, { key: 'ArrowRight' })
   expect(host.mute).toHaveBeenCalledWith({ level: 65 })
-  expect(slider).toHaveAttribute('data-disabled', '')
-  expect(screen.getByRole('button', { name: 'Silenciar' })).toBeDisabled()
+  expect(slider).not.toHaveAttribute('data-disabled')
+  expect(screen.getByRole('button', { name: 'Silenciar' })).toBeEnabled()
   await act(async () => reject(new Error('Level failed')))
   expect(screen.getByRole('alert')).toHaveTextContent('Level failed')
   expect(slider).not.toHaveAttribute('data-disabled')
-  expect(screen.getByLabelText('Volume atual').textContent).toBe('64%')
+  expect(screen.getByLabelText('Volume atual').textContent).toBe('64')
 })
 
 it('confirms selection, retains the popup and controls mute', async () => {
@@ -158,9 +162,9 @@ it('commits popup volume with keyboard and follows external changes', async () =
   const slider = await screen.findByRole('slider', { name: 'Volume' })
   expect(slider).toHaveAttribute('aria-valuenow', '64')
   fireEvent.keyDown(slider, { key: 'ArrowRight' })
-  expect(screen.getByLabelText('Volume atual')).toHaveTextContent('65%')
+  expect(screen.getByLabelText('Volume atual')).toHaveTextContent('65')
   await waitFor(() => expect(host.mute).toHaveBeenCalledWith({ level: 65 }))
-  await waitFor(() => expect(slider).toHaveAttribute('aria-valuenow', '64'))
+  await waitFor(() => expect(slider).toHaveAttribute('aria-valuenow', '65'))
   fireEvent.keyDown(slider, { key: 'End' })
   await waitFor(() => expect(host.mute).toHaveBeenCalledWith({ level: 100 }))
   act(() =>

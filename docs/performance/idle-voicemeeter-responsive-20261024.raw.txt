@@ -1,0 +1,114 @@
+{
+  "timestampUtc": "2026-10-24T19:39:56.5672760Z",
+  "executable": "D:\\code\\strata\\src-tauri\\target\\debug\\strata-bar.exe",
+  "processIds": [
+    17248,
+    29520,
+    20656,
+    32548,
+    35408,
+    17740,
+    17672,
+    11916,
+    31612,
+    28312
+  ],
+  "logicalProcessors": 12,
+  "notes": "15 intervals with the running debug bar, descendants and installed sensor service. Read-only CIM raw performance counters used because measure-idle.ps1 cannot read the service CPU without elevation. Concurrent development and tests; exploratory observation, not a controlled before/after comparison. No UI gestures during sampling.",
+  "summary": {
+    "meanCpuPercentMachine": 0.5872194613299809,
+    "meanPrivateMiB": 320.55260416666664
+  },
+  "samples": [
+    {
+      "cpuPercentMachine": 0.4289004162680981,
+      "processCount": 10,
+      "privateMiB": 316.33984375,
+      "workingSetMiB": 815.171875
+    },
+    {
+      "cpuPercentMachine": 0.9600471292512014,
+      "processCount": 10,
+      "privateMiB": 317.84765625,
+      "workingSetMiB": 816.68359375
+    },
+    {
+      "cpuPercentMachine": 0.6577143984773521,
+      "processCount": 10,
+      "privateMiB": 319.1015625,
+      "workingSetMiB": 817.8828125
+    },
+    {
+      "cpuPercentMachine": 0.5515432621710155,
+      "processCount": 10,
+      "privateMiB": 316.33984375,
+      "workingSetMiB": 815.140625
+    },
+    {
+      "cpuPercentMachine": 1.2245979029668452,
+      "processCount": 10,
+      "privateMiB": 322.34375,
+      "workingSetMiB": 821.2421875
+    },
+    {
+      "cpuPercentMachine": 0.44260306462044396,
+      "processCount": 10,
+      "privateMiB": 322.93359375,
+      "workingSetMiB": 821.83203125
+    },
+    {
+      "cpuPercentMachine": 0.33112344197149096,
+      "processCount": 10,
+      "privateMiB": 321.39453125,
+      "workingSetMiB": 820.76171875
+    },
+    {
+      "cpuPercentMachine": 0.5555911133868123,
+      "processCount": 10,
+      "privateMiB": 321.4375,
+      "workingSetMiB": 820.796875
+    },
+    {
+      "cpuPercentMachine": 0.6662490226926336,
+      "processCount": 10,
+      "privateMiB": 325.13671875,
+      "workingSetMiB": 824.51953125
+    },
+    {
+      "cpuPercentMachine": 0.3331167843274235,
+      "processCount": 10,
+      "privateMiB": 325.44140625,
+      "workingSetMiB": 824.87109375
+    },
+    {
+      "cpuPercentMachine": 0.4435783146102121,
+      "processCount": 10,
+      "privateMiB": 322.09765625,
+      "workingSetMiB": 821.46875
+    },
+    {
+      "cpuPercentMachine": 0.0,
+      "processCount": 10,
+      "privateMiB": 316.546875,
+      "workingSetMiB": 816.00390625
+    },
+    {
+      "cpuPercentMachine": 0.9929003441969799,
+      "processCount": 10,
+      "privateMiB": 323.28125,
+      "workingSetMiB": 822.73828125
+    },
+    {
+      "cpuPercentMachine": 0.7752436777823745,
+      "processCount": 10,
+      "privateMiB": 318.73828125,
+      "workingSetMiB": 818.203125
+    },
+    {
+      "cpuPercentMachine": 0.44508304722682923,
+      "processCount": 10,
+      "privateMiB": 319.30859375,
+      "workingSetMiB": 818.7734375
+    }
+  ]
+}

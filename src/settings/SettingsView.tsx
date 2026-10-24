@@ -1,10 +1,6 @@
-import { CalendarSettingsController } from '@/features/reminders/CalendarSettingsController'
-import { Textarea } from '@/components/ui/textarea'
-import { Field, FieldLabel } from '@/components/ui/field'
 import { Logo } from '@/components/Logo'
 import { QueryProvider } from '@/components/QueryProvider'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -12,6 +8,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator
 } from '@/components/ui/breadcrumb'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
@@ -19,7 +16,7 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
-import { FieldSet } from '@/components/ui/field'
+import { Field, FieldLabel, FieldSet } from '@/components/ui/field'
 import { Separator } from '@/components/ui/separator'
 import {
   Sidebar,
@@ -36,19 +33,21 @@ import {
   useSidebar
 } from '@/components/ui/sidebar'
 import { Spinner } from '@/components/ui/spinner'
+import { Textarea } from '@/components/ui/textarea'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { SpotifySettingsController } from '@/features/music/SpotifySettingsController'
-import { bridge } from '@/services/system/bridge'
+import { CalendarSettingsController } from '@/features/reminders/CalendarSettingsController'
 import { cn } from '@/lib/utils'
+import { bridge } from '@/services/system/bridge'
 import {
   Bot,
   LayoutDashboard,
-  Palette,
   Music2,
-  Volume2,
+  Palette,
   RotateCw,
   Save,
   Undo2,
+  Volume2,
   X
 } from 'lucide-react'
 import { motion } from 'motion/react'
@@ -155,7 +154,7 @@ function NativeSettingsView() {
             >
               <FieldSet disabled={disabled}>
                 {section === 'layout' ? (
-                  <Card>
+                  <Card className="bg-transparent">
                     <CardHeader>
                       <CardTitle role="heading" aria-level={2}>
                         Editor de Layout

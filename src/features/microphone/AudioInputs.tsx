@@ -28,7 +28,6 @@ export interface AudioInputsProps {
   muted: boolean
   select(id: string): void
   mute(): void
-  setDraft(level: number): void
   setLevel(level: number): void
   retry(): void
 }
@@ -42,7 +41,6 @@ export function AudioInputs({
   muted,
   select,
   mute,
-  setDraft,
   setLevel,
   retry
 }: AudioInputsProps) {
@@ -100,11 +98,7 @@ export function AudioInputs({
       {volume.status === 'unavailable' && <p>Microfone indisponível.</p>}
       <CardFooter className="gap-4">
         <Button
-          disabled={
-            volume.status !== 'ready' ||
-            !data?.defaultDeviceId ||
-            pending !== null
-          }
+          disabled={volume.status !== 'ready' || pending !== null}
           aria-pressed={muted}
           aria-label={muted ? 'Ativar microfone' : 'Silenciar microfone'}
           onClick={() => void mute()}
@@ -118,13 +112,8 @@ export function AudioInputs({
           max={100}
           step={1}
           aria-label="Volume"
-          disabled={
-            volume.status !== 'ready' ||
-            !data?.defaultDeviceId ||
-            pending !== null
-          }
-          onValueChange={(value) => setDraft(value[0])}
-          onValueCommit={(value) => void setLevel(value[0])}
+          disabled={volume.status !== 'ready' || pending !== null}
+          onValueChange={(value) => setLevel(value[0])}
         />
         <WidgetItemOutput
           aria-label="Volume atual"

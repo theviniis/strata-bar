@@ -89,7 +89,6 @@ it.each(['outputs', 'inputs'] as const)(
     const callbacks = {
       select: vi.fn(),
       mute: vi.fn(),
-      setDraft: vi.fn(),
       setLevel: vi.fn(),
       retry: vi.fn()
     }
@@ -133,9 +132,8 @@ it.each(['outputs', 'inputs'] as const)(
     expect(callbacks.mute).toHaveBeenCalledOnce()
     const slider = screen.getByRole('slider', { name: 'Volume' })
     fireEvent.keyDown(slider, { key: 'ArrowRight' })
-    expect(callbacks.setDraft).toHaveBeenCalledWith(65)
     expect(callbacks.setLevel).toHaveBeenCalledWith(65)
-    expect(screen.getByLabelText('Volume atual').textContent).toBe('64%')
+    expect(screen.getByLabelText('Volume atual').textContent).toBe('64')
     view.rerender(content(data.devices[1].id, 'Operation failed'))
     expect(
       screen.getByRole('button', { name: data.devices[1].name })

@@ -51,8 +51,21 @@ Audio is global, independent of widget instances and monitor layouts:
   `volume`/`microphone` through Voicemeeter or restores the Windows endpoints. The
   native side re-validates the kind (`strip`/`bus`) and index (0-7).
 - The shared metrics worker owns the remote session on its single thread:
-  `VBVMR_Login/Logout`, `IsParametersDirty`, get/set float. Polling happens inside the
-  existing 2000 ms wake cycle; snapshots are deduplicated like the WASAPI channel.
+  `VBVMR_Login/Logout`, `IsParametersDirty`, get/set float. Active consumers use a
+  100 ms deadline, pending writes use 50 ms, and unavailable sessions retry after
+  2000 ms. These deadlines are independent of hardware sampling; snapshots remain
+  deduplicated like the WASAPI channel.
+- Setters acknowledge DLL acceptance separately from engine confirmation. Commands
+  resolve with an observed matching state, or reject after a 1 s confirmation
+  timeout, disconnection or route change. Stale reads are not published as success.
+- Both popups update mute and volume immediately. Dragging sends volume changes
+  continuously; keyboard changes also apply immediately. Release does not send a
+  duplicate write. A serial writer coalesces queued
+  intentions independently for level and mute without disabling those controls.
+  Device switching retains its separate pending state. Route changes discard old
+  queued intentions; command failures roll back only the affected revision.
+- `diagnostics.metrics.audioLatency` retains at most 128 worker measurements, separating
+  queue, DLL write, read, engine confirmation and publication durations.
 - Routing is global per channel. Every bar sends the same output/input settings,
   including bars without audio widgets; widget order and monitor overrides cannot
   select a different target.
@@ -76,8 +89,11 @@ on startup and configuration events. Controllers read the global channel for
 labels and tooltips (`Bus n` / `Strip n`); there is no custom label override.
 Device popups retain daily Windows endpoint switching and volume/mute controls.
 
-`--probe-vm` is a diagnostic that temporarily round-trips mute and gain on
-Bus[0]/Strip[0], restoring them. It does not prove global configuration propagation
+`--probe-vm` is a diagnostic that measures ten mute/gain cycles on
+Bus[0]/Strip[0], confirms each change at a 50 ms cadence, and restores the exact
+original raw gain and mute after every cycle, including write failure paths.
+It reports samples and p95; it excludes the Tauri queue and visual rendering.
+It does not prove global configuration propagation
 across multiple bars; that requires a separate native acceptance run.
 
 ## Validation
@@ -86,6 +102,11 @@ across multiple bars; that requires a separate native acceptance run.
   (fake API), mapping/bounds/parameter-name tests.
 - `pnpm test` — schema, widget routing, native bridge command tests
   (`voicemeeter.test.tsx`, `config.test.ts`, `native-bridge.test.ts`).
+- Responsiveness regressions exercise both real popup controllers in
+  `audio-responsive.test.tsx`: delayed writes/events, coalescing, failed writes,
+  route changes, unmount, keyboard commits and pointer drag/release.
+- [October 24 responsiveness validation](../performance/voicemeeter-responsive-20261024.md)
+  records live DLL timing, exact restoration and an exploratory full-bar idle sample.
 - Live gate (Voicemeeter Banana x64, to be recorded under `docs/evidence/`):
   slider/mute reflect the configured strip/bus, engine-side changes appear within
   2 s, closing Voicemeeter flips the widget to `unavailable` and back, and the bar

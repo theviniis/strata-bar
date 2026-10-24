@@ -1,0 +1,417 @@
+{
+  "bus0": {
+    "before": {
+      "gainDb": -16.91338348388672,
+      "level": 60,
+      "muted": false
+    },
+    "errors": [],
+    "gainRestored": true,
+    "measurement": "Live DLL, 50 ms confirmation cadence; excludes Tauri queue, WebView rendering and full-bar idle CPU",
+    "muteRestored": true,
+    "p95ConfirmedMs": 50.619200000000006,
+    "samples": [
+      {
+        "confirmedMs": 50.371399999999994,
+        "immediateReadMs": 0.0042,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.0123
+      },
+      {
+        "confirmedMs": 50.5846,
+        "immediateReadMs": 0.0042,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.010499999999999999
+      },
+      {
+        "confirmedMs": 50.567800000000005,
+        "immediateReadMs": 0.0044,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.011
+      },
+      {
+        "confirmedMs": 50.422200000000004,
+        "immediateReadMs": 0.0045000000000000005,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.01
+      },
+      {
+        "confirmedMs": 50.307900000000004,
+        "immediateReadMs": 0.0040999999999999995,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.0101
+      },
+      {
+        "confirmedMs": 50.619200000000006,
+        "immediateReadMs": 0.0049,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.0131
+      },
+      {
+        "confirmedMs": 50.5337,
+        "immediateReadMs": 0.0042,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.010499999999999999
+      },
+      {
+        "confirmedMs": 50.1308,
+        "immediateReadMs": 0.0076,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.018000000000000002
+      },
+      {
+        "confirmedMs": 50.4215,
+        "immediateReadMs": 0.0067,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.0145
+      },
+      {
+        "confirmedMs": 50.5132,
+        "immediateReadMs": 0.0040999999999999995,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.0095
+      },
+      {
+        "confirmedMs": 50.3365,
+        "immediateReadMs": 0.008199999999999999,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.07200000000000001
+      },
+      {
+        "confirmedMs": 50.2533,
+        "immediateReadMs": 0.0043,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.0099
+      },
+      {
+        "confirmedMs": 50.1098,
+        "immediateReadMs": 0.0042,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.0103
+      },
+      {
+        "confirmedMs": 50.2711,
+        "immediateReadMs": 0.004,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.0096
+      },
+      {
+        "confirmedMs": 50.2966,
+        "immediateReadMs": 0.0040999999999999995,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.011300000000000001
+      },
+      {
+        "confirmedMs": 50.5508,
+        "immediateReadMs": 0.0042,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.0101
+      },
+      {
+        "confirmedMs": 50.4863,
+        "immediateReadMs": 0.0040999999999999995,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.010499999999999999
+      },
+      {
+        "confirmedMs": 50.2366,
+        "immediateReadMs": 0.0040999999999999995,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.0097
+      },
+      {
+        "confirmedMs": 50.6435,
+        "immediateReadMs": 0.0040999999999999995,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.010499999999999999
+      },
+      {
+        "confirmedMs": 50.2221,
+        "immediateReadMs": 0.0040999999999999995,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.0097
+      }
+    ]
+  },
+  "inputDevices": [
+    "CABLE Output (VB-Audio Virtual Cable)",
+    "Microfone (3- USB Audio CODEC )",
+    "Conector AUX Interno",
+    "CABLE Output (VB-Audio Virtual ",
+    "Microfone (3- USB Audio CODEC )"
+  ],
+  "installed": true,
+  "outputDevices": [
+    "Alto-falantes (3- USB Audio CODEC )",
+    "Alto-falantes (Steam Streaming Speakers)",
+    "Spotify (VB-Audio Virtual Cable)",
+    "Alto-falantes",
+    "Alto-falantes [A]",
+    "Alto-falantes [B]",
+    "Alto-falantes (3- USB Audio COD",
+    "Alto-falantes (Steam Streaming ",
+    "Spotify (VB-Audio Virtual Cable",
+    "ASIO4ALL v2"
+  ],
+  "snapshot": {
+    "application": 2,
+    "buses": [
+      {
+        "gain": -16.91338348388672,
+        "index": 0,
+        "mute": false,
+        "name": "ASIO4ALL v2",
+        "physical": true,
+        "slot": "A1"
+      },
+      {
+        "gain": 0.0,
+        "index": 1,
+        "mute": false,
+        "name": "",
+        "physical": true,
+        "slot": "A2"
+      },
+      {
+        "gain": 0.0,
+        "index": 2,
+        "mute": false,
+        "name": "",
+        "physical": true,
+        "slot": "A3"
+      },
+      {
+        "gain": 0.0,
+        "index": 3,
+        "mute": false,
+        "name": "",
+        "physical": false,
+        "slot": "B1"
+      },
+      {
+        "gain": 0.0,
+        "index": 4,
+        "mute": false,
+        "name": "",
+        "physical": false,
+        "slot": "B2"
+      }
+    ],
+    "strips": [
+      {
+        "gain": 0.0,
+        "index": 0,
+        "mute": false,
+        "name": "Mic",
+        "physical": true,
+        "slot": "Hardware 1"
+      },
+      {
+        "gain": 12.0,
+        "index": 1,
+        "mute": false,
+        "name": "CABLE Output (VB-Audio Virtual Cable)",
+        "physical": true,
+        "slot": "Hardware 2"
+      },
+      {
+        "gain": -60.0,
+        "index": 2,
+        "mute": true,
+        "name": "",
+        "physical": true,
+        "slot": "Hardware 3"
+      },
+      {
+        "gain": 12.0,
+        "index": 3,
+        "mute": false,
+        "name": "Windows",
+        "physical": false,
+        "slot": "V1"
+      },
+      {
+        "gain": -5.00787353515625,
+        "index": 4,
+        "mute": false,
+        "name": "Discord",
+        "physical": false,
+        "slot": "V2"
+      }
+    ]
+  },
+  "strip0": {
+    "before": {
+      "gainDb": 0.0,
+      "level": 83,
+      "muted": false
+    },
+    "errors": [],
+    "gainRestored": true,
+    "measurement": "Live DLL, 50 ms confirmation cadence; excludes Tauri queue, WebView rendering and full-bar idle CPU",
+    "muteRestored": true,
+    "p95ConfirmedMs": 50.5455,
+    "samples": [
+      {
+        "confirmedMs": 50.4381,
+        "immediateReadMs": 0.0042,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.0111
+      },
+      {
+        "confirmedMs": 50.2449,
+        "immediateReadMs": 0.0040999999999999995,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.0095
+      },
+      {
+        "confirmedMs": 50.5841,
+        "immediateReadMs": 0.0042,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.011399999999999999
+      },
+      {
+        "confirmedMs": 50.2964,
+        "immediateReadMs": 0.004,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.0098
+      },
+      {
+        "confirmedMs": 50.3233,
+        "immediateReadMs": 0.0040999999999999995,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.0106
+      },
+      {
+        "confirmedMs": 50.1108,
+        "immediateReadMs": 0.0040999999999999995,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.0097
+      },
+      {
+        "confirmedMs": 50.5372,
+        "immediateReadMs": 0.0043,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.0112
+      },
+      {
+        "confirmedMs": 50.4255,
+        "immediateReadMs": 0.0040999999999999995,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.009300000000000001
+      },
+      {
+        "confirmedMs": 50.3771,
+        "immediateReadMs": 0.0044,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.017
+      },
+      {
+        "confirmedMs": 50.300200000000004,
+        "immediateReadMs": 0.0076,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.0161
+      },
+      {
+        "confirmedMs": 50.233,
+        "immediateReadMs": 0.0043,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.011
+      },
+      {
+        "confirmedMs": 50.1505,
+        "immediateReadMs": 0.0042,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.0099
+      },
+      {
+        "confirmedMs": 50.1751,
+        "immediateReadMs": 0.0046,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.0109
+      },
+      {
+        "confirmedMs": 50.1208,
+        "immediateReadMs": 0.0040999999999999995,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.009300000000000001
+      },
+      {
+        "confirmedMs": 50.5455,
+        "immediateReadMs": 0.0042,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.0102
+      },
+      {
+        "confirmedMs": 50.407199999999996,
+        "immediateReadMs": 0.0051,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.0138
+      },
+      {
+        "confirmedMs": 50.2593,
+        "immediateReadMs": 0.0081,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.016900000000000002
+      },
+      {
+        "confirmedMs": 50.1598,
+        "immediateReadMs": 0.0044,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.0101
+      },
+      {
+        "confirmedMs": 50.4916,
+        "immediateReadMs": 0.0044,
+        "immediateWasStale": true,
+        "operation": "mute",
+        "writeMs": 0.0118
+      },
+      {
+        "confirmedMs": 50.3141,
+        "immediateReadMs": 0.0043,
+        "immediateWasStale": true,
+        "operation": "gain",
+        "writeMs": 0.011899999999999999
+      }
+    ]
+  }
+}

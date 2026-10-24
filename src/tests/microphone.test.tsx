@@ -63,7 +63,11 @@ beforeEach(() => {
     ...host.output,
     defaultDeviceId: 'headphones'
   })
-  host.mute.mockResolvedValue(undefined)
+  host.mute.mockImplementation(async (change) => ({
+    level: 64,
+    muted: false,
+    ...change
+  }))
   host.hide.mockResolvedValue(undefined)
   host.resize.mockResolvedValue({ arrowX: 160 })
 })
@@ -126,7 +130,7 @@ it('follows external changes and releases subscriptions on close', async () => {
   ).toBeInTheDocument()
   expect(
     screen.getByRole('button', { name: 'Silenciar microfone' })
-  ).toBeDisabled()
+  ).toBeEnabled()
   act(() =>
     host.listeners.get('audioInputs')!({
       status: 'error',
@@ -145,9 +149,9 @@ it('commits popup volume with keyboard and follows external changes', async () =
   const slider = await screen.findByRole('slider', { name: 'Volume' })
   expect(slider).toHaveAttribute('aria-valuenow', '64')
   fireEvent.keyDown(slider, { key: 'ArrowRight' })
-  expect(screen.getByLabelText('Volume atual')).toHaveTextContent('65%')
+  expect(screen.getByLabelText('Volume atual')).toHaveTextContent('65')
   await waitFor(() => expect(host.mute).toHaveBeenCalledWith({ level: 65 }))
-  await waitFor(() => expect(slider).toHaveAttribute('aria-valuenow', '64'))
+  await waitFor(() => expect(slider).toHaveAttribute('aria-valuenow', '65'))
   fireEvent.keyDown(slider, { key: 'End' })
   await waitFor(() => expect(host.mute).toHaveBeenCalledWith({ level: 100 }))
   act(() =>

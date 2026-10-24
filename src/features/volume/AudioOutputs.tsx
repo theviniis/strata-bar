@@ -28,7 +28,6 @@ export interface AudioOutputsProps {
   muted: boolean
   select(id: string): void
   mute(): void
-  setDraft(level: number): void
   setLevel(level: number): void
   retry(): void
 }
@@ -42,7 +41,6 @@ export function AudioOutputs({
   muted,
   select,
   mute,
-  setDraft,
   setLevel,
   retry
 }: AudioOutputsProps) {
@@ -111,8 +109,7 @@ export function AudioOutputs({
           step={1}
           aria-label="Volume"
           disabled={volume.status !== 'ready' || pending !== null}
-          onValueChange={(value) => setDraft(value[0])}
-          onValueCommit={(value) => void setLevel(value[0])}
+          onValueChange={(value) => setLevel(value[0])}
         />
         <WidgetItemOutput
           aria-label="Volume atual"

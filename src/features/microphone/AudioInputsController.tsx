@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useAudioControl } from '@/features/audio/useAudioControl'
+import { useConfig } from '@/stores/config'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSystemChannel } from '@/hooks/useSystemChannel'
 import { usePopupContext } from '@/popups/context'
 import {
@@ -9,13 +11,18 @@ import {
 } from '@/services/system/bridge'
 import { AudioInputs } from './AudioInputs'
 
+const writeMicrophone = (value: VolumeChange) =>
+  bridge.setMicrophone
+    ? bridge.setMicrophone(value)
+    : Promise.reject(new Error('Controle do microfone indisponível'))
+
 type Inputs = ChannelData['audioInputs']
 type Volume = ChannelData['microphone']
 interface AudioProps {
   inputs: SystemEvent<Inputs>
   volume: SystemEvent<Volume>
   selectInput(value: { deviceId: string }): Promise<Inputs>
-  setVolume(value: VolumeChange): Promise<unknown>
+  setVolume(value: VolumeChange): Promise<Volume>
   retry(): void
 }
 
@@ -36,11 +43,7 @@ function NativeAudioInputs() {
           return Promise.reject(new Error('Seleção de microfone indisponível'))
         return bridge.setAudioInput(value)
       }}
-      setVolume={(value) =>
-        bridge.setMicrophone
-          ? bridge.setMicrophone(value)
-          : Promise.reject(new Error('Controle do microfone indisponível'))
-      }
+      setVolume={writeMicrophone}
       retry={() => setRevision((value) => value + 1)}
     />
   )
@@ -54,6 +57,14 @@ function DemoAudioInputs() {
     defaultDeviceId: 'demo-microphone'
   })
   const [volume, setVolume] = useState<Volume>({ level: 64, muted: false })
+  const write = useCallback(
+    async (change: VolumeChange) => {
+      const next = { ...volume, ...change }
+      setVolume(next)
+      return next
+    },
+    [volume]
+  )
   return (
     <AudioInputsContent
       inputs={{ status: 'ready', data: inputs }}
@@ -63,9 +74,7 @@ function DemoAudioInputs() {
         setInputs(next)
         return next
       }}
-      setVolume={async (change) => {
-        setVolume((value) => ({ ...value, ...change }))
-      }}
+      setVolume={write}
       retry={() => {}}
     />
   )
@@ -80,7 +89,6 @@ function AudioInputsContent({
 }: AudioProps) {
   const [pending, setPending] = useState<string | null>(null)
   const [error, setError] = useState('')
-  const [draft, setDraft] = useState<number | null>(null)
   const [confirmed, setConfirmed] = useState<{
     base: typeof inputs
     data: ChannelData['audioInputs']
@@ -111,52 +119,21 @@ function AudioInputsContent({
       if (mounted.current) setPending(null)
     }
   }
-  async function mute() {
-    if (volume.status !== 'ready' || busy.current) return
-    busy.current = true
-    setPending('mute')
-    try {
-      await setVolume({ muted: !volume.data.muted })
-      if (mounted.current) setError('')
-    } catch (e) {
-      if (mounted.current) setError(String(e))
-    } finally {
-      busy.current = false
-      if (mounted.current) setPending(null)
-    }
-  }
-  async function setLevel(level: number) {
-    if (volume.status !== 'ready' || busy.current) return
-    busy.current = true
-    setPending('level')
-    try {
-      await setVolume({ level })
-      if (mounted.current) setError('')
-    } catch (e) {
-      if (mounted.current) setError(String(e))
-    } finally {
-      busy.current = false
-      if (mounted.current) {
-        setDraft(null)
-        setPending(null)
-      }
-    }
-  }
-  const level = draft ?? (volume.status === 'ready' ? volume.data.level : 0)
-  const muted = volume.status === 'ready' && volume.data.muted
+  const route = useConfig((state) => state.config.audio.input)
+  const routeKey = `${route.source}:${route.targetIndex}:${route.source === 'windows' && inputs.status === 'ready' ? inputs.data.defaultDeviceId : ''}`
+  const audio = useAudioControl(volume, setVolume, routeKey)
   return (
     <AudioInputs
       inputs={inputs}
       volume={volume}
       data={data}
       pending={pending}
-      error={error}
-      level={level}
-      muted={muted}
+      error={error || audio.error}
+      level={audio.level}
+      muted={audio.muted}
       select={(id) => void select(id)}
-      mute={() => void mute()}
-      setDraft={setDraft}
-      setLevel={(value) => void setLevel(value)}
+      mute={audio.mute}
+      setLevel={audio.setLevel}
       retry={retry}
     />
   )

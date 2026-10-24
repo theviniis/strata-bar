@@ -408,7 +408,8 @@ impl Client {
         Ok((db_to_level(gain), mute >= 0.5))
     }
 
-    /// Writes level (percent) and mute, then reads the target back.
+    /// Returns the accepted intent, not confirmation: setters are asynchronous
+    /// in the engine and an immediate read may still contain the old values.
     pub fn write(
         &self,
         target: Target,
@@ -416,6 +417,7 @@ impl Client {
         muted: Option<bool>,
     ) -> Result<(i32, bool), String> {
         self.check(target)?;
+        let previous = self.read(target)?;
         let api = self.api.as_ref().expect("check requires an api");
         if let Some(level) = level {
             api.set_float(&target.gain_parameter(), level_to_db(level))
@@ -429,7 +431,12 @@ impl Client {
                     format!("Voicemeeter {}: código {code}", target.mute_parameter())
                 })?;
         }
-        self.read(target)
+        Ok((
+            level
+                .map(|value| db_to_level(level_to_db(value)))
+                .unwrap_or(previous.0),
+            muted.unwrap_or(previous.1),
+        ))
     }
 }
 
@@ -556,9 +563,116 @@ impl Client {
     }
 }
 
+/// Opt-in live diagnostic. Every attempted change is followed by exact raw
+/// gain/mute restoration, including failure paths. No bars are opened.
+fn probe_target(client: &mut Client, target: Target) -> serde_json::Value {
+    use std::time::{Duration, Instant};
+    let baseline = (|| -> Result<(f32, f32), String> {
+        let api = client.api.as_ref().ok_or("Voicemeeter indisponível")?;
+        Ok((
+            api.get_float(&target.gain_parameter())
+                .map_err(|e| e.to_string())?,
+            api.get_float(&target.mute_parameter())
+                .map_err(|e| e.to_string())?,
+        ))
+    })();
+    let (gain, mute) = match baseline {
+        Ok(value) => value,
+        Err(error) => return serde_json::json!({"error": error}),
+    };
+    let level = db_to_level(gain);
+    let bumped = if level < 99 { level + 1 } else { level - 1 };
+    let mut samples = Vec::new();
+    let mut errors = Vec::new();
+    let mut restored = false;
+    for _ in 0..10 {
+        for (operation, requested_level, requested_mute) in [
+            ("mute", None, Some(mute < 0.5)),
+            ("gain", Some(bumped as f32), None),
+        ] {
+            let started = Instant::now();
+            let result = (|| -> Result<serde_json::Value, String> {
+                let expected = client.write(target, requested_level, requested_mute)?;
+                let write_ms = started.elapsed().as_secs_f64() * 1000.0;
+                let immediate_started = Instant::now();
+                let immediate = client.read(target)?;
+                let immediate_read_ms = immediate_started.elapsed().as_secs_f64() * 1000.0;
+                loop {
+                    std::thread::sleep(Duration::from_millis(50));
+                    client.poll().map_err(|e| e.to_string())?;
+                    let actual = client.read(target)?;
+                    if requested_level.is_none_or(|_| actual.0 == expected.0)
+                        && requested_mute.is_none_or(|_| actual.1 == expected.1)
+                    {
+                        return Ok(serde_json::json!({"operation": operation,
+                            "writeMs": write_ms, "immediateReadMs": immediate_read_ms,
+                            "immediateWasStale": (requested_level.is_some() && immediate.0 != expected.0)
+                                || (requested_mute.is_some() && immediate.1 != expected.1),
+                            "confirmedMs": started.elapsed().as_secs_f64() * 1000.0}));
+                    }
+                    if started.elapsed() >= Duration::from_secs(1) {
+                        return Err("Voicemeeter confirmation timeout".into());
+                    }
+                }
+            })();
+            match result {
+                Ok(sample) => samples.push(sample),
+                Err(error) => errors.push(error),
+            }
+        }
+        // Always attempt both restores; never let one failed setter skip the other.
+        let restore = (|| -> Result<(), String> {
+            let api = client.api.as_ref().ok_or("Voicemeeter indisponível")?;
+            let gain_result = api.set_float(&target.gain_parameter(), gain);
+            let mute_result = api.set_float(&target.mute_parameter(), mute);
+            gain_result.map_err(|e| e.to_string())?;
+            mute_result.map_err(|e| e.to_string())?;
+            let started = Instant::now();
+            loop {
+                std::thread::sleep(Duration::from_millis(50));
+                client.poll().map_err(|e| e.to_string())?;
+                let api = client.api.as_ref().ok_or("Voicemeeter indisponível")?;
+                let actual_gain = api
+                    .get_float(&target.gain_parameter())
+                    .map_err(|e| e.to_string())?;
+                let actual_mute = api
+                    .get_float(&target.mute_parameter())
+                    .map_err(|e| e.to_string())?;
+                if (actual_gain - gain).abs() < 0.001 && actual_mute == mute {
+                    return Ok(());
+                }
+                if started.elapsed() >= Duration::from_secs(1) {
+                    return Err("Voicemeeter restoration timeout".into());
+                }
+            }
+        })();
+        restored = restore.is_ok();
+        if let Err(error) = restore {
+            errors.push(error);
+        }
+        if !errors.is_empty() {
+            break;
+        }
+    }
+    let mut times: Vec<f64> = samples
+        .iter()
+        .filter_map(|sample| sample["confirmedMs"].as_f64())
+        .collect();
+    times.sort_by(f64::total_cmp);
+    let p95 = if times.is_empty() {
+        None
+    } else {
+        Some(times[(times.len() * 95).div_ceil(100) - 1])
+    };
+    serde_json::json!({"before": {"gainDb": gain, "level": level, "muted": mute >= 0.5},
+        "gainRestored": restored, "muteRestored": restored,
+        "p95ConfirmedMs": p95, "samples": samples, "errors": errors,
+        "measurement": "Live DLL, 50 ms confirmation cadence; excludes Tauri queue, WebView rendering and full-bar idle CPU"})
+}
+
 /// First-boot diagnostic: prints one JSON value with the live Voicemeeter state
 /// and proves read/write round-trips on Bus[0] and Strip[0] (values restored
-/// immediately). Run with `--probe-vm`.
+/// and verified after each cycle). Run with `--probe-vm`.
 pub fn probe_vm() -> serde_json::Value {
     if !installed() {
         return serde_json::json!({ "installed": false });
@@ -570,41 +684,13 @@ pub fn probe_vm() -> serde_json::Value {
         let api = RemoteDll::open().expect("probe requires the DLL");
         let input_devices = api.device_list(true);
         let output_devices = api.device_list(false);
-        let round_trip = |client: &Client, target: Target| -> serde_json::Value {
-            match client.read(target) {
-                Err(e) => serde_json::json!({ "error": e }),
-                Ok((level, muted)) => {
-                    let toggle = client
-                        .write(target, None, Some(!muted))
-                        .and_then(|_| client.write(target, None, Some(muted)));
-                    // +1 dB stays clear of the slider clamp on both ends.
-                    let bumped = (level as f32 + 100.0 / (MAX_DB - MIN_DB)).clamp(0.0, 100.0);
-                    let gain = client
-                        .write(target, Some(bumped), None)
-                        .and_then(|_| client.write(target, Some(level as f32), None));
-                    let mut errors = Vec::new();
-                    if let Err(e) = &toggle {
-                        errors.push(e.clone());
-                    }
-                    if let Err(e) = &gain {
-                        errors.push(e.clone());
-                    }
-                    serde_json::json!({
-                        "before": {"level": level, "muted": muted},
-                        "muteRestored": toggle.is_ok(),
-                        "gainRestored": gain.is_ok(),
-                        "errors": errors,
-                    })
-                }
-            }
-        };
         Ok(serde_json::json!({
             "installed": true,
             "snapshot": snapshot,
             "inputDevices": input_devices,
             "outputDevices": output_devices,
-            "bus0": round_trip(&client, Target::parse(Some("bus"), Some(0)).unwrap()),
-            "strip0": round_trip(&client, Target::parse(Some("strip"), Some(0)).unwrap()),
+            "bus0": probe_target(&mut client, Target::parse(Some("bus"), Some(0)).unwrap()),
+            "strip0": probe_target(&mut client, Target::parse(Some("strip"), Some(0)).unwrap()),
         }))
     })();
     match report {
@@ -630,6 +716,8 @@ mod tests {
         logouts: std::sync::atomic::AtomicU32,
         values: std::sync::Mutex<HashMap<String, f32>>,
         strings: std::sync::Mutex<HashMap<String, String>>,
+        delayed: AtomicBool,
+        staged: Mutex<HashMap<String, f32>>,
     }
 
     #[derive(Clone)]
@@ -649,6 +737,8 @@ mod tests {
                     ("Strip[4].Gain".to_string(), -60.0),
                     ("Strip[4].Mute".to_string(), 1.0),
                 ])),
+                delayed: AtomicBool::new(false),
+                staged: Mutex::new(HashMap::new()),
                 strings: Mutex::new(HashMap::from([
                     (
                         "Bus[0].Device.name".to_string(),
@@ -693,6 +783,10 @@ mod tests {
         }
 
         fn set_float(&self, parameter: &str, value: f32) -> Result<(), i32> {
+            if self.0.delayed.load(Ordering::SeqCst) {
+                self.0.staged.lock().unwrap().insert(parameter.to_string(), value);
+                return Ok(());
+            }
             self.0
                 .values
                 .lock()
@@ -781,6 +875,21 @@ mod tests {
         assert!(Target::parse(Some("bus"), Some(7))
             .expect("a valid bus")
             .within(3));
+    }
+
+    #[test]
+    fn accepted_writes_do_not_claim_a_stale_read_is_the_requested_value() {
+        let fake = Fake::banana();
+        fake.0.delayed.store(true, Ordering::SeqCst);
+        let mut client = Client::with_api(Box::new(fake.clone()));
+        client.poll().unwrap();
+        assert_eq!(client.write(bus_0(), Some(85.0), Some(true)), Ok((85, true)));
+        // The engine has accepted the setters but has not processed them yet.
+        assert_eq!(client.read(bus_0()), Ok((50, false)));
+        let staged = std::mem::take(&mut *fake.0.staged.lock().unwrap());
+        fake.0.values.lock().unwrap().extend(staged);
+        client.poll().unwrap();
+        assert_eq!(client.read(bus_0()), Ok((85, true)));
     }
 
     #[test]

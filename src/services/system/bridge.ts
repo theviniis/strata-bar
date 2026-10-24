@@ -153,11 +153,11 @@ export interface AdapterBase {
   spotifyConnect?(clientId: string): Promise<void>
   spotifyDisconnect?(): Promise<void>
   spotifyOpenDashboard?(): Promise<void>
-  setMicrophone?(value: VolumeChange): Promise<unknown>
+  setMicrophone?(value: VolumeChange): Promise<ChannelData['microphone']>
   setAudioInput?(value: {
     deviceId: string
   }): Promise<ChannelData['audioInputs']>
-  setVolume(value: VolumeChange): Promise<unknown>
+  setVolume(value: VolumeChange): Promise<ChannelData['volume']>
   setAudioOutput?(value: {
     deviceId: string
   }): Promise<ChannelData['audioOutputs']>
