@@ -7,7 +7,8 @@ export const POPUP_EXIT_MS = 350
 
 // Opening reference: capsule emerges at ~0.60 s and settles at ~1.10 s.
 export const POPUP_ENTER_MS = 500
-export const POPUP_ENTER_TIMES = [0, 0.16, 0.4, 0.7, 1]
+// One continuous deceleration: segmented easings introduce velocity jumps.
+export const POPUP_ENTER_EASE = [0.22, 1, 0.36, 1] as const
 
 export function popupOpenKeyframes(
   side: OverlaySide,
@@ -21,26 +22,11 @@ export function popupOpenKeyframes(
     (anchor?.height ?? 24) / Math.max(1, size.height)
   )
   return {
-    scaleX: [width, Math.max(width, 0.38), 0.74, 0.96, 1],
-    scaleY: [height, 0.38, 0.74, 0.96, 1],
-    y: [
-      -direction * POPUP_GAP,
-      direction * POPUP_GAP * 1.5,
-      direction * POPUP_GAP,
-      direction * POPUP_GAP * 0.3,
-      0
-    ],
-    opacity: [0, 1, 1, 1, 1],
-    filter: [
-      'blur(3px)',
-      'blur(1.5px)',
-      'blur(0.5px)',
-      'blur(0px)',
-      'blur(0px)'
-    ],
-    clipPath: [160, 96, 48, 16, 0].map(
-      (radius) => `inset(0px round ${radius}px)`
-    )
+    scaleX: [width, 1],
+    scaleY: [height, 1],
+    y: [-direction * POPUP_GAP, 0],
+    opacity: [0, 1],
+    clipPath: [160, 0].map((radius) => `inset(0px round ${radius}px)`)
   }
 }
 

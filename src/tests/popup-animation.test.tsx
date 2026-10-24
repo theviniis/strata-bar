@@ -1,5 +1,6 @@
 import { act, render } from '@testing-library/react'
 import { useRef } from 'react'
+import { cubicBezier, interpolate } from 'motion'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 const motion = vi.hoisted(() => ({ animate: vi.fn() }))
 vi.mock('motion/react', () => ({
@@ -28,6 +29,32 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+it('keeps expansion velocity continuous through the middle of opening', () => {
+  render(
+    <PopupSurface mode="demo" label="Popup" close={() => {}}>
+      Content
+    </PopupSurface>
+  )
+  const frame = vi.mocked(window.requestAnimationFrame)
+  act(() => frame.mock.calls[0][0](0))
+  act(() => frame.mock.calls[1][0](16))
+  const [, keyframes, options] = motion.animate.mock.calls[1]
+  const curves = options.ease
+  const ease =
+    typeof curves[0] === 'number'
+      ? cubicBezier(...(curves as [number, number, number, number]))
+      : curves.map((curve: [number, number, number, number]) =>
+          cubicBezier(...curve)
+        )
+  const values = keyframes.scaleY as number[]
+  const times = options.times ?? values.map((_, i) => i / (values.length - 1))
+  const sample = interpolate(times, values, { ease })
+  // The previous segmented easing stopped at 40% and accelerated again.
+  const before = (sample(0.4) - sample(0.398)) / 0.002
+  const after = (sample(0.402) - sample(0.4)) / 0.002
+  expect(Math.abs(after - before)).toBeLessThan(0.1)
+})
+
 it('prepares a hidden panel and opens only after two presentation frames', () => {
   const { rerender, unmount } = render(
     <PopupSurface mode="demo" label="Popup" close={() => {}}>
@@ -41,9 +68,9 @@ it('prepares a hidden panel and opens only after two presentation frames', () =>
   expect(motion.animate).toHaveBeenCalledTimes(1)
   act(() => frame.mock.calls[1][0](16))
   expect(motion.animate.mock.calls[1][1]).toMatchObject({
-    opacity: [0, 1, 1, 1, 1],
-    scaleX: expect.arrayContaining([0.74, 0.96, 1]),
-    scaleY: expect.arrayContaining([0.74, 0.96, 1])
+    opacity: [0, 1],
+    scaleX: [expect.any(Number), 1],
+    scaleY: [expect.any(Number), 1]
   })
   rerender(
     <PopupSurface mode="demo" label="Popup" close={() => {}}>
@@ -182,10 +209,10 @@ it('emerges from the widget, travels outward and settles without overshoot', () 
   const opening = popupOpenKeyframes('bottom', size, anchor)
   expect(opening.scaleX[0]).toBe(0.25)
   expect(opening.scaleY[0]).toBe(0.14)
-  expect(opening.y.slice(0, 3)).toEqual([-12, 18, 12])
+  expect(opening.y).toEqual([-12, 0])
   expect(opening.y.at(-1)).toBe(0)
   expect(Math.max(...opening.scaleX)).toBe(1)
-  expect(opening.opacity).toEqual([0, 1, 1, 1, 1])
+  expect(opening.opacity).toEqual([0, 1])
   expect(opening.clipPath[0]).toBe('inset(0px round 160px)')
   expect(POPUP_ENTER_MS).toBe(500)
   const mirrored = popupOpenKeyframes('top', size, anchor)

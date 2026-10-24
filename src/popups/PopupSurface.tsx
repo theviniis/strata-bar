@@ -7,7 +7,7 @@ import { overlay, type OverlaySide } from '../services/system/overlay'
 import { POPUP_GAP } from './constants'
 import {
   POPUP_ENTER_MS,
-  POPUP_ENTER_TIMES,
+  POPUP_ENTER_EASE,
   POPUP_EXIT_MS,
   popupMotionEnabled,
   popupDockKeyframes,
@@ -69,7 +69,7 @@ export function PopupSurface({
       y: side === 'bottom' ? -POPUP_GAP : POPUP_GAP,
       scaleX: 0.18,
       scaleY: 0.08,
-      filter: 'blur(3px)',
+      filter: 'blur(0px)',
       clipPath: 'inset(0px round 160px)'
     }
     if (enabled && visual.current) {
@@ -90,13 +90,8 @@ export function PopupSurface({
             ),
             {
               duration: POPUP_ENTER_MS / 1000,
-              times: POPUP_ENTER_TIMES,
-              ease: [
-                [0.32, 0, 0.67, 0],
-                [0.2, 0.65, 0.3, 1],
-                [0.16, 1, 0.3, 1],
-                [0.16, 1, 0.3, 1]
-              ]
+              ease: POPUP_ENTER_EASE,
+              opacity: { duration: 0.12, ease: 'easeOut' }
             }
           )
           void motion.current.then(() => {
