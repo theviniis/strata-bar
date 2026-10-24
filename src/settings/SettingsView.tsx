@@ -150,11 +150,11 @@ function NativeSettingsView() {
 
             <motion.div
               layoutScroll
-              className="min-h-0 flex-1 overflow-auto p-6"
+              className="min-h-0 flex-1 overflow-auto p-2"
             >
               <FieldSet disabled={disabled}>
                 {section === 'layout' ? (
-                  <Card className="bg-transparent">
+                  <Card className="bg-transparent shadow-none p-0">
                     <CardHeader>
                       <CardTitle role="heading" aria-level={2}>
                         Editor de Layout
@@ -172,7 +172,7 @@ function NativeSettingsView() {
                     </CardContent>
                   </Card>
                 ) : section === 'reminders' ? (
-                  <Card>
+                  <Card className="bg-transparent shadow-none p-0">
                     <CardHeader>
                       <CardTitle role="heading" aria-level={2}>
                         Lembretes
@@ -187,7 +187,7 @@ function NativeSettingsView() {
                     </CardContent>
                   </Card>
                 ) : section === 'appearance' ? (
-                  <Card>
+                  <Card className="bg-transparent shadow-none p-0">
                     <CardHeader>
                       <CardTitle role="heading" aria-level={2}>
                         Aparência
@@ -205,7 +205,7 @@ function NativeSettingsView() {
                     </CardContent>
                   </Card>
                 ) : section === 'music' ? (
-                  <Card>
+                  <Card className="bg-transparent shadow-none p-0">
                     <CardHeader>
                       <CardTitle role="heading" aria-level={2}>
                         Player de música
@@ -221,7 +221,7 @@ function NativeSettingsView() {
                     </CardContent>
                   </Card>
                 ) : section === 'agents' ? (
-                  <Card>
+                  <Card className="bg-transparent shadow-none p-0">
                     <CardHeader>
                       <CardTitle role="heading" aria-level={2}>
                         Agentes
