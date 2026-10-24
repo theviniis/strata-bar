@@ -1,5 +1,8 @@
-param([string]$Dotnet = 'dotnet')
+param([string]$Dotnet = $env:STRATA_DOTNET)
 $ErrorActionPreference = 'Stop'
+
+$Dotnet = & (Join-Path $PSScriptRoot 'resolve-dotnet.ps1') -Dotnet $Dotnet
+Write-Host "Sensor build SDK host: $Dotnet"
 # Tauri may inherit PowerShell 7's module path while launching Windows PS 5.1.
 # Use this host's modules so cmdlet autoload never mixes runtime assemblies.
 if ($PSVersionTable.PSEdition -eq 'Desktop') {

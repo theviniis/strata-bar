@@ -13,12 +13,13 @@ browser route remains a separate demo studio.
 
 ## Requirements
 
-| Tool           | Version / notes                                   |
-| -------------- | ------------------------------------------------- |
-| Node.js        | 22.12+                                            |
-| pnpm           | `>=11 <13` (enforced via `devEngines`)            |
-| Rust (desktop) | stable toolchain                                  |
-| MSVC (desktop) | C++ build tools with the Windows SDK and WebView2 |
+| Tool                       | Version / notes                                   |
+| -------------------------- | ------------------------------------------------- |
+| Node.js                    | 22.12+                                            |
+| pnpm                       | `>=11 <13` (enforced via `devEngines`)            |
+| Rust (desktop)             | stable toolchain                                  |
+| .NET SDK (desktop package) | 10.x; downloaded automatically if absent          |
+| MSVC (desktop)             | C++ build tools with the Windows SDK and WebView2 |
 
 Desktop prerequisites follow the official
 [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (Rust stable, MSVC C++ build tools with the
@@ -121,14 +122,26 @@ event-driven audio.
 - The x64 NSIS installer includes .NET 10, the service and signed PawnIO driver,
   plus an offline WebView2 installer. Installation requires UAC; the bar stays
   unelevated. The standalone bar executable needs the installed service.
-- Building the desktop package requires the **.NET 10 SDK** in addition to Rust,
-  Node and pnpm. `pnpm package:windows` stages the self-contained service and
+- Building the desktop package uses the **.NET 10 SDK** alongside Rust, Node and
+  pnpm. If no SDK is available, the build downloads Microsoft's pinned SDK
+  **10.0.402**, verifies its SHA-512 and extracts it under the gitignored
+  `sensor-service/artifacts/build-tools/` directory. Subsequent builds reuse it
+  without downloading it again. This needs no elevation or PATH changes, and
+  the SDK is excluded from the installer. The build also accepts an SDK on PATH,
+  `%LOCALAPPDATA%\Strata\dotnet-sdk\dotnet.exe` or `DOTNET_ROOT` /
+  `DOTNET_ROOT_X64`. For another SDK location, set
+  `$env:STRATA_DOTNET = 'C:\path\to\sdk\dotnet.exe'` before running
+  `pnpm package:windows`, or pass `-Dotnet` to `scripts/build-sensors.ps1`.
+  `pnpm package:windows` stages the self-contained service and
   verifies the pinned driver before packaging. Build-time downloads are required
   on the first build; installed sensors perform no downloads.
 - Service tests: `dotnet test sensor-service/Strata.SensorService.Tests`.
   Build the service alone with `powershell -File scripts/build-sensors.ps1`.
   See [sensor architecture and validation](docs/plans/lhm-sensors.md) for
   development, diagnostics, upgrade/rollback and remaining acceptance gates.
+- SDK resolver checks: `powershell -NoProfile -File scripts/test-dotnet-resolution.ps1`.
+  To exercise automatic setup independently of installed SDKs:
+  `powershell -NoProfile -Command "& './scripts/resolve-dotnet.ps1' -Candidates 'no-installed-sdk'"`.
 - Music ships under the authorized [media exception](docs/plans/music-widget.md), with GSMTC playback, application volume and an independent Spotify account connection.
 - Network, tray cloning and autostart are deferred until the core
   MVP passes its acceptance gates.
