@@ -224,7 +224,7 @@ function MusicPopupContentData({
               void act({ action: 'shuffle', active })
             }
           >
-            <Shuffle size={18} />
+            <Shuffle size={16} />
           </Toggle>
         )}
         <Button
@@ -234,7 +234,7 @@ function MusicPopupContentData({
           disabled={pending.playback || !media.capabilities.previous}
           onClick={() => void act({ action: 'previous' })}
         >
-          <SkipBack size={18} />
+          <SkipBack size={16} />
         </Button>
         <Button
           variant="secondary"
@@ -252,7 +252,7 @@ function MusicPopupContentData({
           disabled={pending.playback || !media.capabilities.next}
           onClick={() => void act({ action: 'next' })}
         >
-          <SkipForward size={18} />
+          <SkipForward size={16} />
         </Button>
         {repeatReady && (
           <Toggle
@@ -274,7 +274,7 @@ function MusicPopupContentData({
               })
             }
           >
-            {repeat === 'track' ? <Repeat1 size={18} /> : <Repeat size={18} />}
+            {repeat === 'track' ? <Repeat1 size={16} /> : <Repeat size={16} />}
           </Toggle>
         )}
         {favoriteSupported && (
@@ -295,7 +295,7 @@ function MusicPopupContentData({
             }
             className="text-primary"
           >
-            <Heart size={18} fill={favoriteValue ? 'currentColor' : 'none'} />
+            <Heart size={16} fill={favoriteValue ? 'currentColor' : 'none'} />
           </Button>
         )}
       </div>
