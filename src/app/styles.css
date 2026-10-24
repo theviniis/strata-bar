@@ -134,11 +134,11 @@
 
 .dark {
   /* Illusion Refined Dark Mode */
-  --background: oklch(0 0 0); /* oklch(0.285 0.024 282.8) */
+  --background: oklch(0.285 0.024 282.8); /* oklch(0.285 0.024 282.8) */
   --foreground: oklch(0.978 0.008 106.8);
-  --card: oklch(0 0 0); /* oklch(0.248 0.02 282.2) */
+  --card: oklch(0.248 0.02 282.2); /* oklch(0.248 0.02 282.2) */
   --card-foreground: oklch(0.978 0.008 106.8);
-  --popover: oklch(0 0 0); /* oklch(0.248 0.02 282.2) */
+  --popover: oklch(0.248 0.02 282.2); /* oklch(0.248 0.02 282.2) */
   --popover-foreground: oklch(0.978 0.008 106.8);
 
   --primary: oklch(0.742 0.187 348.6);
