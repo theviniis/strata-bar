@@ -68,7 +68,7 @@ const tabsListVariants = cva(
 )
 
 const tabsTriggerVariants = cva(
-  'cursor-pointer relative isolate inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-active:text-primary-foreground bg-muted-transparent not-data-active:inset-shadow-[0_1px_0] not-data-active:inset-shadow-background/40',
+  'cursor-pointer relative isolate inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-active:text-primary-foreground bg-transparent',
   {
     variants: {
       size: {
