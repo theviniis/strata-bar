@@ -168,15 +168,15 @@ export function NativeBarSurface({
                       )}
                     >
                       <span
-                        className="h-full shrink-0 bg-background"
+                        className="h-full shrink-0 bg-background glass-surface backdrop-blur-lg"
                         style={{
                           width: name === 'left' ? 0 : radius * 2,
                           mask: name === 'left' ? undefined : edgeMask
                         }}
                       />
-                      <span className="h-full flex-1 bg-background" />
+                      <span className="h-full flex-1 bg-background glass-surface backdrop-blur-lg" />
                       <span
-                        className="h-full shrink-0 -scale-x-100 bg-background"
+                        className="h-full shrink-0 -scale-x-100 bg-background glass-surface backdrop-blur-lg"
                         style={{
                           width: name === 'right' ? 0 : radius * 2,
                           mask: name === 'right' ? undefined : edgeMask

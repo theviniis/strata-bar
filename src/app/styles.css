@@ -5,6 +5,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@utility glass-surface {
+  @apply backdrop-blur-lg backdrop-saturate-125 inset-shadow-[0_1px_0] inset-shadow-background/60;
+}
+
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: 'Geist Variable', sans-serif;

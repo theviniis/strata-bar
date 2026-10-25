@@ -175,7 +175,7 @@ export function SlidingHighlight({
             data-sliding-highlight=""
             data-moving={highlight.moving}
             className={cn(
-              'pointer-events-none absolute -z-10 bg-muted/60 backdrop-blur-md shadow-sm shadow-foreground/5 inset-shadow-[0_1px_0] inset-shadow-background/40',
+              'pointer-events-none absolute -z-10 bg-muted/60 glass-surface shadow-sm shadow-foreground/5',
               highlightClassName
             )}
             initial={false}

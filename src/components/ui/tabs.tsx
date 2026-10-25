@@ -52,7 +52,7 @@ function PanelElement({
 const MotionPanel = motion.create(PanelElement)
 
 const tabsListVariants = cva(
-  'inline-flex items-center justify-center rounded-lg bg-muted/30 text-muted-foreground gap-1 backdrop-blur-md ring-1 ring-inset ring-border/50 shadow-sm shadow-foreground/5 inset-shadow-[0_1px_0] inset-shadow-background/40',
+  'inline-flex items-center justify-center rounded-lg bg-muted/30 text-muted-foreground gap-1 glass-surface ring-1 ring-inset ring-border/50 shadow-sm shadow-foreground/5',
   {
     variants: {
       size: {

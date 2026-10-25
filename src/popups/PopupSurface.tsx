@@ -229,7 +229,7 @@ export function PopupSurface({
           aria-label={label}
           tabIndex={-1}
           className={cn(
-            'bg-popover text-body font-normal shadow-lg outline-none *:max-w-full',
+            'rounded-2xl bg-popover glass-surface backdrop-blur-lg text-body font-normal shadow-none outline-none *:max-w-full',
             closing && 'overflow-hidden',
             className
           )}
@@ -273,10 +273,8 @@ export function PopupSurface({
           style={{ left: (mode === 'native' ? placedArrowX : arrowX) ?? '50%' }}
           className={cn(
             tooltipArrowClasses,
-            'pointer-events-none absolute -translate-x-1/2 border-border',
-            side === 'bottom'
-              ? 'top-1.75 border-t border-l'
-              : 'bottom-1.75 border-r border-b'
+            'pointer-events-none absolute -translate-x-1/2 bg-popover backdrop-blur-lg',
+            side === 'bottom' ? 'top-1.75' : 'bottom-1.75'
           )}
         />
       </div>
