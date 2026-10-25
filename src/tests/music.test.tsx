@@ -274,7 +274,7 @@ it('renders artwork values and sends popup controls with session identity', asyn
   expect(onAction).toHaveBeenLastCalledWith({
     sessionId: data.sessionId,
     trackId: data.trackId,
-    action: { action: 'seek', positionMs: 33000 }
+    action: { action: 'seek', positionMs: 32001 }
   })
   for (const [name, action] of [
     ['Faixa anterior', { action: 'previous' }],
@@ -319,12 +319,12 @@ it('keeps popup playback controls available while a favorite request is pending'
   fireEvent.click(favorite)
   fireEvent.click(favorite)
   expect(onAction).toHaveBeenCalledTimes(1)
-  expect(favorite).toBeDisabled()
+  expect(favorite).toHaveAttribute('aria-disabled', 'true')
   for (const name of ['Faixa anterior', 'Pausar', 'Próxima faixa']) {
     const control = screen.getByRole('button', { name })
     expect(control).toBeEnabled()
     await act(async () => fireEvent.click(control))
-    expect(favorite).toBeDisabled()
+    expect(favorite).toHaveAttribute('aria-disabled', 'true')
   }
   expect(
     screen.getByRole('slider', { name: 'Progresso da música' })
@@ -504,7 +504,7 @@ it('renders the favorite control while the Spotify correlation is pending', () =
   const favorite = screen.getByRole('button', {
     name: 'Adicionar aos favoritos'
   })
-  expect(favorite).toBeDisabled()
+  expect(favorite).toHaveAttribute('aria-disabled', 'true')
   expect(favorite).toHaveAttribute('aria-busy', 'true')
   expect(favorite).toHaveAttribute(
     'title',

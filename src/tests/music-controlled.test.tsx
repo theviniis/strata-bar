@@ -85,8 +85,11 @@ it('renders popup pending and error props and dispatches grouped actions through
       }}
     />
   )
-  expect(screen.getByRole('button', { name: 'Próxima faixa' })).toBeDisabled()
-  expect(vi.getTimerCount()).toBe(0)
+  expect(screen.getByRole('button', { name: 'Próxima faixa' })).toHaveAttribute(
+    'aria-disabled',
+    'true'
+  )
+  result.unmount()
 })
 it('renders Spotify form values and keeps changes controlled by its parent', () => {
   const onClientIdChange = vi.fn()

@@ -124,7 +124,7 @@ const MusicVolumeFooter = memo(function MusicVolumeFooter({
           aria-label={muted ? 'Ativar som do player' : 'Silenciar player'}
           aria-pressed={muted}
           title="Volume do player"
-          disabled={pending}
+          aria-disabled={pending}
           aria-busy={pending}
           onClick={() => void act({ action: 'mute', muted: !muted })}
         >
@@ -137,7 +137,6 @@ const MusicVolumeFooter = memo(function MusicVolumeFooter({
         max={100}
         step={1}
         value={[level]}
-        disabled={pending}
         onValueChange={([value]) => setVolumeDraft(value)}
         onValueCommit={([value]) => commitVolume(value)}
       />
@@ -227,7 +226,7 @@ function MusicPopupContentData({
               aria-label="Aleatório"
               title="Aleatório"
               aria-pressed={shuffle === true}
-              disabled={pending.shuffle}
+              aria-disabled={pending.shuffle}
               aria-busy={pending.shuffle}
               onClick={() =>
                 void act({ action: 'shuffle', active: shuffle !== true })
@@ -240,7 +239,8 @@ function MusicPopupContentData({
             variant="ghost"
             size="icon"
             aria-label="Faixa anterior"
-            disabled={pending.playback || !media.capabilities.previous}
+            disabled={!media.capabilities.previous}
+            aria-disabled={pending.playback || undefined}
             onClick={() => void act({ action: 'previous' })}
           >
             <SkipBack size={16} />
@@ -249,7 +249,8 @@ function MusicPopupContentData({
             variant="secondary"
             size="icon"
             aria-label={playing ? 'Pausar' : 'Reproduzir'}
-            disabled={pending.playback || !media.capabilities.playPause}
+            disabled={!media.capabilities.playPause}
+            aria-disabled={pending.playback || undefined}
             onClick={() => void act({ action: 'playPause' })}
           >
             <PlayIcon size={18} />
@@ -258,7 +259,8 @@ function MusicPopupContentData({
             variant="ghost"
             size="icon"
             aria-label="Próxima faixa"
-            disabled={pending.playback || !media.capabilities.next}
+            disabled={!media.capabilities.next}
+            aria-disabled={pending.playback || undefined}
             onClick={() => void act({ action: 'next' })}
           >
             <SkipForward size={16} />
@@ -278,7 +280,7 @@ function MusicPopupContentData({
                     : 'Repetição desativada'
               }
               aria-pressed={repeat === 'track' || repeat === 'list'}
-              disabled={pending.repeat}
+              aria-disabled={pending.repeat}
               aria-busy={pending.repeat}
               onClick={() =>
                 void act({
@@ -305,7 +307,8 @@ function MusicPopupContentData({
               }
               aria-pressed={Boolean(favoriteValue)}
               title={favoriteTitle}
-              disabled={favoriteDisabled}
+              disabled={favoriteDisabled && !pending.favorite}
+              aria-disabled={favoriteDisabled}
               aria-busy={pending.favorite || favoritePending}
               onClick={() =>
                 void act({ action: 'favorite', saved: !favoriteValue })
@@ -324,7 +327,7 @@ function MusicPopupContentData({
           aria-label="Progresso da música"
           min={progress?.minSeekMs ?? 0}
           max={progress?.maxSeekMs || 1}
-          step={1000}
+          step={1}
           value={[
             progress
               ? Math.min(
@@ -334,7 +337,6 @@ function MusicPopupContentData({
               : 0
           ]}
           disabled={
-            pending.playback ||
             !progress ||
             !media.capabilities.seek ||
             progress.maxSeekMs <= progress.minSeekMs

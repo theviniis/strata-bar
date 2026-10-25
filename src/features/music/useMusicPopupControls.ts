@@ -49,7 +49,7 @@ export function useMusicPopupControls(
   const [clock] = useState(() => new MediaClock())
   const [seek, setSeek] = useState<number | null>(null)
   const [badArt, setBadArt] = useState<string | null>(null)
-  const [volumeDraft, setVolumeDraft] = useState<number | null>(null)
+  const [volumeDraft, updateVolumeDraft] = useState<number | null>(null)
   const progress =
     media?.progress.status === 'ready' ? media.progress.value : null
   const artwork = media?.artwork.status === 'ready' ? media.artwork.value : null
@@ -90,42 +90,94 @@ export function useMusicPopupControls(
   }, [clock])
   const sessionId = media?.sessionId
   const trackId = media?.trackId
+  const queuedSeek = useRef<MediaAction | null>(null)
   const act = useCallback(
-    async (action: MediaAction) => {
+    async function dispatch(action: MediaAction): Promise<boolean> {
       if (sessionId === undefined || trackId === undefined) return false
       const group = actionGroup(action)
-      if (busy.current[group]) return false
+      if (busy.current[group]) {
+        if (action.action === 'seek') queuedSeek.current = action
+        return false
+      }
       busy.current[group] = true
       setPending((value) => ({ ...value, [group]: true }))
       setError('')
       try {
-        await onAction({
-          sessionId,
-          trackId,
-          action
-        })
-        if (action.action === 'seek') {
-          clock.seek(action.positionMs)
-          setPositionMs(clock.read())
+        let next: MediaAction | null = action
+        while (next) {
+          const current = next
+          await onAction({ sessionId, trackId, action: current })
+          if (current.action === 'seek') {
+            clock.seek(current.positionMs)
+            setPositionMs(clock.read())
+          }
+          next = group === 'playback' ? queuedSeek.current : null
+          if (group === 'playback') queuedSeek.current = null
         }
         return true
       } catch (e) {
+        if (group === 'playback') queuedSeek.current = null
         setError(String(e))
         return false
       } finally {
         busy.current[group] = false
         setPending((value) => ({ ...value, [group]: false }))
-        if (action.action === 'seek') setSeek(null)
+        if (group === 'playback') setSeek(null)
       }
     },
     [sessionId, trackId, onAction, clock]
   )
-  const commitVolume = (value: number) => {
-    setVolumeDraft(value)
-    void act({ action: 'volume', level: value }).finally(() =>
-      setVolumeDraft(null)
+  // Keep the latest intent visible until the native session acknowledges it.
+  // Only one write is in flight; pointer moves replace the queued value.
+  const volumeQueue = useRef<number | null>(null)
+  const volumeWriting = useRef(false)
+  const lastVolume = useRef<number | null>(null)
+  const setVolumeDraft = useCallback(
+    (value: number) => {
+      if (sessionId === undefined || trackId === undefined) return
+      updateVolumeDraft(value)
+      if (lastVolume.current === value) return
+      lastVolume.current = value
+      volumeQueue.current = value
+      if (volumeWriting.current) return
+      volumeWriting.current = true
+      void (async () => {
+        try {
+          while (volumeQueue.current !== null) {
+            const level = volumeQueue.current
+            volumeQueue.current = null
+            await onAction({
+              sessionId,
+              trackId,
+              action: { action: 'volume', level }
+            })
+          }
+        } catch (e) {
+          volumeQueue.current = null
+          lastVolume.current = null
+          updateVolumeDraft(null)
+          setError(String(e))
+        } finally {
+          volumeWriting.current = false
+        }
+      })()
+    },
+    [onAction, sessionId, trackId]
+  )
+  const commitVolume = setVolumeDraft
+  useEffect(() => {
+    if (volumeDraft === null) return
+    const timer = setTimeout(
+      () => {
+        if (!volumeWriting.current) {
+          updateVolumeDraft(null)
+          lastVolume.current = null
+        }
+      },
+      volume?.level === volumeDraft ? 0 : 3000
     )
-  }
+    return () => clearTimeout(timer)
+  }, [volumeDraft, volume?.level])
   const position = seek ?? (progress ? positionMs : 0)
   const PlayIcon = playing ? Pause : Play
   const busyAny = Object.values(pending).some(Boolean)

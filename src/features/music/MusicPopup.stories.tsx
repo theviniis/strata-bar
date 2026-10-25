@@ -57,10 +57,7 @@ function InteractivePlayer() {
       setPosition(
         typeof value === 'function' ? (value(position) ?? 0) : (value ?? 0)
       ),
-    setVolumeDraft: (value) =>
-      setLevel(
-        typeof value === 'function' ? (value(level) ?? level) : (value ?? level)
-      ),
+    setVolumeDraft: setLevel,
     commitVolume: setLevel,
     act: async (action) => {
       if (action.action === 'seek') setPosition(action.positionMs)
