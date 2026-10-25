@@ -1,6 +1,6 @@
+import { cn } from '@/lib/utils'
 import { Button as ButtonPrimitive } from '@base-ui/react/button'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { cn } from '@/lib/utils'
 import { motion, type HTMLMotionProps } from 'motion/react' // ou 'framer-motion'
 
 // Criamos uma versão animada do ButtonPrimitive do Base UI
@@ -57,8 +57,8 @@ function Button({
   return (
     <MotionButtonPrimitive
       data-slot="button"
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
       transition={{ type: 'spring', stiffness: 400, damping: 17 }}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
