@@ -363,7 +363,7 @@ function MusicPopupContentData({
 
 function NoMidia() {
   return (
-    <Empty role="status">
+    <Empty className="p-0" role="status">
       <EmptyHeader>
         <EmptyMedia variant="icon">
           <Music2 />
@@ -379,18 +379,41 @@ function NoMidia() {
 
 function LoadingMidia() {
   return (
-    <p role="status" className="flex items-center gap-2">
-      <Spinner />
-      <span>Carregando mídia...</span>
-    </p>
+    <Empty className="p-0" role="status">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <Music2 />
+        </EmptyMedia>
+        <EmptyTitle className="flex items-center gap-2">
+          <Spinner />
+          <span>Carregando mídia...</span>
+        </EmptyTitle>
+        <EmptyDescription>
+          Estamos carregando a sua mídia, isto pode levar um tempo
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
   )
 }
 
 function MidiaUnavaliable() {
   return (
-    <p role="status" className="text-destructive flex items-center gap-2">
-      <TriangleAlert />
-      <span>Mídia indisponível</span>
-    </p>
+    <Empty className="p-0" role="status">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <TriangleAlert />
+        </EmptyMedia>
+        <EmptyTitle
+          role="status"
+          className="text-destructive flex items-center gap-2"
+        >
+          <TriangleAlert />
+          <span>Mídia indisponível</span>
+        </EmptyTitle>
+        <EmptyDescription>
+          Nenhuma mídia disponível foi encontrada
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
   )
 }
