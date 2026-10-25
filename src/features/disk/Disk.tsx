@@ -30,7 +30,7 @@ export function DiskBar({
   return (
     <>
       {volumes.map((volume) => (
-        <span key={volume.mount} className="flex items-center gap-1.5">
+        <span key={volume.mount} className="flex items-center gap-2">
           <HardDrive size={14} className="shrink-0 text-secondary" />
           {!compact && (
             <WidgetItemOutput className="whitespace-nowrap tabular-nums">
