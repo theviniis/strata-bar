@@ -1,5 +1,6 @@
 import { CardFooter } from '@/components/ui/card'
 import { ScrollingText } from '@/components/ui/scrolling-text'
+import { WidgetItemOutput } from '@/components/widget-item'
 
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
@@ -140,6 +141,12 @@ const MusicVolumeFooter = memo(function MusicVolumeFooter({
         onValueChange={([value]) => setVolumeDraft(value)}
         onValueCommit={([value]) => commitVolume(value)}
       />
+      <WidgetItemOutput
+        aria-label="Volume atual do player"
+        className="min-w-8 text-right"
+      >
+        {level}
+      </WidgetItemOutput>
     </CardFooter>
   )
 })
