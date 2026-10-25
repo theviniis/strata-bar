@@ -48,6 +48,9 @@ Evite repetir o estilo em cada uso do componente.
   Button.
 - `src/components/ui/input.tsx` e `src/components/ui/textarea.tsx`: usam a receita
   com borda, preservando os estilos existentes de foco e estado desabilitado.
+- `src/components/ui/input-group.tsx`: aplica a receita no contêiner completo,
+  incluindo addons e botões. Os controles internos ficam transparentes, sem
+  borda, sombra ou efeito de vidro próprios, evitando contornos duplicados.
 - `src/components/ui/tabs.tsx`: a lista usa `rounded-lg` e substitui a borda por
   `ring-1 ring-inset ring-border/50`, criando o contorno sem alterar as dimensões.
   O indicador da aba ativa mantém `bg-primary` e `text-primary-foreground`.
