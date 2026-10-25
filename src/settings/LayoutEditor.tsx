@@ -84,7 +84,6 @@ import {
   aggregateIds,
   barEnabled,
   displayedLayout,
-  effectiveWidget,
   layoutFor,
   removeFromScope,
   setBarEnabled,
@@ -601,14 +600,6 @@ function WidgetCard({
 }) {
   const [inspectorOpen, setInspectorOpen] = useState(false)
   const manager = useContext(ManagerContext)!
-  const values = aggregateIds(manager.scope, manager.monitors).map((monitor) =>
-    Object.values(layoutFor(manager.config, monitor)).flat().includes(widget.id)
-      ? effectiveWidget(manager.config, widget.id, monitor).enabled
-      : false
-  )
-  const checked = values.some((value) => value !== values[0])
-    ? 'indeterminate'
-    : values[0]
   return (
     <Item variant="outline" size="sm">
       <ItemHeader>
