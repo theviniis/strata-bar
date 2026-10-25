@@ -20,6 +20,7 @@ export const sectionLabels: Record<Section, string> = {
 export const typeLabels: Record<WidgetType, string> = {
   separator: 'Separador',
   clock: 'Relógio',
+  weather: 'Clima',
   reminders: 'Lembretes',
   agents: 'Agentes',
   cpu: 'CPU',

@@ -1,3 +1,4 @@
+import { DemoWeatherController } from '@/features/weather/WeatherController'
 import { WidgetViewContext } from './widget-view'
 import { WidgetPreviewContext } from './widget-preview-context'
 import { DemoVolumeController } from '@/features/volume/VolumeController'
@@ -129,6 +130,7 @@ function DemoWidgetController({
       />
     )
   }
+  if (widget.type === 'weather') return <DemoWeatherController />
   if (widget.type === 'clock')
     return (
       <DemoClockController

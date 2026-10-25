@@ -1,3 +1,4 @@
+import { WeatherController } from '@/features/weather/WeatherController'
 import { AgentsController } from '../../features/agents/AgentsController'
 import { ClockController } from '../../features/clock/ClockController'
 import { CpuController } from '../../features/cpu/CpuController'
@@ -31,6 +32,7 @@ const widgets: Record<
   () => ReactElement
 > = {
   clock: () => <ClockController />,
+  weather: () => <WeatherController />,
   reminders: () => <RemindersController />,
   agents: () => <AgentsController />,
   cpu: () => <CpuController />,

@@ -196,6 +196,7 @@ pub fn validate(config: &Config) -> Result<(), String> {
             return Err("Audio targetIndex must be between 0 and 7".into());
         }
     }
+    if let Some(weather) = &config.weather { weather.validate()?; }
     validate_bar(&config.bar)?;
     let mut monitors = std::collections::HashSet::new();
     let ids: std::collections::HashSet<_> = config
@@ -562,6 +563,9 @@ pub fn apply_external_change(app: &AppHandle) {
 /// projection to every bar and the last one would win. `emit_to` addresses a
 /// single window, which is what a per-monitor projection requires.
 pub fn publish(app: &AppHandle, snapshot: &ConfigSnapshot) {
+    if let Some(weather) = app.try_state::<crate::weather::Weather>() {
+        weather.configure(snapshot.config.weather.clone().unwrap_or_default());
+    }
     let app = app.clone();
     let snapshot = snapshot.clone();
     std::thread::spawn(move || {
@@ -575,7 +579,7 @@ pub fn publish(app: &AppHandle, snapshot: &ConfigSnapshot) {
 
 /// Include global audio so a route-only edit is never deduplicated away.
 fn bar_render_state(snapshot: &ConfigSnapshot) -> serde_json::Value {
-    serde_json::json!({"bar": snapshot.config.bar, "widgets": snapshot.config.widgets, "agents": snapshot.config.agents, "audio": snapshot.config.audio, "error": snapshot.error})
+    serde_json::json!({"bar": snapshot.config.bar, "widgets": snapshot.config.widgets, "agents": snapshot.config.agents, "audio": snapshot.config.audio, "weather": snapshot.config.weather, "error": snapshot.error})
 }
 
 fn publish_windows(app: &AppHandle, snapshot: &ConfigSnapshot) {

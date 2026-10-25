@@ -7,6 +7,7 @@ const navigationSchema = z.object({
     'agents',
     'reminders',
     'music',
+    'weather',
     'audio',
     'json'
   ]),

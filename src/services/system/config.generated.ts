@@ -1,5 +1,6 @@
 // Generated from Rust config_contract.rs by cargo build. Do not edit.
-export type WidgetKind = "separator" | "clock" | "reminders" | "agents" | "cpu" | "memory" | "gpu" | "disk" | "network" | "music" | "volume" | "microphone" | "activeWindow" | "komorebi";
+import type { WeatherConfig } from './weather.generated'
+export type WidgetKind = "separator" | "clock" | "weather" | "reminders" | "agents" | "cpu" | "memory" | "gpu" | "disk" | "network" | "music" | "volume" | "microphone" | "activeWindow" | "komorebi";
 export type AudioSource = "windows" | "voicemeeter";
 export type AudioChannelConfig = { source: AudioSource, targetIndex: number, };
 export type AudioConfig = { output: AudioChannelConfig, input: AudioChannelConfig, };
@@ -23,5 +24,5 @@ export type Config = {
  * serialize: documents written before it existed stay valid, and a save
  * preserves whatever the author put there.
  */
-$schema?: string | null, version: number, audio: AudioConfig, agents: AgentsConfig, bar: BarConfig, widgets: WidgetSections, layout?: WidgetLayout | null, monitors: { [key in string]?: BarOverride }, };
+$schema?: string | null, version: number, audio: AudioConfig, weather?: WeatherConfig | null, agents: AgentsConfig, bar: BarConfig, widgets: WidgetSections, layout?: WidgetLayout | null, monitors: { [key in string]?: BarOverride }, };
 export type ConfigSnapshot = { revision: number, config: Config, error: string | null, };

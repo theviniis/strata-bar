@@ -59,6 +59,7 @@ export function widgetPreviewEvent<C extends Channel>(
         pagingFileBytes: metric(0),
         history: []
       },
+      weather: demo.weather,
       disk: demo.disk,
       volume: { level: demo.volume, muted: false },
       microphone: { level: demo.microphone, muted: false },

@@ -14,6 +14,8 @@ mod hook_config;
 mod opencode;
 mod reminder_sound;
 mod google_calendar;
+mod weather;
+mod weather_contract;
 mod media;
 mod media_contract;
 mod media_windows;
@@ -44,7 +46,7 @@ use serde_json::{json, Value};
 use tauri::Manager;
 #[tauri::command]
 fn capabilities(komorebi: tauri::State<komorebi::Komorebi>) -> Value {
-    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"appBar":true,"gpu":true,"disk":true,"network":false,"komorebi":komorebi.available(),"voicemeeter":crate::voicemeeter::installed(),"config":true})
+    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"weather":true,"appBar":true,"gpu":true,"disk":true,"network":false,"komorebi":komorebi.available(),"voicemeeter":crate::voicemeeter::installed(),"config":true})
 }
 #[tauri::command]
 fn subscribe(
@@ -54,6 +56,9 @@ fn subscribe(
     channel: String,
     interval_ms: u64,
 ) -> Result<Value, String> {
+    if channel == "weather" {
+        return window.state::<weather::Weather>().subscribe(window.label());
+    }
     if channel == "media" {
         return window.state::<media::Media>().subscribe(window.label());
     }
@@ -69,7 +74,9 @@ fn unsubscribe(
     komorebi: tauri::State<komorebi::Komorebi>,
     token: String,
 ) {
-    if token.starts_with('m') {
+    if token.starts_with('w') {
+        window.state::<weather::Weather>().unsubscribe(&token, window.label());
+    } else if token.starts_with('m') {
         window
             .state::<media::Media>()
             .unsubscribe(&token, window.label());
@@ -181,6 +188,11 @@ fn overlay_resize(
     desktop::overlay_resize(&app, &window, &session, &size)
 }
 #[tauri::command]
+async fn weather_search(window: tauri::WebviewWindow, query: String) -> Result<Vec<weather_contract::WeatherCity>, String> {
+    if window.label() != "settings" { return Err("Busca de cidades requer Configurações".into()); }
+    tauri::async_runtime::spawn_blocking(move || weather::search(&query)).await.map_err(|e| e.to_string())?
+}
+#[tauri::command]
 fn settings_monitors() -> Result<Vec<config_contract::SettingsMonitor>, String> {
     monitors::list()
 }
@@ -290,6 +302,7 @@ fn cleanup(app: &tauri::AppHandle) {
         scheduler.stop();
     }
     desktop::release_all(app);
+    if let Some(weather) = app.try_state::<weather::Weather>() { weather.stop(); }
     if let Some(media) = app.try_state::<media::Media>() {
         media.stop();
     }
@@ -415,6 +428,7 @@ fn main() {
             google_calendar::calendar_status,
             google_calendar::calendar_connect,
             google_calendar::calendar_disconnect,
+            weather_search,
             media_action,
             spotify_status,
             spotify_connect,
@@ -463,6 +477,7 @@ fn main() {
             app.manage(reminders::Reminders::open(
                 app.path().app_data_dir()?.join("reminders.json"),
             ));
+            app.manage(weather::Weather::start(app.handle().clone(), app.state::<config::ConfigStore>().snapshot()?.config.weather.unwrap_or_default()));
             app.manage(media::Media::start(app.handle().clone()));
             app.manage(agents::Agents::start(app.handle().clone())?);
             app.manage(metrics::Metrics::start(app.handle().clone()));
@@ -488,6 +503,7 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
+                if let Some(weather) = window.app_handle().try_state::<weather::Weather>() { weather.remove_window(window.label()); }
                 if let Some(media) = window.app_handle().try_state::<media::Media>() {
                     media.remove_window(window.label());
                 }

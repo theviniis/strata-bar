@@ -1,10 +1,39 @@
 import type { ConfigSnapshot } from '@/services/system/config.generated'
 import { z } from 'zod'
+
 import defaultDocument from './default.json' with { type: 'json' }
+
+export const weatherCitySchema = z.strictObject({
+  id: z.number().int().min(0).max(4_294_967_295),
+  name: z.string().trim().min(1).max(256),
+  region: z.string().max(256),
+  country: z.string().max(256),
+  latitude: z.number().finite().min(-90).max(90),
+  longitude: z.number().finite().min(-180).max(180),
+  timezone: z
+    .string()
+    .min(1)
+    .max(128)
+    .regex(/^[A-Za-z0-9/_+-]+$/)
+    .refine((value) => {
+      try {
+        new Intl.DateTimeFormat('pt-BR', { timeZone: value })
+        return true
+      } catch {
+        return false
+      }
+    }, 'Fuso horário inválido')
+})
+export const weatherConfigSchema = z.strictObject({
+  city: weatherCitySchema.nullable().default(null),
+  temperatureUnit: z.enum(['celsius', 'fahrenheit']).default('celsius'),
+  windUnit: z.enum(['kmh', 'mph']).default('kmh')
+})
 
 export const types = [
   'separator',
   'clock',
+  'weather',
   'reminders',
   'agents',
   'cpu',
@@ -120,6 +149,7 @@ export const configSchema = z
      */
     $schema: z.string().optional(),
     version: z.literal(2),
+    weather: weatherConfigSchema.optional(),
     audio: audio.default(() => audio.parse({})),
     agents: z
       .object({

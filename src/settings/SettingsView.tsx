@@ -1,3 +1,4 @@
+import { WeatherSettings } from '@/features/weather/WeatherSettings'
 import { Logo } from '@/components/Logo'
 import { QueryProvider } from '@/components/QueryProvider'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -69,6 +70,7 @@ const settingsSections = [
   { id: 'appearance', label: 'Aparência', icon: Palette },
   { id: 'reminders', label: 'Lembretes', icon: LayoutDashboard },
   { id: 'agents', label: 'Agentes', icon: Bot },
+  { id: 'weather', label: 'Clima', icon: LayoutDashboard },
   { id: 'music', label: 'Player de música', icon: Music2 },
   { id: 'audio', label: 'Áudio', icon: Volume2 },
   { id: 'json', label: 'JSON', icon: LayoutDashboard }
@@ -201,6 +203,29 @@ function NativeSettingsView() {
                         disabled={disabled}
                         draft={editor.form.getValues()}
                         onChange={editor.replaceDraft}
+                      />
+                    </CardContent>
+                  </Card>
+                ) : section === 'weather' ? (
+                  <Card className="bg-transparent shadow-none p-0">
+                    <CardHeader>
+                      <CardTitle role="heading" aria-level={2}>
+                        Clima
+                      </CardTitle>
+                      <CardDescription>
+                        Escolha uma cidade e as unidades para todos os
+                        monitores. A seleção é salva ao aplicar.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <WeatherSettings
+                        value={editor.form.getValues().weather}
+                        onChange={(weather) =>
+                          editor.replaceDraft({
+                            ...editor.form.getValues(),
+                            weather
+                          })
+                        }
                       />
                     </CardContent>
                   </Card>

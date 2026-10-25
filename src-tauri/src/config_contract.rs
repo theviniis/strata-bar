@@ -29,6 +29,7 @@ fn default_source() -> AudioSource {
 pub enum WidgetKind {
     Separator,
     Clock,
+    Weather,
     Reminders,
     Agents,
     Cpu,
@@ -260,6 +261,8 @@ pub struct Config {
     pub version: u32,
     #[serde(default)]
     pub audio: AudioConfig,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub weather: Option<crate::weather_contract::WeatherConfig>,
     #[serde(default)]
     pub agents: AgentsConfig,
     pub bar: BarConfig,

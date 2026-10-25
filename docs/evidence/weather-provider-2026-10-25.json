@@ -1,0 +1,388 @@
+{
+  "checkedAt": 1792960923071.0,
+  "imperial": {
+    "city": {
+      "country": "Brasil",
+      "id": 3451138,
+      "latitude": -32.035,
+      "longitude": -52.09861,
+      "name": "Rio Grande",
+      "region": "Rio Grande do Sul",
+      "timezone": "America/Sao_Paulo"
+    },
+    "cloud": 54.0,
+    "code": 2,
+    "days": [
+      {
+        "code": 55,
+        "high": 63.1,
+        "low": 55.5,
+        "sunrise": 1792917457000.0,
+        "sunset": 1792964900000.0,
+        "time": 1792897200000.0
+      },
+      {
+        "code": 53,
+        "high": 61.7,
+        "low": 51.6,
+        "sunrise": 1793003796000.0,
+        "sunset": 1793051348000.0,
+        "time": 1792983600000.0
+      },
+      {
+        "code": 3,
+        "high": 64.7,
+        "low": 53.0,
+        "sunrise": 1793090136000.0,
+        "sunset": 1793137797000.0,
+        "time": 1793070000000.0
+      },
+      {
+        "code": 51,
+        "high": 67.4,
+        "low": 57.8,
+        "sunrise": 1793176478000.0,
+        "sunset": 1793224246000.0,
+        "time": 1793156400000.0
+      },
+      {
+        "code": 51,
+        "high": 68.4,
+        "low": 57.1,
+        "sunrise": 1793262821000.0,
+        "sunset": 1793310696000.0,
+        "time": 1793242800000.0
+      },
+      {
+        "code": 3,
+        "high": 68.9,
+        "low": 59.8,
+        "sunrise": 1793349166000.0,
+        "sunset": 1793397146000.0,
+        "time": 1793329200000.0
+      },
+      {
+        "code": 51,
+        "high": 68.6,
+        "low": 58.7,
+        "sunrise": 1793435511000.0,
+        "sunset": 1793483596000.0,
+        "time": 1793415600000.0
+      }
+    ],
+    "error": null,
+    "feelsLike": 53.2,
+    "hours": [
+      {
+        "code": 3,
+        "isDay": true,
+        "rainChance": 76.0,
+        "temperature": 58.8,
+        "time": 1792958400000.0,
+        "uv": 0.65,
+        "wind": 12.5
+      },
+      {
+        "code": 1,
+        "isDay": true,
+        "rainChance": 61.0,
+        "temperature": 57.9,
+        "time": 1792962000000.0,
+        "uv": 0.25,
+        "wind": 12.5
+      },
+      {
+        "code": 2,
+        "isDay": false,
+        "rainChance": 50.0,
+        "temperature": 56.8,
+        "time": 1792965600000.0,
+        "uv": 0.05,
+        "wind": 11.6
+      },
+      {
+        "code": 3,
+        "isDay": false,
+        "rainChance": 41.0,
+        "temperature": 56.6,
+        "time": 1792969200000.0,
+        "uv": 0.0,
+        "wind": 11.0
+      },
+      {
+        "code": 51,
+        "isDay": false,
+        "rainChance": 33.0,
+        "temperature": 56.7,
+        "time": 1792972800000.0,
+        "uv": 0.0,
+        "wind": 11.0
+      },
+      {
+        "code": 51,
+        "isDay": false,
+        "rainChance": 27.0,
+        "temperature": 56.1,
+        "time": 1792976400000.0,
+        "uv": 0.0,
+        "wind": 10.6
+      },
+      {
+        "code": 0,
+        "isDay": false,
+        "rainChance": 23.0,
+        "temperature": 56.0,
+        "time": 1792980000000.0,
+        "uv": 0.0,
+        "wind": 9.6
+      },
+      {
+        "code": 0,
+        "isDay": false,
+        "rainChance": 20.0,
+        "temperature": 55.4,
+        "time": 1792983600000.0,
+        "uv": 0.0,
+        "wind": 8.4
+      },
+      {
+        "code": 1,
+        "isDay": false,
+        "rainChance": 19.0,
+        "temperature": 54.9,
+        "time": 1792987200000.0,
+        "uv": 0.0,
+        "wind": 7.9
+      },
+      {
+        "code": 1,
+        "isDay": false,
+        "rainChance": 20.0,
+        "temperature": 54.3,
+        "time": 1792990800000.0,
+        "uv": 0.0,
+        "wind": 7.5
+      },
+      {
+        "code": 1,
+        "isDay": false,
+        "rainChance": 20.0,
+        "temperature": 53.6,
+        "time": 1792994400000.0,
+        "uv": 0.0,
+        "wind": 7.0
+      },
+      {
+        "code": 1,
+        "isDay": false,
+        "rainChance": 16.0,
+        "temperature": 53.0,
+        "time": 1792998000000.0,
+        "uv": 0.0,
+        "wind": 6.7
+      }
+    ],
+    "humidity": 72.0,
+    "isDay": true,
+    "pressure": 1016.7,
+    "stale": false,
+    "temperature": 58.6,
+    "temperatureUnit": "fahrenheit",
+    "updatedAt": 1792960923071.0,
+    "windUnit": "mph"
+  },
+  "kind": "live-provider-contract",
+  "limits": "No AppBar, WebView2, monitor, DPI or popup interaction validation in this run",
+  "metric": {
+    "city": {
+      "country": "Brasil",
+      "id": 3451138,
+      "latitude": -32.035,
+      "longitude": -52.09861,
+      "name": "Rio Grande",
+      "region": "Rio Grande do Sul",
+      "timezone": "America/Sao_Paulo"
+    },
+    "cloud": 54.0,
+    "code": 2,
+    "days": [
+      {
+        "code": 55,
+        "high": 17.3,
+        "low": 13.1,
+        "sunrise": 1792917457000.0,
+        "sunset": 1792964900000.0,
+        "time": 1792897200000.0
+      },
+      {
+        "code": 53,
+        "high": 16.5,
+        "low": 10.9,
+        "sunrise": 1793003796000.0,
+        "sunset": 1793051348000.0,
+        "time": 1792983600000.0
+      },
+      {
+        "code": 3,
+        "high": 18.2,
+        "low": 11.7,
+        "sunrise": 1793090136000.0,
+        "sunset": 1793137797000.0,
+        "time": 1793070000000.0
+      },
+      {
+        "code": 51,
+        "high": 19.7,
+        "low": 14.3,
+        "sunrise": 1793176478000.0,
+        "sunset": 1793224246000.0,
+        "time": 1793156400000.0
+      },
+      {
+        "code": 51,
+        "high": 20.2,
+        "low": 14.0,
+        "sunrise": 1793262821000.0,
+        "sunset": 1793310696000.0,
+        "time": 1793242800000.0
+      },
+      {
+        "code": 3,
+        "high": 20.5,
+        "low": 15.5,
+        "sunrise": 1793349166000.0,
+        "sunset": 1793397146000.0,
+        "time": 1793329200000.0
+      },
+      {
+        "code": 51,
+        "high": 20.4,
+        "low": 14.9,
+        "sunrise": 1793435511000.0,
+        "sunset": 1793483596000.0,
+        "time": 1793415600000.0
+      }
+    ],
+    "error": null,
+    "feelsLike": 11.8,
+    "hours": [
+      {
+        "code": 3,
+        "isDay": true,
+        "rainChance": 76.0,
+        "temperature": 14.9,
+        "time": 1792958400000.0,
+        "uv": 0.65,
+        "wind": 20.2
+      },
+      {
+        "code": 1,
+        "isDay": true,
+        "rainChance": 61.0,
+        "temperature": 14.4,
+        "time": 1792962000000.0,
+        "uv": 0.25,
+        "wind": 20.2
+      },
+      {
+        "code": 2,
+        "isDay": false,
+        "rainChance": 50.0,
+        "temperature": 13.8,
+        "time": 1792965600000.0,
+        "uv": 0.05,
+        "wind": 18.6
+      },
+      {
+        "code": 3,
+        "isDay": false,
+        "rainChance": 41.0,
+        "temperature": 13.7,
+        "time": 1792969200000.0,
+        "uv": 0.0,
+        "wind": 17.7
+      },
+      {
+        "code": 51,
+        "isDay": false,
+        "rainChance": 33.0,
+        "temperature": 13.7,
+        "time": 1792972800000.0,
+        "uv": 0.0,
+        "wind": 17.7
+      },
+      {
+        "code": 51,
+        "isDay": false,
+        "rainChance": 27.0,
+        "temperature": 13.4,
+        "time": 1792976400000.0,
+        "uv": 0.0,
+        "wind": 17.1
+      },
+      {
+        "code": 0,
+        "isDay": false,
+        "rainChance": 23.0,
+        "temperature": 13.4,
+        "time": 1792980000000.0,
+        "uv": 0.0,
+        "wind": 15.5
+      },
+      {
+        "code": 0,
+        "isDay": false,
+        "rainChance": 20.0,
+        "temperature": 13.0,
+        "time": 1792983600000.0,
+        "uv": 0.0,
+        "wind": 13.5
+      },
+      {
+        "code": 1,
+        "isDay": false,
+        "rainChance": 19.0,
+        "temperature": 12.7,
+        "time": 1792987200000.0,
+        "uv": 0.0,
+        "wind": 12.7
+      },
+      {
+        "code": 1,
+        "isDay": false,
+        "rainChance": 20.0,
+        "temperature": 12.4,
+        "time": 1792990800000.0,
+        "uv": 0.0,
+        "wind": 12.1
+      },
+      {
+        "code": 1,
+        "isDay": false,
+        "rainChance": 20.0,
+        "temperature": 12.0,
+        "time": 1792994400000.0,
+        "uv": 0.0,
+        "wind": 11.3
+      },
+      {
+        "code": 1,
+        "isDay": false,
+        "rainChance": 16.0,
+        "temperature": 11.7,
+        "time": 1792998000000.0,
+        "uv": 0.0,
+        "wind": 10.7
+      }
+    ],
+    "humidity": 72.0,
+    "isDay": true,
+    "pressure": 1016.7,
+    "stale": false,
+    "temperature": 14.8,
+    "temperatureUnit": "celsius",
+    "updatedAt": 1792960922155.0,
+    "windUnit": "kmh"
+  },
+  "passed": true
+}

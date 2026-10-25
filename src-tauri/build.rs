@@ -25,8 +25,17 @@ mod popups;
 #[allow(dead_code)]
 mod reminders_contract;
 
+#[path = "src/weather_contract.rs"]
+#[allow(dead_code)]
+mod weather_contract;
+
 fn main() {
     use ts_rs::TS;
+    println!("cargo:rerun-if-changed=src/weather_contract.rs");
+    let declarations = [weather_contract::WeatherCity::decl(), weather_contract::TemperatureUnit::decl(), weather_contract::WindUnit::decl(), weather_contract::WeatherConfig::decl(), weather_contract::WeatherHour::decl(), weather_contract::WeatherDay::decl(), weather_contract::WeatherData::decl()];
+    let generated = format!("// Generated from Rust weather_contract.rs by cargo build. Do not edit.\n{}\n", declarations.iter().map(|d| format!("export {d}")).collect::<Vec<_>>().join("\n"));
+    let target = std::path::Path::new("../src/services/system/weather.generated.ts");
+    if std::fs::read_to_string(target).ok().as_deref() != Some(&generated) { std::fs::write(target, generated).expect("Generate weather contract"); }
     println!("cargo:rerun-if-changed=src/agents_contract.rs");
     let declarations = [
         agents_contract::AgentType::decl(),
@@ -174,7 +183,7 @@ fn main() {
         config_contract::ConfigSnapshot::decl(),
     ];
     let config_generated = format!(
-        "// Generated from Rust config_contract.rs by cargo build. Do not edit.\n{}\n",
+        "// Generated from Rust config_contract.rs by cargo build. Do not edit.\nimport type {{ WeatherConfig }} from './weather.generated'\n{}\n",
         config_declarations
             .iter()
             .map(|decl| format!("export {decl}"))

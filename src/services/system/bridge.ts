@@ -12,10 +12,15 @@ import { parseDiskEvent } from './disk'
 import type { Config, ConfigSnapshot } from './config.generated'
 import { parseSnapshot } from '@/services/configuration/config'
 
+import type { WeatherCity, WeatherData } from './weather.generated'
+import { parseWeatherEvent } from './weather'
+import { weatherFixture } from '@/features/weather/fixtures'
+
 export type BridgeMode = 'demo' | 'native'
 
 /** Channels the UI can subscribe to. The clock renders locally, without a channel. */
 export type Channel =
+  | 'weather'
   | 'cpu'
   | 'memory'
   | 'gpu'
@@ -54,6 +59,7 @@ export type KomorebiAction =
 
 /** Payloads published by the native collectors. */
 export interface ChannelData {
+  weather: WeatherData
   media: MediaData
   cpu: CpuData
   memory: MemoryData
@@ -79,6 +85,7 @@ export interface ChannelData {
  * be represented by a scalar.
  */
 export interface DemoChannelData {
+  weather: WeatherData
   media: MediaData
   cpu: number
   memory: number
@@ -144,6 +151,7 @@ export interface Subscribable<D extends Record<Channel, unknown>> {
 }
 
 export interface AdapterBase {
+  weatherSearch?(query: string): Promise<WeatherCity[]>
   settingsMonitors?(): Promise<SettingsMonitor[]>
   mediaAction?(request: MediaRequest): Promise<unknown>
   /** Native-only: the configuration file is the desktop runtime's, not the studio's. */
@@ -186,6 +194,7 @@ export type Bridge = DemoBridge | NativeBridge
 
 export function demoChannelData(): DemoChannelData {
   return {
+    weather: weatherFixture(),
     media: demoMedia(),
     cpu: 17,
     memory: 46,
@@ -396,6 +405,8 @@ export function createNativeBridge(): NativeBridge {
           listener(parsed as SystemEvent<ChannelData[C]>)
         } else if (channel === 'media')
           listener(parseMediaEvent(event) as SystemEvent<ChannelData[C]>)
+        else if (channel === 'weather')
+          listener(parseWeatherEvent(event) as SystemEvent<ChannelData[C]>)
         else listener(event)
       }
       const stop = await listenChannel<SystemEvent<ChannelData[C]>>(
@@ -431,6 +442,10 @@ export function createNativeBridge(): NativeBridge {
     async mediaAction(request) {
       const { invoke } = await import('@tauri-apps/api/core')
       return invoke('media_action', { request })
+    },
+    async weatherSearch(query) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke<WeatherCity[]>('weather_search', { query })
     },
     async settingsMonitors() {
       const { invoke } = await import('@tauri-apps/api/core')

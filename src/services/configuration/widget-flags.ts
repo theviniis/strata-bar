@@ -4,6 +4,7 @@ import type { WidgetType } from './config'
 export const widgetFlags: Readonly<Record<WidgetType, boolean>> = {
   separator: true,
   clock: true,
+  weather: true,
   reminders: true,
   agents: false,
   cpu: true,
