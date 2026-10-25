@@ -230,19 +230,20 @@ export function RemindersPopup({
               </FieldLabel>
             </Field>
           </FieldGroup>
-          <Button type="submit" disabled={pending || isSubmitting || !loaded}>
-            {pending ? (
-              'Salvando…'
-            ) : (
-              <>
-                Criar lembrete{' '}
-                <KbdGroup aria-hidden="true" data-icon="inline-end">
-                  <Kbd variant="primary">Ctrl</Kbd>
-                  <span>+</span>
-                  <Kbd variant="primary">⏎</Kbd>
-                </KbdGroup>
-              </>
-            )}
+          <Button
+            type="submit"
+            disabled={pending || isSubmitting || !loaded}
+            loading={{
+              isLoading: pending,
+              text: 'Salvando...'
+            }}
+          >
+            Criar lembrete{' '}
+            <KbdGroup aria-hidden="true" data-icon="inline-end">
+              <Kbd variant="primary">Ctrl</Kbd>
+              <span>+</span>
+              <Kbd variant="primary">⏎</Kbd>
+            </KbdGroup>
           </Button>
         </form>
       </Tabs>
