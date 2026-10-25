@@ -35,7 +35,9 @@ it.each([
       screen.getByRole('combobox', { name: 'Alvo Voicemeeter' })
     ).toHaveTextContent('Alvo salvo (7) indisponível')
     fireEvent.click(screen.getByRole('combobox', { name: 'Alvo Voicemeeter' }))
-    expect(await screen.findByRole('option', { name: included })).toBeVisible()
+    await waitFor(() =>
+      expect(screen.getByRole('option', { name: included })).toBeVisible()
+    )
     expect(
       screen.queryByRole('option', { name: excluded })
     ).not.toBeInTheDocument()

@@ -132,7 +132,7 @@ it('follows external changes and releases subscriptions on close', async () => {
   await screen.findByRole('button', { name: /Alto-falantes/ })
   act(() => host.listeners.get('audioOutputs')!({ status: 'loading' }))
   expect(
-    screen.getByText('Carregando dispositivos de audio')
+    screen.getByText('Carregando dados de saída de áudio')
   ).toBeInTheDocument()
   act(() =>
     host.listeners.get('audioOutputs')!({
@@ -150,7 +150,9 @@ it('follows external changes and releases subscriptions on close', async () => {
       error: 'Falha de leitura'
     })
   )
-  expect(screen.getByRole('alert')).toHaveTextContent('Falha de leitura')
+  expect(
+    screen.getByText('Erro ao obter dados de saída de áudio')
+  ).toBeInTheDocument()
   fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
   expect(host.hide).toHaveBeenCalled()
   unmount()
