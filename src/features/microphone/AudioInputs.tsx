@@ -1,14 +1,8 @@
+import { mapDataStatus } from '@/components/popup-helpers'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { type ButtonLoadingProps } from '@/components/ui/button-loading'
 import { CardFooter } from '@/components/ui/card'
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle
-} from '@/components/ui/empty'
 import { Slider } from '@/components/ui/slider'
 import { Spinner } from '@/components/ui/spinner'
 import { WidgetItemOutput } from '@/components/widget-item'
@@ -53,19 +47,11 @@ export function AudioInputs({
           <p>Configure a fonte em Configurações → Áudio → Entrada de áudio.</p>
         )}
         <div aria-busy={pending !== null}>
-          {inputs.status === 'loading' && <EmptyInputItems />}
-          {inputs.status === 'error' && (
-            <p role="alert" className="p-3 text-destructive">
-              {inputs.error}
-            </p>
-          )}
+          {mapDataStatus('entrada de áudio', inputs.status)}
           {inputs.status === 'error' && (
             <Button variant={'destructive'} onClick={retry}>
               Tentar novamente
             </Button>
-          )}
-          {inputs.status === 'unavailable' && (
-            <p className="p-3">Entradas de áudio indisponíveis.</p>
           )}
           {data?.devices.length === 0 && (
             <p className="p-3">Nenhuma entrada de áudio disponível.</p>
@@ -168,21 +154,5 @@ function AudioInputContentItem({
         )
       )}
     </Button>
-  )
-}
-
-function EmptyInputItems() {
-  return (
-    <Empty>
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <Spinner className="text-primary" />
-        </EmptyMedia>
-        <EmptyTitle>Carregando dispositivos de áudio</EmptyTitle>
-        <EmptyDescription>
-          Por favor aguarde enquanto carregamos os dispositivos de áudio
-        </EmptyDescription>
-      </EmptyHeader>
-    </Empty>
   )
 }

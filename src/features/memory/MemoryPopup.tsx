@@ -1,3 +1,4 @@
+import { mapDataStatus } from '@/components/popup-helpers'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { MemoryData } from '@/services/system/memory.generated'
 import { MemoryGraph } from './MemoryGraph'
@@ -15,14 +16,7 @@ export function MemoryPopup({
   demo: boolean
 }) {
   const data = event.status === 'ready' ? event.data : lastData
-  if (!data)
-    return (
-      <p role="status" className="w-80 p-4">
-        {event.status === 'loading'
-          ? 'Carregando memória'
-          : 'Memória indisponível'}
-      </p>
-    )
+  if (!data) return mapDataStatus('Memória RAM', event.status)
   const fields = [
     ['Em uso', data.usedBytes, 'bytes'],
     ['Memória total', data.totalBytes, 'bytes'],

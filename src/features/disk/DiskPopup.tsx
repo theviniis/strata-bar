@@ -1,3 +1,4 @@
+import { mapDataStatus } from '@/components/popup-helpers'
 import { Progress } from '@/components/ui/progress'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { DiskData } from '@/services/system/disk.generated'
@@ -12,14 +13,7 @@ export interface DiskPopupProps {
 }
 export function DiskPopup({ event, lastData, now, demo }: DiskPopupProps) {
   const data = event.status === 'ready' ? event.data : lastData
-  if (!data)
-    return (
-      <p role="status" className="w-80 p-4">
-        {event.status === 'loading'
-          ? 'Carregando discos'
-          : 'Discos indisponíveis'}
-      </p>
-    )
+  if (!data) return mapDataStatus('discos', event.status)
   const volumes = localVolumes(data.volumes)
   return (
     <section aria-label="Detalhes dos discos" className="p-4">

@@ -1,4 +1,5 @@
 import { ResourceGraph } from '@/components/ResourceGraph'
+import { mapDataStatus } from '@/components/popup-helpers'
 import {
   newestTimestamp,
   projectResourceWindow
@@ -23,12 +24,8 @@ export function GpuPopup({
   demo: boolean
 }) {
   const data = event.status === 'ready' ? event.data : lastData
-  if (!data)
-    return (
-      <p role="status" className="w-80 p-4">
-        {event.status === 'loading' ? 'Carregando GPU' : 'GPU indisponível'}
-      </p>
-    )
+  if (!data) return mapDataStatus('GPU', event.status)
+
   const ready = event.status === 'ready'
   const format = (
     metric: GpuData['percent'],

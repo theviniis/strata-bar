@@ -1,14 +1,8 @@
+import { mapDataStatus } from '@/components/popup-helpers'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { type ButtonLoadingProps } from '@/components/ui/button-loading'
 import { CardFooter } from '@/components/ui/card'
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle
-} from '@/components/ui/empty'
 import { Slider } from '@/components/ui/slider'
 import { Spinner } from '@/components/ui/spinner'
 import { WidgetItemOutput } from '@/components/widget-item'
@@ -53,19 +47,11 @@ export function AudioOutputs({
           <p>Configure a fonte em Configurações → Áudio → Saída de áudio.</p>
         )}
         <div className="" aria-busy={pending !== null}>
-          {outputs.status === 'loading' && <EmptyOutputItems />}
-          {outputs.status === 'error' && (
-            <p role="alert" className="p-3 text-destructive">
-              {outputs.error}
-            </p>
-          )}
+          {mapDataStatus('saída de áudio', outputs.status)}
           {outputs.status === 'error' && (
             <Button variant={'destructive'} onClick={retry}>
               Tentar novamente
             </Button>
-          )}
-          {outputs.status === 'unavailable' && (
-            <p className="p-3">Saídas de áudio indisponíveis.</p>
           )}
           {data?.devices.length === 0 && (
             <p className="p-3">Nenhuma saída de áudio disponível.</p>
@@ -164,21 +150,5 @@ function AudioOutputContentItem({
         )
       )}
     </Button>
-  )
-}
-
-function EmptyOutputItems() {
-  return (
-    <Empty>
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <Spinner className="text-primary" />
-        </EmptyMedia>
-        <EmptyTitle>Carregando dispositivos de audio</EmptyTitle>
-        <EmptyDescription>
-          Por favor aguarde enquanto carregamos os dispositivos de audio
-        </EmptyDescription>
-      </EmptyHeader>
-    </Empty>
   )
 }

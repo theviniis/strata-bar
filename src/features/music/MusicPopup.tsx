@@ -12,7 +12,6 @@ import {
   Repeat,
   Repeat1,
   Shuffle,
-  TriangleAlert,
   Volume2,
   VolumeX
 } from 'lucide-react'
@@ -21,39 +20,11 @@ import {
   FaForwardStep as SkipForward
 } from 'react-icons/fa6'
 
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle
-} from '@/components/ui/empty'
-import { Spinner } from '@/components/ui/spinner'
+import { mapDataStatus } from '@/components/popup-helpers'
 import { memo } from 'react'
 import type { MusicPopupControls } from './useMusicPopupControls'
 const nextRepeatMode = (mode: RepeatMode): RepeatMode =>
   mode === 'none' ? 'list' : mode === 'list' ? 'track' : 'none'
-
-type GetMediaComponentProps = {
-  status: SystemEvent<MediaData>['status']
-  media: MediaData | null
-  controls: MusicPopupControls
-}
-
-const getMediaComponent = ({
-  status,
-  media,
-  controls
-}: GetMediaComponentProps) => {
-  const map = {
-    ready: media && <MusicPopupContentData media={media} controls={controls} />,
-    loading: <LoadingMidia />,
-    error: <MidiaUnavaliable />,
-    unavailable: <NoMidia />
-  } as const
-
-  return map[status]
-}
 
 export function MusicPopup({
   event,
@@ -85,7 +56,10 @@ export function MusicPopup({
         </p>
       )}
       <div className="p-4">
-        {getMediaComponent({ status: event.status, media, controls })}
+        {mapDataStatus('mídia', event.status) ||
+          (!!media && (
+            <MusicPopupContentData media={media} controls={controls} />
+          ))}
       </div>
       {volumeReady && (
         <MusicVolumeFooter
@@ -358,59 +332,5 @@ function MusicPopupContentData({
         </p>
       )}
     </div>
-  )
-}
-
-function NoMidia() {
-  return (
-    <Empty className="p-0" role="status">
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <Music2 />
-        </EmptyMedia>
-        <EmptyTitle>Nenhuma mídia tocando</EmptyTitle>
-        <EmptyDescription>
-          Reproduza alguma mídia para exibir os controles
-        </EmptyDescription>
-      </EmptyHeader>
-    </Empty>
-  )
-}
-
-function LoadingMidia() {
-  return (
-    <Empty className="p-0" role="status">
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <Spinner />
-        </EmptyMedia>
-        <EmptyTitle>Carregando mídia...</EmptyTitle>
-        <EmptyDescription>
-          Estamos carregando a sua mídia, isto pode levar um tempo
-        </EmptyDescription>
-      </EmptyHeader>
-    </Empty>
-  )
-}
-
-function MidiaUnavaliable() {
-  return (
-    <Empty className="p-0" role="status">
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <TriangleAlert />
-        </EmptyMedia>
-        <EmptyTitle
-          role="status"
-          className="text-destructive flex items-center gap-2"
-        >
-          <TriangleAlert />
-          <span>Mídia indisponível</span>
-        </EmptyTitle>
-        <EmptyDescription>
-          Nenhuma mídia disponível foi encontrada
-        </EmptyDescription>
-      </EmptyHeader>
-    </Empty>
   )
 }
