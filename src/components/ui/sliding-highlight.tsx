@@ -1,13 +1,13 @@
+import { cn } from '@/lib/utils'
 import { Slot } from '@radix-ui/react-slot'
 import { motion, useReducedMotion, type SpringOptions } from 'motion/react'
-import { cn } from '@/lib/utils'
 import {
   useEffect,
   useRef,
   useState,
   type CSSProperties,
-  type ReactElement,
-  type PointerEvent
+  type PointerEvent,
+  type ReactElement
 } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -175,7 +175,7 @@ export function SlidingHighlight({
             data-sliding-highlight=""
             data-moving={highlight.moving}
             className={cn(
-              'pointer-events-none absolute -z-10 bg-muted',
+              'pointer-events-none absolute -z-10 bg-muted/60 backdrop-blur-md shadow-sm shadow-foreground/5 inset-shadow-[0_1px_0] inset-shadow-background/40',
               highlightClassName
             )}
             initial={false}
