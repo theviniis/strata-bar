@@ -38,6 +38,7 @@ pub enum WidgetKind {
     Disk,
     Network,
     Music,
+    MediaSpectrum,
     Volume,
     Microphone,
     ActiveWindow,

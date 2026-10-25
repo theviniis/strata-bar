@@ -1,4 +1,6 @@
 import { DemoWeatherController } from '@/features/weather/WeatherController'
+import { MediaSpectrum } from '@/features/media-spectrum/MediaSpectrum'
+import type { MediaSpectrumData } from '@/services/system/media.generated'
 import { WidgetViewContext } from './widget-view'
 import { WidgetPreviewContext } from './widget-preview-context'
 import { DemoVolumeController } from '@/features/volume/VolumeController'
@@ -131,6 +133,15 @@ function DemoWidgetController({
     )
   }
   if (widget.type === 'weather') return <DemoWeatherController />
+  if (widget.type === 'mediaSpectrum')
+    return (
+      <MediaSpectrum
+        demo
+        data={
+          sample?.status === 'ready' ? (sample.data as MediaSpectrumData) : null
+        }
+      />
+    )
   if (widget.type === 'clock')
     return (
       <DemoClockController

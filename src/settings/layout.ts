@@ -29,6 +29,7 @@ export const typeLabels: Record<WidgetType, string> = {
   disk: 'Discos',
   network: 'Rede',
   music: 'Música',
+  mediaSpectrum: 'Espectro de mídia',
   volume: 'Volume',
   microphone: 'Microfone',
   activeWindow: 'Janela ativa',

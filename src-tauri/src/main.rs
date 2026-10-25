@@ -18,6 +18,9 @@ mod weather;
 mod weather_contract;
 mod media;
 mod media_contract;
+mod media_spectrum;
+mod spectrum_capture;
+mod spectrum_fft;
 mod media_windows;
 mod reminders;
 mod reminders_contract;
@@ -46,7 +49,7 @@ use serde_json::{json, Value};
 use tauri::Manager;
 #[tauri::command]
 fn capabilities(komorebi: tauri::State<komorebi::Komorebi>) -> Value {
-    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"weather":true,"appBar":true,"gpu":true,"disk":true,"network":false,"komorebi":komorebi.available(),"voicemeeter":crate::voicemeeter::installed(),"config":true})
+    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"mediaSpectrum":true,"weather":true,"appBar":true,"gpu":true,"disk":true,"network":false,"komorebi":komorebi.available(),"voicemeeter":crate::voicemeeter::installed(),"config":true})
 }
 #[tauri::command]
 fn subscribe(
@@ -56,6 +59,9 @@ fn subscribe(
     channel: String,
     interval_ms: u64,
 ) -> Result<Value, String> {
+    if channel == "mediaSpectrum" {
+        return window.state::<media_spectrum::MediaSpectrum>().subscribe(window.label());
+    }
     if channel == "weather" {
         return window.state::<weather::Weather>().subscribe(window.label());
     }
@@ -74,7 +80,9 @@ fn unsubscribe(
     komorebi: tauri::State<komorebi::Komorebi>,
     token: String,
 ) {
-    if token.starts_with('w') {
+    if token.starts_with("spectrum") {
+        window.state::<media_spectrum::MediaSpectrum>().unsubscribe(&token, window.label());
+    } else if token.starts_with('w') {
         window.state::<weather::Weather>().unsubscribe(&token, window.label());
     } else if token.starts_with('m') {
         window
@@ -233,7 +241,7 @@ fn diagnostics(
     metrics: tauri::State<metrics::Metrics>,
     komorebi: tauri::State<komorebi::Komorebi>,
 ) -> Value {
-    json!({"metrics":metrics.diagnostics(),"komorebi":komorebi.diagnostics(),"overlay":desktop::overlay_snapshot(),"settings":desktop::settings_snapshot(),"profile":desktop::profile(),"config":config::diagnostics(&app),"bars":app.webview_windows().keys().collect::<Vec<_>>()})
+    json!({"mediaSpectrum":app.state::<media_spectrum::MediaSpectrum>().diagnostics(),"metrics":metrics.diagnostics(),"komorebi":komorebi.diagnostics(),"overlay":desktop::overlay_snapshot(),"settings":desktop::settings_snapshot(),"profile":desktop::profile(),"config":config::diagnostics(&app),"bars":app.webview_windows().keys().collect::<Vec<_>>()})
 }
 #[tauri::command]
 async fn media_action(
@@ -302,6 +310,7 @@ fn cleanup(app: &tauri::AppHandle) {
         scheduler.stop();
     }
     desktop::release_all(app);
+    if let Some(spectrum) = app.try_state::<media_spectrum::MediaSpectrum>() { spectrum.stop(); }
     if let Some(weather) = app.try_state::<weather::Weather>() { weather.stop(); }
     if let Some(media) = app.try_state::<media::Media>() {
         media.stop();
@@ -377,6 +386,13 @@ fn main() {
     }
     if std::env::args().any(|arg| arg == "--probe-media") {
         println!("{}", media::probe());
+        return;
+    }
+    if std::env::args().any(|arg| arg == "--probe-spectrum") {
+        let result = media_spectrum::probe();
+        let path = std::env::temp_dir().join("strata-spectrum-probe.json");
+        std::fs::write(path, serde_json::to_string_pretty(&result).unwrap()).unwrap();
+        println!("{result}");
         return;
     }
     if std::env::args().any(|arg| arg == "--probe-vm") {
@@ -481,6 +497,7 @@ fn main() {
             app.manage(media::Media::start(app.handle().clone()));
             app.manage(agents::Agents::start(app.handle().clone())?);
             app.manage(metrics::Metrics::start(app.handle().clone()));
+            app.manage(media_spectrum::MediaSpectrum::start(app.handle().clone(), app.state::<media::Media>().inner().clone(), app.state::<metrics::Metrics>().inner().clone()));
             app.manage(komorebi::Komorebi::start(app.handle().clone()));
             monitors::observe(app.handle())?;
             desktop::reconcile(app.handle())?;
@@ -503,6 +520,7 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
+                if let Some(spectrum) = window.app_handle().try_state::<media_spectrum::MediaSpectrum>() { spectrum.remove_window(window.label()); }
                 if let Some(weather) = window.app_handle().try_state::<weather::Weather>() { weather.remove_window(window.label()); }
                 if let Some(media) = window.app_handle().try_state::<media::Media>() {
                     media.remove_window(window.label());

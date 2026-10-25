@@ -1,6 +1,16 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+/// Only frequency energies cross IPC; PCM never leaves the capture worker.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaSpectrumData {
+    pub session_id: String,
+    pub generation: u32,
+    pub sequence: u32,
+    pub bands: [f32; 6],
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, TS, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum MediaAvailability {

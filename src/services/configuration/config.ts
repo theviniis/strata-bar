@@ -42,6 +42,7 @@ export const types = [
   'disk',
   'network',
   'music',
+  'mediaSpectrum',
   'volume',
   'microphone',
   'activeWindow',

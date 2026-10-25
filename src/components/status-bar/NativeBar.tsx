@@ -190,7 +190,7 @@ export function NativeBarSurface({
                       data-bar-item
                       data-has-previous={index > 0}
                       data-has-next={index < widgets.length - 1}
-                      className="group/bar-item flex min-w-0 items-center"
+                      className="group/bar-item flex min-w-0 items-center empty:hidden"
                       style={{ gap: bar.spacing }}
                     >
                       {renderWidget ? (

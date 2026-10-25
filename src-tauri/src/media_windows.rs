@@ -887,10 +887,46 @@ unsafe fn process_matches(pid: u32, source: &str) -> bool {
             && String::from_utf16_lossy(&path[..len as usize])
                 .rsplit('\\')
                 .next()
-                .is_some_and(|name| name.eq_ignore_ascii_case(source))
+                .is_some_and(|name| executable_matches(name, source))
     };
     let _ = CloseHandle(process);
     matched
+}
+fn executable_matches(name: &str, source: &str) -> bool {
+    name.eq_ignore_ascii_case(source)
+        || (!source.contains(['.', '!', '/', '\\'])
+            && name.to_ascii_lowercase().strip_suffix(".exe").is_some_and(|stem| stem.eq_ignore_ascii_case(source)))
+}
+/// Resolve only an unambiguous, active render-session PID using the same
+/// AUMID/executable matching as player volume. Never guess a foreground process.
+pub fn spectrum_process(source: &str) -> Result<u32, String> {
+    unsafe {
+        let find = || -> windows::core::Result<Vec<u32>> {
+            let enumerator: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)?;
+            let devices = enumerator.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE)?;
+            let mut pids = Vec::new();
+            for index in 0..devices.GetCount()? {
+                let manager: IAudioSessionManager2 = devices.Item(index)?.Activate(CLSCTX_ALL, None)?;
+                let sessions = manager.GetSessionEnumerator()?;
+                for index in 0..sessions.GetCount()? {
+                    let control = sessions.GetSession(index)?;
+                    if control.GetState()? != AudioSessionStateActive { continue; }
+                    let extended: IAudioSessionControl2 = control.cast()?;
+                    let pid = extended.GetProcessId()?;
+                    if pid != 0 && process_matches(pid, source) { pids.push(pid); }
+                }
+            }
+            pids.sort_unstable();
+            pids.dedup();
+            Ok(pids)
+        };
+        let pids = find().map_err(|e| e.to_string())?;
+        match pids.as_slice() {
+            [pid] => Ok(*pid),
+            [] => Err("Nenhum processo de áudio ativo corresponde ao player".into()),
+            _ => Err("Mais de um processo de áudio corresponde ao player".into()),
+        }
+    }
 }
 unsafe fn find_audio(
     source: &str,
@@ -980,6 +1016,14 @@ fn audio_resolution_needed(
 #[cfg(test)]
 mod audio_tests {
     use super::*;
+    #[test]
+    fn executable_identity_accepts_exact_basenames_without_fuzzy_matching() {
+        assert!(executable_matches("chrome.exe", "Chrome"));
+        assert!(executable_matches("Spotify.exe", "spotify.exe"));
+        for source in ["chrom", "chrome.e", "chrome!other", "folder/chrome", ""] {
+            assert!(!executable_matches("chrome.exe", source));
+        }
+    }
     #[test]
     fn chooses_only_an_unambiguous_active_or_previously_owned_session() {
         assert_eq!(select_audio(&[false, true], None), Some(1));

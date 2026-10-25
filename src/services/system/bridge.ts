@@ -1,6 +1,8 @@
 import type { SettingsMonitor } from './config.generated'
 import type { MediaData, MediaRequest, SpotifyStatus } from './media.generated'
 import { demoMedia, mediaPosition, parseMediaEvent } from './media'
+import type { MediaSpectrumData } from './media.generated'
+import { demoSpectrum, spectrumEventGuard } from './media-spectrum'
 import type { MemoryData } from './memory.generated'
 import { parseMemoryEvent } from './memory'
 import type { CpuData } from './cpu.generated'
@@ -33,6 +35,7 @@ export type Channel =
   | 'audioInputs'
   | 'microphone'
   | 'media'
+  | 'mediaSpectrum'
   | 'voicemeeter'
 
 export type WorkspaceStatus = 'active' | 'populated' | 'empty'
@@ -59,6 +62,7 @@ export type KomorebiAction =
 
 /** Payloads published by the native collectors. */
 export interface ChannelData {
+  mediaSpectrum: MediaSpectrumData
   weather: WeatherData
   media: MediaData
   cpu: CpuData
@@ -85,6 +89,7 @@ export interface ChannelData {
  * be represented by a scalar.
  */
 export interface DemoChannelData {
+  mediaSpectrum: MediaSpectrumData
   weather: WeatherData
   media: MediaData
   cpu: number
@@ -195,6 +200,7 @@ export type Bridge = DemoBridge | NativeBridge
 export function demoChannelData(): DemoChannelData {
   return {
     weather: weatherFixture(),
+    mediaSpectrum: demoSpectrum(),
     media: demoMedia(),
     cpu: 17,
     memory: 46,
@@ -382,6 +388,7 @@ export function createNativeBridge(): NativeBridge {
       }
       let receivedEvent = false
       let resourceSequence = -1
+      const spectrumGuard = spectrumEventGuard()
       const parsers = {
         cpu: parseCpuEvent,
         gpu: parseGpuEvent,
@@ -403,6 +410,9 @@ export function createNativeBridge(): NativeBridge {
             resourceSequence = parsed.data.sequence
           }
           listener(parsed as SystemEvent<ChannelData[C]>)
+        } else if (channel === 'mediaSpectrum') {
+          const parsed = spectrumGuard(event)
+          if (parsed) listener(parsed as SystemEvent<ChannelData[C]>)
         } else if (channel === 'media')
           listener(parseMediaEvent(event) as SystemEvent<ChannelData[C]>)
         else if (channel === 'weather')

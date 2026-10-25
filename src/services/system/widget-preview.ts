@@ -64,7 +64,8 @@ export function widgetPreviewEvent<C extends Channel>(
       volume: { level: demo.volume, muted: false },
       microphone: { level: demo.microphone, muted: false },
       komorebi: demo.komorebi,
-      media: demo.media
+      media: demo.media,
+      mediaSpectrum: demo.mediaSpectrum
     }
   }
   const data = samples[channel]

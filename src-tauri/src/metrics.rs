@@ -127,6 +127,7 @@ struct Sub {
 }
 #[derive(Default)]
 struct Data {
+    output_generation: u32,
     next: u64,
     subs: HashMap<String, Sub>,
     latest: HashMap<String, Value>,
@@ -158,6 +159,12 @@ enum Request {
     Stop,
 }
 impl Metrics {
+    pub fn spectrum_output(&self) -> (u32, Option<bool>) {
+        let data = self.data.lock().unwrap();
+        let muted = data.latest.get("volume").filter(|v| v["status"] == "ready")
+            .and_then(|v| v["data"]["muted"].as_bool());
+        (data.output_generation, muted)
+    }
     pub fn start(app: AppHandle) -> Self {
         let (tx, rx) = mpsc::channel();
         let this = Self {
@@ -370,6 +377,7 @@ impl Metrics {
             let mut volume_active = [false; 2];
             loop {
                 let dirty = changed.swap(false, Ordering::AcqRel);
+                if dirty { self.data.lock().unwrap().output_generation += 1; }
                 // Voicemeeter maintenance: keep the remote session warm when the
                 // routing menu or a routed audio channel needs it, then publish
                 // per-channel levels and the strip/bus snapshot (the remote API
@@ -669,6 +677,9 @@ impl Metrics {
                     }
                     Ok(Request::Source(channel, target, reply)) => {
                         if sources.get(&channel).copied() != target {
+                            if channel == "volume" {
+                                self.publish(&app, "volume", envelope("loading", Value::Null));
+                            }
                             if let Some(pending) = vm_pending.remove(channel.as_str()) {
                                 let _ = pending.reply.send(Err("Rota de áudio alterada".into()));
                             }
@@ -838,6 +849,24 @@ mod channel_source_tests {
         assert_eq!(vm_interval(false, false), Duration::from_secs(2));
     }
 
+    #[test]
+    fn spectrum_observes_only_the_routed_output_snapshot_and_its_generation() {
+        let (tx, _) = mpsc::channel();
+        let metrics = Metrics { data: Default::default(), tx };
+        assert_eq!(metrics.spectrum_output(), (0, None));
+        for muted in [true, false] {
+            let mut data = metrics.data.lock().unwrap();
+            data.output_generation = 3;
+            data.latest.insert("volume".into(), envelope("ready", json!({"level":50,"muted":muted})));
+            data.latest.insert("audioOutputs".into(), envelope("unavailable", Value::Null));
+            drop(data);
+            assert_eq!(metrics.spectrum_output(), (3, Some(muted)));
+        }
+        for status in ["loading", "unavailable", "error"] {
+            metrics.data.lock().unwrap().latest.insert("volume".into(), envelope(status, Value::Null));
+            assert_eq!(metrics.spectrum_output(), (3, None));
+        }
+    }
     #[test]
     fn routing_validates_the_channel_and_target() {
         let (tx, rx) = mpsc::channel();

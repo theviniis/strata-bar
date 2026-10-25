@@ -104,6 +104,7 @@ fn main() {
         media_contract::RepeatMode::decl(),
         media_contract::MediaCapabilities::decl(),
         media_contract::MediaData::decl(),
+        media_contract::MediaSpectrumData::decl(),
         media_contract::MediaAction::decl(),
         media_contract::MediaRequest::decl(),
         media_contract::SpotifyStatus::decl(),

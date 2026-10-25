@@ -106,6 +106,13 @@ pub fn validate(request: &MediaRequest, data: &MediaData) -> Result<(), String> 
     Ok(())
 }
 impl Media {
+    /// Compact snapshot for the native analyzer; never copy artwork at audio cadence.
+    pub fn spectrum_target(&self) -> Option<(String, String)> {
+        let data = self.data.lock().unwrap();
+        let event = data.latest.as_ref()?;
+        if event["status"] != "ready" || event["data"]["playback"] != "playing" { return None; }
+        Some((event["data"]["sessionId"].as_str()?.into(), event["data"]["playerId"].as_str()?.into()))
+    }
     pub fn start(app: AppHandle) -> Self {
         let (tx, rx) = mpsc::channel();
         let notify = tx.clone();
@@ -370,6 +377,23 @@ pub fn probe() -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn spectrum_follows_only_the_current_playing_session() {
+        let (tx, _) = mpsc::channel();
+        let media = Media { data: Default::default(), tx, spotify: Spotify::start(|| {}) };
+        let mut snapshot = fixture();
+        snapshot.playback = "playing".into();
+        media.data.lock().unwrap().latest = Some(crate::metrics::envelope("ready", serde_json::to_value(&snapshot).unwrap()));
+        assert_eq!(media.spectrum_target(), Some((snapshot.session_id.clone(), snapshot.player_id.clone())));
+        for state in ["paused", "stopped", "unknown"] {
+            snapshot.playback = state.into();
+            media.data.lock().unwrap().latest = Some(crate::metrics::envelope("ready", serde_json::to_value(&snapshot).unwrap()));
+            assert_eq!(media.spectrum_target(), None);
+        }
+        media.data.lock().unwrap().latest = Some(crate::metrics::envelope("unavailable", Value::Null));
+        assert_eq!(media.spectrum_target(), None);
+        media.stop();
+    }
     #[test]
     fn retries_a_temporarily_missing_session_without_another_windows_event() {
         assert!(!reuse_snapshot(&Request::Tick, false, false));

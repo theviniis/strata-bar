@@ -1,4 +1,5 @@
 import { WeatherController } from '@/features/weather/WeatherController'
+import { MediaSpectrumController } from '@/features/media-spectrum/MediaSpectrumController'
 import { AgentsController } from '../../features/agents/AgentsController'
 import { ClockController } from '../../features/clock/ClockController'
 import { CpuController } from '../../features/cpu/CpuController'
@@ -40,6 +41,7 @@ const widgets: Record<
   gpu: () => <GpuController />,
   disk: () => <DiskController />,
   music: () => <MusicController />,
+  mediaSpectrum: () => <MediaSpectrumController />,
   volume: () => <VolumeController />,
   microphone: () => <MicrophoneController />,
   komorebi: () => <KomorebiController />,
