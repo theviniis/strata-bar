@@ -51,12 +51,12 @@ export function Music({
                 className="absolute inset-0 h-full w-full object-cover"
               />
               <span className="absolute inset-0 bg-background/65 backdrop-blur-md" />
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-0 rounded-full bg-muted/30 opacity-0 transition-opacity duration-200 ease-out group-hover/music:opacity-100 group-data-[popup-open=true]/music:opacity-100 motion-reduce:transition-none"
-              />
             </div>
           )}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-0 rounded-full bg-muted/30 opacity-0 transition-opacity duration-200 ease-out group-hover/music:opacity-100 group-data-[popup-open=true]/music:bg-muted group-data-[popup-open=true]/music:opacity-100 motion-reduce:transition-none"
+          />
           <MediaControls
             current={current}
             pending={pending}

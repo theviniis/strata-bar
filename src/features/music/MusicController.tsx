@@ -145,7 +145,7 @@ export function MusicContent({
           <WidgetPopup.Trigger asChild>
             <button
               aria-label="Abrir player de música"
-              className="relative z-10 flex min-w-0 flex-1 cursor-pointer items-center self-stretch focus-visible:outline-accent"
+              className="relative z-10 flex min-w-0 flex-1 cursor-pointer items-center self-stretch focus-visible:outline-accent data-[popup-open=true]:bg-transparent"
             >
               <ScrollingText
                 text={text}
