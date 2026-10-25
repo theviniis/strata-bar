@@ -94,6 +94,7 @@ export default function Overlay() {
       >
         {render.kind === 'tooltip' ? (
           <TooltipSurface
+            key={render.session}
             text={render.text}
             side={render.side}
             arrowX={render.arrowX}

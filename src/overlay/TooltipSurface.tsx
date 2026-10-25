@@ -3,6 +3,8 @@ import {
   tooltipPillClasses
 } from '@/components/ui/tooltip-classes'
 import { cn } from '@/lib/utils'
+import { motion } from 'motion/react'
+import { useTooltipMotion } from '@/components/ui/tooltip-motion'
 import type { OverlaySide } from '../services/system/overlay'
 import { TOOLTIP_ARROW_ALLOWANCE } from './measure'
 
@@ -19,6 +21,7 @@ interface TooltipSurfaceProps {
  */
 export function TooltipSurface({ text, side, arrowX }: TooltipSurfaceProps) {
   const pointsUp = side === 'bottom'
+  const animation = useTooltipMotion()
   return (
     <div
       className="inline-block w-full"
@@ -28,7 +31,13 @@ export function TooltipSurface({ text, side, arrowX }: TooltipSurfaceProps) {
           : { paddingBottom: TOOLTIP_ARROW_ALLOWANCE }
       }
     >
-      <div className="relative flex justify-center">
+      <motion.div
+        {...animation}
+        className="relative flex justify-center"
+        style={{
+          transformOrigin: `${arrowX === undefined ? '50%' : `${arrowX}px`} ${pointsUp ? '0%' : '100%'}`
+        }}
+      >
         <div className={tooltipPillClasses}>{text}</div>
         <span
           aria-hidden="true"
@@ -39,7 +48,7 @@ export function TooltipSurface({ text, side, arrowX }: TooltipSurfaceProps) {
             pointsUp ? '-top-1' : '-bottom-1'
           )}
         />
-      </div>
+      </motion.div>
     </div>
   )
 }

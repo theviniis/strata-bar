@@ -1,0 +1,186 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+import { colorThemes, themeStyle } from '../services/theme/palettes'
+
+<Meta title="Fundamentos/Design tokens e tipografia" />
+
+# Design tokens e tipografia
+
+Os fundamentos visuais do Strata mantêm a barra compacta e os popups legíveis.
+Esta página apresenta os tokens usados pela aplicação, com amostras reais em vez
+de imagens. Alterne **dark / light** na toolbar para conferir a documentação.
+
+## Fontes de verdade
+
+- `src/app/styles.css`: família tipográfica, escala de texto, aliases de cores,
+  raios e a utility `glass-surface`.
+- `src/services/theme/palettes.ts`: valores das paletas e aplicação por
+  `themeStyle(palette, mode)`.
+
+Prefira classes semânticas como `bg-card`, `text-foreground` e `text-body`.
+A mesma função visual acompanha a paleta selecionada sem fixar uma cor no
+componente. Os valores das amostras abaixo vêm diretamente de `themeStyle`.
+
+## Cores por função
+
+Cada paleta é apresentada nos dois modos. Os pares de superfície e texto devem
+ser usados juntos: `card` com `card-foreground`, por exemplo. Os rótulos mantêm
+o significado identificável mesmo quando a cor não pode ser distinguida.
+
+{Object.entries(colorThemes).map(([palette, labels]) => (
+
+  <section key={palette} aria-label={labels.label}>
+    <h3>{labels.label}</h3>
+    <div className="grid gap-4 lg:grid-cols-2">
+      {['dark', 'light'].map((mode) => (
+        <div
+          key={mode}
+          style={themeStyle(palette, mode)}
+          className="rounded-lg border border-border bg-background p-4 font-sans text-foreground"
+        >
+          <div className="mb-4 text-title">{mode === 'dark' ? labels.darkLabel : labels.lightLabel}</div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {Object.entries(themeStyle(palette, mode))
+              .filter(([token]) => token.startsWith('--') && token !== '--radius')
+              .map(([token, value]) => (
+                <div key={token} className="flex items-center gap-2">
+                  <span
+                    aria-hidden="true"
+                    className="size-8 shrink-0 rounded-sm border border-border"
+                    style={{ backgroundColor: value }}
+                  />
+                  <div className="min-w-0">
+                    <div className="text-control">{token}</div>
+                    <div className="break-all text-micro text-muted-foreground">{value}</div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+))}
+
+| Grupo       | Papel                                   | Exemplos de classes                                                                                                |
+| ----------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Superfícies | Fundo geral, cartões e popups           | `bg-background`, `bg-card`, `bg-popover`                                                                           |
+| Conteúdo    | Texto principal e informação secundária | `text-foreground`, `text-muted-foreground`, `text-subtext`                                                         |
+| Ações       | Ações principais, secundárias e realces | `bg-primary text-primary-foreground`, `bg-secondary text-secondary-foreground`, `bg-accent text-accent-foreground` |
+| Estados     | Erro, atenção e sucesso                 | `text-destructive`, `text-warning`, `text-success`                                                                 |
+| Contornos   | Bordas, entradas e foco                 | `border-border`, `border-input`, `ring-ring`                                                                       |
+| Gráficos    | Séries de dados                         | `--chart-1` até `--chart-5`                                                                                        |
+| Navegação   | Superfícies e estados da sidebar        | `bg-sidebar`, `text-sidebar-foreground`, `bg-sidebar-accent`                                                       |
+
+`warning` e `success` não têm tokens próprios de foreground. Não deduza pares
+inexistentes nem use apenas cor para comunicar um estado. As amostras são uma
+referência de valores; não representam uma certificação de contraste.
+
+## Tipografia
+
+A família principal é **Geist Variable**, carregada localmente pelo pacote
+`@fontsource-variable/geist`. `font-sans` usa essa família; `font-heading` é um
+alias de `font-sans`. Cada classe compacta define tamanho, entrelinha e peso
+em conjunto.
+
+| Classe                | Tamanho                     | Entrelinha  | Peso    | Aplicação sugerida         |
+| --------------------- | --------------------------- | ----------- | ------- | -------------------------- |
+| `text-micro`          | 10 px                       | 14 px       | 400     | Metadados breves           |
+| `text-bar`            | 11 px                       | 14 px       | 400     | Leituras da barra          |
+| `text-caption`        | 12 px                       | 16 px       | 400     | Legendas                   |
+| `text-body`           | 12 px                       | 16 px       | 400     | Texto padrão do body       |
+| `text-control`        | 12 px                       | 16 px       | 500     | Controles                  |
+| `text-subtitle`       | 12 px                       | 16 px       | 600     | Títulos de seção compactos |
+| `text-title`          | 14 px                       | 20 px       | 600     | Títulos de popup           |
+| `text-page`           | 18 px                       | 24 px       | 600     | Títulos de página          |
+| `text-display`        | 18 px                       | 1,5 (27 px) | 600     | Destaque genérico          |
+| `text-clock-display`  | 70 px                       | 1 (70 px)   | Herdado | Relógio em destaque        |
+| `text-studio-display` | clamp(40 px, 4,5 vw, 64 px) | 1,08        | Herdado | Destaque do studio         |
+
+<div className="not-prose flex flex-col gap-4 rounded-lg border border-border bg-card p-4 font-sans text-card-foreground">
+  {[
+    'text-micro',
+    'text-bar',
+    'text-caption',
+    'text-body',
+    'text-control',
+    'text-subtitle',
+    'text-title',
+    'text-page',
+    'text-display',
+    'text-clock-display',
+    'text-studio-display'
+  ].map((className) => (
+    <div key={className} className="flex flex-col gap-1 overflow-x-auto">
+      <code className="text-micro text-muted-foreground">{className}</code>
+      <div className={className}>Strata · 12:48</div>
+    </div>
+  ))}
+</div>
+
+`tracking-display` aplica −2,5 px de espaçamento entre letras. É uma escolha
+separada da escala de texto. Use `tabular-nums` em métricas e horários para
+manter a largura dos dígitos estável durante atualizações.
+
+```tsx
+<div className="flex flex-col gap-2 rounded-lg bg-card p-4 text-card-foreground">
+  <h2 className="text-title">Processador</h2>
+  <span className="text-body tabular-nums">24% · 52 °C</span>
+  <span className="text-caption text-muted-foreground">Atualizado agora</span>
+</div>
+```
+
+A classe tipográfica não substitui a semântica HTML: use `h2`, `p`, `label` ou
+`button` conforme o papel do conteúdo.
+
+## Raios
+
+A base `--radius` é `0.625rem` em todas as paletas atuais. Os aliases são
+calculados em `styles.css`; os valores em pixels abaixo consideram uma raiz de
+16 px.
+
+<div className="not-prose flex flex-wrap gap-4 rounded-lg border border-border bg-background p-4 text-foreground">
+  {[
+    ['sm', 0.6],
+    ['md', 0.8],
+    ['lg', 1],
+    ['xl', 1.4],
+    ['2xl', 1.8],
+    ['3xl', 2.2],
+    ['4xl', 2.6]
+  ].map(([name, factor]) => (
+    <div key={name} className="flex flex-col items-center gap-2 text-caption">
+      <div
+        className="size-16 border border-border bg-muted"
+        style={{ borderRadius: `calc(var(--radius) * ${factor})` }}
+      />
+      <code>rounded-{name}</code>
+      <span>{factor * 10} px</span>
+    </div>
+  ))}
+</div>
+
+## Espaçamento e superfícies
+
+O projeto usa a escala padrão do Tailwind v4 para espaçamento, sem uma escala
+semântica própria definida em `styles.css`. Na configuração atual, `gap-1`
+corresponde a 4 px, `gap-2` a 8 px, `gap-3` a 12 px, `gap-4` a 16 px e `gap-6`
+a 24 px, considerando raiz de 16 px. Use `gap-*` em layouts flex/grid e `p-*`
+para o respiro interno.
+
+`glass-surface` combina `backdrop-blur-lg`, `backdrop-saturate-125` e um brilho
+interno de 1 px com `background/60`. A utility não define a cor de fundo: combine
+com uma superfície semântica e opacidade apropriada ao contexto.
+
+```tsx
+<div className="glass-surface rounded-xl border border-border bg-popover/90 p-4 text-popover-foreground">
+  <h2 className="text-title">Detalhes do sistema</h2>
+</div>
+```
+
+## Como evoluir os tokens
+
+Altere a escala e os aliases em `styles.css`; para novas cores semânticas,
+defina também os valores em todas as paletas e modos de `palettes.ts`.
+Confira barra, popups e configurações nos modos claro e escuro. Esta página
+acompanha automaticamente as cores exportadas; mantenha a tabela tipográfica
+alinhada às alterações da escala.
