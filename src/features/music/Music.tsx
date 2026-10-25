@@ -39,7 +39,7 @@ export function Music({
         {...anchorProps}
       >
         <div
-          className="relative isolate flex w-full min-w-0 items-center overflow-hidden rounded-full bg-muted/40 mask-[linear-gradient(#000,#000)] px-2 text-foreground"
+          className="relative isolate flex w-full min-w-0 items-center overflow-hidden rounded-full bg-muted/30 mask-[linear-gradient(#000,#000)] px-2 text-foreground backdrop-blur-md shadow-sm shadow-foreground/5"
           {...tooltipTrigger}
         >
           {artwork && (
@@ -50,7 +50,7 @@ export function Music({
                 onError={onArtworkError}
                 className="absolute inset-0 h-full w-full object-cover"
               />
-              <span className="absolute inset-0 bg-background/65" />
+              <span className="absolute inset-0 bg-background/65 backdrop-blur-md" />
               <span
                 aria-hidden
                 className="pointer-events-none absolute inset-0 rounded-full bg-muted/30 opacity-0 transition-opacity duration-200 ease-out group-hover/music:opacity-100 group-data-[popup-open=true]/music:opacity-100 motion-reduce:transition-none"
@@ -63,6 +63,10 @@ export function Music({
             onClick={onAction}
           />
           {children}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-20 rounded-full ring-1 ring-inset ring-border/50 inset-shadow-[0_1px_0] inset-shadow-background/40"
+          />
         </div>
       </div>
     </WidgetItem>
