@@ -382,12 +382,9 @@ function LoadingMidia() {
     <Empty className="p-0" role="status">
       <EmptyHeader>
         <EmptyMedia variant="icon">
-          <Music2 />
-        </EmptyMedia>
-        <EmptyTitle className="flex items-center gap-2">
           <Spinner />
-          <span>Carregando mídia...</span>
-        </EmptyTitle>
+        </EmptyMedia>
+        <EmptyTitle>Carregando mídia...</EmptyTitle>
         <EmptyDescription>
           Estamos carregando a sua mídia, isto pode levar um tempo
         </EmptyDescription>
