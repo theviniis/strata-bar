@@ -904,6 +904,16 @@ fn overlay_position(
     (x, y.clamp(monitor.top, max_y))
 }
 
+/// Keep interactive panels 12 CSS pixels from either horizontal monitor edge.
+fn popup_monitor_bounds(mut monitor: RECT, scale: f64) -> RECT {
+    let margin = to_physical(12.0, scale)
+        .max(0)
+        .min((monitor.right - monitor.left - 1).max(0) / 2);
+    monitor.left += margin;
+    monitor.right -= margin;
+    monitor
+}
+
 /// Widget CSS coordinates cannot tell whether its AppBar is on the top or bottom.
 fn overlay_side_for_bar(bar: RECT, monitor: RECT) -> OverlaySide {
     if i64::from(bar.top) + i64::from(bar.bottom)
@@ -1330,7 +1340,13 @@ pub fn overlay_resize(
     let width = to_physical(size.width, scale).max(1);
     let height = to_physical(size.height, scale).max(1);
     let center = bar.left + to_physical(popup.anchor.x + popup.anchor.width / 2.0, scale);
-    let (x, y) = overlay_position(bar, monitor, (width, height), center, popup.side);
+    let (x, y) = overlay_position(
+        bar,
+        popup_monitor_bounds(monitor, scale),
+        (width, height),
+        center,
+        popup.side,
+    );
     let arrow_x = overlay_arrow_x(center, x, scale);
     if !popup.revealed
         || current.right - current.left != width
@@ -1470,7 +1486,12 @@ pub fn overlay_show(
     )
     .clamp(1, (monitor.bottom - monitor.top).clamp(1, 4096));
     let center = bar.left + to_physical(request.anchor.x + request.anchor.width / 2.0, scale);
-    let (x, y) = overlay_position(bar, monitor, (width, height), center, side);
+    let bounds = if request.kind == "popover" {
+        popup_monitor_bounds(monitor, scale)
+    } else {
+        monitor
+    };
+    let (x, y) = overlay_position(bar, bounds, (width, height), center, side);
     let session = OVERLAY_SESSION.fetch_add(1, Ordering::Relaxed) + 1;
     let interactive = request.kind == "popover";
     if interactive {

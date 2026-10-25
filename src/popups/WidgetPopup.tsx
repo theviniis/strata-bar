@@ -15,6 +15,7 @@ import { useOverlayPopover } from '../hooks/useOverlayPopover'
 import { cn } from '../lib/utils'
 import { overlayTextClasses } from '../overlay/typography'
 import { overlay } from '../services/system/overlay'
+import { POPUP_GAP } from './constants'
 import { claimPopup, releasePopup } from './coordinator'
 import { bouncePopupAnchor } from './motion'
 import { PopupHost } from './PopupHost'
@@ -129,7 +130,7 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
               side="bottom"
               align="center"
               sideOffset={0}
-              collisionPadding={0}
+              collisionPadding={{ left: POPUP_GAP, right: POPUP_GAP }}
               sticky="always"
               onEscapeKeyDown={(event) => {
                 event.preventDefault()
