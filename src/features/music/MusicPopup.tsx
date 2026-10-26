@@ -168,10 +168,10 @@ function MusicPopupContentData({
               src={artwork}
               alt="Capa do álbum"
               onError={() => setBadArt(artwork)}
-              className="absolute inset-0 size-full rounded-2xl object-cover"
+              className="absolute inset-0 size-full rounded-[max(0px,calc(var(--radius-2xl)-(--spacing(4))))] object-cover"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-muted">
+            <div className="absolute inset-0 flex items-center justify-center rounded-[max(0px,calc(var(--radius-2xl)-(--spacing(4))))] bg-muted">
               <Music2 aria-hidden="true" />
             </div>
           )}
