@@ -91,6 +91,12 @@ Then launch `src-tauri\target\release\strata-bar.exe`.
 To target an NSIS installer instead, run `pnpm package:windows`. Installer testing and signing remain
 separate release gates.
 
+### Building && Install
+
+```powershell
+pnpm package:windows && Start-Process '.\src-tauri\target\release\bundle\nsis\Strata_0.1.0_x64-setup.exe' -ArgumentList '/S /R' -Wait
+```
+
 ## Testing & validation
 
 ```sh
