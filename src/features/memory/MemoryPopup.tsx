@@ -16,7 +16,7 @@ export function MemoryPopup({
   demo: boolean
 }) {
   const data = event.status === 'ready' ? event.data : lastData
-  if (!data) return mapDataStatus('Memória RAM', event.status)
+  if (!data) return mapDataStatus('memória', event.status)
   const fields = [
     ['Em uso', data.usedBytes, 'bytes'],
     ['Memória total', data.totalBytes, 'bytes'],

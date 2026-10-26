@@ -103,7 +103,8 @@ it('owns subscriptions, configured intervals, focus actions and cleanup', () => 
   expect(runtime.action).toHaveBeenCalledWith({
     action: 'focusWorkspace',
     monitor: 1,
-    workspace: 0
+    workspace: 0,
+    source: 'windows'
   })
   view.rerender(
     <WidgetViewContext value={{ ...defaultView, intervalMs: 4000 }}>

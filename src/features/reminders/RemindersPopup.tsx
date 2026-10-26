@@ -235,7 +235,7 @@ export function RemindersPopup({
             disabled={pending || isSubmitting || !loaded}
             loading={{
               isLoading: pending,
-              text: 'Salvando...'
+              text: 'Salvando…'
             }}
           >
             Criar lembrete{' '}

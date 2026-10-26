@@ -103,11 +103,11 @@ it('renders seven days, twelve hours, metrics, attribution and a stale warning',
 })
 it('renders missing fields, loading, errors and unconfigured city honestly', () => {
   const { rerender } = render(<WeatherPopup event={{ status: 'loading' }} />)
-  expect(screen.getByText('Carregando dados de clima')).toBeInTheDocument()
+  expect(screen.getByText('Carregando clima')).toBeInTheDocument()
   rerender(<WeatherPopup event={{ status: 'error', error: 'Offline' }} />)
   expect(screen.getByText('Erro ao obter dados de clima')).toBeInTheDocument()
   rerender(<WeatherPopup event={{ status: 'unavailable' }} />)
-  expect(screen.getByText('Dados de clima indisponíveis')).toBeInTheDocument()
+  expect(screen.getByText('Clima indisponível')).toBeInTheDocument()
   rerender(
     <WeatherPopup
       event={{ status: 'ready', data: { ...weatherFixture(), city: null } }}

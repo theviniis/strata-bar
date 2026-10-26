@@ -45,7 +45,7 @@ it('renders CPU states and presentation only from props and forwards refs and ev
     describedBy: 'cpu-tip'
   }
   const view = render(<Cpu {...props} />)
-  expect(screen.getByLabelText('Uso da CPU')).toHaveTextContent('...%')
+  expect(screen.getByLabelText('Uso da CPU')).toHaveTextContent('...')
   const button = screen.getByRole('button')
   expect(ref).toHaveBeenCalledWith(button)
   fireEvent.click(button)
@@ -71,7 +71,7 @@ it('renders CPU states and presentation only from props and forwards refs and ev
   view.rerender(
     <Cpu {...props} event={{ status: 'unavailable', data: null }} />
   )
-  expect(screen.getByLabelText('Uso da CPU')).toHaveTextContent('—%')
+  expect(screen.getByLabelText('Uso da CPU')).toHaveTextContent('—')
   view.rerender(
     <Cpu
       {...props}

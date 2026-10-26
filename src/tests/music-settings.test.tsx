@@ -16,7 +16,7 @@ it('guides an unconfigured player to settings using text without setup controls'
   render(
     <MusicPopupContent event={{ status: 'unavailable' }} onAction={vi.fn()} />
   )
-  expect(screen.getByText(/Configurações → Player de música/)).toBeVisible()
+  expect(screen.getByText(/Configurações → Layout → Música/)).toBeVisible()
   expect(
     screen.queryByRole('button', { name: /Configurações|Conectar/ })
   ).not.toBeInTheDocument()
@@ -37,7 +37,7 @@ it('updates favorites after account changes while preserving everyday player con
   const { rerender } = render(
     <MusicPopupContent event={{ status: 'ready', data }} onAction={vi.fn()} />
   )
-  expect(screen.getByText(/Configurações → Player de música/)).toBeVisible()
+  expect(screen.getByText(/Configurações → Layout → Música/)).toBeVisible()
   expect(screen.getByRole('button', { name: 'Pausar' })).toBeEnabled()
   expect(
     screen.getByRole('slider', { name: 'Progresso da música' })
@@ -56,7 +56,7 @@ it('updates favorites after account changes while preserving everyday player con
     screen.getByRole('button', { name: /dos favoritos|aos favoritos/ })
   ).toBeEnabled()
   expect(
-    screen.queryByText(/Configurações → Player de música/)
+    screen.queryByText(/Configurações → Layout → Música/)
   ).not.toBeInTheDocument()
   rerender(
     <MusicPopupContent event={{ status: 'ready', data }} onAction={vi.fn()} />
@@ -64,5 +64,5 @@ it('updates favorites after account changes while preserving everyday player con
   expect(
     screen.queryByRole('button', { name: /dos favoritos|aos favoritos/ })
   ).not.toBeInTheDocument()
-  expect(screen.getByText(/Configurações → Player de música/)).toBeVisible()
+  expect(screen.getByText(/Configurações → Layout → Música/)).toBeVisible()
 })

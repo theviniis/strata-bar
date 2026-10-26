@@ -45,7 +45,7 @@ it('renders RAM states and presentation only from props and forwards refs and ev
     describedBy: 'memory-tip'
   }
   const view = render(<Memory {...props} />)
-  expect(screen.getByLabelText('Uso da RAM')).toHaveTextContent('...%')
+  expect(screen.getByLabelText('Uso da RAM')).toHaveTextContent('...')
   const button = screen.getByRole('button')
   expect(ref).toHaveBeenCalledWith(button)
   fireEvent.click(button)
@@ -71,7 +71,7 @@ it('renders RAM states and presentation only from props and forwards refs and ev
   view.rerender(
     <Memory {...props} event={{ status: 'unavailable', data: null }} />
   )
-  expect(screen.getByLabelText('Uso da RAM')).toHaveTextContent('—%')
+  expect(screen.getByLabelText('Uso da RAM')).toHaveTextContent('—')
   view.rerender(
     <Memory
       {...props}

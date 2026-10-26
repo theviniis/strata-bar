@@ -7,13 +7,13 @@ const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>
 >(({ className, checked, onCheckedChange, defaultChecked, ...props }, ref) => {
-  const [isChecked, setIsChecked] = React.useState<boolean>(
-    checked === true || defaultChecked === true
+  const [isChecked, setIsChecked] = React.useState<boolean | 'indeterminate'>(
+    checked ?? defaultChecked ?? false
   )
 
   React.useEffect(() => {
     if (checked !== undefined) {
-      setIsChecked(checked === true)
+      setIsChecked(checked)
     }
   }, [checked])
 
@@ -23,7 +23,7 @@ const Checkbox = React.forwardRef<
       asChild
       checked={isChecked}
       onCheckedChange={(val) => {
-        setIsChecked(val === true)
+        setIsChecked(val)
         onCheckedChange?.(val)
       }}
       {...props}

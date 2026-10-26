@@ -79,7 +79,7 @@ it('reports the loading and unavailable states', () => {
       lastData={undefined}
       now={0}
       demo={false}
-      event={{ status: 'error', error: 'Falha' }}
+      event={{ status: 'unavailable' }}
     />
   )
   expect(screen.getByRole('status')).toHaveTextContent('Discos indisponíveis')

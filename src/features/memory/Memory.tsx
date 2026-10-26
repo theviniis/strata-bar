@@ -35,13 +35,15 @@ export function Memory({
       <WidgetItemIcon icon={Icon} />
       {showLabel(format) && <WidgetItemLabel>RAM</WidgetItemLabel>}
       <WidgetItemOutput aria-label="Uso da RAM" aria-describedby={describedBy}>
-        {percent?.value != null
-          ? `${percent.value.toFixed(1)}%`
-          : event.status === 'loading'
-            ? '...'
-            : '—'}
-        {stale && percent?.value != null && (
-          <span aria-label="Leitura desatualizada">*</span>
+        {percent?.value != null ? (
+          <>
+            {percent.value.toFixed(1)}
+            {stale && <span aria-label="Leitura desatualizada">*</span>}%
+          </>
+        ) : event.status === 'loading' ? (
+          '...'
+        ) : (
+          '—'
         )}
       </WidgetItemOutput>
     </WidgetItem>

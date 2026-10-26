@@ -116,9 +116,7 @@ it('follows external changes and releases subscriptions on close', async () => {
   // Wait for the code-split content before driving the subscription it owns.
   await screen.findByRole('button', { name: 'Silenciar microfone' })
   act(() => host.listeners.get('audioInputs')!({ status: 'loading' }))
-  expect(
-    screen.getByText('Carregando dispositivos de áudio')
-  ).toBeInTheDocument()
+  expect(screen.getByText('Carregando entrada de áudio')).toBeInTheDocument()
   act(() =>
     host.listeners.get('audioInputs')!({
       status: 'ready',
@@ -137,7 +135,9 @@ it('follows external changes and releases subscriptions on close', async () => {
       error: 'Falha de leitura'
     })
   )
-  expect(screen.getByRole('alert')).toHaveTextContent('Falha de leitura')
+  expect(
+    screen.getByText('Erro ao obter dados de entrada de áudio')
+  ).toBeInTheDocument()
   fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
   expect(host.hide).toHaveBeenCalled()
   unmount()

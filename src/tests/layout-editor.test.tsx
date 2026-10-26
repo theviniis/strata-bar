@@ -11,6 +11,12 @@ import { expect, it, vi } from 'vitest'
 import { configSchema, type WidgetType } from '../services/configuration/config'
 import { LayoutEditor } from '../settings/LayoutEditor'
 
+function widgetIds(region: HTMLElement) {
+  return within(region)
+    .getAllByRole('listitem')
+    .map((item) => item.getAttribute('data-widget'))
+}
+
 function Editor({ centerTypes = [] }: { centerTypes?: WidgetType[] }) {
   const [draft, setDraft] = useState(() =>
     configSchema.parse({
@@ -69,11 +75,7 @@ it('moves through adjacent columns with arrows, appends and preserves settings a
   right.focus()
   fireEvent.click(right)
   const center = screen.getByRole('region', { name: 'Seção Centro' })
-  expect(
-    within(center)
-      .getAllByRole('checkbox')
-      .map((checkbox) => checkbox.getAttribute('aria-label'))
-  ).toEqual(['Ativar GPU', 'Ativar CPU'])
+  expect(widgetIds(center)).toEqual(['gpu', 'cpu'])
   expect(
     screen.getByRole('button', { name: 'Mover CPU para Direita' })
   ).toHaveFocus()
@@ -121,11 +123,13 @@ it('adds from the preview catalog, hides without removal and excludes existing t
   const center = screen.getByRole('region', { name: 'Seção Centro' })
   expect(within(center).getByTitle('volume')).toBeInTheDocument()
   fireEvent.click(
-    within(center).getByRole('checkbox', { name: 'Ativar Volume' })
+    within(center).getByRole('button', { name: 'Configurar Volume' })
   )
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Ativar Volume' }))
   expect(
-    within(center).getByRole('checkbox', { name: 'Ativar Volume' })
+    screen.getByRole('checkbox', { name: 'Ativar Volume' })
   ).not.toBeChecked()
+  fireEvent.click(screen.getByRole('button', { name: 'Concluir' }))
   expect(
     within(catalog).queryByRole('button', { name: 'Adicionar Volume' })
   ).not.toBeInTheDocument()
@@ -271,11 +275,7 @@ it('reorders adjacent widgets using the drag handle keyboard controls', async ()
     fireEvent.keyDown(handle, { code: 'Space' })
     await waitFor(() => {
       const section = screen.getByRole('region', { name: 'Seção Esquerda' })
-      expect(
-        within(section)
-          .getAllByRole('checkbox')
-          .map((item) => item.getAttribute('aria-label'))
-      ).toEqual(['Ativar RAM', 'Ativar CPU'])
+      expect(widgetIds(section)).toEqual(['memory', 'cpu'])
     })
   } finally {
     rect.mockRestore()
@@ -339,10 +339,8 @@ it.each([
       ).toBeVisible()
       if (section === 'Centro') {
         expect(
-          within(
-            screen.getByRole('region', { name: 'Seção Centro' })
-          ).getByRole('checkbox', { name: 'Ativar CPU' })
-        ).toBeChecked()
+          widgetIds(screen.getByRole('region', { name: 'Seção Centro' }))
+        ).toEqual(['cpu'])
         expect(
           JSON.parse(screen.getByLabelText('Draft').textContent!).widgets.center
         ).toEqual([])
@@ -350,9 +348,7 @@ it.each([
       fireEvent.pointerUp(document)
       await waitFor(() => {
         const target = screen.getByRole('region', { name: `Seção ${section}` })
-        expect(
-          within(target).getByRole('checkbox', { name: 'Ativar CPU' })
-        ).toBeChecked()
+        expect(widgetIds(target)).toContain('cpu')
       })
       expect(
         screen.queryByRole('img', { name: 'Movendo CPU' })
@@ -376,11 +372,8 @@ it('cancels a drag with Escape without moving the widget or leaving its preview 
     ).not.toBeInTheDocument()
   )
   expect(
-    within(screen.getByRole('region', { name: 'Seção Esquerda' })).getByRole(
-      'checkbox',
-      { name: 'Ativar CPU' }
-    )
-  ).toBeChecked()
+    widgetIds(screen.getByRole('region', { name: 'Seção Esquerda' }))
+  ).toEqual(['cpu', 'memory'])
 })
 
 it.each(['drop', 'cancel', 'outside'] as const)(
@@ -397,11 +390,7 @@ it.each(['drop', 'cancel', 'outside'] as const)(
       const center = screen.getByRole('region', { name: 'Seção Centro' })
       expect(center).toHaveAttribute('data-drag-over', 'true')
       await waitFor(() =>
-        expect(
-          within(center)
-            .getAllByRole('checkbox')
-            .map((item) => item.getAttribute('aria-label'))
-        ).toEqual(['Ativar GPU', 'Ativar CPU', 'Ativar Volume'])
+        expect(widgetIds(center)).toEqual(['gpu', 'cpu', 'volume'])
       )
       expect(
         JSON.parse(screen.getByLabelText('Draft').textContent!).widgets.left[0]
@@ -415,11 +404,7 @@ it.each(['drop', 'cancel', 'outside'] as const)(
         })
         if (finish === 'drop') {
           await waitFor(() =>
-            expect(
-              within(center)
-                .getAllByRole('checkbox')
-                .map((item) => item.getAttribute('aria-label'))
-            ).toEqual(['Ativar GPU', 'Ativar Volume', 'Ativar CPU'])
+            expect(widgetIds(center)).toEqual(['gpu', 'volume', 'cpu'])
           )
         }
         fireEvent.pointerUp(document)
@@ -454,11 +439,7 @@ it('keeps an insertion between cards stable while moving through their gap', asy
     for (const clientY of [155, 156, 154, 155]) {
       fireEvent.pointerMove(document, { clientX: 350, clientY })
       await waitFor(() =>
-        expect(
-          within(center)
-            .getAllByRole('checkbox')
-            .map((item) => item.getAttribute('aria-label'))
-        ).toEqual(['Ativar GPU', 'Ativar CPU', 'Ativar Volume'])
+        expect(widgetIds(center)).toEqual(['gpu', 'cpu', 'volume'])
       )
     }
     fireEvent.pointerUp(document)

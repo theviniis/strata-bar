@@ -3,6 +3,20 @@ import { DataError, DataLoading, DataUnavaliable } from './popup-helpers'
 
 type ComponentStatus = 'loading' | 'error' | 'unavailable' | 'ready'
 
+/** Capitalizes the first letter so status titles read as sentences. */
+function titleCase(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+/**
+ * Picks the plural form for names that already end in "s" ("discos"), while
+ * singular names such as CPU or memória keep "indisponível".
+ */
+function unavailableTitle(componentName: string) {
+  const plural = componentName.endsWith('s') ? 'indisponíveis' : 'indisponível'
+  return `${titleCase(componentName)} ${plural}`
+}
+
 export function mapDataStatus(componentName: string, status: ComponentStatus) {
   if (status === 'ready') return null
 
@@ -17,14 +31,14 @@ export function mapDataStatus(componentName: string, status: ComponentStatus) {
     [
       'unavailable',
       <DataUnavaliable
-        title={`Dados de ${componentName} indisponíveis`}
+        title={unavailableTitle(componentName)}
         description={`Não conseguimos obter os dados de ${componentName}`}
       />
     ],
     [
       'loading',
       <DataLoading
-        title={`Carregando dados de ${componentName}`}
+        title={`Carregando ${componentName}`}
         description={`Aguarde enquanto obtemos os dados de ${componentName}`}
       />
     ]

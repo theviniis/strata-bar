@@ -47,7 +47,7 @@ it('renders GPU states and presentation only from props and forwards refs and ev
     describedBy: 'gpu-tip'
   }
   const view = render(<Gpu {...props} />)
-  expect(screen.getByLabelText('Uso da GPU')).toHaveTextContent('...%')
+  expect(screen.getByLabelText('Uso da GPU')).toHaveTextContent('...')
   const button = screen.getByRole('button')
   expect(ref).toHaveBeenCalledWith(button)
   fireEvent.click(button)
@@ -73,7 +73,7 @@ it('renders GPU states and presentation only from props and forwards refs and ev
   view.rerender(
     <Gpu {...props} event={{ status: 'unavailable', data: null }} />
   )
-  expect(screen.getByLabelText('Uso da GPU')).toHaveTextContent('—%')
+  expect(screen.getByLabelText('Uso da GPU')).toHaveTextContent('—')
   view.rerender(
     <Gpu
       {...props}

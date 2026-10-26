@@ -131,9 +131,7 @@ it('follows external changes and releases subscriptions on close', async () => {
   // Wait for the code-split content before driving the subscription it owns.
   await screen.findByRole('button', { name: /Alto-falantes/ })
   act(() => host.listeners.get('audioOutputs')!({ status: 'loading' }))
-  expect(
-    screen.getByText('Carregando dados de saída de áudio')
-  ).toBeInTheDocument()
+  expect(screen.getByText('Carregando saída de áudio')).toBeInTheDocument()
   act(() =>
     host.listeners.get('audioOutputs')!({
       status: 'ready',

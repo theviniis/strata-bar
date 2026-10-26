@@ -84,7 +84,7 @@ function Button({
       {...props}
     >
       <>
-        {loading.isLoading && <Spinner />}
+        {loading.isLoading && <Spinner aria-hidden="true" />}
         {loading.isLoading ? loading.text : children}
       </>
     </Comp>

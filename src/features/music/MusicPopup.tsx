@@ -49,7 +49,7 @@ export function MusicPopup({
   } = controls
 
   return (
-    <div className="w-90">
+    <div className="w-100">
       {demo && (
         <p className="text-muted-foreground text-body">
           Versão de demonstração
@@ -220,7 +220,6 @@ function MusicPopupContentData({
             <SkipBack size={16} />
           </Button>
           <Button
-            variant="secondary"
             size="icon"
             aria-label={playing ? 'Pausar' : 'Reproduzir'}
             disabled={!media.capabilities.playPause}
@@ -296,7 +295,6 @@ function MusicPopupContentData({
 
         <div className="flex flex-col gap-2">
           <Slider
-            variant="secondary"
             aria-label="Progresso da música"
             min={progress?.minSeekMs ?? 0}
             max={progress?.maxSeekMs || 1}

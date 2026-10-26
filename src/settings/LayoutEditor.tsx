@@ -315,7 +315,6 @@ export function LayoutEditor({
                   ? 'Habilitar neste monitor'
                   : 'Habilitar em todos os monitores'}
               </label>
-              {mixedBar && <p role="status">Alguns monitores habilitados</p>}
               <Switch
                 id={`${layoutId}-enabled`}
                 disabled={disabled}

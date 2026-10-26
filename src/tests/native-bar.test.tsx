@@ -147,7 +147,8 @@ it('renders workspaces and focuses the clicked one', async () => {
     expect(workspacesAction).toHaveBeenCalledWith({
       action: 'focusWorkspace',
       monitor: 0,
-      workspace: 2
+      workspace: 2,
+      source: 'windows'
     })
   )
 })

@@ -22,7 +22,7 @@ export function DataUnavaliable({
   ...props
 }: DataHelperProps) {
   return (
-    <Empty {...props}>
+    <Empty role="status" {...props}>
       <EmptyHeader>
         <EmptyMedia variant="icon">{icon}</EmptyMedia>
         <EmptyTitle>{title}</EmptyTitle>
@@ -39,7 +39,7 @@ export function DataError({
   ...props
 }: DataHelperProps) {
   return (
-    <Empty {...props}>
+    <Empty role="status" {...props}>
       <EmptyHeader>
         <EmptyMedia
           className="text-destructive bg-destructive/20"
@@ -57,11 +57,11 @@ export function DataError({
 export function DataLoading({
   title,
   description,
-  icon = <Spinner />,
+  icon = <Spinner aria-hidden="true" />,
   ...props
 }: DataHelperProps) {
   return (
-    <Empty {...props}>
+    <Empty role="status" {...props}>
       <EmptyHeader>
         <EmptyMedia variant="icon">{icon}</EmptyMedia>
         <EmptyTitle>{title}</EmptyTitle>

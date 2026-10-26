@@ -27,14 +27,14 @@ it('suppresses saved agents widgets on every bar section before mounting them', 
 it('blocks adding agents globally and per monitor without deleting saved settings', () => {
   expect(addableTypes()).not.toContain('agents')
   expect(addableTypes()).toContain('clock')
-  expect(addWidget(defaultConfig, 'agents', 'right')).toBe(defaultConfig)
+  const saved = structuredClone(defaultConfig)
+  saved.widgets.right.push(widgetSchema.parse({ id: 'agents', type: 'agents' }))
+  expect(addWidget(saved, 'agents', 'right')).toBe(saved)
   expect(
-    addToScope(defaultConfig, 'DISPLAY1', [], 'agents', {
+    addToScope(saved, 'DISPLAY1', [], 'agents', {
       section: 'right',
       index: 0
     })
-  ).toBe(defaultConfig)
-  expect(defaultConfig.widgets.right.some((w) => w.type === 'agents')).toBe(
-    true
-  )
+  ).toBe(saved)
+  expect(saved.widgets.right.some((w) => w.type === 'agents')).toBe(true)
 })

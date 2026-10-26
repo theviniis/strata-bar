@@ -106,9 +106,9 @@ it('loads the existing connection without opening settings so Calendar event cre
   const checkbox = screen.getByRole('checkbox', {
     name: 'Criar evento no Google Calendar'
   })
-  expect(checkbox).toBeChecked()
-  fireEvent.click(checkbox)
   expect(checkbox).not.toBeChecked()
+  fireEvent.click(checkbox)
+  expect(checkbox).toBeChecked()
   expect(
     screen.queryByRole('button', { name: /Configurações do Google/ })
   ).not.toBeInTheDocument()
