@@ -71,7 +71,7 @@ fn subscribe(
         return window.state::<media::Media>().subscribe(window.label());
     }
     if channel == "workspaces" {
-        if workspace_source == Some(config_contract::WorkspaceSource::Windows) {
+        if workspace_source != Some(config_contract::WorkspaceSource::Komorebi) {
             return window.state::<windows_workspaces::WindowsWorkspaces>().subscribe(window.label());
         }
         return workspaces.subscribe(&window, interval_ms);
@@ -111,7 +111,7 @@ fn workspaces_action(
     workspace: Option<u32>,
     direction: Option<String>,
 ) -> Result<(), String> {
-    if source == Some(config_contract::WorkspaceSource::Windows) {
+    if source != Some(config_contract::WorkspaceSource::Komorebi) {
         if action != "focusWorkspace" { return Err("Unsupported Windows desktops action".into()); }
         return window.state::<windows_workspaces::WindowsWorkspaces>().focus(workspace.ok_or("Missing workspace")?);
     }

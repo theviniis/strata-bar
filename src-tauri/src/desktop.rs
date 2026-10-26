@@ -1973,6 +1973,9 @@ mod geometry_tests {
     #[test]
     fn configured_curve_radius_is_scaled_clamped_and_projected() {
         let mut config = crate::config::defaults();
+        // Geometry assertions use a fixed fixture, independent of the install preset.
+        config.bar.height = 36;
+        config.bar.corner_radius = None;
         assert_eq!(BarGeometry::from_config(&config, 1.5).radius, 27);
         for (radius, expected) in [(0.0, 0), (8.0, 12), (40.0, 27)] {
             config.bar.corner_radius = Some(radius);
@@ -2007,6 +2010,9 @@ mod geometry_tests {
     #[test]
     fn desktop_corners_extend_the_window_without_extending_the_reservation() {
         let mut config = crate::config::defaults();
+        // Pin the geometry fixture independently of the shipped appearance defaults.
+        config.bar.height = 36;
+        config.bar.corner_radius = None;
         for bottom in [false, true] {
             config.bar.position = if bottom {
                 crate::config_contract::BarPosition::Bottom
@@ -2189,6 +2195,8 @@ mod geometry_tests {
     #[test]
     fn configured_geometry_uses_projected_height_edge_and_stacking() {
         let mut config = crate::config::defaults();
+        // Keep scaling expectations independent of the shipped appearance preset.
+        config.bar.height = 36;
         config.monitors.insert(
             "DISPLAY2".into(),
             crate::config_contract::BarOverride {
