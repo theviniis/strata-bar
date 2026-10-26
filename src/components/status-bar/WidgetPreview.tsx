@@ -32,7 +32,7 @@ export const WidgetPreview = memo(function WidgetPreview({
           data-theme={resolved}
           style={themeStyle(colorTheme, resolved)}
           className={cn(
-            'group w-full overflow-hidden rounded-md bg-background p-2 text-foreground',
+            'group flex h-8 w-full items-center overflow-hidden rounded-md bg-background px-2 text-foreground',
             resolved
           )}
         >

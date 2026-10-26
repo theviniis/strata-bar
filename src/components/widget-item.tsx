@@ -18,7 +18,7 @@ export function WidgetItem({
     <Comp
       data-sliding-highlight-item=""
       className={cn(
-        'flex items-center gap-1 px-2 py-1 focus-visible:outline-accent rounded-full',
+        'flex min-h-0 self-stretch items-center gap-1 px-2 py-1 focus-visible:outline-accent rounded-full',
         className
       )}
       {...props}

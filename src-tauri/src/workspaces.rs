@@ -17,12 +17,16 @@ use tauri::{AppHandle, Emitter};
 use windows::{
     core::PCWSTR,
     Win32::{
-        Foundation::{CloseHandle, GetLastError, ERROR_PIPE_CONNECTED, HANDLE},
+        Foundation::{
+            CloseHandle, GetLastError, ERROR_NO_DATA, ERROR_PIPE_CONNECTED, ERROR_PIPE_LISTENING,
+            HANDLE,
+        },
         Graphics::Gdi::{MonitorFromWindow, MONITOR_DEFAULTTONEAREST},
         Storage::FileSystem::{ReadFile, PIPE_ACCESS_DUPLEX},
         System::Pipes::{
             ConnectNamedPipe, CreateNamedPipeW, DisconnectNamedPipe, PeekNamedPipe,
-            PIPE_READMODE_MESSAGE, PIPE_TYPE_MESSAGE, PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
+            SetNamedPipeHandleState, PIPE_NOWAIT, PIPE_READMODE_MESSAGE, PIPE_TYPE_MESSAGE,
+            PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
         },
     },
 };
@@ -364,34 +368,19 @@ impl Workspaces {
     }
     fn session(&self, app: &AppHandle, exe: &Path, name: &str) -> Result<(), String> {
         let handle = create_pipe(name)?;
-        let subscribed = Command::new(exe)
-            .arg("subscribe-pipe")
-            .arg(name)
-            .stdout(Stdio::null())
-            .stderr(Stdio::piped())
-            .creation_flags(CREATE_NO_WINDOW)
-            .output();
-        if !subscribed
-            .as_ref()
-            .is_ok_and(|output| output.status.success())
-        {
+        if command_output(exe, &["subscribe-pipe", name], Duration::from_secs(3)).is_none() {
             unsafe {
                 let _ = CloseHandle(handle);
             }
-            let detail = match subscribed {
-                Ok(output) => String::from_utf8_lossy(&output.stderr).trim().to_string(),
-                Err(error) => error.to_string(),
-            };
-            return Err(format!("komorebic subscribe-pipe failed: {detail}"));
+            return Err("komorebic subscribe-pipe failed or timed out".into());
         }
-        unsafe {
-            if let Err(error) = ConnectNamedPipe(handle, None) {
-                // ERROR_PIPE_CONNECTED means komorebi connected before we waited.
-                if GetLastError() != ERROR_PIPE_CONNECTED {
-                    let _ = CloseHandle(handle);
-                    return Err(format!("connect named pipe: {error}"));
-                }
+        if let Err(error) = connect_pipe(handle, Duration::from_secs(3), || {
+            self.stop.load(Ordering::Acquire) || !self.has_subscribers()
+        }) {
+            unsafe {
+                let _ = CloseHandle(handle);
             }
+            return Err(error);
         }
         let result = self.read_loop(app, handle);
         unsafe {
@@ -534,6 +523,43 @@ fn monitor_of(window: &tauri::WebviewWindow) -> Result<i64, String> {
     Ok(monitor.0 as i64)
 }
 
+fn connect_pipe(
+    handle: HANDLE,
+    timeout: Duration,
+    cancelled: impl Fn() -> bool,
+) -> Result<(), String> {
+    // Poll only the connection handshake: a restart can discard the registration
+    // before a client connects. A blocking ConnectNamedPipe would strand retries.
+    unsafe { SetNamedPipeHandleState(handle, Some(&PIPE_NOWAIT), None, None) }
+        .map_err(|error| format!("configure named pipe: {error}"))?;
+    let start = Instant::now();
+    loop {
+        if cancelled() {
+            return Err("workspaces connection cancelled".into());
+        }
+        let connected = unsafe {
+            match ConnectNamedPipe(handle, None) {
+                Ok(()) => true,
+                Err(error) => match GetLastError() {
+                    ERROR_PIPE_CONNECTED => true,
+                    ERROR_PIPE_LISTENING => false,
+                    ERROR_NO_DATA => return Err("workspaces pipe closed before connecting".into()),
+                    _ => return Err(format!("connect named pipe: {error}")),
+                },
+            }
+        };
+        if connected {
+            unsafe { SetNamedPipeHandleState(handle, Some(&PIPE_WAIT), None, None) }
+                .map_err(|error| format!("configure connected pipe: {error}"))?;
+            return Ok(());
+        }
+        if start.elapsed() >= timeout {
+            return Err("workspaces connection timed out".into());
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
 fn create_pipe(name: &str) -> Result<HANDLE, String> {
     let wide: Vec<u16> = format!("\\\\.\\pipe\\{name}")
         .encode_utf16()
@@ -593,7 +619,10 @@ fn command_output(exe: &Path, args: &[&str], timeout: Duration) -> Option<Vec<u8
     let start = Instant::now();
     loop {
         match child.try_wait() {
-            Ok(Some(_)) => {
+            Ok(Some(status)) => {
+                if !status.success() {
+                    return None;
+                }
                 let mut out = Vec::new();
                 if let Some(mut stdout) = child.stdout.take() {
                     let _ = stdout.read_to_end(&mut out);
@@ -602,6 +631,7 @@ fn command_output(exe: &Path, args: &[&str], timeout: Duration) -> Option<Vec<u8
             }
             Ok(None) if start.elapsed() >= timeout => {
                 let _ = child.kill();
+                let _ = child.wait();
                 return None;
             }
             Ok(None) => std::thread::sleep(Duration::from_millis(50)),
@@ -640,6 +670,75 @@ mod tests {
         let mut later = error.clone();
         later["timestamp"] = json!(123);
         assert_eq!(snapshot_key(&error), snapshot_key(&later));
+    }
+
+    #[test]
+    fn a_missing_komorebi_connection_times_out_instead_of_stranding_reconnect() {
+        let name = format!("strata-reconnect-test-{}", std::process::id());
+        let handle = create_pipe(&name).unwrap();
+        // Release the old blocking implementation after its deadline so a failure cannot hang the suite.
+        let client = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(200));
+            let _ = std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(format!(r"\\.\pipe\{name}"));
+        });
+        let result = connect_pipe(handle, Duration::from_millis(50), || false);
+        client.join().unwrap();
+        unsafe {
+            let _ = DisconnectNamedPipe(handle);
+            let _ = CloseHandle(handle);
+        }
+        assert!(
+            result.is_err(),
+            "Absent producer must return to the reconnect loop before a late client arrives"
+        );
+    }
+
+    #[test]
+    fn pipe_accepts_a_new_producer_after_disconnect() {
+        use std::io::Write;
+        let name = format!("strata-pipe-restart-{}", std::process::id());
+        for expected in [b"before".as_slice(), b"after".as_slice()] {
+            let handle = create_pipe(&name).unwrap();
+            let path = format!(r"\\.\pipe\{name}");
+            let payload = expected.to_vec();
+            let (consumed, wait_consumed) = std::sync::mpsc::channel();
+            let producer = std::thread::spawn(move || {
+                let mut client = std::fs::OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(path)
+                    .unwrap();
+                client.write_all(&payload).unwrap();
+                // Hold the producer open until the server has consumed the message.
+                wait_consumed.recv_timeout(Duration::from_secs(2)).unwrap();
+            });
+            connect_pipe(handle, Duration::from_secs(1), || false).unwrap();
+            let mut bytes = [0u8; 32];
+            let mut read = 0;
+            unsafe { ReadFile(handle, Some(&mut bytes), Some(&mut read), None) }.unwrap();
+            assert_eq!(&bytes[..read as usize], expected);
+            consumed.send(()).unwrap();
+            producer.join().unwrap();
+            assert!(unsafe { PeekNamedPipe(handle, None, 0, None, None, None) }.is_err());
+            unsafe {
+                let _ = DisconnectNamedPipe(handle);
+                let _ = CloseHandle(handle);
+            }
+        }
+    }
+
+    #[test]
+    fn pipe_connection_can_be_cancelled_without_a_producer() {
+        let name = format!("strata-pipe-cancel-{}", std::process::id());
+        let handle = create_pipe(&name).unwrap();
+        let result = connect_pipe(handle, Duration::from_secs(10), || true);
+        unsafe {
+            let _ = CloseHandle(handle);
+        }
+        assert_eq!(result.unwrap_err(), "workspaces connection cancelled");
     }
 
     fn sample() -> State {

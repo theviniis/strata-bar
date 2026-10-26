@@ -2,7 +2,7 @@
 export function Unsupported({ label }: { label: string }) {
   return (
     <span
-      className="px-1 text-micro text-muted-foreground"
+      className="flex self-stretch items-center px-1 text-micro text-muted-foreground"
       aria-label={`${label} indisponível`}
     >
       —

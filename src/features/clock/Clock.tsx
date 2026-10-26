@@ -3,7 +3,6 @@ import {
   WidgetItemOutput,
   type WidgetItemProps
 } from '@/components/widget-item'
-import { cn } from '@/lib/utils'
 import type { TimePresentation } from './presentation'
 
 export interface ClockProps extends WidgetItemProps {
@@ -24,7 +23,6 @@ export function Clock({
       aria-label="Abrir calendário"
       aria-describedby={describedBy}
       {...triggerProps}
-      className={cn('items-end', className)}
     >
       <time dateTime={time.dateTime}>
         <WidgetItemOutput>{time.hours}</WidgetItemOutput>

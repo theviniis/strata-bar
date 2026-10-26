@@ -8,6 +8,13 @@ const meta = {
   tags: ['autodocs'],
   title: 'Widgets/Workspaces',
   component: WorkspacesWidget,
+  decorators: [
+    (Story) => (
+      <div className="flex h-8 items-center">
+        <Story />
+      </div>
+    )
+  ],
   render: function WorkspaceDemo(args) {
     const activeIndex =
       args.event.status === 'ready'

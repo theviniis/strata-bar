@@ -33,14 +33,16 @@ export function Workspaces({
 
   if (offline) {
     return (
-      <span className="text-micro text-muted-foreground">Workspaces Offline</span>
+      <span className="text-micro text-muted-foreground">
+        Workspaces Offline
+      </span>
     )
   }
 
   return (
     <div
       ref={containerRef}
-      className="relative flex min-w-0 items-center gap-1.5"
+      className="relative flex min-h-0 min-w-0 self-stretch items-center gap-1.5"
     >
       {workspaces.map((workspace) => (
         <WorkspaceItem

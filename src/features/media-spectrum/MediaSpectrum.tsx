@@ -23,10 +23,12 @@ export function MediaSpectrum({
               ? 'Demonstração · dados ilustrativos'
               : 'Frequências do player ativo'
           }
-          className="flex h-6 shrink-0 items-center justify-center gap-1 px-2 text-secondary"
-          initial={reducedMotion ? false : { opacity: 0, width: 0 }}
-          animate={{ opacity: 1, width: 'auto' }}
-          exit={{ opacity: 0, width: 0 }}
+          className="flex shrink-0 self-stretch items-center justify-center gap-1 overflow-hidden rounded-full bg-transparent text-secondary"
+          initial={
+            reducedMotion ? false : { scaleX: 0, width: 0, paddingInline: 0 }
+          }
+          animate={{ scaleX: 1, width: 'auto', paddingInline: 8 }}
+          exit={{ scaleX: 0, width: 0, paddingInline: 0 }}
           transition={{ duration: reducedMotion ? 0 : 0.12 }}
         >
           {data.bands.map((value, index) => (
@@ -34,7 +36,7 @@ export function MediaSpectrum({
               key={index}
               aria-hidden="true"
               data-spectrum-band={index}
-              className="h-5 w-px shrink-0 rounded-full bg-current"
+              className="w-px shrink-0 self-stretch rounded-full bg-current"
               initial={false}
               animate={{ scaleY: 0.05 + value * 0.95 }}
               transition={

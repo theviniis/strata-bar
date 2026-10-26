@@ -6,6 +6,13 @@ const meta = {
   title: 'Widgets/MediaSpectrum',
   component: MediaSpectrum,
   tags: ['autodocs'],
+  decorators: [
+    (Story) => (
+      <div className="flex h-8 items-stretch">
+        <Story />
+      </div>
+    )
+  ],
   args: { data: demoSpectrum(), demo: true }
 } satisfies Meta<typeof MediaSpectrum>
 export default meta

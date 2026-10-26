@@ -119,7 +119,7 @@ export function NativeBarSurface({
                   key={name}
                   data-section={name}
                   className={cn(
-                    'relative flex h-full min-w-0 items-center',
+                    'relative flex h-full min-w-0 items-center py-1.5',
                     name === 'center'
                       ? 'justify-self-center'
                       : name === 'right'
@@ -188,7 +188,7 @@ export function NativeBarSurface({
                     <div
                       key={widget.id}
                       data-bar-item
-                      className="group/bar-item flex min-w-0 items-center empty:hidden"
+                      className="group/bar-item flex min-h-0 min-w-0 self-stretch items-center empty:hidden"
                       style={{ gap: bar.spacing }}
                     >
                       {renderWidget ? (

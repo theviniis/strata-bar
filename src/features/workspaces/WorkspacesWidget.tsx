@@ -23,7 +23,10 @@ export function WorkspacesWidget({
   )
   const label = active ? active.name?.trim() || `Área ${active.index + 1}` : '—'
   return (
-    <div className="flex min-w-0 items-center gap-2 px-2" {...props}>
+    <div
+      className="flex min-h-0 min-w-0 self-stretch items-center gap-2 px-2 py-1"
+      {...props}
+    >
       {showLabel(format) && (
         <WidgetItemLabel className="shrink-0 text-micro">
           {label}
