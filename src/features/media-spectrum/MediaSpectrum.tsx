@@ -23,7 +23,7 @@ export function MediaSpectrum({
               ? 'Demonstração · dados ilustrativos'
               : 'Frequências do player ativo'
           }
-          className="flex shrink-0 self-stretch items-center justify-center gap-1 overflow-hidden rounded-full bg-transparent text-secondary"
+          className="flex shrink-0 self-stretch items-center justify-center gap-1 overflow-hidden rounded-full bg-transparent text-secondary py-1"
           initial={
             reducedMotion ? false : { scaleX: 0, width: 0, paddingInline: 0 }
           }
