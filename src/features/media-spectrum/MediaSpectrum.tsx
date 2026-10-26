@@ -25,7 +25,7 @@ export function MediaSpectrum({
           }
           className="flex h-6 shrink-0 items-center justify-center gap-1 px-2 text-secondary"
           initial={reducedMotion ? false : { opacity: 0, width: 0 }}
-          animate={{ opacity: 1, width: 35 }}
+          animate={{ opacity: 1, width: 'auto' }}
           exit={{ opacity: 0, width: 0 }}
           transition={{ duration: reducedMotion ? 0 : 0.12 }}
         >

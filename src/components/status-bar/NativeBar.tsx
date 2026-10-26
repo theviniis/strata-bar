@@ -1,19 +1,19 @@
-import { themeStyle } from '@/services/theme/palettes'
-import { barTextClasses } from '@/lib/typography'
 import desktopCorner from '@/assets/bar-desktop-corner.svg'
 import { useAudioRouting } from '@/hooks/useAudioRouting'
+import { useBarRegion } from '@/hooks/useBarRegion'
 import { useResolvedTheme } from '@/hooks/useResolvedTheme'
+import { barTextClasses } from '@/lib/typography'
 import { cn } from '@/lib/utils'
 import type { Config, WidgetConfig } from '@/services/configuration/config'
+import { isWidgetAvailable } from '@/services/configuration/widget-flags'
+import { themeStyle } from '@/services/theme/palettes'
 import { useConfig } from '@/stores/config'
 import { useMemo, useRef, type ReactNode } from 'react'
-import { useBarRegion } from '@/hooks/useBarRegion'
 import { QueryProvider } from '../QueryProvider'
 import { SlidingHighlight } from '../ui/sliding-highlight'
 import { cornerRadius, groupEdgeMask } from './curves'
 import { SeparatorMarginContext } from './separator-margin'
 import { Widget } from './Widget'
-import { isWidgetAvailable } from '@/services/configuration/widget-flags'
 
 /** Order-preserving section filter: presence and order both come from config. */
 function enabled(widgets: WidgetConfig[]) {
@@ -184,12 +184,10 @@ export function NativeBarSurface({
                       />
                     </div>
                   )}
-                  {widgets.map((widget, index) => (
+                  {widgets.map((widget) => (
                     <div
                       key={widget.id}
                       data-bar-item
-                      data-has-previous={index > 0}
-                      data-has-next={index < widgets.length - 1}
                       className="group/bar-item flex min-w-0 items-center empty:hidden"
                       style={{ gap: bar.spacing }}
                     >

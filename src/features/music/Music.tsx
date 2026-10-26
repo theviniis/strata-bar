@@ -29,13 +29,10 @@ export function Music({
   ...anchorProps
 }: MusicProps) {
   return (
-    <WidgetItem className="group/music p-0" disabled={!current} asChild>
+    <WidgetItem className="group/music mx-2 p-0" disabled={!current} asChild>
       <div
         aria-label={demo ? 'Música · demonstração' : 'Música'}
-        className={cn(
-          'min-w-0 max-w-45 shrink overflow-hidden group-data-[has-previous=true]/bar-item:ml-2 group-data-[has-next=true]/bar-item:mr-2',
-          className
-        )}
+        className={cn('min-w-0 max-w-45 shrink overflow-hidden', className)}
         {...anchorProps}
       >
         <div
