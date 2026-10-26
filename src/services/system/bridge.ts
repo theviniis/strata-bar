@@ -30,7 +30,7 @@ export type Channel =
   | 'network'
   | 'volume'
   | 'activeWindow'
-  | 'komorebi'
+  | 'workspaces'
   | 'audioOutputs'
   | 'audioInputs'
   | 'microphone'
@@ -40,8 +40,8 @@ export type Channel =
 
 export type WorkspaceStatus = 'active' | 'populated' | 'empty'
 
-/** One komorebi workspace as projected for a single monitor. */
-export interface KomorebiWorkspace {
+/** One workspace as projected for a single monitor. */
+export interface Workspace {
   index: number
   name: string | null
   status: WorkspaceStatus
@@ -49,14 +49,14 @@ export interface KomorebiWorkspace {
   windows: number
 }
 
-/** Per-monitor komorebi snapshot. Indices are komorebi ring positions (zero-based). */
-export interface KomorebiData {
+/** Per-monitor workspaces snapshot. Indices are ring positions (zero-based). */
+export interface WorkspacesData {
   monitor: number
   floatOverride: boolean
-  workspaces: KomorebiWorkspace[]
+  workspaces: Workspace[]
 }
 
-export type KomorebiAction =
+export type WorkspacesAction =
   | { action: 'focusWorkspace'; monitor: number; workspace: number }
   | { action: 'cycleWorkspace'; direction: 'next' | 'previous' }
 
@@ -78,13 +78,13 @@ export interface ChannelData {
   microphone: ChannelData['volume']
   volume: { level: number; muted: boolean }
   activeWindow: string
-  komorebi: KomorebiData
+  workspaces: WorkspacesData
   voicemeeter: VoicemeeterData
 }
 
 /**
  * Illustrative values served by the browser demo adapter. Most are preview scalars
- * only, so they deliberately do not mirror the native payloads above; komorebi and
+ * only, so they deliberately do not mirror the native payloads above; workspaces and
  * disk are the exceptions because a workspace strip and a row of volume bars cannot
  * be represented by a scalar.
  */
@@ -102,7 +102,7 @@ export interface DemoChannelData {
   audioOutputs: null
   volume: number
   activeWindow: string
-  komorebi: KomorebiData
+  workspaces: WorkspacesData
   voicemeeter: null
 }
 
@@ -184,7 +184,7 @@ export interface AdapterBase {
   /** Only the native adapter owns the process, so the demo adapter cannot quit. */
   quit?(): Promise<void>
   /** Native-only: the studio demo cannot drive a real window manager. */
-  komorebiAction?(value: KomorebiAction): Promise<void>
+  workspacesAction?(value: WorkspacesAction): Promise<void>
 }
 
 export interface DemoBridge extends AdapterBase, Subscribable<DemoChannelData> {
@@ -246,7 +246,7 @@ export function demoChannelData(): DemoChannelData {
     audioOutputs: null,
     activeWindow: 'Visual Studio Code',
     voicemeeter: null,
-    komorebi: {
+    workspaces: {
       monitor: 0,
       floatOverride: false,
       workspaces: [
@@ -379,7 +379,7 @@ export function createNativeBridge(): NativeBridge {
       const { invoke } = await import('@tauri-apps/api/core')
       const { listen } = await import('@tauri-apps/api/event')
       let listenChannel = listen
-      if (channel === 'komorebi') {
+      if (channel === 'workspaces') {
         const { getCurrentWebviewWindow } =
           await import('@tauri-apps/api/webviewWindow')
         const currentWindow = getCurrentWebviewWindow()
@@ -511,7 +511,7 @@ export function createNativeBridge(): NativeBridge {
       const { invoke } = await import('@tauri-apps/api/core')
       return invoke('set_audio_output', value)
     },
-    async komorebiAction(value) {
+    async workspacesAction(value) {
       const { invoke } = await import('@tauri-apps/api/core')
       const payload =
         value.action === 'focusWorkspace'
@@ -527,7 +527,7 @@ export function createNativeBridge(): NativeBridge {
               workspace: null,
               direction: value.direction
             }
-      return invoke('komorebi_action', payload)
+      return invoke('workspaces_action', payload)
     },
     async quit() {
       const { invoke } = await import('@tauri-apps/api/core')

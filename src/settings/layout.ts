@@ -33,7 +33,7 @@ export const typeLabels: Record<WidgetType, string> = {
   volume: 'Volume',
   microphone: 'Microfone',
   activeWindow: 'Janela ativa',
-  komorebi: 'Workspaces'
+  workspaces: 'Workspaces'
 }
 
 /**

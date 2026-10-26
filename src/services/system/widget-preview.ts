@@ -63,7 +63,7 @@ export function widgetPreviewEvent<C extends Channel>(
       disk: demo.disk,
       volume: { level: demo.volume, muted: false },
       microphone: { level: demo.microphone, muted: false },
-      komorebi: demo.komorebi,
+      workspaces: demo.workspaces,
       media: demo.media,
       mediaSpectrum: demo.mediaSpectrum
     }

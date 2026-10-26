@@ -22,7 +22,7 @@
     "left": [
       {
         "id": "workspaces",
-        "type": "komorebi",
+        "type": "workspaces",
         "enabled": true,
         "intervalMs": 2000,
         "format": "compact",

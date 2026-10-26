@@ -7,14 +7,14 @@ import type {
   SystemEvent
 } from '../services/system/bridge'
 
-const { setVolume, quit, komorebiAction } = vi.hoisted(() => ({
+const { setVolume, quit, workspacesAction } = vi.hoisted(() => ({
   setVolume: vi.fn(async () => ({ level: 64, muted: false })),
   quit: vi.fn(async () => {}),
-  komorebiAction: vi.fn(async () => {})
+  workspacesAction: vi.fn(async () => {})
 }))
 
 vi.mock('../services/system/bridge', () => ({
-  bridge: { mode: 'native', setVolume, quit, komorebiAction },
+  bridge: { mode: 'native', setVolume, quit, workspacesAction },
   connect: (
     _bridge: unknown,
     channel: Channel,
@@ -68,7 +68,7 @@ vi.mock('../services/system/bridge', () => ({
       },
       microphone: { level: 72, muted: true },
       volume: { level: 64, muted: false },
-      komorebi: {
+      workspaces: {
         monitor: 0,
         floatOverride: false,
         workspaces: [
@@ -137,14 +137,14 @@ it('renders real adapter snapshots and the audio popup trigger', () => {
   ).toHaveAttribute('aria-haspopup', 'dialog')
 })
 
-it('renders komorebi workspaces and focuses the clicked one', async () => {
+it('renders workspaces and focuses the clicked one', async () => {
   render(<NativeBar />)
   expect(
     screen.getByRole('button', { name: 'Workspace 2 (active)' })
   ).toHaveAttribute('aria-pressed', 'true')
   fireEvent.click(screen.getByRole('button', { name: 'Workspace 3 (empty)' }))
   await waitFor(() =>
-    expect(komorebiAction).toHaveBeenCalledWith({
+    expect(workspacesAction).toHaveBeenCalledWith({
       action: 'focusWorkspace',
       monitor: 0,
       workspace: 2

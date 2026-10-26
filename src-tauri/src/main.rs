@@ -37,7 +37,7 @@ mod monitors;
 mod monitor_check;
 mod disk_contract;
 mod gpu_contract;
-mod komorebi;
+mod workspaces;
 mod memory_contract;
 mod metrics;
 mod sensors;
@@ -48,14 +48,14 @@ mod voicemeeter;
 use serde_json::{json, Value};
 use tauri::Manager;
 #[tauri::command]
-fn capabilities(komorebi: tauri::State<komorebi::Komorebi>) -> Value {
-    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"mediaSpectrum":true,"weather":true,"appBar":true,"gpu":true,"disk":true,"network":false,"komorebi":komorebi.available(),"voicemeeter":crate::voicemeeter::installed(),"config":true})
+fn capabilities(workspaces: tauri::State<workspaces::Workspaces>) -> Value {
+    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"mediaSpectrum":true,"weather":true,"appBar":true,"gpu":true,"disk":true,"network":false,"workspaces":workspaces.available(),"voicemeeter":crate::voicemeeter::installed(),"config":true})
 }
 #[tauri::command]
 fn subscribe(
     window: tauri::WebviewWindow,
     metrics: tauri::State<metrics::Metrics>,
-    komorebi: tauri::State<komorebi::Komorebi>,
+    workspaces: tauri::State<workspaces::Workspaces>,
     channel: String,
     interval_ms: u64,
 ) -> Result<Value, String> {
@@ -68,8 +68,8 @@ fn subscribe(
     if channel == "media" {
         return window.state::<media::Media>().subscribe(window.label());
     }
-    if channel == "komorebi" {
-        return komorebi.subscribe(&window, interval_ms);
+    if channel == "workspaces" {
+        return workspaces.subscribe(&window, interval_ms);
     }
     metrics.subscribe(channel, window.label().into(), interval_ms)
 }
@@ -77,7 +77,7 @@ fn subscribe(
 fn unsubscribe(
     window: tauri::WebviewWindow,
     metrics: tauri::State<metrics::Metrics>,
-    komorebi: tauri::State<komorebi::Komorebi>,
+    workspaces: tauri::State<workspaces::Workspaces>,
     token: String,
 ) {
     if token.starts_with("spectrum") {
@@ -88,15 +88,15 @@ fn unsubscribe(
         window
             .state::<media::Media>()
             .unsubscribe(&token, window.label());
-    } else if token.starts_with('k') {
-        komorebi.unsubscribe(&token, window.label());
+    } else if token.starts_with('w') {
+        workspaces.unsubscribe(&token, window.label());
     } else {
         metrics.unsubscribe(&token, window.label());
     }
 }
 #[tauri::command]
-fn komorebi_action(
-    state: tauri::State<komorebi::Komorebi>,
+fn workspaces_action(
+    state: tauri::State<workspaces::Workspaces>,
     action: String,
     monitor: Option<u32>,
     workspace: Option<u32>,
@@ -239,9 +239,9 @@ fn settings_open(app: tauri::AppHandle) -> Result<(), String> {
 fn diagnostics(
     app: tauri::AppHandle,
     metrics: tauri::State<metrics::Metrics>,
-    komorebi: tauri::State<komorebi::Komorebi>,
+    workspaces: tauri::State<workspaces::Workspaces>,
 ) -> Value {
-    json!({"mediaSpectrum":app.state::<media_spectrum::MediaSpectrum>().diagnostics(),"metrics":metrics.diagnostics(),"komorebi":komorebi.diagnostics(),"overlay":desktop::overlay_snapshot(),"settings":desktop::settings_snapshot(),"profile":desktop::profile(),"config":config::diagnostics(&app),"bars":app.webview_windows().keys().collect::<Vec<_>>()})
+    json!({"mediaSpectrum":app.state::<media_spectrum::MediaSpectrum>().diagnostics(),"metrics":metrics.diagnostics(),"workspaces":workspaces.diagnostics(),"overlay":desktop::overlay_snapshot(),"settings":desktop::settings_snapshot(),"profile":desktop::profile(),"config":config::diagnostics(&app),"bars":app.webview_windows().keys().collect::<Vec<_>>()})
 }
 #[tauri::command]
 async fn media_action(
@@ -318,8 +318,8 @@ fn cleanup(app: &tauri::AppHandle) {
     if let Some(metrics) = app.try_state::<metrics::Metrics>() {
         metrics.stop();
     }
-    if let Some(komorebi) = app.try_state::<komorebi::Komorebi>() {
-        komorebi.stop();
+    if let Some(workspaces) = app.try_state::<workspaces::Workspaces>() {
+        workspaces.stop();
     }
 }
 
@@ -401,7 +401,7 @@ fn main() {
     }
     if std::env::args().any(|v| v == "--probe") {
         let probe_context = tauri::generate_context!();
-        let result = json!({"metrics":metrics::probe(),"komorebi":komorebi::probe(),"overlay":desktop::overlay_snapshot(),"settings":desktop::settings_snapshot(),"monitors":desktop::monitor_snapshot(),"bars":desktop::bar_snapshot(),"config":config::probe(&probe_context)});
+        let result = json!({"metrics":metrics::probe(),"workspaces":workspaces::probe(),"overlay":desktop::overlay_snapshot(),"settings":desktop::settings_snapshot(),"monitors":desktop::monitor_snapshot(),"bars":desktop::bar_snapshot(),"config":config::probe(&probe_context)});
         let file = std::env::temp_dir().join("strata-native-probe.json");
         std::fs::write(&file, serde_json::to_string_pretty(&result).unwrap()).unwrap();
         println!("{}", serde_json::to_string(&result).unwrap());
@@ -458,7 +458,7 @@ fn main() {
             set_channel_source,
             set_audio_input,
             set_audio_output,
-            komorebi_action,
+            workspaces_action,
             config_load,
             config_save,
             settings_monitors,
@@ -498,7 +498,7 @@ fn main() {
             app.manage(agents::Agents::start(app.handle().clone())?);
             app.manage(metrics::Metrics::start(app.handle().clone()));
             app.manage(media_spectrum::MediaSpectrum::start(app.handle().clone(), app.state::<media::Media>().inner().clone(), app.state::<metrics::Metrics>().inner().clone()));
-            app.manage(komorebi::Komorebi::start(app.handle().clone()));
+            app.manage(workspaces::Workspaces::start(app.handle().clone()));
             monitors::observe(app.handle())?;
             desktop::reconcile(app.handle())?;
             #[cfg(debug_assertions)]
@@ -528,8 +528,8 @@ fn main() {
                 if let Some(metrics) = window.app_handle().try_state::<metrics::Metrics>() {
                     metrics.remove_window(window.label());
                 }
-                if let Some(komorebi) = window.app_handle().try_state::<komorebi::Komorebi>() {
-                    komorebi.remove_window(window.label());
+                if let Some(workspaces) = window.app_handle().try_state::<workspaces::Workspaces>() {
+                    workspaces.remove_window(window.label());
                 }
             }
         })

@@ -231,7 +231,7 @@ Para testar o roteamento de áudio com Voicemeeter, adicione esta configuração
   },
   "widgets": {
     "left": [
-      { "id": "workspaces", "type": "komorebi" },
+      { "id": "workspaces", "type": "workspaces" },
       { "id": "active", "type": "activeWindow" }
     ],
     "center": [{ "id": "time", "type": "clock" }],

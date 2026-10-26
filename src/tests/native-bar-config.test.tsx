@@ -15,12 +15,12 @@ const native = vi.hoisted(() => ({
   loaded: vi.fn()
 }))
 
-const { setVolume, quit, komorebiAction, setChannelSource } = vi.hoisted(
+const { setVolume, quit, workspacesAction, setChannelSource } = vi.hoisted(
   () => ({
     setChannelSource: vi.fn(async () => {}),
     setVolume: vi.fn(async () => ({ level: 64, muted: false })),
     quit: vi.fn(async () => {}),
-    komorebiAction: vi.fn(async () => {})
+    workspacesAction: vi.fn(async () => {})
   })
 )
 
@@ -29,7 +29,7 @@ vi.mock('../services/system/bridge', () => ({
     mode: 'native',
     setVolume,
     quit,
-    komorebiAction,
+    workspacesAction,
     setChannelSource,
     configLoad: () => native.loaded()
   },
@@ -64,7 +64,7 @@ vi.mock('../services/system/bridge', () => ({
       microphone: { level: 72, muted: false },
       volume: { level: 64, muted: false },
       media: demoMedia(),
-      komorebi: {
+      workspaces: {
         monitor: 0,
         floatOverride: false,
         workspaces: [

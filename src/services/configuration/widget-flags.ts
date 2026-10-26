@@ -17,7 +17,7 @@ export const widgetFlags: Readonly<Record<WidgetType, boolean>> = {
   volume: true,
   microphone: true,
   activeWindow: false,
-  komorebi: true
+  workspaces: true
 }
 
 export function isWidgetAvailable(type: WidgetType): boolean {

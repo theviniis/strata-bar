@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { fn } from 'storybook/test'
-import { Komorebi } from './Komorebi'
-import { komorebiFixture } from './fixtures'
+import { WorkspacesWidget } from './WorkspacesWidget'
+import { workspacesFixture } from './fixtures'
 import { useWorkspaceIndicator } from './useWorkspaceIndicator'
 
 const meta = {
   tags: ['autodocs'],
-  title: 'Widgets/Komorebi',
-  component: Komorebi,
+  title: 'Widgets/Workspaces',
+  component: WorkspacesWidget,
   render: function WorkspaceDemo(args) {
     const activeIndex =
       args.event.status === 'ready'
@@ -20,14 +20,14 @@ const meta = {
       args.event.status !== 'ready'
     )
     return (
-      <Komorebi
+      <WorkspacesWidget
         {...args}
         workspaceProps={{ ...args.workspaceProps, ...refs }}
       />
     )
   },
   args: {
-    event: { status: 'ready', data: komorebiFixture() },
+    event: { status: 'ready', data: workspacesFixture() },
     format: 'label',
     workspaceProps: {
       onSelect: fn(),
@@ -38,7 +38,7 @@ const meta = {
       itemRef: undefined
     }
   }
-} satisfies Meta<typeof Komorebi>
+} satisfies Meta<typeof WorkspacesWidget>
 export default meta
 type Story = StoryObj<typeof meta>
 export const Ready: Story = {}

@@ -3,7 +3,7 @@ import type { ChannelData, SystemEvent } from '../services/system/bridge'
 
 type Listener = (event: { payload: SystemEvent<ChannelData['volume']> }) => void
 type WorkspaceListener = (event: {
-  payload: SystemEvent<ChannelData['komorebi']>
+  payload: SystemEvent<ChannelData['workspaces']>
 }) => void
 
 const windows = vi.hoisted(() => ({
@@ -54,7 +54,7 @@ import {
 function workspaceEvent(
   monitor: number,
   active: number
-): SystemEvent<ChannelData['komorebi']> {
+): SystemEvent<ChannelData['workspaces']> {
   return {
     status: 'ready',
     data: {
@@ -71,7 +71,7 @@ function workspaceEvent(
   }
 }
 
-it('isolates komorebi updates and initial snapshots by bar window', async () => {
+it('isolates workspaces updates and initial snapshots by bar window', async () => {
   state.invoke.mockReset()
   windows.listeners.clear()
   windows.stops.clear()
@@ -87,12 +87,15 @@ it('isolates komorebi updates and initial snapshots by bar window', async () => 
   })
   windows.current = 'bar-0'
   const first = vi.fn()
-  const disposeFirst = await createNativeBridge().subscribe('komorebi', first)
+  const disposeFirst = await createNativeBridge().subscribe('workspaces', first)
   expect(first).toHaveBeenCalledExactlyOnceWith(workspaceEvent(0, 0))
 
   windows.current = 'bar-1'
   const second = vi.fn()
-  const disposeSecond = await createNativeBridge().subscribe('komorebi', second)
+  const disposeSecond = await createNativeBridge().subscribe(
+    'workspaces',
+    second
+  )
   expect(second).toHaveBeenCalledExactlyOnceWith(workspaceEvent(1, 1))
   expect(first).toHaveBeenCalledTimes(1)
 
@@ -114,11 +117,11 @@ it('isolates komorebi updates and initial snapshots by bar window', async () => 
   expect(state.invoke).toHaveBeenCalledWith('unsubscribe', { token: 'bar-1' })
 })
 
-it('removes the window-scoped listener when komorebi subscription fails', async () => {
+it('removes the window-scoped listener when workspaces subscription fails', async () => {
   windows.current = 'bar-failure'
   state.invoke.mockRejectedValueOnce(Error('native unavailable'))
   await expect(
-    createNativeBridge().subscribe('komorebi', vi.fn())
+    createNativeBridge().subscribe('workspaces', vi.fn())
   ).rejects.toThrow('native unavailable')
   expect(windows.stops.get('bar-failure')).toHaveBeenCalledTimes(1)
   expect(windows.listeners.has('bar-failure')).toBe(false)
@@ -154,25 +157,25 @@ it('removes the event listener when native subscription fails', async () => {
   expect(state.stop).toHaveBeenCalledTimes(1)
 })
 
-it('spawns validated komorebic commands for workspace actions', async () => {
+it('spawns validated workspaces commands for workspace actions', async () => {
   state.invoke.mockClear()
   state.invoke.mockResolvedValue(null)
-  await createNativeBridge().komorebiAction!({
+  await createNativeBridge().workspacesAction!({
     action: 'focusWorkspace',
     monitor: 1,
     workspace: 2
   })
-  expect(state.invoke).toHaveBeenCalledWith('komorebi_action', {
+  expect(state.invoke).toHaveBeenCalledWith('workspaces_action', {
     action: 'focusWorkspace',
     monitor: 1,
     workspace: 2,
     direction: null
   })
-  await createNativeBridge().komorebiAction!({
+  await createNativeBridge().workspacesAction!({
     action: 'cycleWorkspace',
     direction: 'next'
   })
-  expect(state.invoke).toHaveBeenCalledWith('komorebi_action', {
+  expect(state.invoke).toHaveBeenCalledWith('workspaces_action', {
     action: 'cycleWorkspace',
     monitor: null,
     workspace: null,

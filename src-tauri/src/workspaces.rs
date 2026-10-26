@@ -143,9 +143,9 @@ fn target_ok(state: &State, monitor: u32, workspace: u32) -> Result<(), String> 
         .monitors
         .elements
         .get(monitor as usize)
-        .ok_or("Unknown komorebi monitor")?;
+        .ok_or("Unknown workspaces monitor")?;
     if workspace as usize >= target.workspaces.elements.len() {
-        return Err("Unknown komorebi workspace".into());
+        return Err("Unknown workspaces workspace".into());
     }
     Ok(())
 }
@@ -223,11 +223,11 @@ struct Data {
     emitted: u64,
 }
 #[derive(Clone)]
-pub struct Komorebi {
+pub struct Workspaces {
     data: Arc<Mutex<Data>>,
     stop: Arc<AtomicBool>,
 }
-impl Komorebi {
+impl Workspaces {
     pub fn start(app: AppHandle) -> Self {
         let this = Self {
             data: Default::default(),
@@ -240,13 +240,17 @@ impl Komorebi {
     pub fn available(&self) -> bool {
         resolve_komorebic().is_some()
     }
-    pub fn subscribe(&self, window: &tauri::WebviewWindow, interval_ms: u64) -> Result<Value, String> {
-        let _ = interval_ms; // komorebi is event-driven; the interval is ignored.
+    pub fn subscribe(
+        &self,
+        window: &tauri::WebviewWindow,
+        interval_ms: u64,
+    ) -> Result<Value, String> {
+        let _ = interval_ms; // workspaces is event-driven; the interval is ignored.
         let monitor = monitor_of(window)?;
         let label = window.label().to_string();
         let mut d = self.data.lock().map_err(|e| e.to_string())?;
         d.next += 1;
-        let token = format!("k{}", d.next);
+        let token = format!("w{}", d.next);
         let initial = if d.connected {
             d.state
                 .as_ref()
@@ -258,9 +262,14 @@ impl Komorebi {
         } else {
             envelope("unavailable", Value::Null)
         };
-        d.summary
-            .insert(token.clone(), snapshot_key(&initial));
-        d.subs.insert(token.clone(), Sub { window: label, monitor });
+        d.summary.insert(token.clone(), snapshot_key(&initial));
+        d.subs.insert(
+            token.clone(),
+            Sub {
+                window: label,
+                monitor,
+            },
+        );
         Ok(json!({"token": token, "initial": initial}))
     }
     pub fn unsubscribe(&self, token: &str, window: &str) {
@@ -287,7 +296,7 @@ impl Komorebi {
         if action == "focusWorkspace" {
             let d = self.data.lock().map_err(|e| e.to_string())?;
             target_ok(
-                d.state.as_ref().ok_or("Komorebi state is unavailable")?,
+                d.state.as_ref().ok_or("Workspaces state is unavailable")?,
                 monitor.ok_or("focusWorkspace requires a monitor")?,
                 workspace.ok_or("focusWorkspace requires a workspace")?,
             )?;
@@ -327,7 +336,7 @@ impl Komorebi {
             .unwrap_or(false)
     }
     fn run(&self, app: AppHandle) {
-        let name = format!("strata-bar-komorebi-{}", std::process::id());
+        let name = format!("strata-bar-workspaces-{}", std::process::id());
         while !self.stop.load(Ordering::Acquire) {
             // Activate only while a bar window is subscribed, like the metric collectors.
             if !self.has_subscribers() {
@@ -341,7 +350,7 @@ impl Komorebi {
                 continue;
             };
             if let Err(e) = self.session(&app, &exe, &name) {
-                eprintln!("komorebi pipe: {e}");
+                eprintln!("workspaces pipe: {e}");
                 if let Ok(mut d) = self.data.lock() {
                     d.error = Some(e);
                 }
@@ -365,7 +374,10 @@ impl Komorebi {
             .stderr(Stdio::piped())
             .creation_flags(CREATE_NO_WINDOW)
             .output();
-        if !subscribed.as_ref().is_ok_and(|output| output.status.success()) {
+        if !subscribed
+            .as_ref()
+            .is_ok_and(|output| output.status.success())
+        {
             unsafe {
                 let _ = CloseHandle(handle);
             }
@@ -398,13 +410,14 @@ impl Komorebi {
             if self.stop.load(Ordering::Acquire) {
                 return Ok(());
             }
-            // Drop the pipe once no bar cares about komorebi, so the host is idle.
+            // Drop the pipe once no bar cares about workspaces, so the host is idle.
             if !self.has_subscribers() {
                 return Ok(());
             }
             let mut available = 0u32;
-            if unsafe { PeekNamedPipe(handle, None, 0, None, Some(&mut available), None) }.is_err() {
-                return Err("komorebi pipe closed".into());
+            if unsafe { PeekNamedPipe(handle, None, 0, None, Some(&mut available), None) }.is_err()
+            {
+                return Err("workspaces pipe closed".into());
             }
             if available == 0 {
                 std::thread::sleep(Duration::from_millis(50));
@@ -412,8 +425,9 @@ impl Komorebi {
             }
             let want = (available as usize).min(temp.len());
             let mut read = 0u32;
-            if unsafe { ReadFile(handle, Some(&mut temp[..want]), Some(&mut read), None) }.is_err() {
-                return Err("komorebi pipe read failed".into());
+            if unsafe { ReadFile(handle, Some(&mut temp[..want]), Some(&mut read), None) }.is_err()
+            {
+                return Err("workspaces pipe read failed".into());
             }
             buffer.extend_from_slice(&temp[..read as usize]);
             for value in extract_messages(&mut buffer) {
@@ -475,8 +489,8 @@ impl Komorebi {
             }
         }
         for (window, value) in changed {
-            if let Err(e) = app.emit_to(window, "system:komorebi", &value) {
-                eprintln!("Emit komorebi: {e}");
+            if let Err(e) = app.emit_to(window, "system:workspaces", &value) {
+                eprintln!("Emit workspaces: {e}");
             }
         }
     }
@@ -508,7 +522,7 @@ fn action_args(
             };
             Ok(vec!["cycle-workspace".into(), direction.into()])
         }
-        other => Err(format!("Unsupported komorebi action: {other}")),
+        other => Err(format!("Unsupported workspaces action: {other}")),
     }
 }
 
@@ -541,7 +555,7 @@ fn create_pipe(name: &str) -> Result<HANDLE, String> {
         )
     };
     if handle.is_invalid() {
-        return Err("cannot create the komorebi named pipe".into());
+        return Err("cannot create the workspaces named pipe".into());
     }
     Ok(handle)
 }

@@ -5,7 +5,7 @@ import { WidgetViewContext } from './widget-view'
 import { WidgetPreviewContext } from './widget-preview-context'
 import { DemoVolumeController } from '@/features/volume/VolumeController'
 import { DemoMicrophoneController } from '@/features/microphone/MicrophoneController'
-import { DemoKomorebiController } from '@/features/komorebi/KomorebiController'
+import { DemoWorkspacesController } from '@/features/workspaces/WorkspacesController'
 import { DemoDiskController } from '@/features/disk/DiskController'
 import { DemoClockController } from '@/features/clock/ClockController'
 import { DemoGpuController } from '@/features/gpu/GpuController'
@@ -25,7 +25,7 @@ import {
   type Channel,
   type DemoBridge,
   type DemoChannelData,
-  type KomorebiData,
+  type WorkspacesData,
   type SystemEvent
 } from '../../services/system/bridge'
 import type { DiskData } from '../../services/system/disk.generated'
@@ -191,12 +191,12 @@ function DemoWidgetController({
       />
     )
   }
-  if (widget.type === 'komorebi')
+  if (widget.type === 'workspaces')
     return (
-      <DemoKomorebiController
+      <DemoWorkspacesController
         event={
           sample?.status === 'ready'
-            ? { status: 'ready', data: sample.data as KomorebiData }
+            ? { status: 'ready', data: sample.data as WorkspacesData }
             : sample?.status === 'error'
               ? { status: 'error', error: sample.error }
               : sample?.status === 'unavailable'

@@ -42,7 +42,7 @@ pub enum WidgetKind {
     Volume,
     Microphone,
     ActiveWindow,
-    Komorebi,
+    Workspaces,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]

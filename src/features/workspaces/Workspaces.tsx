@@ -1,10 +1,10 @@
 import { cn } from '@/lib/utils'
 import { cva, type VariantProps } from 'class-variance-authority'
 import type { ComponentProps, Ref } from 'react'
-import type { KomorebiWorkspace } from '../../services/system/bridge'
+import type { Workspace } from '../../services/system/bridge'
 
 export interface WorkspacesProps {
-  workspaces: KomorebiWorkspace[]
+  workspaces: Workspace[]
   offline: boolean
   onSelect: (workspace: number) => void
   describedBy: string | undefined
@@ -33,7 +33,7 @@ export function Workspaces({
 
   if (offline) {
     return (
-      <span className="text-micro text-muted-foreground">Komorebi Offline</span>
+      <span className="text-micro text-muted-foreground">Workspaces Offline</span>
     )
   }
 

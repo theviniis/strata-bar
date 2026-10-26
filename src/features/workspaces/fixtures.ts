@@ -1,6 +1,6 @@
-import type { KomorebiData } from '@/services/system/bridge'
+import type { WorkspacesData } from '@/services/system/bridge'
 
-export function komorebiFixture(): KomorebiData {
+export function workspacesFixture(): WorkspacesData {
   return {
     monitor: 1,
     floatOverride: false,

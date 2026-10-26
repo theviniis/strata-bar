@@ -5,7 +5,7 @@ import { ClockController } from '../../features/clock/ClockController'
 import { CpuController } from '../../features/cpu/CpuController'
 import { DiskController } from '../../features/disk/DiskController'
 import { GpuController } from '../../features/gpu/GpuController'
-import { KomorebiController } from '../../features/komorebi/KomorebiController'
+import { WorkspacesController } from '../../features/workspaces/WorkspacesController'
 import { MemoryController } from '../../features/memory/MemoryController'
 import { MicrophoneController } from '../../features/microphone/MicrophoneController'
 import { MusicController } from '../../features/music/MusicController'
@@ -44,7 +44,7 @@ const widgets: Record<
   mediaSpectrum: () => <MediaSpectrumController />,
   volume: () => <VolumeController />,
   microphone: () => <MicrophoneController />,
-  komorebi: () => <KomorebiController />,
+  workspaces: () => <WorkspacesController />,
   // No native collector is wired for these yet; the bar renders an honest
   // placeholder instead of inventing a reading.
   network: () => <Unsupported label="Rede" />,

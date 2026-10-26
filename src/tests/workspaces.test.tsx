@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { it, expect, vi } from 'vitest'
-import { Workspaces } from '../features/komorebi/Workspaces'
-import type { KomorebiWorkspace } from '../services/system/bridge'
+import { Workspaces } from '../features/workspaces/Workspaces'
+import type { Workspace } from '../services/system/bridge'
 
 const visualProps = {
   offline: false,
@@ -13,7 +13,7 @@ const visualProps = {
   onSelect: () => {}
 }
 
-const workspaces: KomorebiWorkspace[] = [
+const workspaces: Workspace[] = [
   { index: 0, name: null, status: 'populated', layer: 'Tiling', windows: 2 },
   { index: 1, name: 'web', status: 'active', layer: 'Tiling', windows: 1 },
   { index: 2, name: null, status: 'empty', layer: 'Floating', windows: 0 }
@@ -36,6 +36,6 @@ it('marks the active workspace and reports selections', () => {
 
 it('shows an offline label instead of stale workspaces', () => {
   render(<Workspaces {...visualProps} workspaces={workspaces} offline />)
-  expect(screen.getByText('Komorebi Offline')).toBeInTheDocument()
+  expect(screen.getByText('Workspaces Offline')).toBeInTheDocument()
   expect(screen.queryByRole('button')).not.toBeInTheDocument()
 })

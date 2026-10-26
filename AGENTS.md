@@ -1,12 +1,12 @@
 # Project Overview
 
 Strata (`strata-bar`) is a Windows 11 status bar MVP: a native, per-monitor AppBar that shows real CPU and
-physical RAM readings, a local clock, Core Audio volume/mute controls and a komorebi workspace viewer while
+physical RAM readings, a local clock, Core Audio volume/mute controls and a workspaces viewer while
 reserving desktop workspace on every connected monitor. The native host is a Tauri 2 (Rust) application that
 owns Win32 AppBar windows; the same React codebase also serves a browser-based "studio" preview with an
 explicitly labelled demo adapter. The MVP gate is the functioning Windows bar—browser-studio polish alone is
 not MVP success. Network, media, tray cloning and autostart are deferred until the core acceptance gates
-pass; the komorebi and GPU widgets are recorded exceptions (`docs/plans/komorebi-workspaces.md`,
+pass; the workspaces and GPU widgets are recorded exceptions (`docs/plans/workspaces.md`,
 `docs/plans/gpu-popup.md`).
 
 ## Repository Structure
@@ -14,7 +14,7 @@ pass; the komorebi and GPU widgets are recorded exceptions (`docs/plans/komorebi
 - `src/` — React 19 frontend: app shell, feature widgets, hooks, services, Zustand stores and tests.
   - `src/app/` — studio shell (`App.tsx`) and global styles (`styles.css`).
   - `src/components/` — status-bar components (`NativeBar.tsx`, `Widget.tsx`) and shadcn-style `ui/`.
-  - `src/features/` — individual widgets: `clock/`, `cpu/`, `disk/`, `gpu/`, `memory/`, `volume/`, `komorebi/`.
+  - `src/features/` — individual widgets: `clock/`, `cpu/`, `disk/`, `gpu/`, `memory/`, `volume/`, `workspaces/`.
   - `src/hooks/` — React hooks such as `useSystemChannel.ts` and `useOverlayTooltip.ts`.
   - `src/overlay/` — the shared floating surface: `Overlay.tsx` (`?view=overlay`), `TooltipSurface.tsx`
     and the off-screen `measure.ts` probe.
@@ -121,7 +121,7 @@ flowchart TD
   Bridge -->|window.__TAURI_INTERNALS__| Native[Native bridge: invoke + listen]
   Bridge -->|browser| Mock[Demo adapter]
   Tooltip -->|browser| Noop[Demo adapter: no-op]
-  Native --> Cmd[Tauri commands: subscribe / unsubscribe / set_volume / komorebi_action / overlay_show / overlay_hide / quit]
+  Native --> Cmd[Tauri commands: subscribe / unsubscribe / set_volume / workspaces_action / overlay_show / overlay_hide / quit]
   Cmd --> Metrics[metrics.rs transport and Core Audio]
   Metrics --> SensorClient[sensors.rs cache and IPC thread]
   SensorClient --> SensorService[C# service: LHM and Windows complements]
@@ -139,13 +139,13 @@ flowchart TD
   load based on `window.__TAURI_INTERNALS__`; **native failures must never fall back to demo values.**
 - Transport contract: `subscribe(channel, listener, { intervalMs }) -> Promise<dispose>` (idempotent),
   `capabilities() -> Promise<Record<channel, boolean>>`, `setVolume({ level, muted })`,
-  `komorebiAction({ action, monitor?, workspace?, direction? })`, `overlayShow(request)` /
+  `workspacesAction({ action, monitor?, workspace?, direction? })`, `overlayShow(request)` /
   `overlayHide()` for the shared floating surface, and native `configureBar` / future
   `mediaAction`, `launchApplication`, `powerAction`. Commands re-validate inputs natively; only configured
-  application IDs may be launched—never arbitrary shell strings—and `komorebiAction` spawns only a resolved
+  application IDs may be launched—never arbitrary shell strings—and `workspacesAction` spawns only a resolved
   `komorebic.exe` with a fixed argument allowlist. The native payload map (`ChannelData`) and the studio's
   demo scalars (`DemoChannelData`) are separate types: feature widgets read the native map, and only the
-  browser studio reads the demo one (its `komorebi` entry is the one non-scalar preview value).
+  browser studio reads the demo one (its `workspaces` entry is the one non-scalar preview value).
 - Native event envelope: `{ status: 'ready'|'loading'|'error', data, timestamp, error? }`; the event name
   identifies the channel. Subscribe returns `{ token, initial }` after the listener installs; a live event
   beats the initial snapshot. CPU/GPU/RAM/disk snapshots come from the installed sensor service; its 2000 ms collection pauses with no subscribers; Core
@@ -182,7 +182,7 @@ flowchart TD
   Current suites: `app.test.tsx`, `bridge.test.ts`, `config.test.ts`, `cpu-bridge.test.ts`, `cpu-popup.test.tsx`,
   `cpu-temperature-sampling.test.tsx`, `disk-bridge.test.ts`, `disk-popup.test.tsx`, `disk-widget.test.tsx`,
   `gpu-bridge.test.ts`,
-  `gpu-popup.test.tsx`, `komorebi.test.tsx`,
+  `gpu-popup.test.tsx`, `workspaces.test.tsx`,
   `memory-bridge.test.ts`, `memory-popup.test.tsx`, `native-bar.test.tsx`, `native-bridge.test.ts`,
   `overlay.test.tsx`, `overlay-render.test.tsx`, `popup-animation.test.tsx`, `popup-definition.test.ts`,
   `popover.test.tsx`, `resource-graph.test.tsx`, `widget-hover.test.tsx`, `widget-popup.test.tsx`
@@ -206,8 +206,8 @@ flowchart TD
 - Capabilities (`src-tauri/capabilities/bars.json`) scope event listen/unlisten to the `bar-*` and `overlay`
   windows only.
 - Commands validate inputs again on the native side; power actions require deliberate UI confirmation.
-  `komorebi_action` accepts only `focusWorkspace`/`cycleWorkspace`, bounds-checks monitor and workspace
-  against the last komorebi state, and spawns a resolved `komorebic.exe` with a fixed argument list (no shell,
+  `workspaces_action` accepts only `focusWorkspace`/`cycleWorkspace`, bounds-checks monitor and workspace
+  against the last komorebi state, and spawns a resolved `komorebic.exe` with a fixed argument allowlist (no shell,
   no arbitrary strings).
 - No secrets are stored in the repository; there is no credentials file or environment secret usage yet.
   - `> TODO: document secrets handling once cloud/weather credentials enter scope.`
@@ -237,11 +237,11 @@ flowchart TD
 
 - Widget registration: add a type to `types` and the Zod schema in `src/services/configuration/config.ts`,
   then register its icon/label in `meta` and its formatter in `formatters` in
-  `src/components/status-bar/Widget.tsx`. Widgets that need custom rendering (`clock`, `komorebi`, `disk`)
+  `src/components/status-bar/Widget.tsx`. Widgets that need custom rendering (`clock`, `workspaces`, `disk`)
   branch before the formatter path in `Widget.tsx` and ship a feature component under `src/features/<name>/`.
 - Channels: native capability map is returned by the `capabilities` command in `src-tauri/src/main.rs`;
   frontend adapters live in `src/services/system/bridge.ts`. Unsupported channels reject subscription;
-  `komorebi` is reported by capability and, when komorebi or `komorebic.exe` is absent, subscribes to a
+  `workspaces` is reported by capability and, when komorebi or `komorebic.exe` is absent, subscribes to a
   streamed `unavailable` status instead of rejecting. Hardware channels consume the installed LHM service; unsupported sensors are independently
   `unavailable`, and an absent/stale service never falls back to demo or another collector.
   `volume`/`microphone` can be routed through Voicemeeter (Banana/Potato) instead of the Windows default
@@ -251,11 +251,11 @@ flowchart TD
   linear 0-100% over the -60..+12 dB slider range; the device popups keep switching Windows endpoints.
   See `docs/plans/voicemeeter-audio.md`.
 - Tauri commands: `capabilities`, `subscribe`, `unsubscribe`, `set_volume`, `set_channel_source`,
-  `komorebi_action`, `overlay_show`,
+  `workspaces_action`, `overlay_show`,
   `overlay_hide`, `diagnostics`, `quit` (`src-tauri/src/main.rs`); the AppBar host is `desktop::reconcile` /
   `desktop::release_all`, the shared floating surface is `desktop::ensure_overlay` / `desktop::overlay_show` /
   `desktop::overlay_hide` (probe via `desktop::overlay_snapshot`), the
-  komorebi named-pipe watcher is `komorebi::Komorebi::start` (probe via `komorebi::probe`), and the
+  workspaces named-pipe watcher is `workspaces::Workspaces::start` (probe via `workspaces::probe`), and the
   Voicemeeter remote session is `voicemeeter::Client::native()` (owned by the metrics worker thread).
 - Configuration: JSON schema version 1 with unique widget IDs, `enabled`, `intervalMs`, `format`, `tooltip`,
   per-widget `audio` routing (`source: windows|voicemeeter` with `target {kind,index}` — required when

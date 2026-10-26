@@ -1,25 +1,25 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { Komorebi } from '@/features/komorebi/Komorebi'
+import { WorkspacesWidget } from '@/features/workspaces/WorkspacesWidget'
 import {
-  KomorebiController,
-  DemoKomorebiController
-} from '@/features/komorebi/KomorebiController'
-import { komorebiFixture } from '@/features/komorebi/fixtures'
+  WorkspacesController,
+  DemoWorkspacesController
+} from '@/features/workspaces/WorkspacesController'
+import { workspacesFixture } from '@/features/workspaces/fixtures'
 import { defaultView } from '@/components/status-bar/presentation'
 import { WidgetViewContext } from '@/components/status-bar/widget-view'
 import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
-import type { KomorebiData, SystemEvent } from '@/services/system/bridge'
+import type { WorkspacesData, SystemEvent } from '@/services/system/bridge'
 
 const runtime = vi.hoisted(() => ({
   connect: vi.fn(),
   dispose: vi.fn(),
   action: vi.fn(async () => {}),
-  emit: undefined as ((event: SystemEvent<KomorebiData>) => void) | undefined
+  emit: undefined as ((event: SystemEvent<WorkspacesData>) => void) | undefined
 }))
 vi.mock('@/services/system/bridge', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/system/bridge')>()),
-  bridge: { mode: 'native', komorebiAction: runtime.action },
+  bridge: { mode: 'native', workspacesAction: runtime.action },
   connect: (...args: unknown[]) => {
     runtime.connect(...args)
     runtime.emit = args[3] as typeof runtime.emit
@@ -47,10 +47,10 @@ it('renders explicit states, titles, refs and selection without connecting', () 
       showTitles: false
     }
   }
-  const view = render(<Komorebi {...props} event={{ status: 'loading' }} />)
+  const view = render(<WorkspacesWidget {...props} event={{ status: 'loading' }} />)
   expect(screen.getByLabelText('Áreas de trabalho')).toHaveTextContent('…')
   view.rerender(
-    <Komorebi {...props} event={{ status: 'ready', data: komorebiFixture() }} />
+    <WorkspacesWidget {...props} event={{ status: 'ready', data: workspacesFixture() }} />
   )
   const button = screen.getByRole('button', { name: 'Workspace 2 (active)' })
   expect(button).not.toHaveAttribute('title')
@@ -59,33 +59,33 @@ it('renders explicit states, titles, refs and selection without connecting', () 
   fireEvent.click(button)
   expect(onSelect).toHaveBeenCalledWith(1)
   view.rerender(
-    <Komorebi
+    <WorkspacesWidget
       {...props}
       workspaceProps={{ ...props.workspaceProps, showTitles: true }}
-      event={{ status: 'ready', data: komorebiFixture() }}
+      event={{ status: 'ready', data: workspacesFixture() }}
     />
   )
   expect(button).toHaveAttribute('title', 'Web · 1 janela(s) · Tiling')
   view.rerender(
-    <Komorebi {...props} event={{ status: 'error', error: 'offline' }} />
+    <WorkspacesWidget {...props} event={{ status: 'error', error: 'offline' }} />
   )
-  expect(screen.getByText('Komorebi Offline')).toBeVisible()
+  expect(screen.getByText('Workspaces Offline')).toBeVisible()
   expect(screen.queryByRole('button')).not.toBeInTheDocument()
   view.rerender(
-    <Komorebi {...props} event={{ status: 'unavailable', data: null }} />
+    <WorkspacesWidget {...props} event={{ status: 'unavailable', data: null }} />
   )
-  expect(screen.getByText('Komorebi Offline')).toBeVisible()
+  expect(screen.getByText('Workspaces Offline')).toBeVisible()
   expect(runtime.connect).not.toHaveBeenCalled()
 })
 
 it('owns subscriptions, configured intervals, focus actions and cleanup', () => {
   const view = render(
     <WidgetViewContext value={defaultView}>
-      <KomorebiController />
+      <WorkspacesController />
     </WidgetViewContext>
   )
   expect(runtime.connect.mock.calls[0][2]).toEqual({ intervalMs: 2000 })
-  act(() => runtime.emit?.({ status: 'ready', data: komorebiFixture() }))
+  act(() => runtime.emit?.({ status: 'ready', data: workspacesFixture() }))
   fireEvent.click(
     screen.getByRole('button', { name: 'Workspace 1 (populated)' })
   )
@@ -96,7 +96,7 @@ it('owns subscriptions, configured intervals, focus actions and cleanup', () => 
   })
   view.rerender(
     <WidgetViewContext value={{ ...defaultView, intervalMs: 4000 }}>
-      <KomorebiController />
+      <WorkspacesController />
     </WidgetViewContext>
   )
   expect(runtime.dispose).toHaveBeenCalledOnce()
@@ -108,7 +108,7 @@ it('owns subscriptions, configured intervals, focus actions and cleanup', () => 
 it('keeps native preview and static demo actions inert', () => {
   const view = render(
     <WidgetPreviewContext value={true}>
-      <KomorebiController />
+      <WorkspacesController />
     </WidgetPreviewContext>
   )
   fireEvent.click(screen.getAllByRole('button')[0])
@@ -116,8 +116,8 @@ it('keeps native preview and static demo actions inert', () => {
   expect(runtime.action).not.toHaveBeenCalled()
   view.unmount()
   render(
-    <DemoKomorebiController
-      event={{ status: 'ready', data: komorebiFixture() }}
+    <DemoWorkspacesController
+      event={{ status: 'ready', data: workspacesFixture() }}
       view={defaultView}
       inert
     />
@@ -141,16 +141,16 @@ it('animates active workspace changes and cancels the indicator on unmount', () 
     value: animate
   })
   try {
-    const data = komorebiFixture()
+    const data = workspacesFixture()
     const view = render(
-      <DemoKomorebiController
+      <DemoWorkspacesController
         event={{ status: 'ready', data }}
         view={defaultView}
         inert
       />
     )
     expect(animate).not.toHaveBeenCalled()
-    const next: KomorebiData = {
+    const next: WorkspacesData = {
       ...data,
       workspaces: data.workspaces.map((workspace) => ({
         ...workspace,
@@ -158,7 +158,7 @@ it('animates active workspace changes and cancels the indicator on unmount', () 
       }))
     }
     view.rerender(
-      <DemoKomorebiController
+      <DemoWorkspacesController
         event={{ status: 'ready', data: next }}
         view={defaultView}
         inert

@@ -26,9 +26,9 @@ Provisional performance budget for the current two-monitor host: below 0.5% mean
 
 Current MVP: clock, CPU, RAM and volume with real native integration, reserved workspace and multiple monitors. Network, focus and the broader widget phases wait until the revised core acceptance gate passes; the GPU widget ships under the recorded exceptions below. Browser demo completion alone is not MVP completion. No full system tray cloning, private desktop switching, arbitrary scripts or weather credentials in MVP.
 
-## komorebi workspace exception — 2026-10-17
+## workspaces widget exception — 2026-10-17
 
-The komorebi workspace widget is an explicit, approved exception to the core gate above: it ships before the CPU/RAM/clock/volume gate closes. Rationale: it is additive and read-mostly, it does not touch the AppBar reservation or the sampling paths, and it fails closed to `unavailable` when komorebi or `komorebic.exe` is absent, never to demo values. The exception is limited to the workspace viewer in `docs/plans/komorebi-workspaces.md`; app-icon extraction, layer toggles, scroll switching and automatic komorebi ignore rules stay out of scope, and GPU, network, tray, media and the remaining Phase 2/3 widgets remain behind the gate. Live native evidence (probe output, click-to-focus, offline/online transitions) must still be recorded under `docs/evidence/` before this exception is considered validated.
+The workspaces widget is an explicit, approved exception to the core gate above: it ships before the CPU/RAM/clock/volume gate closes. Rationale: it is additive and read-mostly, it does not touch the AppBar reservation or the sampling paths, and it fails closed to `unavailable` when komorebi or `komorebic.exe` is absent, never to demo values. The exception is limited to the workspace viewer in `docs/plans/workspaces.md`; app-icon extraction, layer toggles, scroll switching and automatic komorebi ignore rules stay out of scope, and GPU, network, tray, media and the remaining Phase 2/3 widgets remain behind the gate. Live native evidence (probe output, click-to-focus, offline/online transitions) must still be recorded under `docs/evidence/` before this exception is considered validated.
 
 ## GPU widget exception — 2026-10-18
 

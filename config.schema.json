@@ -198,7 +198,7 @@
                   "volume",
                   "microphone",
                   "activeWindow",
-                  "komorebi"
+                  "workspaces"
                 ]
               },
               "enabled": { "default": true, "type": "boolean" },
@@ -244,7 +244,7 @@
                   "volume",
                   "microphone",
                   "activeWindow",
-                  "komorebi"
+                  "workspaces"
                 ]
               },
               "enabled": { "default": true, "type": "boolean" },
@@ -290,7 +290,7 @@
                   "volume",
                   "microphone",
                   "activeWindow",
-                  "komorebi"
+                  "workspaces"
                 ]
               },
               "enabled": { "default": true, "type": "boolean" },

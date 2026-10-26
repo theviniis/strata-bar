@@ -2,21 +2,21 @@ import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
 import { useSystemChannel } from '@/hooks/useSystemChannel'
 import {
   bridge,
-  type KomorebiData,
+  type WorkspacesData,
   type SystemEvent
 } from '@/services/system/bridge'
 import { useWidgetView } from '@/components/status-bar/widget-view'
 import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
 import type { WidgetView } from '@/components/status-bar/presentation'
-import { Komorebi } from './Komorebi'
+import { WorkspacesWidget } from './WorkspacesWidget'
 import { useWorkspaceIndicator } from './useWorkspaceIndicator'
 
-export function KomorebiController() {
+export function WorkspacesController() {
   const view = useWidgetView()
   const preview = useWidgetPreview()
-  const event = useSystemChannel('komorebi', 0, view.intervalMs)
+  const event = useSystemChannel('workspaces', 0, view.intervalMs)
   return (
-    <KomorebiComposition
+    <WorkspacesComposition
       event={event}
       view={view}
       inert={preview}
@@ -25,27 +25,27 @@ export function KomorebiController() {
   )
 }
 
-export function DemoKomorebiController({
+export function DemoWorkspacesController({
   event,
   view,
   inert
 }: {
-  event: SystemEvent<KomorebiData>
+  event: SystemEvent<WorkspacesData>
   view: WidgetView
   inert: boolean
 }) {
   return (
-    <KomorebiComposition event={event} view={view} inert={inert} showTitles />
+    <WorkspacesComposition event={event} view={view} inert={inert} showTitles />
   )
 }
 
-function KomorebiComposition({
+function WorkspacesComposition({
   event,
   view,
   inert,
   showTitles
 }: {
-  event: SystemEvent<KomorebiData>
+  event: SystemEvent<WorkspacesData>
   view: WidgetView
   inert: boolean
   showTitles: boolean
@@ -59,12 +59,12 @@ function KomorebiComposition({
   const text =
     event.status === 'error'
       ? event.error
-      : 'Áreas de trabalho do komorebi · clique para focar'
+      : 'Áreas de trabalho · clique para focar'
   const tip = useOverlayTooltip(view.tooltip ? text : '')
   const onSelect = (workspace: number) => {
     if (inert || !snapshot) return
     bridge
-      .komorebiAction?.({
+      .workspacesAction?.({
         action: 'focusWorkspace',
         monitor: snapshot.monitor,
         workspace
@@ -75,7 +75,7 @@ function KomorebiComposition({
   }
   return (
     <>
-      <Komorebi
+      <WorkspacesWidget
         event={event}
         format={view.format}
         {...tip.trigger}

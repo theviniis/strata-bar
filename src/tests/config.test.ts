@@ -82,11 +82,13 @@ describe('configuration', () => {
     const { $schema: _omitted, ...rest } = defaultConfig
     expect(parseConfig(JSON.stringify(rest)).$schema).toBeUndefined()
   })
-  it('ships the komorebi workspace widget in the default layout', () => {
-    const widget = defaultConfig.widgets.left.find((w) => w.type === 'komorebi')
+  it('ships the workspaces widget in the default layout', () => {
+    const widget = defaultConfig.widgets.left.find(
+      (w) => w.type === 'workspaces'
+    )
     expect(widget).toBeDefined()
     expect(parseConfig(JSON.stringify(defaultConfig)).widgets.left).toEqual(
-      expect.arrayContaining([expect.objectContaining({ type: 'komorebi' })])
+      expect.arrayContaining([expect.objectContaining({ type: 'workspaces' })])
     )
   })
   it('rejects duplicate widget identifiers', () => {

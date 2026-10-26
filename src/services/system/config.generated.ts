@@ -1,6 +1,6 @@
 // Generated from Rust config_contract.rs by cargo build. Do not edit.
 import type { WeatherConfig } from './weather.generated'
-export type WidgetKind = "separator" | "clock" | "weather" | "reminders" | "agents" | "cpu" | "memory" | "gpu" | "disk" | "network" | "music" | "mediaSpectrum" | "volume" | "microphone" | "activeWindow" | "komorebi";
+export type WidgetKind = "separator" | "clock" | "weather" | "reminders" | "agents" | "cpu" | "memory" | "gpu" | "disk" | "network" | "music" | "mediaSpectrum" | "volume" | "microphone" | "activeWindow" | "workspaces";
 export type AudioSource = "windows" | "voicemeeter";
 export type AudioChannelConfig = { source: AudioSource, targetIndex: number, };
 export type AudioConfig = { output: AudioChannelConfig, input: AudioChannelConfig, };

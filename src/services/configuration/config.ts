@@ -46,7 +46,7 @@ export const types = [
   'volume',
   'microphone',
   'activeWindow',
-  'komorebi'
+  'workspaces'
 ] as const
 
 export type WidgetType = (typeof types)[number]

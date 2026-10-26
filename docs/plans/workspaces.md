@@ -1,11 +1,11 @@
-# Plan: komorebi integration (workspaces viewer)
+# Plan: workspaces widget (komorebi integration)
 
 Status: approved, not started. Owner: unassigned.
 Scope decision recorded below; see [MVP gate exception](#mvp-gate-exception).
 
 ## Goal
 
-Add a native komorebi workspaces widget to the Strata status bar: each
+Add a native workspaces widget to the Strata status bar: each
 per-monitor AppBar shows that monitor's komorebi workspaces with
 active/populated/empty states, clicking a workspace focuses it, and the widget
 degrades clearly when komorebi is offline. The widget also appears in the
@@ -64,7 +64,7 @@ mirrored into `docs/implementation-plan.md` during implementation.
 
 ## Data contract
 
-New native channel `komorebi`, emitted per `bar-*` window and filtered to that
+New native channel `workspaces`, emitted per `bar-*` window and filtered to that
 window's monitor:
 
 ```json
@@ -96,7 +96,7 @@ window's monitor:
 
 ### Write command
 
-`komorebi_action`, validated on the native side:
+`workspaces_action`, validated on the native side:
 
 - `{ "action": "focusWorkspace", "monitor": <usize>, "workspace": <usize> }`
   → `komorebic focus-monitor-workspace <monitor> <workspace>`
@@ -109,7 +109,7 @@ arbitrary argument.
 
 ## Backend plan
 
-### `src-tauri/src/komorebi.rs` (new)
+### `src-tauri/src/workspaces.rs` (new)
 
 Mirrors the shape of `metrics.rs` (`Arc<Mutex<Data>>` plus an `mpsc` request
 channel and a dedicated thread).
@@ -120,16 +120,16 @@ channel and a dedicated thread).
   `MonitorState { id, workspaces }`, `State { monitors, float_override }`.
 - Pure projection: `project(state, monitor_id) -> Option<Value>` returning the
   per-monitor payload, or `None` when no bar maps to that monitor.
-- Watcher thread: create `\\.\pipe\strata-bar-komorebi`, run
+- Watcher thread: create `\\.\pipe\strata-bar-workspaces`, run
   `komorebic subscribe-pipe <name>`, `ConnectNamedPipe` then a
   `ReadFile`/`PeekNamedPipe` loop; parse each notification; cache the latest
   `State`; reconnect on `ERROR_BROKEN_PIPE`; on disconnect emit `unavailable`
   to all subscribers.
-- Per-monitor filtering: on `subscribe("komorebi", window)` resolve
+- Per-monitor filtering: on `subscribe("workspaces", window)` resolve
   `MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST)` from `window.hwnd()` and
   store it with the subscription.
 - Dedup: compare the serialized per-window summary and only emit
-  `system:komorebi` when it changes (komorebi notifies on every window event).
+  `system:workspaces` when it changes (komorebi notifies on every window event).
 - `komorebic.exe` discovery: resolve on `PATH` + `PATHEXT` at start (small local
   resolver; alternative is the `which` crate).
 - `probe()` for evidence: whether `komorebic` was resolved plus a state parse.
@@ -141,54 +141,52 @@ Add `Win32_System_Pipes` and `Win32_Storage_FileSystem` features to the
 
 ### `src-tauri/src/main.rs`
 
-- `mod komorebi;` and `app.manage(komorebi::Komorebi::start(handle))` in `setup`.
-- `capabilities()` takes `State<Komorebi>` and reports
-  `"komorebi": <resolved?>`.
-- `subscribe`/`unsubscribe` route by channel; komorebi tokens use a prefix
-  (`k<n>`) so they cannot collide with the numeric `metrics` tokens. The
-  komorebi path ignores `interval_ms`.
-- Register `komorebi_action` in `generate_handler!`.
-- `on_window_event::Destroyed` also calls `komorebi.remove_window(label)`;
-  `RunEvent::Exit` calls `komorebi.stop()`.
-- `--probe` includes `komorebi::probe()`.
+- `mod workspaces;` and `app.manage(workspaces::Workspaces::start(handle))` in `setup`.
+- `capabilities()` takes `State<Workspaces>` and reports
+  `"workspaces": <resolved?>`.
+- `subscribe`/`unsubscribe` route by channel; workspaces tokens use a prefix
+  (`w<n>`) so they cannot collide with the numeric `metrics` tokens. The
+  workspaces path ignores `interval_ms`.
+- Register `workspaces_action` in `generate_handler!`.
+- `on_window_event::Destroyed` also calls `workspaces.remove_window(label)`;
+  `RunEvent::Exit` calls `workspaces.stop()`.
+- `--probe` includes `workspaces::probe()`.
 
 ## Frontend plan
 
-- `src/services/system/bridge.ts`: add `'komorebi'` to `Channel`; add
-  `KomorebiData` and `ChannelData.komorebi`; add a static
-  `DemoChannelData.komorebi` for the studio preview (this is the first
+- `src/services/system/bridge.ts`: add `'workspaces'` to `Channel`; add
+  `WorkspacesData` and `ChannelData.workspaces`; add a static
+  `DemoChannelData.workspaces` for the studio preview (this is the first
   non-scalar demo payload, which is unavoidable for a workspace strip); add
-  `komorebiAction(...)` to the native adapter and a no-op on the demo adapter.
-- `src/features/komorebi/Komorebi.tsx`: consume `useSystemChannel('komorebi')`
+  `workspacesAction(...)` to the native adapter and a no-op on the demo adapter.
+- `src/features/workspaces/WorkspacesWidget.tsx`: consume `useSystemChannel('workspaces')`
   and render the workspace strip; clicking calls
-  `bridge.komorebiAction({ action: 'focusWorkspace', monitor, workspace })`.
+  `bridge.workspacesAction({ action: 'focusWorkspace', monitor, workspace })`.
 - Shared presentational component with a normalized view-model, reused by the
   native bar and the studio preview.
-- `src/components/status-bar/NativeBar.tsx`: insert `<Komorebi />` (the native
-  bar is currently hardcoded; this is the real deliverable).
-- `src/services/configuration/config.ts`: add `'komorebi'` to `types` and to the
-  default config.
 - `src/components/status-bar/Widget.tsx`: add the `meta` entry/icon and a
   dedicated render branch (like `Clock`), with a demo preview.
+- `src/services/configuration/config.ts`: add `'workspaces'` to `types` and to the
+  default config.
 - States: `ready` renders buttons; `unavailable` renders the offline label;
   `loading` renders a placeholder.
 
 ## Tests
 
 - Rust (pure, no komorebi installed): projection (active/populated/empty,
-  monitor without a bar returns `None`), `komorebi_action` validation, token
+  monitor without a bar returns `None`), `workspaces_action` validation, token
   routing, rejection of an unsupported channel.
-- Vitest: `komorebiAction` invokes `komorebi_action` with the expected args
+- Vitest: `workspacesAction` invokes `workspaces_action` with the expected args
   (extend `src/tests/native-bridge.test.ts`); component render and click test;
   `src/tests/config.test.ts` accepts the new widget type.
 - Native validation (not replaceable by mocks, per repository rules): `--probe`
-  komorebi section written to a new `docs/evidence/` file; live checks for
+  workspaces section written to a new `docs/evidence/` file; live checks for
   click-to-focus, multi-monitor, komorebi restart while running
   (offline → online), and komorebic absent.
 
 ## Docs and AGENTS
 
-- `docs/architecture.md`: document the komorebi channel, named-pipe
+- `docs/architecture.md`: document the workspaces channel, named-pipe
   subscription, and per-monitor filtering.
 - `docs/implementation-plan.md`: record the approved exception.
 - `AGENTS.md`: new channel and command, `capabilities`, security note
@@ -207,10 +205,10 @@ Add `Win32_System_Pipes` and `Win32_Storage_FileSystem` features to the
 
 ## Milestones and tasks
 
-- [x] M1 Contract and scaffolding: `komorebi.rs` parse types, pure projection,
+- [x] M1 Contract and scaffolding: `workspaces.rs` parse types, pure projection,
       unit tests.
 - [x] M2 Transport: pipe watcher, reconnect, per-monitor filtering, dedup,
-      routing in `main.rs`, `komorebi_action`, `capabilities`, `probe`.
+      routing in `main.rs`, `workspaces_action`, `capabilities`, `probe`.
 - [x] M3 Frontend: bridge channel and adapter, feature component, `NativeBar`
       integration, studio preview, config type.
 - [x] M4a Test, type and lint gates: native `cargo test` green (12 tests) and
@@ -221,7 +219,7 @@ Add `Win32_System_Pipes` and `Win32_Storage_FileSystem` features to the
       `prettier --check`.
 - [x] M5a Docs: `docs/architecture.md`, `docs/implementation-plan.md` and
       `AGENTS.md` updated.
-- [ ] M5b Native evidence: `--probe` komorebi output, bar-style check with
+- [ ] M5b Native evidence: `--probe` workspaces output, bar-style check with
       komorebi running (`komorebiEligible: false`, `toolWindow`, `topmost`), and
       live checks (click-to-focus, offline → online) under `docs/evidence/`,
       pending a machine running komorebi.
