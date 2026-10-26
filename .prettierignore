@@ -5,6 +5,7 @@ pnpm-lock.yaml
 src/popups/.generated/
 src/services/system/*.generated.ts
 .agents
+docs/evidence
 
 storybook-static/
 

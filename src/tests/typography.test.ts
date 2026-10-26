@@ -5,7 +5,6 @@ describe('typography class merging', () => {
   it.each([
     'micro',
     'bar',
-    'caption',
     'body',
     'control',
     'subtitle',

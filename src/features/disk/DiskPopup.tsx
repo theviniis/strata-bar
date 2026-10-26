@@ -1,4 +1,4 @@
-import { mapDataStatus } from '@/components/popup-helpers'
+import { mapDataStatus } from '@/components/popup-status'
 import { Progress } from '@/components/ui/progress'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { DiskData } from '@/services/system/disk.generated'
@@ -19,19 +19,19 @@ export function DiskPopup({ event, lastData, now, demo }: DiskPopupProps) {
     <section aria-label="Detalhes dos discos" className="p-4">
       <div>
         {demo && (
-          <p className="text-caption text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             Dados de demonstração · ilustrativos
           </p>
         )}
         {isDiskStale(data, now, event.status === 'ready') && (
-          <p role="status" className="text-caption text-destructive">
+          <p role="status" className="text-body text-destructive">
             {event.status === 'error' ? `${event.error} · ` : ''}última leitura
             desatualizada
           </p>
         )}
       </div>
       {volumes.length ? (
-        <ul className="flex w-80 flex-col gap-3 text-caption">
+        <ul className="flex w-80 flex-col gap-3 text-body">
           {volumes.map((volume) => {
             const percent = Math.round(volume.percent)
             return (
@@ -69,7 +69,7 @@ export function DiskPopup({ event, lastData, now, demo }: DiskPopupProps) {
           })}
         </ul>
       ) : (
-        <p className="text-caption text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Nenhum disco disponível
         </p>
       )}

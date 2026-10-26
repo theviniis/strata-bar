@@ -26,12 +26,12 @@ export default function App() {
         >
           <header className="flex items-center justify-between border-b border-border pb-7">
             <a
-              className={`flex cursor-pointer touch-manipulation items-center gap-2.5 text-page font-semibold tracking-tight text-inherit no-underline ${focusRing}`}
+              className={`flex cursor-pointer touch-manipulation items-center gap-2.5 text-page tracking-tight text-inherit no-underline ${focusRing}`}
               href="#"
             >
               <Logo alt="" />
               strata
-              <span className="ml-3.5 text-body font-normal tracking-normal text-muted-foreground max-[1000px]:hidden">
+              <span className="ml-3.5 text-body tracking-normal text-muted-foreground max-[1000px]:hidden">
                 {' '}
                 / bar studio
               </span>
@@ -77,7 +77,7 @@ export default function App() {
                   <StudioBar config={config} staticPreview />
                 </div>
               </div>
-              <div className="absolute inset-x-0 top-[54%] flex items-center justify-center gap-2.25 text-caption text-foreground">
+              <div className="absolute inset-x-0 top-[54%] flex items-center justify-center gap-2.25 text-body text-foreground">
                 <span className="h-1.25 w-1.25 rounded-full bg-primary" /> Your
                 workspace, uninterrupted
               </div>

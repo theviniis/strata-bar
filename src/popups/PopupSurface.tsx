@@ -229,7 +229,7 @@ export function PopupSurface({
           aria-label={label}
           tabIndex={-1}
           className={cn(
-            'rounded-2xl bg-popover glass-surface backdrop-blur-lg text-body font-normal shadow-none outline-none *:max-w-full',
+            'rounded-2xl bg-popover glass-surface backdrop-blur-lg text-body shadow-none outline-none *:max-w-full',
             closing && 'overflow-hidden',
             className
           )}

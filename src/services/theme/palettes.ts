@@ -18,24 +18,16 @@ const current: Record<ThemeMode, Tokens> = {
     '--secondary-foreground': 'oklch(0.285 0.024 282.8)',
     '--muted': 'oklch(0.95 0.008 282.8)',
     '--muted-foreground': 'oklch(0.55 0.06 270)',
-    '--accent': 'oklch(0.78 0.115 43.52)',
-    '--accent-foreground': 'oklch(0.285 0.024 282.8)',
     '--destructive': 'oklch(0.637 0.237 25.4)',
-    '--destructive-foreground': 'oklch(1 0 0)',
     '--border': 'oklch(0.88 0.01 282.8)',
     '--input': 'oklch(0.88 0.01 282.8)',
     '--ring': 'oklch(0.742 0.187 348.6)',
-    '--subtext': 'oklch(0.67 0.02 282.8)',
-    '--radius': '0.625rem',
     '--chart-1': 'oklch(0.742 0.187 348.6)',
     '--chart-2': 'oklch(0.74 0.16 295.4)',
-    '--chart-3': 'oklch(0.865 0.127 207.2)',
     '--chart-4': 'oklch(0.905 0.182 148.3)',
     '--chart-5': 'oklch(0.82 0.155 71.8)',
     '--sidebar': 'oklch(0.98 0 0)',
     '--sidebar-foreground': 'oklch(0.285 0.024 282.8)',
-    '--sidebar-primary': 'oklch(0.742 0.187 348.6)',
-    '--sidebar-primary-foreground': 'oklch(1 0 0)',
     '--sidebar-accent': 'oklch(0.95 0.008 282.8)',
     '--sidebar-accent-foreground': 'oklch(0.285 0.024 282.8)',
     '--sidebar-border': 'oklch(0.88 0.01 282.8)',
@@ -54,24 +46,16 @@ const current: Record<ThemeMode, Tokens> = {
     '--secondary-foreground': 'oklch(0.285 0.024 282.8)',
     '--muted': 'oklch(0.383 0.033 275.6)',
     '--muted-foreground': 'oklch(0.55 0.06 270)',
-    '--accent': 'oklch(0.8295 0.0753 43.52)',
-    '--accent-foreground': 'oklch(0.285 0.024 282.8)',
     '--destructive': 'oklch(0.637 0.237 25.4)',
-    '--destructive-foreground': 'oklch(0.978 0.008 106.8)',
     '--border': 'oklch(0.383 0.033 275.6)',
     '--input': 'oklch(0.383 0.033 275.6)',
     '--ring': 'oklch(0.742 0.187 348.6)',
-    '--subtext': 'oklch(0.67 0.02 282.8)',
-    '--radius': '0.625rem',
     '--chart-1': 'oklch(0.742 0.187 348.6)',
     '--chart-2': 'oklch(0.74 0.16 295.4)',
-    '--chart-3': 'oklch(0.865 0.127 207.2)',
     '--chart-4': 'oklch(0.905 0.182 148.3)',
     '--chart-5': 'oklch(0.82 0.155 71.8)',
     '--sidebar': 'oklch(0.248 0.02 282.2)',
     '--sidebar-foreground': 'oklch(0.978 0.008 106.8)',
-    '--sidebar-primary': 'oklch(0.742 0.187 348.6)',
-    '--sidebar-primary-foreground': 'oklch(0.285 0.024 282.8)',
     '--sidebar-accent': 'oklch(0.383 0.033 275.6)',
     '--sidebar-accent-foreground': 'oklch(0.978 0.008 106.8)',
     '--sidebar-border': 'oklch(0.383 0.033 275.6)',
@@ -88,7 +72,6 @@ interface Colors {
   border: string
   primary: string
   secondary: string
-  accent: string
   danger: string
   warning: string
   success: string
@@ -106,32 +89,22 @@ function tokens(c: Colors): Tokens {
     '--primary-foreground': c.background,
     '--secondary': c.secondary,
     '--secondary-foreground': c.background,
-    '--accent': c.accent,
-    '--accent-foreground': c.background,
     '--muted': c.muted,
     '--muted-foreground': c.subtext,
-    '--subtext': c.subtext,
     '--border': c.border,
     '--input': c.border,
     '--ring': c.primary,
     '--destructive': c.danger,
-    '--destructive-foreground': c.background,
-    '--warning': c.warning,
-    '--success': c.success,
     '--chart-1': c.primary,
     '--chart-2': c.secondary,
-    '--chart-3': c.accent,
     '--chart-4': c.success,
     '--chart-5': c.warning,
     '--sidebar': c.surface,
     '--sidebar-foreground': c.foreground,
-    '--sidebar-primary': c.primary,
-    '--sidebar-primary-foreground': c.background,
     '--sidebar-accent': c.muted,
     '--sidebar-accent-foreground': c.foreground,
     '--sidebar-border': c.border,
-    '--sidebar-ring': c.primary,
-    '--radius': '0.625rem'
+    '--sidebar-ring': c.primary
   }
 }
 
@@ -165,7 +138,6 @@ const palettes: Record<ColorTheme, Record<ThemeMode, Tokens>> = {
       border: '#404040',
       primary: '#ffffff',
       secondary: '#ff79c6',
-      accent: '#b3e5fc',
       danger: '#ff8080',
       warning: '#f5cf75',
       success: '#9cdda6'
@@ -179,15 +151,14 @@ const palettes: Record<ColorTheme, Record<ThemeMode, Tokens>> = {
       border: '#b3b3b3',
       primary: '#171717',
       secondary: '#ff79c6',
-      accent: '#075985',
       danger: '#b91c1c',
       warning: '#855b0b',
       success: '#24733a'
     })
   },
   current: {
-    light: { ...current.light, '--warning': '#9a6700', '--success': '#287a46' },
-    dark: { ...current.dark, '--warning': '#e6b76a', '--success': '#a6d189' }
+    light: current.light,
+    dark: current.dark
   },
   nord: {
     dark: tokens({
@@ -199,7 +170,6 @@ const palettes: Record<ColorTheme, Record<ThemeMode, Tokens>> = {
       border: '#4c566a',
       primary: '#88c0d0',
       secondary: '#b48ead',
-      accent: '#81a1c1',
       danger: '#e58b94',
       warning: '#ebcb8b',
       success: '#a3be8c'
@@ -213,7 +183,6 @@ const palettes: Record<ColorTheme, Record<ThemeMode, Tokens>> = {
       border: '#a7b2c4',
       primary: '#326777',
       secondary: '#79547b',
-      accent: '#406386',
       danger: '#a52d3b',
       warning: '#846015',
       success: '#486332'
@@ -229,7 +198,6 @@ const palettes: Record<ColorTheme, Record<ThemeMode, Tokens>> = {
       border: '#626680',
       primary: '#bd93f9',
       secondary: '#ff79c6',
-      accent: '#8be9fd',
       danger: '#ff5555',
       warning: '#f1fa8c',
       success: '#50fa7b'
@@ -243,7 +211,6 @@ const palettes: Record<ColorTheme, Record<ThemeMode, Tokens>> = {
       border: '#c5bfd5',
       primary: '#7541b5',
       secondary: '#a72c77',
-      accent: '#16677b',
       danger: '#c62828',
       warning: '#776414',
       success: '#21753b'
@@ -259,7 +226,6 @@ const palettes: Record<ColorTheme, Record<ThemeMode, Tokens>> = {
       border: '#585b70',
       primary: '#cba6f7',
       secondary: '#f5c2e7',
-      accent: '#89dceb',
       danger: '#f38ba8',
       warning: '#f9e2af',
       success: '#a6e3a1'
@@ -273,7 +239,6 @@ const palettes: Record<ColorTheme, Record<ThemeMode, Tokens>> = {
       border: '#9ca0b0',
       primary: '#8839ef',
       secondary: '#a52d91',
-      accent: '#087c97',
       danger: '#d20f39',
       warning: '#946b11',
       success: '#317b20'

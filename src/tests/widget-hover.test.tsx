@@ -29,7 +29,7 @@ afterEach(() => vi.restoreAllMocks())
 
 it('works with plain elements and keeps nested groups independent', () => {
   const { container } = render(
-    <SlidingHighlight highlightClassName="rounded-full bg-accent/20">
+    <SlidingHighlight highlightClassName="rounded-full bg-primary/20">
       <div>
         <button data-sliding-highlight-item>Outer</button>
         <SlidingHighlight>
@@ -53,7 +53,7 @@ it('works with plain elements and keeps nested groups independent', () => {
     '[data-sliding-highlight]'
   )!
   expect(outerHighlight).toHaveStyle({ opacity: '0' })
-  expect(outerHighlight).toHaveClass('rounded-full', 'bg-accent/20')
+  expect(outerHighlight).toHaveClass('rounded-full', 'bg-primary/20')
   expect(innerHighlight).toHaveStyle({ opacity: '1', width: '60px' })
 })
 

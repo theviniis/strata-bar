@@ -29,7 +29,7 @@ const meta = {
           <button
             key={label}
             data-sliding-highlight-item
-            className="rounded px-3 py-2 focus-visible:outline-accent"
+            className="rounded px-3 py-2 focus-visible:outline-primary"
           >
             {label}
           </button>
@@ -86,7 +86,7 @@ export const Vertical: Story = {
           <button
             key={label}
             data-sliding-highlight-item
-            className="rounded px-3 py-2 text-left focus-visible:outline-accent"
+            className="rounded px-3 py-2 text-left focus-visible:outline-primary"
           >
             {label}
           </button>
@@ -98,7 +98,7 @@ export const Vertical: Story = {
 
 export const Customized: Story = {
   args: {
-    highlightClassName: 'bg-accent/20',
+    highlightClassName: 'bg-primary/20',
     spring: { stiffness: 350, damping: 24, mass: 1 }
   }
 }

@@ -1,4 +1,4 @@
-import { mapDataStatus } from '@/components/popup-helpers'
+import { mapDataStatus } from '@/components/popup-status'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { MemoryData } from '@/services/system/memory.generated'
 import { MemoryGraph } from './MemoryGraph'
@@ -29,18 +29,18 @@ export function MemoryPopup({
     <section aria-label="Detalhes da memória" className="p-4">
       <div>
         {demo && (
-          <p className="text-caption text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             Dados de demonstração · ilustrativos
           </p>
         )}
         {event.status === 'error' && (
-          <p role="status" className="mb-3 text-caption text-destructive">
+          <p role="status" className="mb-3 text-body text-destructive">
             {event.error} · última leitura desatualizada
           </p>
         )}
       </div>
       <MemoryGraph history={data.history} now={now} />
-      <dl className="grid grid-cols-2 gap-3 text-caption">
+      <dl className="grid grid-cols-2 gap-3 text-body">
         {fields.map(([label, metric, unit]) => (
           <div key={label}>
             <dt className="text-muted-foreground">{label}</dt>

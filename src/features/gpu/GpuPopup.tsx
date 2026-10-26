@@ -1,5 +1,5 @@
 import { ResourceGraph } from '@/components/ResourceGraph'
-import { mapDataStatus } from '@/components/popup-helpers'
+import { mapDataStatus } from '@/components/popup-status'
 import {
   newestTimestamp,
   projectResourceWindow
@@ -85,12 +85,12 @@ export function GpuPopup({
     <section className="p-4" aria-label="Detalhes da GPU">
       <div>
         {demo && (
-          <p className="text-caption text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             Dados de demonstração · ilustrativos
           </p>
         )}
         {event.status === 'error' && (
-          <p role="status" className="text-caption text-destructive">
+          <p role="status" className="text-body text-destructive">
             {event.error} · última leitura desatualizada
           </p>
         )}
@@ -112,7 +112,7 @@ export function GpuPopup({
         maximum={maximum}
         color="var(--chart-5)"
       />
-      <dl className="grid grid-cols-2 gap-3 text-caption">
+      <dl className="grid grid-cols-2 gap-3 text-body">
         {fields.map(([label, value, error]) => (
           <div key={label}>
             <dt className="text-muted-foreground">{label}</dt>
@@ -125,7 +125,7 @@ export function GpuPopup({
           </div>
         ))}
       </dl>
-      <p className="mt-3 text-caption text-muted-foreground">
+      <p className="mt-3 text-body text-muted-foreground">
         {data.adapter ? `${data.adapter.name} · ` : ''}
         {data.temperatureSensor && !temperatureStale
           ? `Libre Hardware Monitor · ${data.temperatureSensor.name}`

@@ -67,7 +67,7 @@ export const Gallery: Story = {
                 demo={false}
               />
             </Card>
-            <span className="w-fit self-center rounded-md bg-popover px-3 py-1.5 text-caption text-popover-foreground">
+            <span className="w-fit self-center rounded-md bg-popover px-3 py-1.5 text-body text-popover-foreground">
               Uso total da CPU: 24%
             </span>
           </section>

@@ -49,7 +49,7 @@ function ToggleGroup({
   const selected = value ?? uncontrolledValue
 
   return (
-    <SlidingHighlight highlightClassName="bg-accent/30 glass-surface inset-shadow-transparent shadow-none">
+    <SlidingHighlight highlightClassName="bg-primary/30 glass-surface inset-shadow-transparent shadow-none">
       <ToggleGroupPrimitive
         data-slot="toggle-group"
         data-variant={variant}
@@ -110,13 +110,13 @@ function ToggleGroupItem({
       data-sliding-highlight-item=""
       value={value}
       className={cn(
-        'data-pressed:text-accent-foreground',
+        'data-pressed:text-primary-foreground',
         'relative shrink-0 group-data-[spacing=0]/toggle-group:rounded-none group-data-[spacing=0]/toggle-group:px-2 focus:z-10 focus-visible:z-10 group-data-[spacing=0]/toggle-group:has-data-[icon=inline-end]:pr-1.5 group-data-[spacing=0]/toggle-group:has-data-[icon=inline-start]:pl-1.5 group-data-horizontal/toggle-group:data-[spacing=0]:first:rounded-l-lg group-data-vertical/toggle-group:data-[spacing=0]:first:rounded-t-lg group-data-horizontal/toggle-group:data-[spacing=0]:last:rounded-r-lg group-data-vertical/toggle-group:data-[spacing=0]:last:rounded-b-lg group-data-horizontal/toggle-group:data-[spacing=0]:data-[variant=outline]:border-l-0 group-data-vertical/toggle-group:data-[spacing=0]:data-[variant=outline]:border-t-0 group-data-horizontal/toggle-group:data-[spacing=0]:data-[variant=outline]:first:border-l group-data-vertical/toggle-group:data-[spacing=0]:data-[variant=outline]:first:border-t',
         toggleVariants({
           variant: context.variant || variant,
           size: context.size || size
         }),
-        'border-border/50 bg-muted/30 glass-surface inset-shadow-transparent shadow-none hover:bg-muted/30 hover:text-foreground data-pressed:border-transparent data-pressed:hover:text-accent-foreground hover:border-transparent',
+        'border-border/50 bg-muted/30 glass-surface inset-shadow-transparent shadow-none hover:bg-muted/30 hover:text-foreground data-pressed:border-transparent data-pressed:hover:text-primary-foreground hover:border-transparent',
         className
       )}
       {...props}
@@ -128,7 +128,7 @@ function ToggleGroupItem({
             reducedMotion || context.multiple ? undefined : context.selectionId
           }
           transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-          className="pointer-events-none absolute inset-0 -z-10 bg-accent glass-surface inset-shadow-transparent shadow-none"
+          className="pointer-events-none absolute inset-0 -z-10 bg-primary glass-surface inset-shadow-transparent shadow-none"
           style={{ borderRadius: 'inherit' }}
         />
       )}

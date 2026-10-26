@@ -54,28 +54,28 @@ export function OpenCodeSessions({
 }: OpenCodeSessionsProps) {
   return (
     <div className="space-y-3">
-      <p role="status" className="text-caption text-muted-foreground">
+      <p role="status" className="text-body text-muted-foreground">
         {stale
           ? 'Estado da conexão indisponível'
           : connectionLabels[connection.status]}
       </p>
-      <p className="text-caption text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         Usa o servidor e a autenticação do OpenCode Desktop v2 instalado. A
         conexão fica ativa enquanto o Strata estiver aberto.
       </p>
       {connection.status === 'disabled' && (
-        <p className="text-caption text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Configure esta integração em Configurações → Agentes.
         </p>
       )}
       {(error || connection.error) && (
-        <p role="alert" className="text-caption text-destructive">
+        <p role="alert" className="text-body text-destructive">
           {error || connection.error}
         </p>
       )}
       {connection.status === 'connected' &&
         connection.sessions.length === 0 && (
-          <p className="text-caption">Nenhuma sessão encontrada.</p>
+          <p className="text-body">Nenhuma sessão encontrada.</p>
         )}
       <AgentSessionList
         sessions={connection.sessions}
@@ -84,12 +84,12 @@ export function OpenCodeSessions({
         renderActions={renderActions}
       />
       {connection.hasMore && (
-        <p className="text-caption text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Mostrando até 50 sessões recentes e as execuções ativas. Há mais
           histórico no OpenCode.
         </p>
       )}
-      <p className="text-caption text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         Perguntas textuais simples e permissões podem ser resolvidas nos cards.
         Formulários com outros controles devem ser respondidos no OpenCode.
       </p>
@@ -103,13 +103,13 @@ export function OpenCodeSessions({
         </Button>
       </div>
       {replyNotice && (
-        <p role="status" className="text-caption">
+        <p role="status" className="text-body">
           {replyNotice}
         </p>
       )}
       {creating && (
         <form className="space-y-2" onSubmit={onCreateSubmit}>
-          <label className="space-y-1 text-caption">
+          <label className="space-y-1 text-body">
             <span>Pasta do projeto (opcional)</span>
             <Input
               value={directory}
@@ -118,10 +118,10 @@ export function OpenCodeSessions({
               onChange={(event) => onDirectoryChange(event.target.value)}
             />
           </label>
-          <p className="text-caption text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             Sem pasta, usa o local padrão do OpenCode.
           </p>
-          <label className="space-y-1 text-caption">
+          <label className="space-y-1 text-body">
             <span>Prompt inicial (opcional)</span>
             <Textarea
               value={prompt}
@@ -130,12 +130,12 @@ export function OpenCodeSessions({
               onChange={(event) => onPromptChange(event.target.value)}
             />
           </label>
-          <p className="text-caption text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             Sem prompt, cria uma conversa vazia. Com prompt, envia o texto e
             inicia o trabalho nessa nova conversa. Limite: 4096 bytes UTF-8.
           </p>
           {promptTooLong && (
-            <p role="alert" className="text-caption text-destructive">
+            <p role="alert" className="text-body text-destructive">
               O prompt excede 4096 bytes UTF-8.
             </p>
           )}
@@ -162,7 +162,7 @@ export function OpenCodeSessions({
         </form>
       )}
       {created && (
-        <p role="status" className="text-caption">
+        <p role="status" className="text-body">
           Conversa criada: {created.sessionId}
           {created.promptStatus === 'accepted' && (
             <span className="block">

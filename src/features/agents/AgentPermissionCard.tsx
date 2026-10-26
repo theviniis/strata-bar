@@ -24,7 +24,7 @@ export function AgentPermissionCard({
       aria-label="Permissão de ferramenta"
       className="space-y-2 border-t pt-2"
     >
-      <h5 className="text-caption font-medium wrap-anywhere">
+      <h5 className="text-body font-medium wrap-anywhere">
         Permissão: {permission.action}
       </h5>
       <ul
@@ -34,7 +34,7 @@ export function AgentPermissionCard({
         {permission.resources.map((resource, index) => (
           <li
             key={index}
-            className="text-caption whitespace-pre-wrap wrap-anywhere"
+            className="text-body whitespace-pre-wrap wrap-anywhere"
           >
             {resource}
           </li>
@@ -42,16 +42,16 @@ export function AgentPermissionCard({
       </ul>
       <pre
         aria-label="Contexto da operação"
-        className="max-h-48 overflow-y-auto rounded bg-muted p-2 text-caption whitespace-pre-wrap wrap-anywhere"
+        className="max-h-48 overflow-y-auto rounded bg-muted p-2 text-body whitespace-pre-wrap wrap-anywhere"
       >
         {permission.details}
       </pre>
-      <p className="text-caption text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         Aprovar uma vez permite somente esta solicitação, sem criar uma regra
         permanente.
       </p>
       {permission.unsupportedReason && (
-        <p className="text-caption text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           {permission.unsupportedReason}
         </p>
       )}
@@ -75,17 +75,17 @@ export function AgentPermissionCard({
         </Button>
       </div>
       {pending && (
-        <p role="status" className="text-caption">
+        <p role="status" className="text-body">
           Enviando decisão…
         </p>
       )}
       {(permission.replyBlocked || attempted) && !pending && (
-        <p className="text-caption text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Decisão já tentada. Confira a solicitação no OpenCode.
         </p>
       )}
       {error && (
-        <p role="alert" className="text-caption text-destructive">
+        <p role="alert" className="text-body text-destructive">
           {error}
         </p>
       )}

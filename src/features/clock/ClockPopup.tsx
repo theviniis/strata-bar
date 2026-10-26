@@ -19,8 +19,8 @@ export function ClockPopup({
   return (
     <section className="grid grid-cols-[auto_auto] place-content-center gap-8 p-4">
       <div className="flex flex-col items-center justify-center capitalize">
-        <p className="font-semibold text-title">{day}</p>
-        <p className="text-caption text-muted-foreground">
+        <p className="text-title">{day}</p>
+        <p className="text-body text-muted-foreground">
           {month}, {year}
         </p>
         <time
@@ -29,7 +29,7 @@ export function ClockPopup({
         >
           {hours}
         </time>
-        <span className="mt-3 rounded text-caption focus-visible:outline-2 focus-visible:outline-ring text-muted-foreground">
+        <span className="mt-3 rounded text-body focus-visible:outline-2 focus-visible:outline-ring text-muted-foreground">
           Week {week}
         </span>
       </div>

@@ -133,7 +133,7 @@ export function ResourceGraph({
         </p>
       )}
       {!samples.length && (
-        <p className="mt-1 text-caption text-muted-foreground">
+        <p className="mt-1 text-body text-muted-foreground">
           Aguardando histórico observado
         </p>
       )}

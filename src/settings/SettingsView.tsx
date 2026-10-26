@@ -235,7 +235,7 @@ function NativeSettingsView() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-caption text-muted-foreground">
+                  <span className="text-body text-muted-foreground">
                     {bridge.mode === 'demo' ? 'Visualização do navegador' : ''}
                   </span>
                   <Button

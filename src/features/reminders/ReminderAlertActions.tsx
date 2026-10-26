@@ -22,7 +22,7 @@ export function ReminderAlertActions({
 }: ReminderAlertActionsProps) {
   return (
     <div className="grid gap-3">
-      <label htmlFor={inputId} className="text-caption text-muted-foreground">
+      <label htmlFor={inputId} className="text-body text-muted-foreground">
         Adiar por
       </label>
       <select
@@ -62,7 +62,7 @@ export function ReminderAlertActions({
         </Button>
       </div>
       {error && (
-        <p role="alert" className="text-caption text-destructive">
+        <p role="alert" className="text-body text-destructive">
           {error}
         </p>
       )}

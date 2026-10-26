@@ -35,11 +35,11 @@ export function AgentSessionList({
           </h4>
           <span
             data-status={stale ? 'disconnected' : session.status}
-            className="inline-flex rounded-md bg-muted px-2 py-0.5 text-caption text-muted-foreground data-[status=attention]:text-destructive"
+            className="inline-flex rounded-md bg-muted px-2 py-0.5 text-body text-muted-foreground data-[status=attention]:text-destructive"
           >
             {statuses[stale ? 'disconnected' : session.status]}
           </span>
-          <p className="text-caption text-muted-foreground wrap-anywhere">
+          <p className="text-body text-muted-foreground wrap-anywhere">
             {session.directory}
           </p>
           {renderActions?.(session)}

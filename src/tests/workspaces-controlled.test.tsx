@@ -47,10 +47,15 @@ it('renders explicit states, titles, refs and selection without connecting', () 
       showTitles: false
     }
   }
-  const view = render(<WorkspacesWidget {...props} event={{ status: 'loading' }} />)
+  const view = render(
+    <WorkspacesWidget {...props} event={{ status: 'loading' }} />
+  )
   expect(screen.getByLabelText('Áreas de trabalho')).toHaveTextContent('…')
   view.rerender(
-    <WorkspacesWidget {...props} event={{ status: 'ready', data: workspacesFixture() }} />
+    <WorkspacesWidget
+      {...props}
+      event={{ status: 'ready', data: workspacesFixture() }}
+    />
   )
   const button = screen.getByRole('button', { name: 'Workspace 2 (active)' })
   expect(button).not.toHaveAttribute('title')
@@ -67,12 +72,18 @@ it('renders explicit states, titles, refs and selection without connecting', () 
   )
   expect(button).toHaveAttribute('title', 'Web · 1 janela(s) · Tiling')
   view.rerender(
-    <WorkspacesWidget {...props} event={{ status: 'error', error: 'offline' }} />
+    <WorkspacesWidget
+      {...props}
+      event={{ status: 'error', error: 'offline' }}
+    />
   )
   expect(screen.getByText('Workspaces Offline')).toBeVisible()
   expect(screen.queryByRole('button')).not.toBeInTheDocument()
   view.rerender(
-    <WorkspacesWidget {...props} event={{ status: 'unavailable', data: null }} />
+    <WorkspacesWidget
+      {...props}
+      event={{ status: 'unavailable', data: null }}
+    />
   )
   expect(screen.getByText('Workspaces Offline')).toBeVisible()
   expect(runtime.connect).not.toHaveBeenCalled()

@@ -20,7 +20,7 @@ import {
   FaForwardStep as SkipForward
 } from 'react-icons/fa6'
 
-import { mapDataStatus } from '@/components/popup-helpers'
+import { mapDataStatus } from '@/components/popup-status'
 import { memo } from 'react'
 import type { MusicPopupControls } from './useMusicPopupControls'
 const nextRepeatMode = (mode: RepeatMode): RepeatMode =>
@@ -51,7 +51,7 @@ export function MusicPopup({
   return (
     <div className="w-90">
       {demo && (
-        <p className="text-muted-foreground text-caption">
+        <p className="text-muted-foreground text-body">
           Versão de demonstração
         </p>
       )}
@@ -320,7 +320,7 @@ function MusicPopupContentData({
                 void act({ action: 'seek', positionMs: value })
             }}
           />
-          <div className="flex justify-between text-caption text-muted-foreground tabular-nums">
+          <div className="flex justify-between text-body text-muted-foreground tabular-nums">
             <span>{progress ? time(position) : '—'}</span>
             <span>{progress ? time(progress.durationMs) : '—'}</span>
           </div>

@@ -38,7 +38,7 @@ export function AgentsPopup({
     <section className="w-90 space-y-3 p-4" aria-label="Controle de agentes">
       <div>
         {demo && (
-          <p className="text-caption text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             Demo · sem acesso ao sistema
           </p>
         )}
@@ -79,7 +79,7 @@ export function AgentsPopup({
                 value={application.agent}
                 className="space-y-2"
               >
-                <p className="text-caption text-muted-foreground">
+                <p className="text-body text-muted-foreground">
                   {discoveryError || application.running === null
                     ? 'Detecção indisponível'
                     : application.running
@@ -90,8 +90,8 @@ export function AgentsPopup({
                   sessions[application.agent]
                 ) : (
                   <>
-                    <p className="text-caption">Sessões indisponíveis</p>
-                    <p className="text-caption text-muted-foreground">
+                    <p className="text-body">Sessões indisponíveis</p>
+                    <p className="text-body text-muted-foreground">
                       Controle de sessões ainda não integrado. Um processo
                       aberto não informa o estado das conversas. Para sessões
                       locais como as do Codex, abra a seção Codex local neste

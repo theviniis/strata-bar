@@ -58,7 +58,7 @@ Evite repetir o estilo em cada uso do componente.
   receita com borda e `bg-muted/30` depois das classes da variante, para o vidro
   valer mesmo quando a variante define `bg-transparent`. O brilho interno e a
   sombra externa são neutralizados em todos os estados, e a borda em hover e
-  pressionado, para o fundo accent não ganhar uma linha de contorno. O contêiner
+  pressionado, para o fundo de seleção não ganhar uma linha de contorno. O contêiner
   permanece sem fundo e sem borda.
 - `src/components/ui/sliding-highlight.tsx`: usa a utilitária na superfície
   deslizante, sem borda e com `bg-muted/60`.

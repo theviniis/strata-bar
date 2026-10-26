@@ -1,4 +1,4 @@
-import { mapDataStatus } from '@/components/popup-helpers'
+import { mapDataStatus } from '@/components/popup-status'
 import { Sunrise, Sunset, Wind } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
@@ -48,7 +48,7 @@ export function WeatherPopup({
       className="flex w-160 max-w-full flex-col gap-4 overflow-y-auto p-4"
     >
       {demo && (
-        <p className="text-caption text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Dados de demonstração · ilustrativos
         </p>
       )}
@@ -81,27 +81,25 @@ export function WeatherPopup({
                 aria-hidden="true"
               />
               <div className="min-w-0">
-                <h2 className="text-title font-semibold wrap-break-word">
-                  {data.city.name}
-                </h2>
-                <p className="text-caption text-muted-foreground">
+                <h2 className="text-title wrap-break-word">{data.city.name}</h2>
+                <p className="text-body text-muted-foreground">
                   {cityRegionLabel(data.city)}
                 </p>
-                <p className="text-caption text-muted-foreground">
+                <p className="text-body text-muted-foreground">
                   {current.label}
                 </p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-display font-semibold tabular-nums">
+              <p className="text-page tabular-nums">
                 {temperature(data.temperature, units)}
               </p>
-              <p className="text-caption text-muted-foreground">
+              <p className="text-body text-muted-foreground">
                 Sensação de {temperature(data.feelsLike, units)}
               </p>
             </div>
           </header>
-          <div className="flex flex-wrap items-center gap-4 text-caption text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-4 text-body text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Sunrise className="size-4" aria-hidden="true" />
               Nascer {localTime(today?.sunrise, zone)}
@@ -111,7 +109,7 @@ export function WeatherPopup({
               Pôr {localTime(today?.sunset, zone)}
             </span>
           </div>
-          <dl className="grid grid-cols-3 gap-3 sm:grid-cols-5 text-caption">
+          <dl className="grid grid-cols-3 gap-3 sm:grid-cols-5 text-body">
             {[
               ['Umidade', metric(data.humidity, '%')],
               ['Pressão', metric(data.pressure, ' hPa', 1)],
@@ -140,7 +138,7 @@ export function WeatherPopup({
                   return (
                     <div
                       key={day.time}
-                      className="flex flex-col items-center gap-2 rounded-lg border border-border bg-muted/30 px-2 py-3 text-caption"
+                      className="flex flex-col items-center gap-2 rounded-lg border border-border bg-muted/30 px-2 py-3 text-body"
                     >
                       <span className="text-muted-foreground capitalize">
                         {dayLabel(day.time, zone, i)}

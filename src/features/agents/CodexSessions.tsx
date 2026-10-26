@@ -18,26 +18,26 @@ export function CodexSessions({
   const enabled = connection.status !== 'disabled'
   return (
     <div className="space-y-3">
-      <p role="status" className="text-caption text-muted-foreground">
+      <p role="status" className="text-body text-muted-foreground">
         {stale ? 'Estado da conexão indisponível' : labels[connection.status]}
       </p>
       {connection.status === 'disabled' && (
-        <p className="text-caption text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Configure esta integração em Configurações → Agentes.
         </p>
       )}
       {connection.error && (
-        <p role="alert" className="text-caption text-destructive">
+        <p role="alert" className="text-body text-destructive">
           {connection.error}
         </p>
       )}
-      <p className="text-caption text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         Somente sessões locais que emitirem eventos após a ativação serão
         exibidas. Conversas anteriores não são enumeradas. Nenhuma mensagem é
         armazenada.
       </p>
       {enabled && connection.sessions.length === 0 && (
-        <p className="text-caption">Nenhuma sessão observada nesta conexão.</p>
+        <p className="text-body">Nenhuma sessão observada nesta conexão.</p>
       )}
       <AgentSessionList
         sessions={connection.sessions}
@@ -45,7 +45,7 @@ export function CodexSessions({
         stale={stale}
         renderActions={undefined}
       />
-      <p className="text-caption text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         Pedidos de aprovação aparecem como atenção. Turnos encerrados ficam
         ociosos: o hook não comprova sucesso. Sem eventos por dois minutos,
         processamento e atenção ficam desconhecidos. Criar sessões, responder e

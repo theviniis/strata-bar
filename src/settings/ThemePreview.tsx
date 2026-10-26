@@ -65,18 +65,14 @@ function PreviewSurface({
         <span className="h-1 w-10 rounded-full bg-chart-2" />
       </div>
       <div className="mt-2 flex justify-center gap-1">
-        {[
-          'bg-background',
-          'bg-primary',
-          'bg-secondary',
-          'bg-accent',
-          'bg-chart-4'
-        ].map((color) => (
-          <span
-            key={color}
-            className={cn('size-2 rounded-full border border-border', color)}
-          />
-        ))}
+        {['bg-background', 'bg-primary', 'bg-secondary', 'bg-chart-4'].map(
+          (color) => (
+            <span
+              key={color}
+              className={cn('size-2 rounded-full border border-border', color)}
+            />
+          )
+        )}
       </div>
     </div>
   )

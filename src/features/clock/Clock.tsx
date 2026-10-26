@@ -14,7 +14,6 @@ export function Clock({
   time,
   showDate,
   describedBy,
-  className,
   ...triggerProps
 }: ClockProps) {
   return (

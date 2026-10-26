@@ -61,52 +61,47 @@ o significado identificável mesmo quando a cor não pode ser distinguida.
   </section>
 ))}
 
-| Grupo       | Papel                                   | Exemplos de classes                                                                                                |
-| ----------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Superfícies | Fundo geral, cartões e popups           | `bg-background`, `bg-card`, `bg-popover`                                                                           |
-| Conteúdo    | Texto principal e informação secundária | `text-foreground`, `text-muted-foreground`, `text-subtext`                                                         |
-| Ações       | Ações principais, secundárias e realces | `bg-primary text-primary-foreground`, `bg-secondary text-secondary-foreground`, `bg-accent text-accent-foreground` |
-| Estados     | Erro, atenção e sucesso                 | `text-destructive`, `text-warning`, `text-success`                                                                 |
-| Contornos   | Bordas, entradas e foco                 | `border-border`, `border-input`, `ring-ring`                                                                       |
-| Gráficos    | Séries de dados                         | `--chart-1` até `--chart-5`                                                                                        |
-| Navegação   | Superfícies e estados da sidebar        | `bg-sidebar`, `text-sidebar-foreground`, `bg-sidebar-accent`                                                       |
+| Grupo       | Papel                                   | Exemplos de classes                                                            |
+| ----------- | --------------------------------------- | ------------------------------------------------------------------------------ |
+| Superfícies | Fundo geral, cartões e popups           | `bg-background`, `bg-card`, `bg-popover`                                       |
+| Conteúdo    | Texto principal e informação secundária | `text-foreground`, `text-muted-foreground`                                     |
+| Ações       | Ações principais e secundárias          | `bg-primary text-primary-foreground`, `bg-secondary text-secondary-foreground` |
+| Estados     | Erro                                    | `text-destructive`                                                             |
+| Contornos   | Bordas, entradas e foco                 | `border-border`, `border-input`, `ring-ring`                                   |
+| Gráficos    | Séries de dados                         | `--chart-1`, `--chart-2`, `--chart-4`, `--chart-5`                             |
+| Navegação   | Superfícies e estados da sidebar        | `bg-sidebar`, `text-sidebar-foreground`, `bg-sidebar-accent`                   |
 
-`warning` e `success` não têm tokens próprios de foreground. Não deduza pares
-inexistentes nem use apenas cor para comunicar um estado. As amostras são uma
-referência de valores; não representam uma certificação de contraste.
+Não deduza pares inexistentes nem use apenas cor para comunicar um estado. As
+amostras são uma referência de valores; não representam uma certificação de
+contraste.
 
 ## Tipografia
 
 A família principal é **Geist Variable**, carregada localmente pelo pacote
-`@fontsource-variable/geist`. `font-sans` usa essa família; `font-heading` é um
-alias de `font-sans`. Cada classe compacta define tamanho, entrelinha e peso
-em conjunto.
+`@fontsource-variable/geist`. `font-sans` usa essa família. Cada classe compacta
+define tamanho, entrelinha e peso em conjunto.
 
-| Classe                | Tamanho                     | Entrelinha  | Peso    | Aplicação sugerida         |
-| --------------------- | --------------------------- | ----------- | ------- | -------------------------- |
-| `text-micro`          | 10 px                       | 14 px       | 400     | Metadados breves           |
-| `text-bar`            | 11 px                       | 14 px       | 400     | Leituras da barra          |
-| `text-caption`        | 12 px                       | 16 px       | 400     | Legendas                   |
-| `text-body`           | 12 px                       | 16 px       | 400     | Texto padrão do body       |
-| `text-control`        | 12 px                       | 16 px       | 500     | Controles                  |
-| `text-subtitle`       | 12 px                       | 16 px       | 600     | Títulos de seção compactos |
-| `text-title`          | 14 px                       | 20 px       | 600     | Títulos de popup           |
-| `text-page`           | 18 px                       | 24 px       | 600     | Títulos de página          |
-| `text-display`        | 18 px                       | 1,5 (27 px) | 600     | Destaque genérico          |
-| `text-clock-display`  | 70 px                       | 1 (70 px)   | Herdado | Relógio em destaque        |
-| `text-studio-display` | clamp(40 px, 4,5 vw, 64 px) | 1,08        | Herdado | Destaque do studio         |
+| Classe                | Tamanho                     | Entrelinha | Peso    | Aplicação sugerida         |
+| --------------------- | --------------------------- | ---------- | ------- | -------------------------- |
+| `text-micro`          | 10 px                       | 14 px      | 400     | Metadados breves           |
+| `text-bar`            | 11 px                       | 14 px      | 500     | Leituras da barra          |
+| `text-body`           | 12 px                       | 16 px      | 400     | Texto padrão do body       |
+| `text-control`        | 12 px                       | 16 px      | 500     | Controles                  |
+| `text-subtitle`       | 12 px                       | 16 px      | 600     | Títulos de seção compactos |
+| `text-title`          | 14 px                       | 20 px      | 600     | Títulos de popup           |
+| `text-page`           | 18 px                       | 24 px      | 600     | Títulos de página          |
+| `text-clock-display`  | 70 px                       | 1 (70 px)  | Herdado | Relógio em destaque        |
+| `text-studio-display` | clamp(40 px, 4,5 vw, 64 px) | 1,08       | Herdado | Destaque do studio         |
 
 <div className="not-prose flex flex-col gap-4 rounded-lg border border-border bg-card p-4 font-sans text-card-foreground">
   {[
     'text-micro',
     'text-bar',
-    'text-caption',
     'text-body',
     'text-control',
     'text-subtitle',
     'text-title',
     'text-page',
-    'text-display',
     'text-clock-display',
     'text-studio-display'
   ].map((className) => (
@@ -125,7 +120,7 @@ manter a largura dos dígitos estável durante atualizações.
 <div className="flex flex-col gap-2 rounded-lg bg-card p-4 text-card-foreground">
   <h2 className="text-title">Processador</h2>
   <span className="text-body tabular-nums">24% · 52 °C</span>
-  <span className="text-caption text-muted-foreground">Atualizado agora</span>
+  <span className="text-body text-muted-foreground">Atualizado agora</span>
 </div>
 ```
 
@@ -144,11 +139,9 @@ calculados em `styles.css`; os valores em pixels abaixo consideram uma raiz de
     ['md', 0.8],
     ['lg', 1],
     ['xl', 1.4],
-    ['2xl', 1.8],
-    ['3xl', 2.2],
-    ['4xl', 2.6]
+    ['2xl', 1.8]
   ].map(([name, factor]) => (
-    <div key={name} className="flex flex-col items-center gap-2 text-caption">
+    <div key={name} className="flex flex-col items-center gap-2 text-body">
       <div
         className="size-16 border border-border bg-muted"
         style={{ borderRadius: `calc(var(--radius) * ${factor})` }}

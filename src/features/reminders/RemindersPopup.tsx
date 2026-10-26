@@ -51,12 +51,12 @@ export function RemindersPopup({
   return (
     <section className="w-105 grid max-h-140 gap-4 overflow-y-auto p-4">
       {source === 'demo' && (
-        <p className="text-caption text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Demonstração · dados locais deste navegador.
         </p>
       )}
       {!connected && (
-        <p className="text-caption text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Para conectar Google Calendar, abra Configurações → Lembretes.
         </p>
       )}
@@ -124,7 +124,7 @@ export function RemindersPopup({
                 </Button>
               ))}
             </div>
-            <p className="text-caption text-muted-foreground">
+            <p className="text-body text-muted-foreground">
               No Google Calendar, o evento terá sempre 5 minutos.
             </p>
           </TabsContent>
@@ -253,7 +253,7 @@ export function RemindersPopup({
         </p>
       )}
       {success && (
-        <p role="status" className="text-caption text-muted-foreground">
+        <p role="status" className="text-body text-muted-foreground">
           {success}
         </p>
       )}

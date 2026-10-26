@@ -31,17 +31,15 @@ export function AgentQuestion({
       className="space-y-2 border-t pt-2"
       onSubmit={onSubmit}
     >
-      <h5 className="text-caption font-medium wrap-anywhere">
-        {question.title}
-      </h5>
+      <h5 className="text-body font-medium wrap-anywhere">{question.title}</h5>
       {question.unsupportedReason ? (
-        <p className="text-caption text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           {question.unsupportedReason}
         </p>
       ) : (
         <>
           {question.fields.map((field) => (
-            <label key={field.key} className="block space-y-1 text-caption">
+            <label key={field.key} className="block space-y-1 text-body">
               <span>{field.title}</span>
               {field.description && (
                 <span className="block text-muted-foreground wrap-anywhere">
@@ -67,7 +65,7 @@ export function AgentQuestion({
             {pending ? 'Enviando resposta…' : 'Enviar resposta'}
           </Button>
           {(question.replyBlocked || attempted) && !pending && (
-            <p className="text-caption text-muted-foreground">
+            <p className="text-body text-muted-foreground">
               Resposta já tentada. Confira a conversa no OpenCode antes de
               qualquer novo envio.
             </p>
@@ -75,7 +73,7 @@ export function AgentQuestion({
         </>
       )}
       {error && (
-        <p role="alert" className="text-caption text-destructive">
+        <p role="alert" className="text-body text-destructive">
           {error}
         </p>
       )}

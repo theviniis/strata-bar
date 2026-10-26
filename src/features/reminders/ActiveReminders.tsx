@@ -96,21 +96,21 @@ export const ActiveRemindersItem = ({
     >
       <div className="grid gap-2">
         {message}
-        <p className="text-caption text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           {new Date(reminder.notifyAt).toLocaleString()} ·{' '}
           {reminder.status === 'ringing'
             ? 'Aguardando confirmação'
             : 'Agendado'}
         </p>
         {reminder.googleEventId && (
-          <p className="text-caption text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             Evento criado no Google Calendar
           </p>
         )}
       </div>
       {reminder.calendarRequested && !reminder.googleEventId && (
         <>
-          <p className="text-caption text-destructive">
+          <p className="text-body text-destructive">
             {reminder.calendarError ?? 'Sincronização pendente'}
           </p>
           <Button

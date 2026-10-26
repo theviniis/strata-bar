@@ -19,7 +19,6 @@ export function DataUnavaliable({
   title,
   description,
   icon = <Ghost />,
-  className,
   ...props
 }: DataHelperProps) {
   return (
@@ -37,7 +36,6 @@ export function DataError({
   title,
   description,
   icon = <TriangleAlert />,
-  className,
   ...props
 }: DataHelperProps) {
   return (
@@ -60,7 +58,6 @@ export function DataLoading({
   title,
   description,
   icon = <Spinner />,
-  className,
   ...props
 }: DataHelperProps) {
   return (
@@ -72,36 +69,4 @@ export function DataLoading({
       </EmptyHeader>
     </Empty>
   )
-}
-
-type ComponentStatus = 'loading' | 'error' | 'unavailable' | 'ready'
-
-export function mapDataStatus(componentName: string, status: ComponentStatus) {
-  if (status === 'ready') return null
-
-  const map = new Map<ComponentStatus, ReactNode>([
-    [
-      'error',
-      <DataError
-        title={`Erro ao obter dados de ${componentName}`}
-        description={`Ocorreu um erro ao obter os dados de ${componentName}`}
-      />
-    ],
-    [
-      'unavailable',
-      <DataUnavaliable
-        title={`Dados de ${componentName} indisponíveis`}
-        description={`Não conseguimos obter os dados de ${componentName}`}
-      />
-    ],
-    [
-      'loading',
-      <DataLoading
-        title={`Carregando dados de ${componentName}`}
-        description={`Aguarde enquanto obtemos os dados de ${componentName}`}
-      />
-    ]
-  ])
-
-  return map.get(status) || null
 }

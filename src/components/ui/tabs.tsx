@@ -68,13 +68,13 @@ const tabsListVariants = cva(
 )
 
 const tabsTriggerVariants = cva(
-  'cursor-pointer relative isolate inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-active:text-primary-foreground bg-transparent border border-transparent',
+  'cursor-pointer relative isolate inline-flex items-center justify-center whitespace-nowrap rounded-md ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-active:text-primary-foreground bg-transparent border border-transparent',
   {
     variants: {
       size: {
-        default: 'px-3 py-1 text-sm',
-        sm: 'px-2.5 py-0.5 text-xs',
-        xs: 'px-2 py-0.5 text-[11px]'
+        default: 'px-3 py-1 text-sm font-medium',
+        sm: 'px-2.5 py-0.5 text-xs font-medium',
+        xs: 'px-2 py-0.5 text-bar'
       }
     },
     defaultVariants: {
