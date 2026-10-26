@@ -29,7 +29,12 @@ export function Music({
   ...anchorProps
 }: MusicProps) {
   return (
-    <WidgetItem className="group/music mx-2 p-0" disabled={!current} asChild>
+    <WidgetItem
+      // Only visible neighbors need outer spacing; section edges own their inset.
+      className="group/music p-0 [[data-bar-item]:not(:empty)~[data-bar-item]_&]:ml-2 [[data-bar-item]:has(~[data-bar-item]:not(:empty))_&]:mr-2"
+      disabled={!current}
+      asChild
+    >
       <div
         aria-label={demo ? 'Música · demonstração' : 'Música'}
         className={cn('min-w-0 max-w-45 shrink overflow-hidden', className)}
