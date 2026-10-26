@@ -162,7 +162,7 @@ function MusicPopupContentData({
   return (
     <div className="flex flex-col gap-4" aria-busy={busyAny}>
       <div className="relative grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
-        <div className="relative row-span-2 aspect-square self-stretch">
+        <div className="relative row-span-3 aspect-square self-stretch">
           {artwork && artwork !== badArt ? (
             <img
               src={artwork}
@@ -293,39 +293,40 @@ function MusicPopupContentData({
             </Button>
           )}
         </div>
-      </div>
 
-      <div className="flex flex-col gap-2">
-        <Slider
-          variant="secondary"
-          aria-label="Progresso da música"
-          min={progress?.minSeekMs ?? 0}
-          max={progress?.maxSeekMs || 1}
-          step={1}
-          value={[
-            progress
-              ? Math.min(
-                  progress.maxSeekMs,
-                  Math.max(progress.minSeekMs, position)
-                )
-              : 0
-          ]}
-          disabled={
-            !progress ||
-            !media.capabilities.seek ||
-            progress.maxSeekMs <= progress.minSeekMs
-          }
-          onValueChange={([value]) => setSeek(value)}
-          onValueCommit={([value]) => {
-            if (progress && media.capabilities.seek)
-              void act({ action: 'seek', positionMs: value })
-          }}
-        />
-        <div className="flex justify-between text-caption text-muted-foreground tabular-nums">
-          <span>{progress ? time(position) : '—'}</span>
-          <span>{progress ? time(progress.durationMs) : '—'}</span>
+        <div className="flex flex-col gap-2">
+          <Slider
+            variant="secondary"
+            aria-label="Progresso da música"
+            min={progress?.minSeekMs ?? 0}
+            max={progress?.maxSeekMs || 1}
+            step={1}
+            value={[
+              progress
+                ? Math.min(
+                    progress.maxSeekMs,
+                    Math.max(progress.minSeekMs, position)
+                  )
+                : 0
+            ]}
+            disabled={
+              !progress ||
+              !media.capabilities.seek ||
+              progress.maxSeekMs <= progress.minSeekMs
+            }
+            onValueChange={([value]) => setSeek(value)}
+            onValueCommit={([value]) => {
+              if (progress && media.capabilities.seek)
+                void act({ action: 'seek', positionMs: value })
+            }}
+          />
+          <div className="flex justify-between text-caption text-muted-foreground tabular-nums">
+            <span>{progress ? time(position) : '—'}</span>
+            <span>{progress ? time(progress.durationMs) : '—'}</span>
+          </div>
         </div>
       </div>
+
       {error && (
         <p role="alert" className="text-body text-destructive">
           {error}
