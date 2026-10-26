@@ -93,8 +93,14 @@ impl Default for WidgetFormat {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum WorkspaceSource { Komorebi, Windows }
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WidgetConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace_source: Option<WorkspaceSource>,
     pub id: String,
     pub r#type: WidgetKind,
     #[serde(default = "default_true")]
@@ -173,6 +179,8 @@ pub struct BarConfig {
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WidgetOverride {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace_source: Option<WorkspaceSource>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

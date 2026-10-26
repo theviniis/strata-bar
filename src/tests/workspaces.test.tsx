@@ -1,3 +1,4 @@
+import { WorkspacesWidget } from '../features/workspaces/WorkspacesWidget'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { it, expect, vi } from 'vitest'
 import { Workspaces } from '../features/workspaces/Workspaces'
@@ -38,4 +39,38 @@ it('shows an offline label instead of stale workspaces', () => {
   render(<Workspaces {...visualProps} workspaces={workspaces} offline />)
   expect(screen.getByText('Workspaces Offline')).toBeInTheDocument()
   expect(screen.queryByRole('button')).not.toBeInTheDocument()
+})
+it('labels the widget with the active workspace name and falls back to its number', () => {
+  const data = { monitor: 0, floatOverride: false, workspaces }
+  const { rerender } = render(
+    <WorkspacesWidget
+      event={{ status: 'ready', data }}
+      format="label"
+      workspaceProps={visualProps}
+    />
+  )
+  expect(screen.getByText('web')).toBeInTheDocument()
+  expect(screen.queryByText('Áreas')).not.toBeInTheDocument()
+  rerender(
+    <WorkspacesWidget
+      event={{
+        status: 'ready',
+        data: {
+          ...data,
+          workspaces: workspaces.map((w) => ({ ...w, name: null }))
+        }
+      }}
+      format="label"
+      workspaceProps={visualProps}
+    />
+  )
+  expect(screen.getByText('Área 2')).toBeInTheDocument()
+  rerender(
+    <WorkspacesWidget
+      event={{ status: 'ready', data }}
+      format="compact"
+      workspaceProps={visualProps}
+    />
+  )
+  expect(screen.queryByText('web')).not.toBeInTheDocument()
 })

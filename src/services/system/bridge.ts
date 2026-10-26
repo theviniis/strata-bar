@@ -116,6 +116,7 @@ export type SystemEvent<D = unknown> =
   | { status: 'error'; data?: null; error: string; timestamp?: number }
 
 export interface SubscribeOptions {
+  workspaceSource?: 'komorebi' | 'windows'
   intervalMs?: number
 }
 
@@ -184,7 +185,9 @@ export interface AdapterBase {
   /** Only the native adapter owns the process, so the demo adapter cannot quit. */
   quit?(): Promise<void>
   /** Native-only: the studio demo cannot drive a real window manager. */
-  workspacesAction?(value: WorkspacesAction): Promise<void>
+  workspacesAction?(
+    value: WorkspacesAction & { source?: 'komorebi' | 'windows' }
+  ): Promise<void>
 }
 
 export interface DemoBridge extends AdapterBase, Subscribable<DemoChannelData> {
@@ -420,7 +423,7 @@ export function createNativeBridge(): NativeBridge {
         else listener(event)
       }
       const stop = await listenChannel<SystemEvent<ChannelData[C]>>(
-        `system:${channel}`,
+        `system:${channel}${channel === 'workspaces' && options?.workspaceSource !== 'komorebi' ? ':windows' : ''}`,
         (e) => {
           receivedEvent = true
           deliver(e.payload)
@@ -433,6 +436,9 @@ export function createNativeBridge(): NativeBridge {
           initial: SystemEvent<ChannelData[C]>
         }>('subscribe', {
           channel,
+          ...(channel === 'workspaces'
+            ? { workspaceSource: options?.workspaceSource ?? 'windows' }
+            : {}),
           intervalMs: options?.intervalMs
         })
         token = subscription.token
@@ -527,7 +533,10 @@ export function createNativeBridge(): NativeBridge {
               workspace: null,
               direction: value.direction
             }
-      return invoke('workspaces_action', payload)
+      return invoke('workspaces_action', {
+        ...payload,
+        source: value.source ?? 'windows'
+      })
     },
     async quit() {
       const { invoke } = await import('@tauri-apps/api/core')

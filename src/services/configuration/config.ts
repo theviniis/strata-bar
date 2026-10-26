@@ -69,6 +69,7 @@ const widget = z.strictObject({
   intervalMs: z.number().int().min(1000).max(60000).default(2000),
   format: z.enum(['compact', 'label']).default('label'),
   tooltip: z.boolean().default(true),
+  workspaceSource: z.enum(['komorebi', 'windows']).optional(),
   marginX: z.number().min(0).max(32).optional()
 })
 
@@ -113,6 +114,7 @@ const widgetOverride = z.strictObject({
   intervalMs: widget.shape.intervalMs.removeDefault().optional(),
   format: widget.shape.format.removeDefault().optional(),
   tooltip: widget.shape.tooltip.removeDefault().optional(),
+  workspaceSource: widget.shape.workspaceSource,
   marginX: widget.shape.marginX
 })
 export const widgetLayoutSchema = z.object({

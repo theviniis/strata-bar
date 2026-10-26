@@ -237,9 +237,6 @@ impl Workspaces {
         std::thread::spawn(move || owner.run(app));
         this
     }
-    pub fn available(&self) -> bool {
-        resolve_komorebic().is_some()
-    }
     pub fn subscribe(
         &self,
         window: &tauri::WebviewWindow,
@@ -250,7 +247,7 @@ impl Workspaces {
         let label = window.label().to_string();
         let mut d = self.data.lock().map_err(|e| e.to_string())?;
         d.next += 1;
-        let token = format!("w{}", d.next);
+        let token = format!("kw{}", d.next);
         let initial = if d.connected {
             d.state
                 .as_ref()

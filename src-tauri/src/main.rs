@@ -38,6 +38,7 @@ mod monitor_check;
 mod disk_contract;
 mod gpu_contract;
 mod workspaces;
+mod windows_workspaces;
 mod memory_contract;
 mod metrics;
 mod sensors;
@@ -48,8 +49,8 @@ mod voicemeeter;
 use serde_json::{json, Value};
 use tauri::Manager;
 #[tauri::command]
-fn capabilities(workspaces: tauri::State<workspaces::Workspaces>) -> Value {
-    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"mediaSpectrum":true,"weather":true,"appBar":true,"gpu":true,"disk":true,"network":false,"workspaces":workspaces.available(),"voicemeeter":crate::voicemeeter::installed(),"config":true})
+fn capabilities() -> Value {
+    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"mediaSpectrum":true,"weather":true,"appBar":true,"gpu":true,"disk":true,"network":false,"workspaces":true,"voicemeeter":crate::voicemeeter::installed(),"config":true})
 }
 #[tauri::command]
 fn subscribe(
@@ -58,6 +59,7 @@ fn subscribe(
     workspaces: tauri::State<workspaces::Workspaces>,
     channel: String,
     interval_ms: u64,
+    workspace_source: Option<config_contract::WorkspaceSource>,
 ) -> Result<Value, String> {
     if channel == "mediaSpectrum" {
         return window.state::<media_spectrum::MediaSpectrum>().subscribe(window.label());
@@ -69,6 +71,9 @@ fn subscribe(
         return window.state::<media::Media>().subscribe(window.label());
     }
     if channel == "workspaces" {
+        if workspace_source == Some(config_contract::WorkspaceSource::Windows) {
+            return window.state::<windows_workspaces::WindowsWorkspaces>().subscribe(window.label());
+        }
         return workspaces.subscribe(&window, interval_ms);
     }
     metrics.subscribe(channel, window.label().into(), interval_ms)
@@ -82,26 +87,34 @@ fn unsubscribe(
 ) {
     if token.starts_with("spectrum") {
         window.state::<media_spectrum::MediaSpectrum>().unsubscribe(&token, window.label());
+    } else if token.starts_with("vd") {
+        window.state::<windows_workspaces::WindowsWorkspaces>().unsubscribe(&token, window.label());
+    } else if token.starts_with("kw") {
+        workspaces.unsubscribe(&token, window.label());
     } else if token.starts_with('w') {
         window.state::<weather::Weather>().unsubscribe(&token, window.label());
     } else if token.starts_with('m') {
         window
             .state::<media::Media>()
             .unsubscribe(&token, window.label());
-    } else if token.starts_with('w') {
-        workspaces.unsubscribe(&token, window.label());
     } else {
         metrics.unsubscribe(&token, window.label());
     }
 }
 #[tauri::command]
 fn workspaces_action(
+    window: tauri::WebviewWindow,
     state: tauri::State<workspaces::Workspaces>,
+    source: Option<config_contract::WorkspaceSource>,
     action: String,
     monitor: Option<u32>,
     workspace: Option<u32>,
     direction: Option<String>,
 ) -> Result<(), String> {
+    if source == Some(config_contract::WorkspaceSource::Windows) {
+        if action != "focusWorkspace" { return Err("Unsupported Windows desktops action".into()); }
+        return window.state::<windows_workspaces::WindowsWorkspaces>().focus(workspace.ok_or("Missing workspace")?);
+    }
     state.action(&action, monitor, workspace, direction)
 }
 #[tauri::command]
@@ -197,7 +210,7 @@ fn overlay_resize(
 }
 #[tauri::command]
 async fn weather_search(window: tauri::WebviewWindow, query: String) -> Result<Vec<weather_contract::WeatherCity>, String> {
-    if window.label() != "settings" { return Err("Busca de cidades requer Configurações".into()); }
+    if window.label() != "settings" { return Err("Busca de cidades requer ConfiguraÃ§Ãµes".into()); }
     tauri::async_runtime::spawn_blocking(move || weather::search(&query)).await.map_err(|e| e.to_string())?
 }
 #[tauri::command]
@@ -318,6 +331,7 @@ fn cleanup(app: &tauri::AppHandle) {
     if let Some(metrics) = app.try_state::<metrics::Metrics>() {
         metrics.stop();
     }
+    if let Some(desktops) = app.try_state::<windows_workspaces::WindowsWorkspaces>() { desktops.stop(); }
     if let Some(workspaces) = app.try_state::<workspaces::Workspaces>() {
         workspaces.stop();
     }
@@ -499,6 +513,7 @@ fn main() {
             app.manage(metrics::Metrics::start(app.handle().clone()));
             app.manage(media_spectrum::MediaSpectrum::start(app.handle().clone(), app.state::<media::Media>().inner().clone(), app.state::<metrics::Metrics>().inner().clone()));
             app.manage(workspaces::Workspaces::start(app.handle().clone()));
+            app.manage(windows_workspaces::WindowsWorkspaces::start(app.handle().clone()));
             monitors::observe(app.handle())?;
             desktop::reconcile(app.handle())?;
             #[cfg(debug_assertions)]
@@ -528,6 +543,7 @@ fn main() {
                 if let Some(metrics) = window.app_handle().try_state::<metrics::Metrics>() {
                     metrics.remove_window(window.label());
                 }
+                window.state::<windows_workspaces::WindowsWorkspaces>().remove_window(window.label());
                 if let Some(workspaces) = window.app_handle().try_state::<workspaces::Workspaces>() {
                     workspaces.remove_window(window.label());
                 }

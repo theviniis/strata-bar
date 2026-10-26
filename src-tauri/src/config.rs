@@ -119,6 +119,7 @@ pub fn project(config: &Config, monitor: Option<&str>) -> Config {
             .chain(&mut projected.widgets.right)
         {
             if let Some(value) = overrides.get(&widget.id) {
+                if let Some(source) = &value.workspace_source { widget.workspace_source = Some(source.clone()); }
                 if let Some(enabled) = value.enabled {
                     widget.enabled = enabled;
                 }
@@ -1016,6 +1017,7 @@ mod tests {
             format: WidgetFormat::Label,
             tooltip: true,
             margin_x: None,
+            workspace_source: None,
         });
         assert!(store.save(invalid).unwrap_err().contains("duplicated"));
     }

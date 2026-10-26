@@ -168,6 +168,7 @@ fn main() {
         config_contract::AudioChannelConfig::decl(),
         config_contract::AudioConfig::decl(),
         config_contract::WidgetFormat::decl(),
+        config_contract::WorkspaceSource::decl(),
         config_contract::WidgetConfig::decl(),
         config_contract::BarPosition::decl(),
         config_contract::BarTheme::decl(),

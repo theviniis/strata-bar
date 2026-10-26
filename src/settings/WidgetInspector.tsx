@@ -8,7 +8,6 @@ import {
   FieldSet
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   Select,
   SelectContent,
@@ -17,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { WidgetConfig } from '@/services/configuration/config'
 import { useId } from 'react'
 import { valueAt } from './monitor-layout'
@@ -81,8 +81,10 @@ export function WidgetInspector({
         JSON.stringify(valueAt(value, path)) !==
         JSON.stringify(valueAt(values[0], path))
     )
-  const update = (path: 'intervalMs' | 'format' | 'tooltip', value: unknown) =>
-    onPatch ? onPatch(path, value) : onChange({ ...widget, [path]: value })
+  const update = (
+    path: 'intervalMs' | 'format' | 'tooltip' | 'workspaceSource',
+    value: unknown
+  ) => (onPatch ? onPatch(path, value) : onChange({ ...widget, [path]: value }))
   if (widget.type === 'separator') {
     return (
       <FieldSet>
@@ -117,6 +119,28 @@ export function WidgetInspector({
       <FieldSet>
         <FieldLegend>Configurar {widget.id}</FieldLegend>
         <FieldGroup>
+          {widget.type === 'workspaces' && (
+            <Field>
+              <FieldLabel>Monitorar</FieldLabel>
+              <ToggleGroup
+                variant="outline"
+                value={
+                  mixed('workspaceSource')
+                    ? []
+                    : [widget.workspaceSource ?? 'windows']
+                }
+                onValueChange={([source]) => {
+                  if (source === 'komorebi' || source === 'windows')
+                    update('workspaceSource', source)
+                }}
+              >
+                <ToggleGroupItem value="windows">
+                  Áreas de trabalho do Windows
+                </ToggleGroupItem>
+                <ToggleGroupItem value="komorebi">Komorebi</ToggleGroupItem>
+              </ToggleGroup>
+            </Field>
+          )}
           <Field>
             <FieldLabel htmlFor={`${id}-interval`}>Intervalo (ms)</FieldLabel>
             <Input

@@ -14,7 +14,12 @@ import { useWorkspaceIndicator } from './useWorkspaceIndicator'
 export function WorkspacesController() {
   const view = useWidgetView()
   const preview = useWidgetPreview()
-  const event = useSystemChannel('workspaces', 0, view.intervalMs)
+  const event = useSystemChannel(
+    'workspaces',
+    0,
+    view.intervalMs,
+    view.workspaceSource
+  )
   return (
     <WorkspacesComposition
       event={event}
@@ -66,6 +71,7 @@ function WorkspacesComposition({
     bridge
       .workspacesAction?.({
         action: 'focusWorkspace',
+        source: view.workspaceSource ?? 'windows',
         monitor: snapshot.monitor,
         workspace
       })

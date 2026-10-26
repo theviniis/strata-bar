@@ -7,6 +7,7 @@ import type { WidgetConfig } from '@/services/configuration/config'
  */
 export interface WidgetView {
   /** `compact` drops the widget's own label and keeps only its reading. */
+  workspaceSource?: WidgetConfig['workspaceSource']
   format: WidgetConfig['format']
   /** `false` disables the hover/focus tooltip surface for this widget. */
   tooltip: boolean
@@ -24,6 +25,7 @@ export const defaultView: WidgetView = {
 
 export function viewOf(widget: WidgetConfig): WidgetView {
   return {
+    workspaceSource: widget.workspaceSource,
     format: widget.format,
     tooltip: widget.tooltip,
     intervalMs: widget.intervalMs,

@@ -22,7 +22,8 @@ const native = bridge as NativeBridge
 export function useSystemChannel<C extends Channel>(
   channel: C,
   revision = 0,
-  intervalMs = 2000
+  intervalMs = 2000,
+  workspaceSource?: 'komorebi' | 'windows'
 ) {
   const preview = useWidgetPreview()
   const [value, setValue] = useState<SystemEvent<ChannelData[C]>>({
@@ -34,10 +35,10 @@ export function useSystemChannel<C extends Channel>(
     return connect<ChannelData, C>(
       native,
       channel,
-      { intervalMs },
+      { intervalMs, workspaceSource },
       setValue,
       (error) => setValue({ status: 'error', data: null, error: String(error) })
     )
-  }, [channel, revision, intervalMs, preview])
+  }, [channel, revision, intervalMs, preview, workspaceSource])
   return preview ? widgetPreviewEvent(channel) : value
 }

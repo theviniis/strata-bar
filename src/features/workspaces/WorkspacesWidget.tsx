@@ -18,10 +18,16 @@ export function WorkspacesWidget({
   ...props
 }: WorkspacesWidgetProps) {
   const snapshot = event.status === 'ready' ? event.data : null
+  const active = snapshot?.workspaces.find(
+    (workspace) => workspace.status === 'active'
+  )
+  const label = active ? active.name?.trim() || `Área ${active.index + 1}` : '—'
   return (
     <div className="flex min-w-0 items-center gap-2 px-2" {...props}>
       {showLabel(format) && (
-        <WidgetItemLabel className="shrink-0 text-micro">Áreas</WidgetItemLabel>
+        <WidgetItemLabel className="shrink-0 text-micro">
+          {label}
+        </WidgetItemLabel>
       )}
       {event.status === 'loading' ? (
         <output aria-label="Áreas de trabalho">…</output>

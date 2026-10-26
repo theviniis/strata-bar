@@ -162,6 +162,7 @@ it('spawns validated workspaces commands for workspace actions', async () => {
   state.invoke.mockResolvedValue(null)
   await createNativeBridge().workspacesAction!({
     action: 'focusWorkspace',
+    source: 'komorebi',
     monitor: 1,
     workspace: 2
   })
@@ -169,17 +170,20 @@ it('spawns validated workspaces commands for workspace actions', async () => {
     action: 'focusWorkspace',
     monitor: 1,
     workspace: 2,
-    direction: null
+    direction: null,
+    source: 'komorebi'
   })
   await createNativeBridge().workspacesAction!({
     action: 'cycleWorkspace',
+    source: 'komorebi',
     direction: 'next'
   })
   expect(state.invoke).toHaveBeenCalledWith('workspaces_action', {
     action: 'cycleWorkspace',
     monitor: null,
     workspace: null,
-    direction: 'next'
+    direction: 'next',
+    source: 'komorebi'
   })
 })
 
@@ -284,3 +288,42 @@ it('rejects a native configuration payload that fails runtime validation', async
   // The demo adapter has no configuration commands: the studio cannot save.
   expect(createMockBridge().configLoad).toBeUndefined()
 })
+
+it.each([undefined, 'windows'] as const)(
+  'routes Windows workspaces with source %s',
+  async (source) => {
+    state.invoke.mockClear()
+    state.invoke.mockResolvedValueOnce({
+      token: 'vd1',
+      initial: { status: 'unavailable', data: null }
+    })
+    const dispose = await createNativeBridge().subscribe(
+      'workspaces',
+      vi.fn(),
+      {
+        intervalMs: 2000,
+        workspaceSource: source
+      }
+    )
+    expect(state.invoke).toHaveBeenCalledWith('subscribe', {
+      channel: 'workspaces',
+      intervalMs: 2000,
+      workspaceSource: 'windows'
+    })
+    await dispose()
+    state.invoke.mockResolvedValue(null)
+    await createNativeBridge().workspacesAction!({
+      action: 'focusWorkspace',
+      monitor: 0,
+      workspace: 1,
+      source
+    })
+    expect(state.invoke).toHaveBeenCalledWith('workspaces_action', {
+      action: 'focusWorkspace',
+      monitor: 0,
+      workspace: 1,
+      direction: null,
+      source: 'windows'
+    })
+  }
+)

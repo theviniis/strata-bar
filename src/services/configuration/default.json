@@ -23,6 +23,7 @@
       {
         "id": "workspaces",
         "type": "workspaces",
+        "workspaceSource": "windows",
         "enabled": true,
         "intervalMs": 2000,
         "format": "compact",

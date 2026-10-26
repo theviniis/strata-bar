@@ -214,6 +214,10 @@
                 "enum": ["compact", "label"]
               },
               "tooltip": { "default": true, "type": "boolean" },
+              "workspaceSource": {
+                "type": "string",
+                "enum": ["komorebi", "windows"]
+              },
               "marginX": { "type": "number", "minimum": 0, "maximum": 32 }
             },
             "required": ["id", "type"],
@@ -260,6 +264,10 @@
                 "enum": ["compact", "label"]
               },
               "tooltip": { "default": true, "type": "boolean" },
+              "workspaceSource": {
+                "type": "string",
+                "enum": ["komorebi", "windows"]
+              },
               "marginX": { "type": "number", "minimum": 0, "maximum": 32 }
             },
             "required": ["id", "type"],
@@ -306,6 +314,10 @@
                 "enum": ["compact", "label"]
               },
               "tooltip": { "default": true, "type": "boolean" },
+              "workspaceSource": {
+                "type": "string",
+                "enum": ["komorebi", "windows"]
+              },
               "marginX": { "type": "number", "minimum": 0, "maximum": 32 }
             },
             "required": ["id", "type"],
@@ -365,6 +377,10 @@
                 },
                 "format": { "type": "string", "enum": ["compact", "label"] },
                 "tooltip": { "type": "boolean" },
+                "workspaceSource": {
+                  "type": "string",
+                  "enum": ["komorebi", "windows"]
+                },
                 "marginX": { "type": "number", "minimum": 0, "maximum": 32 }
               },
               "additionalProperties": false
