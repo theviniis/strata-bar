@@ -94,6 +94,7 @@ export function NativeBarSurface({
       <QueryProvider>
         {/* Explicit tokens isolate this bar from surrounding preview palettes. */}
         <div
+          onContextMenu={(event) => event.preventDefault()}
           data-theme={theme}
           data-color-theme={bar.colorTheme}
           style={themeStyle(bar.colorTheme, theme)}
