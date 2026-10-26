@@ -15,6 +15,27 @@ vi.mock('@/services/system/overlay', () => ({
   overlay: { mode: 'demo', hide: vi.fn(async () => {}) }
 }))
 afterEach(() => vi.useRealTimers())
+it('overrides the widget base alignment with the clock alignment', () => {
+  render(
+    <Clock time={clockFixture()} showDate={false} describedBy={undefined} />
+  )
+  const button = screen.getByRole('button', { name: 'Abrir calendário' })
+  expect(button).toHaveClass('items-end')
+  expect(button).not.toHaveClass('items-center')
+})
+it('keeps caller classes when merging the clock alignment', () => {
+  render(
+    <Clock
+      time={clockFixture()}
+      showDate={false}
+      describedBy={undefined}
+      className="items-start"
+    />
+  )
+  const button = screen.getByRole('button', { name: 'Abrir calendário' })
+  expect(button).toHaveClass('items-start')
+  expect(button).not.toHaveClass('items-end')
+})
 it('renders explicit clock props and forwards trigger refs and callbacks', () => {
   const time = clockFixture()
   const click = vi.fn()
