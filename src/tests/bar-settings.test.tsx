@@ -6,7 +6,7 @@ import { defaultConfig } from '../services/configuration/config'
 vi.mock('../settings/ThemePreview', () => ({ ThemePreview: () => null }))
 afterEach(() => vi.unstubAllGlobals())
 
-it('edits the shared curve radius and allows square edges', () => {
+it('edits shared widget spacing and allows zero spacing', () => {
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -17,12 +17,21 @@ it('edits the shared curve radius and allows square edges', () => {
   )
   const onChange = vi.fn()
   render(<BarSettings draft={defaultConfig} onChange={onChange} />)
-  const slider = screen.getByRole('slider', { name: 'Raio das curvas' })
-  expect(slider).toHaveAttribute('aria-valuenow', '16.5')
-  expect(slider).toHaveAttribute('aria-valuemax', '16.5')
+  expect(
+    screen.queryByRole('slider', { name: 'Raio das curvas' })
+  ).not.toBeInTheDocument()
+  const slider = screen.getByRole('slider', {
+    name: 'Espaçamento entre widgets'
+  })
+  expect(slider).toHaveAttribute(
+    'aria-valuenow',
+    String(defaultConfig.bar.spacing)
+  )
+  expect(slider).toHaveAttribute('aria-valuemin', '0')
+  expect(slider).toHaveAttribute('aria-valuemax', '32')
   fireEvent.keyDown(slider, { key: 'Home' })
   expect(onChange).toHaveBeenLastCalledWith({
     ...defaultConfig,
-    bar: { ...defaultConfig.bar, cornerRadius: 0 }
+    bar: { ...defaultConfig.bar, spacing: 0 }
   })
 })

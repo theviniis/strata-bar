@@ -12,11 +12,14 @@ vi.stubGlobal(
   }
 )
 
-it('guides an unconfigured player to settings using text without setup controls', () => {
+it('shows unavailable media without setup controls', () => {
   render(
     <MusicPopupContent event={{ status: 'unavailable' }} onAction={vi.fn()} />
   )
-  expect(screen.getByText(/Configurações → Layout → Música/)).toBeVisible()
+  expect(screen.getByRole('status')).toHaveTextContent('Mídia indisponível')
+  expect(
+    screen.getByText('Não conseguimos obter os dados de mídia')
+  ).toBeVisible()
   expect(
     screen.queryByRole('button', { name: /Configurações|Conectar/ })
   ).not.toBeInTheDocument()
@@ -37,7 +40,9 @@ it('updates favorites after account changes while preserving everyday player con
   const { rerender } = render(
     <MusicPopupContent event={{ status: 'ready', data }} onAction={vi.fn()} />
   )
-  expect(screen.getByText(/Configurações → Layout → Música/)).toBeVisible()
+  expect(
+    screen.queryByRole('button', { name: /dos favoritos|aos favoritos/ })
+  ).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Pausar' })).toBeEnabled()
   expect(
     screen.getByRole('slider', { name: 'Progresso da música' })
@@ -64,5 +69,9 @@ it('updates favorites after account changes while preserving everyday player con
   expect(
     screen.queryByRole('button', { name: /dos favoritos|aos favoritos/ })
   ).not.toBeInTheDocument()
-  expect(screen.getByText(/Configurações → Layout → Música/)).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Pausar' })).toBeEnabled()
+  expect(
+    screen.getByRole('slider', { name: 'Progresso da música' })
+  ).toBeEnabled()
+  expect(screen.getByRole('slider', { name: 'Volume do player' })).toBeEnabled()
 })

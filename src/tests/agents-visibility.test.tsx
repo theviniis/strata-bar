@@ -7,16 +7,29 @@ import { useConfig } from '@/stores/config'
 
 function reset() {
   localStorage.clear()
-  useConfig.setState({ config: defaultConfig, error: null })
+  const config = structuredClone(defaultConfig)
+  config.agents.visible = {
+    chatgpt: true,
+    opencode: true,
+    codex: true,
+    antigravity: true
+  }
+  useConfig.setState({ config, error: null })
 }
 beforeEach(reset)
-afterEach(reset)
+afterEach(() => {
+  localStorage.clear()
+  useConfig.setState({ config: defaultConfig, error: null })
+})
 
 it('defaults legacy configurations to the existing agent visibility', () => {
   const { agents: _agents, ...legacy } = defaultConfig
-  expect(parseConfig(JSON.stringify(legacy)).agents.visible).toEqual(
-    defaultConfig.agents.visible
-  )
+  expect(parseConfig(JSON.stringify(legacy)).agents.visible).toEqual({
+    chatgpt: true,
+    opencode: true,
+    codex: true,
+    antigravity: true
+  })
 })
 
 it('consumes saved visibility changes without offering popup preferences', async () => {
@@ -26,7 +39,7 @@ it('consumes saved visibility changes without offering popup preferences', async
   expect(
     screen.queryByRole('button', { name: 'Selecionar agentes' })
   ).not.toBeInTheDocument()
-  const config = structuredClone(defaultConfig)
+  const config = structuredClone(useConfig.getState().config)
   config.agents.visible.chatgpt = false
   act(() => useConfig.setState({ config }))
   expect(
@@ -71,11 +84,12 @@ it('hides alerts for hidden agents without deleting their pending alerts', async
   ]
   render(<AgentsPopupContent snapshot={snapshot} error={null} />)
   expect(screen.getByText('Alerta preservado')).toBeInTheDocument()
-  const config = structuredClone(defaultConfig)
+  const visibleConfig = useConfig.getState().config
+  const config = structuredClone(visibleConfig)
   config.agents.visible.opencode = false
   act(() => useConfig.setState({ config }))
   expect(screen.queryByText('Alerta preservado')).not.toBeInTheDocument()
-  act(() => useConfig.setState({ config: defaultConfig }))
+  act(() => useConfig.setState({ config: visibleConfig }))
   expect(screen.getByText('Alerta preservado')).toBeInTheDocument()
   expect(snapshot.alerts.items).toHaveLength(1)
   fireEvent.click(screen.getByRole('tab', { name: 'OpenCode' }))

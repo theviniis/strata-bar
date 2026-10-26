@@ -384,8 +384,17 @@ it('disables bars independently and globally while retaining the widget configur
     screen.getByRole('switch', { name: 'Habilitar neste monitor' })
   )
   expect(screen.getByRole('button', { name: 'Configurar CPU' })).toBeEnabled()
+  expect(
+    screen.getByRole('switch', { name: 'Habilitar neste monitor' })
+  ).not.toBeChecked()
+  fireEvent.click(screen.getByRole('tab', { name: /Monitor 1/ }))
+  expect(
+    screen.getByRole('switch', { name: 'Habilitar neste monitor' })
+  ).toBeChecked()
   fireEvent.click(screen.getByRole('tab', { name: 'Todos' }))
-  expect(screen.getByText('Alguns monitores habilitados')).toBeInTheDocument()
+  expect(
+    screen.getByRole('switch', { name: 'Habilitar em todos os monitores' })
+  ).not.toBeChecked()
   fireEvent.click(
     screen.getByRole('switch', {
       name: 'Habilitar em todos os monitores'

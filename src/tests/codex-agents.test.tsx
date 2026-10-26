@@ -1,10 +1,30 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { expect, it } from 'vitest'
+import { afterEach, beforeEach, expect, it } from 'vitest'
 import { AgentsPopupStateController as AgentsPopupContent } from '@/features/agents/AgentsPopupController'
 import {
   createDemoAgentsAdapter,
   parseAgentsSnapshot
 } from '@/services/system/agents'
+import { defaultConfig } from '@/services/configuration/config'
+import { useConfig } from '@/stores/config'
+
+const initialConfig = useConfig.getState().config
+beforeEach(() =>
+  useConfig.setState({
+    config: {
+      ...defaultConfig,
+      agents: {
+        visible: {
+          chatgpt: true,
+          opencode: true,
+          antigravity: true,
+          codex: true
+        }
+      }
+    }
+  })
+)
+afterEach(() => useConfig.setState({ config: initialConfig }))
 
 it('directs disabled Codex users to Settings without hook controls', async () => {
   const snapshot = await createDemoAgentsAdapter().load()

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import {
   AgentsPopupController as AgentsPopup,
   AgentsPopupStateController as AgentsPopupContent
@@ -17,6 +17,26 @@ import type {
 import { AgentAlertsController as AgentAlerts } from '@/features/agents/AgentAlertsController'
 import { createDemoAgentsAdapter } from '@/services/system/agents'
 import { AgentAlertCount } from '@/features/agents/Agents'
+import { defaultConfig } from '@/services/configuration/config'
+import { useConfig } from '@/stores/config'
+
+const initialConfig = useConfig.getState().config
+beforeEach(() =>
+  useConfig.setState({
+    config: {
+      ...defaultConfig,
+      agents: {
+        visible: {
+          chatgpt: true,
+          opencode: true,
+          antigravity: true,
+          codex: true
+        }
+      }
+    }
+  })
+)
+afterEach(() => useConfig.setState({ config: initialConfig }))
 
 it.each(['', 'Responda OK'])(
   'creates without a project folder with optional prompt %s',

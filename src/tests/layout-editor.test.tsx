@@ -106,7 +106,7 @@ it('moves through adjacent columns with arrows, appends and preserves settings a
   ).toBeDisabled()
 })
 
-it('adds from the preview catalog, hides without removal and excludes existing types', async () => {
+it('adds from the preview catalog, configures without removal and excludes existing types', async () => {
   render(<Editor />)
   const catalog = screen.getByRole('complementary', {
     name: 'Widgets disponíveis'
@@ -125,11 +125,16 @@ it('adds from the preview catalog, hides without removal and excludes existing t
   fireEvent.click(
     within(center).getByRole('button', { name: 'Configurar Volume' })
   )
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Ativar Volume' }))
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Mostrar tooltip' }))
   expect(
-    screen.getByRole('checkbox', { name: 'Ativar Volume' })
+    screen.getByRole('checkbox', { name: 'Mostrar tooltip' })
   ).not.toBeChecked()
   fireEvent.click(screen.getByRole('button', { name: 'Concluir' }))
+  expect(
+    JSON.parse(screen.getByLabelText('Draft').textContent!).widgets.center[0]
+      .tooltip
+  ).toBe(false)
+  expect(within(center).getByTitle('volume')).toBeInTheDocument()
   expect(
     within(catalog).queryByRole('button', { name: 'Adicionar Volume' })
   ).not.toBeInTheDocument()
