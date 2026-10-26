@@ -1,3 +1,4 @@
+import { SettingsSection } from './SettingsLayout'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
@@ -66,70 +67,80 @@ export function AgentsSettings(props: AgentsSettingsProps) {
   ] as const
   return (
     <FieldGroup>
-      <AgentVisibility {...props} />
-      <FieldSet>
-        <FieldLegend>Integrações — ações imediatas</FieldLegend>
-        <FieldDescription>
-          Conectar, desconectar e ativar ou desativar hooks tem efeito imediato
-          e global. Aplicar e Reverter não desfazem essas ações.
-        </FieldDescription>
-        {!snapshot && !error && <p role="status">Carregando integrações…</p>}
-        {(actionError || error) && (
-          <Alert variant="destructive">
-            <AlertTitle>Integração indisponível</AlertTitle>
-            <AlertDescription>{actionError || error}</AlertDescription>
-          </Alert>
-        )}
-        <FieldGroup>
-          {integrations.map((integration) => {
-            const connection = snapshot?.[integration.key]
-            const enabled = connection && connection.status !== 'disabled'
-            return (
-              <Field key={integration.key}>
-                <FieldLabel>{integration.label}</FieldLabel>
-                <FieldDescription>{integration.description}</FieldDescription>
-                <p role="status">
-                  {error
-                    ? 'Estado da conexão indisponível'
-                    : connection
-                      ? {
-                          disabled: 'Desativado',
-                          connecting: 'Aguardando conexão ou eventos',
-                          connected: 'Conectado',
-                          disconnected: 'Desconectado'
-                        }[connection.status]
-                      : 'Carregando…'}
-                </p>
-                {connection?.error && (
-                  <Alert variant="destructive">
-                    <AlertTitle>{integration.label}</AlertTitle>
-                    <AlertDescription>{connection.error}</AlertDescription>
-                  </Alert>
-                )}
-                <Button
-                  variant="outline"
-                  disabled={!connection || !!error || pending}
-                  onClick={async () => {
-                    setPending(true)
-                    setActionError(null)
-                    try {
-                      await integration.configure(!enabled)
-                    } catch (error) {
-                      setActionError(
-                        error instanceof Error ? error.message : String(error)
-                      )
-                    } finally {
-                      setPending(false)
-                    }
-                  }}
-                >
-                  {enabled ? integration.disable : integration.enable}
-                </Button>
-              </Field>
-            )
-          })}
-        </FieldGroup>
-      </FieldSet>
+      <SettingsSection title="Agentes visíveis">
+        <AgentVisibility {...props} />
+      </SettingsSection>
+      <SettingsSection title="Integrações">
+        <FieldSet>
+          <FieldLegend>Ações imediatas</FieldLegend>
+          <FieldDescription>
+            Conectar, desconectar e ativar ou desativar hooks tem efeito
+            imediato e global. Aplicar e Reverter não desfazem essas ações.
+          </FieldDescription>
+          {!snapshot && !error && <p role="status">Carregando integrações…</p>}
+          {(actionError || error) && (
+            <Alert variant="destructive">
+              <AlertTitle>Integração indisponível</AlertTitle>
+              <AlertDescription>{actionError || error}</AlertDescription>
+            </Alert>
+          )}
+          <FieldGroup>
+            {integrations.map((integration) => {
+              const connection = snapshot?.[integration.key]
+              const enabled = connection && connection.status !== 'disabled'
+              return (
+                <Field key={integration.key}>
+                  <h4 className="text-base font-semibold leading-snug">
+                    {integration.label}
+                  </h4>
+                  <FieldDescription>{integration.description}</FieldDescription>
+                  <p role="status">
+                    {error
+                      ? 'Estado da conexão indisponível'
+                      : connection
+                        ? {
+                            disabled: 'Desativado',
+                            connecting: 'Aguardando conexão ou eventos',
+                            connected: 'Conectado',
+                            disconnected: 'Desconectado'
+                          }[connection.status]
+                        : 'Carregando…'}
+                  </p>
+                  {connection?.error && (
+                    <Alert variant="destructive">
+                      <AlertTitle>{integration.label}</AlertTitle>
+                      <AlertDescription>{connection.error}</AlertDescription>
+                    </Alert>
+                  )}
+                  <div>
+                    <Button
+                      variant="outline"
+                      disabled={!connection || !!error || pending}
+                      onClick={async () => {
+                        setPending(true)
+                        setActionError(null)
+                        try {
+                          await integration.configure(!enabled)
+                        } catch (error) {
+                          setActionError(
+                            error instanceof Error
+                              ? error.message
+                              : String(error)
+                          )
+                        } finally {
+                          setPending(false)
+                        }
+                      }}
+                    >
+                      {enabled ? integration.disable : integration.enable}
+                    </Button>
+                  </div>
+                </Field>
+              )
+            })}
+          </FieldGroup>
+        </FieldSet>
+      </SettingsSection>
     </FieldGroup>
   )
 }
@@ -138,7 +149,9 @@ function AgentVisibility({ draft, onChange, disabled }: AgentsSettingsProps) {
   const id = useId()
   return (
     <FieldSet data-disabled={disabled}>
-      <FieldLegend id={id}>Agentes visíveis</FieldLegend>
+      <FieldLegend id={id} className="sr-only">
+        Agentes visíveis
+      </FieldLegend>
       <FieldDescription id={`${id}-description`}>
         Escolha quais agentes aparecem na barra e nos alertas. As conexões
         existentes continuam ativas. Esta preferência é global e só muda nas

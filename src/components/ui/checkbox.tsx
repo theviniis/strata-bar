@@ -39,7 +39,7 @@ const Checkbox = React.forwardRef<
           className
         )}
       >
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {isChecked && (
             <CheckboxPrimitive.Indicator asChild forceMount>
               <motion.span

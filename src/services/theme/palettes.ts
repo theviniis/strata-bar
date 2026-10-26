@@ -100,7 +100,7 @@ function tokens(c: Colors): Tokens {
     '--foreground': c.foreground,
     '--card': c.surface,
     '--card-foreground': c.foreground,
-    '--popover': c.surface,
+    '--popover': c.background,
     '--popover-foreground': c.foreground,
     '--primary': c.primary,
     '--primary-foreground': c.background,

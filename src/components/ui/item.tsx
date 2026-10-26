@@ -36,7 +36,8 @@ const itemVariants = cva(
     variants: {
       variant: {
         default: 'bg-transparent',
-        outline: 'border-border',
+        outline:
+          'border-border/50 bg-muted/30 glass-surface shadow-sm shadow-foreground/5',
         muted: 'bg-muted/50'
       },
       size: {

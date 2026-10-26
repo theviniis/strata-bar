@@ -171,22 +171,33 @@ export function WidgetInspector({
               cadência.
             </FieldDescription>
           </Field>
-          <Field>
-            <FieldLabel>
-              Formato{mixed('format') ? ' — Valores diferentes' : ''}
-            </FieldLabel>
-            <ToggleGroup
-              variant="outline"
-              value={mixed('format') ? [] : [widget.format]}
-              onValueChange={([format]) => {
-                if (format === 'compact' || format === 'label')
-                  update('format', format)
-              }}
-            >
-              <ToggleGroupItem value="compact">Compacto</ToggleGroupItem>
-              <ToggleGroupItem value="label">Com rótulo</ToggleGroupItem>
-            </ToggleGroup>
-          </Field>
+          {[
+            'clock',
+            'weather',
+            'reminders',
+            'cpu',
+            'memory',
+            'gpu',
+            'disk',
+            'workspaces'
+          ].includes(widget.type) && (
+            <Field>
+              <FieldLabel>
+                Formato{mixed('format') ? ' — Valores diferentes' : ''}
+              </FieldLabel>
+              <ToggleGroup
+                variant="outline"
+                value={mixed('format') ? [] : [widget.format]}
+                onValueChange={([format]) => {
+                  if (format === 'compact' || format === 'label')
+                    update('format', format)
+                }}
+              >
+                <ToggleGroupItem value="compact">Compacto</ToggleGroupItem>
+                <ToggleGroupItem value="label">Com rótulo</ToggleGroupItem>
+              </ToggleGroup>
+            </Field>
+          )}
           <Field orientation="horizontal">
             <Checkbox
               id={`${id}-tooltip`}

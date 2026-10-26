@@ -66,6 +66,7 @@ export function AudioInspectorFields({
             <FieldLabel htmlFor={id}>Índice do alvo</FieldLabel>
             <Input
               id={id}
+              className="max-w-24"
               type="number"
               min={0}
               max={7}

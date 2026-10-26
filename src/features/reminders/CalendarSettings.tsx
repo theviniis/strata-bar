@@ -32,7 +32,7 @@ export function CalendarSettings({
   return (
     <section
       aria-label="Conexão Google Calendar"
-      className="grid gap-3 text-body"
+      className="flex min-w-0 flex-col items-start gap-4 text-sm leading-relaxed"
     >
       {status?.connected ? (
         <>
@@ -72,6 +72,7 @@ export function CalendarSettings({
             disabled={!native || pending || status?.connecting}
           />
           <Button
+            className="h-auto min-h-8 max-w-full whitespace-normal"
             disabled={
               !native || pending || status?.connecting || !clientId.trim()
             }

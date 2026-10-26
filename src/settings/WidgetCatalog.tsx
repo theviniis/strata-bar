@@ -131,7 +131,7 @@ function CatalogEntry({
         setNodeRef(node)
         setSourceRef(node)
       }}
-      className="flex flex-col gap-2 rounded-md border p-3"
+      className="flex flex-col gap-2 rounded-md border border-border/50 bg-muted/30 p-3 glass-surface shadow-sm shadow-foreground/5"
     >
       <div className="flex items-center gap-2">
         <Button

@@ -93,8 +93,7 @@ const bar = z.object({
   /** Shared by every separator on every monitor; absent means zero. */
   separatorMarginX: z.number().min(0).max(32).optional(),
   theme: z.enum(['system', 'dark', 'light']).default('system'),
-  colorTheme: colorThemeSchema.default('current'),
-  alwaysOnTop: z.boolean().default(true)
+  colorTheme: colorThemeSchema.default('current')
 })
 
 export type WidgetConfig = z.infer<typeof widget>
@@ -132,7 +131,6 @@ const monitorOverride = z.object({
   spacing: bar.shape.spacing.removeDefault().optional(),
   theme: bar.shape.theme.removeDefault().optional(),
   colorTheme: bar.shape.colorTheme.removeDefault().optional(),
-  alwaysOnTop: bar.shape.alwaysOnTop.removeDefault().optional(),
   widgets: z.record(z.string(), widgetOverride).optional()
 })
 

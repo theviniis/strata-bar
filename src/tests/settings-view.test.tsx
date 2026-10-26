@@ -7,12 +7,50 @@ import {
 } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest'
 import type { SettingsMonitor } from '../services/system/config.generated'
-import { configSchema, defaultConfig } from '../services/configuration/config'
+import {
+  configSchema,
+  defaultConfig,
+  widgetSchema
+} from '../services/configuration/config'
 import { bridge, connect } from '../services/system/bridge'
 import { createAgentsStore } from '@/stores/agents'
 import { createDemoAgentsAdapter } from '@/services/system/agents'
 import { SettingsView } from '../settings/SettingsView'
 import { rememberNavigation } from '../settings/navigation'
+
+vi.mock('@/services/configuration/widget-flags', async (importOriginal) => {
+  const original =
+    await importOriginal<
+      typeof import('@/services/configuration/widget-flags')
+    >()
+  return {
+    ...original,
+    isWidgetAvailable: (
+      type: Parameters<typeof original.isWidgetAvailable>[0]
+    ) => type === 'agents' || original.isWidgetAvailable(type)
+  }
+})
+
+function agentConfig() {
+  const config = structuredClone(defaultConfig)
+  config.agents.visible = {
+    chatgpt: true,
+    opencode: true,
+    antigravity: true,
+    codex: true
+  }
+  config.widgets.left.push(widgetSchema.parse({ id: 'agents', type: 'agents' }))
+  return config
+}
+
+async function openAgentEditor() {
+  vi.mocked(bridge.configLoad!).mockResolvedValue({
+    config: agentConfig(),
+    revision: 1,
+    error: null
+  })
+  await openEditor()
+}
 
 const calendarAccount = vi.hoisted(() => ({
   status: vi.fn(),
@@ -126,7 +164,14 @@ beforeEach(() => {
 })
 
 function openAudioOutput() {
-  fireEvent.click(screen.getByRole('button', { name: 'Áudio' }))
+  openWidgetSettings('Volume')
+}
+
+function openWidgetSettings(name: string) {
+  const done = screen.queryByRole('button', { name: 'Concluir' })
+  if (done) fireEvent.click(done)
+  fireEvent.click(screen.getByRole('button', { name: 'Layout' }))
+  fireEvent.click(screen.getByRole('button', { name: `Configurar ${name}` }))
 }
 
 async function openEditor() {
@@ -149,15 +194,7 @@ it('shows the current section in the breadcrumb and updates it with sidebar navi
     'aria-current',
     'page'
   )
-  for (const label of [
-    'Aparência',
-    'Lembretes',
-    'Agentes',
-    'Player de música',
-    'Áudio',
-    'JSON',
-    'Layout'
-  ]) {
+  for (const label of ['Aparência', 'JSON', 'Layout']) {
     fireEvent.click(screen.getByRole('button', { name: label }))
     expect(within(breadcrumb).getByText(label)).toHaveAttribute(
       'aria-current',
@@ -811,7 +848,7 @@ it('uses live Voicemeeter slot names and retains the target while Windows handli
   await openEditor()
   openAudioOutput()
   fireEvent.click(
-    within(screen.getByRole('region', { name: 'Saída de áudio' })).getByRole(
+    within(screen.getByRole('dialog', { name: 'Configurar Volume' })).getByRole(
       'combobox',
       { name: 'Fonte de áudio' }
     )
@@ -826,7 +863,7 @@ it('uses live Voicemeeter slot names and retains the target while Windows handli
   )
   fireEvent.click(screen.getByRole('option', { name: 'A3 · Studio speakers' }))
   fireEvent.click(
-    within(screen.getByRole('region', { name: 'Saída de áudio' })).getByRole(
+    within(screen.getByRole('dialog', { name: 'Configurar Volume' })).getByRole(
       'combobox',
       { name: 'Fonte de áudio' }
     )
@@ -854,12 +891,11 @@ it('offers bounded manual audio targets when the channel is unavailable', async 
     }
   )
   await openEditor()
-  openAudioOutput()
+  openWidgetSettings('Microfone')
   fireEvent.click(
-    within(screen.getByRole('region', { name: 'Entrada de áudio' })).getByRole(
-      'combobox',
-      { name: 'Fonte de áudio' }
-    )
+    within(
+      screen.getByRole('dialog', { name: 'Configurar Microfone' })
+    ).getByRole('combobox', { name: 'Fonte de áudio' })
   )
   fireEvent.pointerDown(
     await screen.findByRole('option', { name: 'Voicemeeter' })
@@ -899,8 +935,8 @@ it('offers bounded manual audio targets when the channel is unavailable', async 
 })
 
 it('applies per-agent visibility checkboxes through the normal save', async () => {
-  await openEditor()
-  fireEvent.click(screen.getByRole('button', { name: 'Agentes' }))
+  await openAgentEditor()
+  openWidgetSettings('Agentes')
   fireEvent.click(
     screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
   )
@@ -997,7 +1033,7 @@ it('applies editable native bar geometry only after Apply', async () => {
     key: 'End'
   })
   fireEvent.click(screen.getByRole('button', { name: 'Inferior' }))
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Sempre no topo' }))
+  expect(screen.queryByLabelText('Sempre no topo')).not.toBeInTheDocument()
   fireEvent.keyDown(
     screen.getByRole('slider', { name: 'Espaçamento entre widgets' }),
     { key: 'End' }
@@ -1010,7 +1046,6 @@ it('applies editable native bar geometry only after Apply', async () => {
         bar: expect.objectContaining({
           height: 80,
           position: 'bottom',
-          alwaysOnTop: false,
           spacing: 32
         })
       })
@@ -1019,7 +1054,7 @@ it('applies editable native bar geometry only after Apply', async () => {
 })
 
 it('connects Spotify in music settings immediately without saving or reverting the account', async () => {
-  rememberNavigation({ section: 'music' })
+  rememberNavigation({ section: 'layout' })
   const id = '0123456789abcdef0123456789abcdef'
   vi.mocked(bridge.spotifyStatus!).mockResolvedValue({
     state: 'disconnected',
@@ -1034,7 +1069,7 @@ it('connects Spotify in music settings immediately without saving or reverting t
     })
   })
   await openEditor()
-  fireEvent.click(screen.getByRole('button', { name: 'Player de música' }))
+  openWidgetSettings('Música')
   expect(await screen.findByText(/Reverter não desfaz/)).toBeVisible()
   fireEvent.change(screen.getByRole('textbox', { name: 'Client ID' }), {
     target: { value: id }
@@ -1063,7 +1098,7 @@ it('connects Spotify in music settings immediately without saving or reverting t
 it.each(['connect', 'disconnect', 'status'] as const)(
   'shows Spotify %s failures without changing the saved draft',
   async (operation) => {
-    rememberNavigation({ section: 'music' })
+    rememberNavigation({ section: 'layout' })
     vi.mocked(bridge.spotifyStatus!).mockResolvedValue({
       state: 'connected',
       clientId: '0123456789abcdef0123456789abcdef',
@@ -1082,7 +1117,7 @@ it.each(['connect', 'disconnect', 'status'] as const)(
         new Error('Spotify unavailable')
       )
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: 'Player de música' }))
+    openWidgetSettings('Música')
     if (operation !== 'status') {
       const action = await screen.findByRole('button', {
         name: operation === 'connect' ? 'Conectar Spotify' : 'Desconectar'
@@ -1099,7 +1134,7 @@ it.each(['connect', 'disconnect', 'status'] as const)(
 
 it('opens Calendar credentials in the Lembretes settings section', async () => {
   await openEditor()
-  fireEvent.click(screen.getByRole('button', { name: 'Lembretes' }))
+  openWidgetSettings('Lembretes')
   expect(
     await screen.findByLabelText('Client ID do Google')
   ).toBeInTheDocument()
@@ -1125,7 +1160,7 @@ it('connects and disconnects Calendar immediately while Reverter only reloads th
     return value
   })
   await openEditor()
-  fireEvent.click(screen.getByRole('button', { name: 'Lembretes' }))
+  openWidgetSettings('Lembretes')
   fireEvent.change(await screen.findByLabelText('Client ID do Google'), {
     target: { value: ' client.apps.googleusercontent.com ' }
   })
@@ -1165,12 +1200,12 @@ it('receives OAuth completion after navigating away and returning while connecti
     error: null
   })
   await openEditor()
-  fireEvent.click(screen.getByRole('button', { name: 'Lembretes' }))
+  openWidgetSettings('Lembretes')
   await screen.findByRole('button', {
     name: 'Aguardando autorização no navegador…'
   })
   fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
-  fireEvent.click(screen.getByRole('button', { name: 'Lembretes' }))
+  openWidgetSettings('Lembretes')
   expect(
     await screen.findByRole('button', {
       name: 'Aguardando autorização no navegador…'
@@ -1189,8 +1224,8 @@ it('receives OAuth completion after navigating away and returning while connecti
 })
 
 it('edits agent visibility only in the shared draft and reverts without saving', async () => {
-  await openEditor()
-  fireEvent.click(screen.getByRole('button', { name: 'Agentes' }))
+  await openAgentEditor()
+  openWidgetSettings('Agentes')
   const codex = await screen.findByRole('checkbox', {
     name: 'Mostrar Codex na barra'
   })
@@ -1203,7 +1238,10 @@ it('edits agent visibility only in the shared draft and reverts without saving',
     ).agents.visible.codex
   ).toBe(false)
   fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
-  fireEvent.click(screen.getByRole('button', { name: 'Agentes' }))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
+  )
+  openWidgetSettings('Agentes')
   await waitFor(() =>
     expect(
       screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
@@ -1217,8 +1255,8 @@ it('runs integration actions immediately and keeps them independent of Apply and
   const openCode = vi.spyOn(agentAdapter, 'setOpenCode')
   const codex = vi.spyOn(agentAdapter, 'setCodex')
   const antigravity = vi.spyOn(agentAdapter, 'setAntigravity')
-  await openEditor()
-  fireEvent.click(screen.getByRole('button', { name: 'Agentes' }))
+  await openAgentEditor()
+  openWidgetSettings('Agentes')
   expect(
     screen.getByText(/Aplicar e Reverter não desfazem essas ações/)
   ).toBeInTheDocument()
@@ -1267,8 +1305,8 @@ it('shows native integration failures without changing the draft or claiming a c
   vi.spyOn(agentAdapter, 'setOpenCode').mockRejectedValue(
     new Error('OpenCode não está disponível')
   )
-  await openEditor()
-  fireEvent.click(screen.getByRole('button', { name: 'Agentes' }))
+  await openAgentEditor()
+  openWidgetSettings('Agentes')
   const connect = await screen.findByRole('button', {
     name: 'Conectar OpenCode'
   })
@@ -1287,7 +1325,7 @@ it('shows native integration failures without changing the draft or claiming a c
 })
 
 it('recovers applied agent visibility after reopening and preserves saved values on a failed save', async () => {
-  let saved = structuredClone(defaultConfig)
+  let saved = agentConfig()
   vi.mocked(bridge.configLoad!).mockImplementation(async () => ({
     config: saved,
     revision: 1,
@@ -1301,7 +1339,7 @@ it('recovers applied agent visibility after reopening and preserves saved values
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
   )
-  fireEvent.click(screen.getByRole('button', { name: 'Agentes' }))
+  openWidgetSettings('Agentes')
   fireEvent.click(
     screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
   )
@@ -1312,6 +1350,7 @@ it('recovers applied agent visibility after reopening and preserves saved values
   )
   first.unmount()
   await openEditor()
+  openWidgetSettings('Agentes')
   expect(
     screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
   ).not.toBeChecked()
@@ -1374,12 +1413,12 @@ it('keeps global audio edits in Draft and restores the saved settings after a fa
   expect(screen.getByLabelText('Índice do alvo')).toHaveValue(3)
   view.unmount()
   await openEditor()
+  openAudioOutput()
   expect(screen.getByLabelText('Índice do alvo')).toHaveValue(3)
 })
 
-it('configures global audio without widgets and hides removed controls', async () => {
+it('configures global audio inside its widget and hides removed controls', async () => {
   const config = structuredClone(defaultConfig)
-  config.widgets = { left: [], center: [], right: [] }
   vi.mocked(connect).mockImplementation(() => () => {})
   vi.mocked(bridge.configLoad!).mockResolvedValue({
     config,
@@ -1397,7 +1436,7 @@ it('configures global audio without widgets and hides removed controls', async (
   ])
     expect(screen.queryByLabelText(name)).not.toBeInTheDocument()
   fireEvent.click(
-    within(screen.getByRole('region', { name: 'Saída de áudio' })).getByRole(
+    within(screen.getByRole('dialog', { name: 'Configurar Volume' })).getByRole(
       'combobox',
       { name: 'Fonte de áudio' }
     )
@@ -1423,33 +1462,53 @@ it('configures global audio without widgets and hides removed controls', async (
   )
 })
 
-it('opens both audio sections from a single menu and restores the page on reopen', async () => {
-  const view = render(<SettingsView />)
-  await waitFor(() =>
-    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
-  )
+it('opens output and input settings from their respective widgets', async () => {
+  await openEditor()
+  expect(
+    screen.queryByRole('button', { name: 'Áudio' })
+  ).not.toBeInTheDocument()
   openAudioOutput()
   expect(screen.getByRole('heading', { name: 'Saída de áudio' })).toBeVisible()
   expect(
+    screen.queryByRole('heading', { name: 'Entrada de áudio' })
+  ).not.toBeInTheDocument()
+  openWidgetSettings('Microfone')
+  expect(
     screen.getByRole('heading', { name: 'Entrada de áudio' })
   ).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Áudio' })).toHaveAttribute(
-    'aria-current',
-    'page'
+  expect(
+    screen.queryByRole('heading', { name: 'Saída de áudio' })
+  ).not.toBeInTheDocument()
+})
+
+it('edits global weather units inside the weather widget settings', async () => {
+  const config = structuredClone(defaultConfig)
+  config.widgets.left.push(
+    widgetSchema.parse({ id: 'weather', type: 'weather' })
   )
-  expect(
-    screen.queryByRole('button', { name: 'Entrada' })
-  ).not.toBeInTheDocument()
-  expect(
-    screen.queryByRole('button', { name: 'Saída' })
-  ).not.toBeInTheDocument()
-  expect(
-    screen.queryByRole('tablist', { name: 'Configurações de áudio' })
-  ).not.toBeInTheDocument()
-  view.unmount()
+  vi.mocked(bridge.configLoad!).mockResolvedValue({
+    config,
+    revision: 1,
+    error: null
+  })
   await openEditor()
   expect(
-    screen.getByRole('heading', { name: 'Entrada de áudio' })
-  ).toBeVisible()
-  expect(screen.getByRole('heading', { name: 'Saída de áudio' })).toBeVisible()
+    screen.queryByRole('button', { name: 'Clima' })
+  ).not.toBeInTheDocument()
+  openWidgetSettings('Clima')
+  expect(screen.getByLabelText('Buscar cidade')).toBeVisible()
+  fireEvent.click(screen.getByRole('combobox', { name: 'Temperatura' }))
+  fireEvent.pointerDown(
+    await screen.findByRole('option', { name: 'Fahrenheit (°F)' })
+  )
+  fireEvent.click(screen.getByRole('option', { name: 'Fahrenheit (°F)' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Concluir' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() =>
+    expect(bridge.configSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        weather: expect.objectContaining({ temperatureUnit: 'fahrenheit' })
+      })
+    )
+  )
 })

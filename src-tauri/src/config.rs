@@ -107,9 +107,6 @@ pub fn project(config: &Config, monitor: Option<&str>) -> Config {
     if let Some(value) = &over.theme {
         projected.bar.theme = value.clone();
     }
-    if let Some(value) = over.always_on_top {
-        projected.bar.always_on_top = value;
-    }
     if let Some(overrides) = &over.widgets {
         for widget in projected
             .widgets

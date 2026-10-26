@@ -14,7 +14,7 @@ export function PopoverContent({
     <Primitive.Portal>
       <Primitive.Content
         className={cn(
-          'z-50 max-w-70 rounded-lg border bg-popover p-4 text-body text-popover-foreground shadow-[0_8px_28px_#0005]',
+          'z-50 max-w-70 rounded-lg border border-border/50 bg-popover/80 p-4 text-body text-popover-foreground glass-surface shadow-sm shadow-foreground/5',
           className
         )}
         sideOffset={12}

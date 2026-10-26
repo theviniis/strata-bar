@@ -172,8 +172,6 @@ pub struct BarConfig {
     pub theme: BarTheme,
     #[serde(default)]
     pub color_theme: ColorTheme,
-    #[serde(default = "default_true")]
-    pub always_on_top: bool,
 }
 /// Partial widget behavior; identity is shared, membership and order are separate.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
@@ -215,8 +213,6 @@ pub struct BarOverride {
     pub theme: Option<BarTheme>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub color_theme: Option<ColorTheme>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub always_on_top: Option<bool>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]

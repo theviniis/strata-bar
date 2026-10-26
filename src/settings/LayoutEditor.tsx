@@ -433,7 +433,7 @@ export function LayoutEditor({
                 <div
                   role="img"
                   aria-label={`Movendo ${typeLabels[activeWidget.type]}`}
-                  className="rounded-md bg-card shadow-lg"
+                  className="rounded-md bg-card/60 glass-surface shadow-lg"
                 >
                   <WidgetCard
                     widget={activeWidget}

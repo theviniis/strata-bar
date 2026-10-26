@@ -73,7 +73,6 @@ struct BarGeometry {
     height: i32,
     radius: i32,
     bottom: bool,
-    always_on_top: bool,
     left_corner: bool,
     right_corner: bool,
 }
@@ -89,7 +88,6 @@ impl BarGeometry {
                 .unwrap_or(height / 2)
                 .clamp(0, height / 2),
             bottom: bar.position == crate::config_contract::BarPosition::Bottom,
-            always_on_top: bar.always_on_top,
             left_corner: config.widgets.left.iter().any(|widget| widget.enabled),
             right_corner: config.widgets.right.iter().any(|widget| widget.enabled),
         }
@@ -102,7 +100,7 @@ impl BarGeometry {
         }
     }
     fn topmost(self) -> bool {
-        self.always_on_top && !FULLSCREEN_APP.load(Ordering::Relaxed)
+        !FULLSCREEN_APP.load(Ordering::Relaxed)
     }
     fn strip(self, monitor: RECT) -> RECT {
         let height = self.height.clamp(1, (monitor.bottom - monitor.top).max(1));
@@ -568,7 +566,7 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         .decorations(false)
         .resizable(false)
         .skip_taskbar(true)
-        .always_on_top(projected.bar.always_on_top)
+        .always_on_top(true)
         .shadow(false)
         .visible(false)
         .focused(false)
@@ -2203,7 +2201,6 @@ mod geometry_tests {
                 height: Some(64),
                 position: Some(crate::config_contract::BarPosition::Bottom),
                 spacing: Some(32.0),
-                always_on_top: Some(false),
                 ..Default::default()
             },
         );
@@ -2221,7 +2218,7 @@ mod geometry_tests {
             [-2560, -80, 0, 0]
         );
         assert_eq!(geometry.edge(), ABE_BOTTOM);
-        assert!(!geometry.topmost());
+        assert!(geometry.topmost());
         config.bar.position = crate::config_contract::BarPosition::Top;
         let geometry = BarGeometry::from_config(&config, 1.5);
         let rect = geometry.strip(RECT {

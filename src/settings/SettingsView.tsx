@@ -1,4 +1,3 @@
-import { WeatherSettings } from '@/features/weather/WeatherSettings'
 import { Logo } from '@/components/Logo'
 import { QueryProvider } from '@/components/QueryProvider'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -10,13 +9,7 @@ import {
   BreadcrumbSeparator
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card'
+import { SettingsPage, SettingsContent } from './SettingsLayout'
 import { Field, FieldLabel, FieldSet } from '@/components/ui/field'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -36,25 +29,18 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { SpotifySettingsController } from '@/features/music/SpotifySettingsController'
-import { CalendarSettingsController } from '@/features/reminders/CalendarSettingsController'
 import { cn } from '@/lib/utils'
 import { bridge } from '@/services/system/bridge'
 import {
-  Bot,
   LayoutDashboard,
-  Music2,
   Palette,
   RotateCw,
   Save,
   Undo2,
-  Volume2,
   X
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useMemo, useState, type CSSProperties } from 'react'
-import { AgentsSettings } from './AgentsSettings'
-import { AudioSettings } from './AudioSettings'
 import { BarSettings } from './BarSettings'
 import { createNativePersistence, useConfigEditor } from './draft'
 import { LayoutEditor } from './LayoutEditor'
@@ -68,11 +54,6 @@ type SettingsSection = SettingsNavigation['section']
 const settingsSections = [
   { id: 'layout', label: 'Layout', icon: LayoutDashboard },
   { id: 'appearance', label: 'Aparência', icon: Palette },
-  { id: 'reminders', label: 'Lembretes', icon: LayoutDashboard },
-  { id: 'agents', label: 'Agentes', icon: Bot },
-  { id: 'weather', label: 'Clima', icon: LayoutDashboard },
-  { id: 'music', label: 'Player de música', icon: Music2 },
-  { id: 'audio', label: 'Áudio', icon: Volume2 },
   { id: 'json', label: 'JSON', icon: LayoutDashboard }
 ] as const satisfies readonly {
   id: SettingsSection
@@ -152,152 +133,72 @@ function NativeSettingsView() {
 
             <motion.div
               layoutScroll
-              className="min-h-0 flex-1 overflow-auto p-2"
+              className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
             >
-              <FieldSet disabled={disabled}>
-                {section === 'layout' ? (
-                  <Card className="bg-transparent shadow-none p-0">
-                    <CardHeader>
-                      <CardTitle role="heading" aria-level={2}>
-                        Editor de Layout
-                      </CardTitle>
-                      <CardDescription>
-                        Organize os widgets nas três seções da barra.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
+              <SettingsContent width={section === 'layout' ? 'layout' : 'wide'}>
+                <FieldSet disabled={disabled} className="min-w-0">
+                  {section === 'layout' ? (
+                    <SettingsPage
+                      title="Editor de Layout"
+                      description="Organize os widgets nas três seções da barra."
+                    >
                       <LayoutEditor
                         disabled={disabled}
                         draft={editor.form.getValues()}
                         onChange={editor.replaceDraft}
                       />
-                    </CardContent>
-                  </Card>
-                ) : section === 'reminders' ? (
-                  <Card className="bg-transparent shadow-none p-0">
-                    <CardHeader>
-                      <CardTitle role="heading" aria-level={2}>
-                        Lembretes
-                      </CardTitle>
-                      <CardDescription>
-                        Conectar e desconectar Google Calendar têm efeito
-                        imediato. Reverter não desfaz essas operações externas.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <CalendarSettingsController />
-                    </CardContent>
-                  </Card>
-                ) : section === 'appearance' ? (
-                  <Card className="bg-transparent shadow-none p-0">
-                    <CardHeader>
-                      <CardTitle role="heading" aria-level={2}>
-                        Aparência
-                      </CardTitle>
-                      <CardDescription>
-                        Escolha o tema e o espaçamento da barra.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
+                    </SettingsPage>
+                  ) : section === 'appearance' ? (
+                    <SettingsPage
+                      title="Aparência"
+                      description="Escolha o tema e o espaçamento da barra."
+                    >
                       <BarSettings
                         disabled={disabled}
                         draft={editor.form.getValues()}
                         onChange={editor.replaceDraft}
                       />
-                    </CardContent>
-                  </Card>
-                ) : section === 'weather' ? (
-                  <Card className="bg-transparent shadow-none p-0">
-                    <CardHeader>
-                      <CardTitle role="heading" aria-level={2}>
-                        Clima
-                      </CardTitle>
-                      <CardDescription>
-                        Escolha uma cidade e as unidades para todos os
-                        monitores. A seleção é salva ao aplicar.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <WeatherSettings
-                        value={editor.form.getValues().weather}
-                        onChange={(weather) =>
-                          editor.replaceDraft({
-                            ...editor.form.getValues(),
-                            weather
-                          })
-                        }
-                      />
-                    </CardContent>
-                  </Card>
-                ) : section === 'music' ? (
-                  <Card className="bg-transparent shadow-none p-0">
-                    <CardHeader>
-                      <CardTitle role="heading" aria-level={2}>
-                        Player de música
-                      </CardTitle>
-                      <CardDescription>
-                        Conectar e desconectar têm efeito imediato. Aplicar
-                        salva apenas as preferências do Draft; Reverter não
-                        desfaz a conexão ou desconexão da conta.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <SpotifySettingsController />
-                    </CardContent>
-                  </Card>
-                ) : section === 'agents' ? (
-                  <Card className="bg-transparent shadow-none p-0">
-                    <CardHeader>
-                      <CardTitle role="heading" aria-level={2}>
-                        Agentes
-                      </CardTitle>
-                      <CardDescription>
-                        Seleção de agentes e integrações existentes.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <AgentsSettings
-                        draft={editor.form.getValues()}
-                        onChange={editor.replaceDraft}
-                        disabled={disabled}
-                      />
-                    </CardContent>
-                  </Card>
-                ) : section === 'audio' ? (
-                  <AudioSettings
-                    draft={editor.form.getValues()}
-                    onChange={editor.replaceDraft}
-                  />
-                ) : (
-                  <Field data-invalid={!!editor.error}>
-                    <FieldLabel htmlFor="config-json">
-                      Configuração JSON
-                    </FieldLabel>
-                    <Textarea
-                      id="config-json"
-                      rows={24}
-                      spellCheck={false}
-                      aria-invalid={!!editor.error}
-                      aria-describedby={
-                        editor.error ? 'config-error' : undefined
-                      }
-                      value={editor.jsonText}
-                      onChange={(event) =>
-                        editor.replaceText(event.target.value)
-                      }
-                    />
-                  </Field>
-                )}
-              </FieldSet>
+                    </SettingsPage>
+                  ) : (
+                    <SettingsPage
+                      title="Configuração JSON"
+                      description="Edite a configuração completa. As alterações são salvas ao aplicar."
+                    >
+                      <Field data-invalid={!!editor.error}>
+                        <FieldLabel htmlFor="config-json">
+                          Configuração JSON
+                        </FieldLabel>
+                        <Textarea
+                          id="config-json"
+                          rows={24}
+                          spellCheck={false}
+                          aria-invalid={!!editor.error}
+                          aria-describedby={
+                            editor.error ? 'config-error' : undefined
+                          }
+                          value={editor.jsonText}
+                          onChange={(event) =>
+                            editor.replaceText(event.target.value)
+                          }
+                        />
+                      </Field>
+                    </SettingsPage>
+                  )}
+                </FieldSet>
 
-              {editor.error && (
-                <Alert id="config-error" variant="destructive" className="mt-6">
-                  <AlertTitle>
-                    Não foi possível aplicar as configurações
-                  </AlertTitle>
-                  <AlertDescription>{editor.error.message}</AlertDescription>
-                </Alert>
-              )}
+                {editor.error && (
+                  <Alert
+                    id="config-error"
+                    variant="destructive"
+                    className="mt-6"
+                  >
+                    <AlertTitle>
+                      Não foi possível aplicar as configurações
+                    </AlertTitle>
+                    <AlertDescription>{editor.error.message}</AlertDescription>
+                  </Alert>
+                )}
+              </SettingsContent>
             </motion.div>
 
             <Separator />
@@ -312,7 +213,7 @@ function NativeSettingsView() {
                 </Alert>
               )}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="outline"
                     onClick={editor.restoreDefaults}

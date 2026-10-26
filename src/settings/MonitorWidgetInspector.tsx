@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { Config, WidgetConfig } from '@/services/configuration/config'
 import type { SettingsMonitor } from '@/services/system/config.generated'
 import {
@@ -7,7 +6,8 @@ import {
   aggregateIds,
   type Scope
 } from './monitor-layout'
-import { Choice, WidgetInspector } from './WidgetInspector'
+import { WidgetInspector } from './WidgetInspector'
+import { WidgetSettings } from './WidgetSettings'
 
 export function MonitorWidgetInspector({
   widget,
@@ -22,7 +22,6 @@ export function MonitorWidgetInspector({
   scope?: Scope
   monitors?: SettingsMonitor[]
 }) {
-  const [all, setAll] = useState(!scope)
   if (widget.type === 'separator') {
     return (
       <WidgetInspector
@@ -38,25 +37,12 @@ export function MonitorWidgetInspector({
       />
     )
   }
-  const target = all ? null : scope
+  const target = scope
   const values = aggregateIds(target, monitors).map((monitor) =>
     effectiveWidget(draft, widget.id, monitor)
   )
   return (
     <div className="flex flex-col gap-4">
-      <Choice
-        label="Aplicar configurações em"
-        value={all ? 'all' : 'current'}
-        options={
-          scope
-            ? [
-                { value: 'current', label: 'Monitor atual' },
-                { value: 'all', label: 'Todos os monitores' }
-              ]
-            : [{ value: 'all', label: 'Todos os monitores' }]
-        }
-        onChange={(value) => setAll(value === 'all')}
-      />
       <WidgetInspector
         widget={values[0]}
         values={values}
@@ -65,6 +51,7 @@ export function MonitorWidgetInspector({
           onChange(patchWidget(draft, target, monitors, widget.id, path, value))
         }
       />
+      <WidgetSettings widget={widget} draft={draft} onChange={onChange} />
     </div>
   )
 }

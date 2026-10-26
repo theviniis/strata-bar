@@ -54,8 +54,25 @@ Evite repetir o estilo em cada uso do componente.
 - `src/components/ui/tabs.tsx`: a lista usa `rounded-lg` e substitui a borda por
   `ring-1 ring-inset ring-border/50`, criando o contorno sem alterar as dimensões.
   O indicador da aba ativa mantém `bg-primary` e `text-primary-foreground`.
+- `src/components/ui/toggle-group.tsx`: os botões (`ToggleGroupItem`) usam a
+  receita com borda e `bg-muted/30` depois das classes da variante, para o vidro
+  valer mesmo quando a variante define `bg-transparent`. O brilho interno e a
+  sombra externa são neutralizados em todos os estados, e a borda em hover e
+  pressionado, para o fundo accent não ganhar uma linha de contorno. O contêiner
+  permanece sem fundo e sem borda.
 - `src/components/ui/sliding-highlight.tsx`: usa a utilitária na superfície
   deslizante, sem borda e com `bg-muted/60`.
+- `src/components/ui/item.tsx`: variante `outline`, usada pelos cards
+  arrastáveis do editor de layout, com a receita completa. O preview do
+  `DragOverlay` em `src/settings/LayoutEditor.tsx` usa `bg-card/60` para manter
+  a translucidez durante o arraste.
+- `src/components/ui/popover.tsx`: superfície flutuante com `bg-popover/80`,
+  borda `border-border/50`, sombra suave e a utilitária.
+- `src/settings/WidgetCatalog.tsx`: cada entrada arrastável do catálogo usa a
+  receita com borda e `bg-muted/30`.
+- `src/settings/BarSettings.tsx`: o seletor de paleta herda o vidro dos botões e
+  adiciona o hover translúcido `hover:bg-muted/50` com `hover:text-foreground`
+  para manter a legibilidade, além do lift em motion.
 - `src/popups/PopupSurface.tsx`: mantém fundo opaco `bg-popover`, cantos
   `rounded-2xl` e brilho interno, sem borda nem sombra externa para evitar
   artefatos de recorte na janela. Usa `backdrop-blur-lg` explicitamente.

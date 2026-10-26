@@ -444,7 +444,7 @@ pub fn start_geometry(app: AppHandle) {
             );
             let mut phases = Vec::new();
             for (height, position, spacing, topmost, key) in [
-                (80, "bottom", 32, false, "End"),
+                (80, "bottom", 32, true, "End"),
                 (28, "top", 0, true, "Home"),
             ] {
                 phase(position);
@@ -456,7 +456,6 @@ pub fn start_geometry(app: AppHandle) {
                     "Inferior"
                 };
                 script(&app, &format!("[...document.querySelectorAll('button')].find(b=>b.textContent==='{label}').click();"));
-                script(&app, "[...document.querySelectorAll('label')].find(l=>l.textContent==='Sempre no topo').click()");
                 // An unapplied draft must not alter native config.
                 assert_ne!(
                     app.state::<crate::config::ConfigStore>()
@@ -475,9 +474,7 @@ pub fn start_geometry(app: AppHandle) {
                         .unwrap()
                         .config
                         .bar;
-                    bar.height == height
-                        && bar.spacing == spacing as f64
-                        && bar.always_on_top == topmost
+                    bar.height == height && bar.spacing == spacing as f64
                 });
                 // Measure rendered content as well as the direct Win32 rectangle.
                 wait(&app, |app| {

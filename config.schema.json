@@ -167,8 +167,7 @@
           "default": "current",
           "type": "string",
           "enum": ["current", "amoled", "nord", "dracula", "catppuccin"]
-        },
-        "alwaysOnTop": { "default": true, "type": "boolean" }
+        }
       }
     },
     "widgets": {
@@ -362,7 +361,6 @@
             "type": "string",
             "enum": ["current", "amoled", "nord", "dracula", "catppuccin"]
           },
-          "alwaysOnTop": { "type": "boolean" },
           "widgets": {
             "type": "object",
             "propertyNames": { "type": "string" },

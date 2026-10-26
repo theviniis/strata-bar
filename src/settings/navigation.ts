@@ -1,16 +1,7 @@
 import { z } from 'zod'
 
 const navigationSchema = z.object({
-  section: z.enum([
-    'layout',
-    'appearance',
-    'agents',
-    'reminders',
-    'music',
-    'weather',
-    'audio',
-    'json'
-  ]),
+  section: z.enum(['layout', 'appearance', 'json']),
   monitor: z
     .object({ id: z.string().min(1), connected: z.boolean() })
     .nullable()
@@ -22,8 +13,8 @@ const key = 'strata.settings.navigation.v1'
 export function readNavigation(): SettingsNavigation {
   try {
     const saved = JSON.parse(localStorage.getItem(key) ?? 'null')
-    if (saved?.section === 'audio-input' || saved?.section === 'audio-output')
-      saved.section = 'audio'
+    if (saved && !['layout', 'appearance', 'json'].includes(saved.section))
+      saved.section = 'layout'
     return navigationSchema.parse(saved)
   } catch {
     return { section: 'layout', monitor: null }
