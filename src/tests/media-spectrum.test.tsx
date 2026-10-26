@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MediaSpectrum } from '@/features/media-spectrum/MediaSpectrum'
 import {
   demoSpectrum,
@@ -15,6 +15,7 @@ vi.mock('motion/react', async (original) => ({
 }))
 
 describe('media spectrum', () => {
+  afterEach(() => vi.useRealTimers())
   it('renders exactly six frequency bars and labels demonstration data', () => {
     const { container } = render(<MediaSpectrum data={demoSpectrum()} demo />)
     expect(
@@ -23,14 +24,35 @@ describe('media spectrum', () => {
     expect(container.querySelectorAll('[data-spectrum-band]')).toHaveLength(6)
   })
 
-  it('removes its content on pause or unavailable capture, and shows zero levels while muted', async () => {
+  it('waits 30 seconds before hiding and shows zero levels while inactive', async () => {
+    vi.useFakeTimers()
     const { container, rerender } = render(
       <MediaSpectrum data={{ ...demoSpectrum(), bands: [0, 0, 0, 0, 0, 0] }} />
     )
     for (const bar of container.querySelectorAll('[data-spectrum-band]'))
       expect(bar.getAttribute('style')).toContain('scaleY(0.05)')
     rerender(<MediaSpectrum data={null} />)
-    await waitFor(() => expect(container).toBeEmptyDOMElement())
+    await act(() => vi.advanceTimersByTimeAsync(29_999))
+    expect(screen.getByRole('img')).toBeVisible()
+    await act(() => vi.advanceTimersByTimeAsync(1))
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('cancels hiding when playback resumes and restarts the idle delay', async () => {
+    vi.useFakeTimers()
+    const { rerender } = render(<MediaSpectrum data={demoSpectrum()} />)
+    rerender(<MediaSpectrum data={null} />)
+    await act(() => vi.advanceTimersByTimeAsync(20_000))
+    rerender(<MediaSpectrum data={demoSpectrum()} />)
+    await act(() => vi.advanceTimersByTimeAsync(30_000))
+    expect(screen.getByRole('img')).toBeVisible()
+    rerender(<MediaSpectrum data={null} />)
+    await act(() => vi.advanceTimersByTimeAsync(29_999))
+    expect(screen.getByRole('img')).toBeVisible()
+    await act(() => vi.advanceTimersByTimeAsync(1))
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
+    rerender(<MediaSpectrum data={demoSpectrum()} />)
+    expect(screen.getByRole('img')).toBeVisible()
   })
 
   it('registers an independently configurable widget without changing defaults', () => {

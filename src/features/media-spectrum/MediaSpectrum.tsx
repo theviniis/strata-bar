@@ -1,5 +1,10 @@
 import type { MediaSpectrumData } from '@/services/system/media.generated'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { useEffect, useState } from 'react'
+
+const idleBands = [0, 0, 0, 0, 0, 0]
+
+const HIDE_TIMEOUT = 30_000
 
 export function MediaSpectrum({
   data,
@@ -9,9 +14,19 @@ export function MediaSpectrum({
   demo?: boolean
 }) {
   const reducedMotion = useReducedMotion()
+  const [visible, setVisible] = useState(data !== null)
+  if (data && !visible) setVisible(true)
+
+  const playing = data !== null
+  useEffect(() => {
+    if (playing) return
+    const timeout = setTimeout(() => setVisible(false), HIDE_TIMEOUT)
+    return () => clearTimeout(timeout)
+  }, [playing])
+
   return (
     <AnimatePresence initial={false}>
-      {data && (
+      {visible && (
         <motion.div
           key="spectrum"
           role="img"
@@ -31,7 +46,7 @@ export function MediaSpectrum({
           exit={{ scaleX: 0, width: 0, paddingInline: 0 }}
           transition={{ duration: reducedMotion ? 0 : 0.12 }}
         >
-          {data.bands.map((value, index) => (
+          {(data?.bands ?? idleBands).map((value, index) => (
             <motion.span
               key={index}
               aria-hidden="true"
