@@ -102,9 +102,6 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
                   nativeButton={false}
                   className="h-auto min-w-0 flex-col gap-3 p-3 hover:text-foreground"
                 >
-                  <ThemePreview
-                    config={{ ...draft, bar: { ...draft.bar, colorTheme } }}
-                  />
                   <span className="flex w-full items-center justify-between gap-2">
                     {colorThemes[colorTheme].label}
                     <Check
@@ -114,13 +111,9 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
                       )}
                     />
                   </span>
-                  <span className="text-micro opacity-80">
-                    {draft.bar.theme === 'system'
-                      ? `${colorThemes[colorTheme].lightLabel} / ${colorThemes[colorTheme].darkLabel}`
-                      : draft.bar.theme === 'light'
-                        ? colorThemes[colorTheme].lightLabel
-                        : colorThemes[colorTheme].darkLabel}
-                  </span>
+                  <ThemePreview
+                    config={{ ...draft, bar: { ...draft.bar, colorTheme } }}
+                  />
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
