@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { Music } from '@/features/music/Music'
-import { MusicPopup } from '@/features/music/MusicPopup'
+import { MusicPopup } from '@/features/music/music.popup'
 import { SpotifySettings } from '@/features/music/SpotifySettings'
 import { WidgetPreview } from '@/components/status-bar/WidgetPreview'
 import { widgetSchema } from '@/services/configuration/config'

@@ -1,5 +1,5 @@
 import type { Reminder } from '@/services/system/reminders.generated'
-import type { RemindersPopupProps } from './RemindersPopupController'
+import type { RemindersPopupProps } from './reminders.popup'
 
 export const REMINDER_FIXTURE_TIME = 1792742400000
 

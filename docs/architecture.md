@@ -70,6 +70,13 @@ identity survives reopening, while every opening has a distinct session.
 `usePopupLifetime` binds the module to React without resetting ownership when
 callbacks change. Native cross-window ownership and geometry remain native.
 
+Each feature's `*.popup.tsx` holds its visual, controller and native/demo
+adapters as named exports. A same-stem `*.popup-definition.ts` owns only label,
+schema and lazy registration. Discovery derives IDs from the `.popup.tsx`
+filenames but imports the lightweight definitions into the generated registry,
+so the bar does not load popup visuals before content is requested. Stories and
+tests import the prop-driven visual directly from the `.popup.tsx` module.
+
 ## workspaces channel
 
 The `workspaces` channel is event-driven, not polled: `src-tauri/src/workspaces.rs` creates a message-mode named pipe (`\\.\pipe\strata-bar-workspaces-<pid>`), spawns `komorebic subscribe-pipe <name>` with a fixed argument list and no shell, and streams newline/concatenated JSON notifications from komorebi. Each notification carries the full komorebi `State`; the watcher keeps the latest parsed copy and projects one payload per subscribed bar window, filtered to that window's monitor via `MonitorFromWindow`. The project step reduces each workspace to `{index, name, status: active|populated|empty, layer, windows}`; only changes are emitted (per-window summary dedup) to bound event volume. A broken pipe sets status `unavailable`, then reconnects after a delay; a missing `komorebic.exe` never rejects subscription and never falls back to demo data. Focus actions (`focus-monitor-workspace`, `cycle-workspace`) are bounds-checked against the cached state before spawning `komorebic`, so the UI can only reach monitors and workspaces komorebi currently reports.

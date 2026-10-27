@@ -5,7 +5,7 @@ import { AgentsController } from '@/features/agents/AgentsController'
 import { AgentQuestion } from '@/features/agents/AgentQuestion'
 import { AgentPermissionCard } from '@/features/agents/AgentPermissionCard'
 import { AgentAlerts } from '@/features/agents/AgentAlerts'
-import { AgentsPopup } from '@/features/agents/AgentsPopup'
+import { AgentsPopup } from '@/features/agents/agents.popup'
 import {
   agentsFixture,
   agentQuestionFixture,

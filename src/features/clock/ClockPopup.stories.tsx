@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ClockPopup } from './ClockPopup'
+import { ClockPopup } from './clock.popup'
 import { clockFixture } from './fixtures'
 import { timePresentation } from './presentation'
 

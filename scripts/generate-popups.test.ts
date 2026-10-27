@@ -64,6 +64,24 @@ it('updates additions, removals and renames without a central list', () => {
   ).toContain('export type PopupId = never')
 })
 
+it('registers lightweight metadata without importing the popup implementation', () => {
+  const root = fixture()
+  const content = definition(root, 'cpu/cpu.popup.tsx')
+  writeFileSync(
+    content,
+    'export function CpuPopup() { return <section>CPU</section> }\n'
+  )
+  definition(root, 'cpu/cpu.popup-definition.ts')
+  generatePopups(root)
+  const generated = readFileSync(
+    join(root, 'src/popups/.generated/popups.ts'),
+    'utf8'
+  )
+  expect(generated).toContain('export type PopupId = "cpu"')
+  expect(generated).toContain('from "../../features/cpu/cpu.popup-definition"')
+  expect(generated).not.toContain('from "../../features/cpu/cpu.popup"')
+})
+
 it('rejects duplicate IDs with both conflicting paths', () => {
   const root = fixture()
   const first = definition(root, 'first/clock.popup.tsx')
@@ -121,10 +139,15 @@ it('retains required input and transformed context types through generated impor
   )
   writeFileSync(
     definition(root, 'workspaceDetails.popup.tsx'),
+    `export function WorkspaceDetails() { return <section>Details</section> }`
+  )
+  writeFileSync(
+    definition(root, 'workspaceDetails.popup-definition.ts'),
     `
     import { z } from 'zod'
-    import { definePopup } from ${helper}
-    export default definePopup({ label: 'Details', Content: () => <section>Details</section>,
+    import { definePopup, lazyContent } from ${helper}
+    export default definePopup({ label: 'Details',
+      Content: lazyContent(() => import('./workspaceDetails.popup'), 'WorkspaceDetails'),
       schema: z.object({ workspace: z.string().transform(Number) }).strict() })
   `
   )

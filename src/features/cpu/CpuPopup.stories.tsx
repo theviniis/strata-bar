@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Card } from '@/components/ui/card'
-import { CpuPopup } from './CpuPopup'
+import { CpuPopup } from './cpu.popup'
 import { cpuFixture, CPU_FIXTURE_TIME } from './fixtures'
 
 const meta = {

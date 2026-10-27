@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { fn } from 'storybook/test'
-import { ReminderAlert } from './ReminderAlert'
+import { ReminderAlert } from './reminderAlert.popup'
 import { ReminderAlertActions } from './ReminderAlertActions'
 import { ReminderMessageController } from './ReminderMessageController'
 import { reminderFixture } from './fixtures'

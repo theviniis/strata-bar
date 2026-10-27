@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { WeatherPopup } from './WeatherPopup'
+import { WeatherPopup } from './weather.popup'
 import { weatherFixture } from './fixtures'
 
 const meta = {

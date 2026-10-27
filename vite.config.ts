@@ -18,7 +18,7 @@ function popupDiscovery() {
           !path
             .replaceAll('\\', '/')
             .startsWith(features.replaceAll('\\', '/') + '/') ||
-          !/\.popup\.tsx?$/.test(path)
+          !/\.popup(?:\.tsx?|-definition\.ts)$/.test(path)
         )
           return
         try {

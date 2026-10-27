@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { expect, it, vi } from 'vitest'
-import { MusicPopupContent } from '@/features/music/MusicPopupController'
+import { MusicPopupContent } from '@/features/music/music.popup'
 import { demoMedia } from '@/services/system/media'
 
 vi.stubGlobal(

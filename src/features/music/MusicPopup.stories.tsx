@@ -2,7 +2,7 @@ import { FaPause as Pause, FaPlay as Play } from 'react-icons/fa6'
 
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
-import { MusicPopup } from './MusicPopup'
+import { MusicPopup } from './music.popup'
 import { musicControlsFixture, musicFixture } from './fixtures'
 import type { MusicPopupControls } from './useMusicPopupControls'
 

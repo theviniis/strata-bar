@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { CpuPopup } from '@/features/cpu/CpuPopup'
+import { CpuPopup } from '@/features/cpu/cpu.popup'
 import type { CpuData } from '@/services/system/cpu.generated'
 
 const at = 100000
@@ -78,7 +78,7 @@ it('keeps other readings usable when thermal sensors are unavailable', () => {
   )
   expect(screen.getByText('3.98 GHz')).toBeVisible()
   expect(screen.getByText('Indisponível')).toBeVisible()
-  expect(screen.getByText(/Sensor de temperatura indispon�vel/)).toBeVisible()
+  expect(screen.getByText(/Sensor de temperatura indispon�vel/)).toBeVisible()
   // The unavailable sensor reads as a gap, never as an invented point.
   expect(screen.getByText(/1 leitura indisponível/)).toBeVisible()
 })

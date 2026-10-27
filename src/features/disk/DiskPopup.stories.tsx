@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Card } from '@/components/ui/card'
-import { DiskPopup } from './DiskPopup'
+import { DiskPopup } from './disk.popup'
 import { diskFixture, DISK_FIXTURE_TIME } from './fixtures'
 
 const meta = {

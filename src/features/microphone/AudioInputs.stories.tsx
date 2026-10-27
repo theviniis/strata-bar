@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { fn } from 'storybook/test'
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
-import { AudioInputs, type AudioInputsProps } from './AudioInputs'
+import { AudioInputs, type AudioInputsProps } from './audioInputs.popup'
 import {
   audioInputsFixture,
   audioLevelFixture

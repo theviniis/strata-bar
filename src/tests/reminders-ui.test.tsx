@@ -1,5 +1,5 @@
 import { PopupContext } from '@/popups/context'
-import { ReminderAlertController as ReminderAlert } from '@/features/reminders/ReminderAlertController'
+import { ReminderAlertController as ReminderAlert } from '@/features/reminders/reminderAlert.popup'
 import {
   act,
   fireEvent,
@@ -16,7 +16,7 @@ import {
   formatCountdown,
   scheduledDateTime
 } from '@/features/reminders/presentation'
-import { RemindersPopupController as RemindersPopup } from '@/features/reminders/RemindersPopupController'
+import { RemindersPopupController as RemindersPopup } from '@/features/reminders/reminders.popup'
 import { getRemindersStore } from '@/stores/reminders'
 import { PopupHost } from '@/popups/PopupHost'
 import { createDemoRemindersAdapter } from '@/services/system/reminders'

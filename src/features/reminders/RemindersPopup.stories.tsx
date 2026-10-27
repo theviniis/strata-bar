@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
-import { RemindersPopup } from './RemindersPopup'
+import { RemindersPopup } from './reminders.popup'
 import { ReminderEditorController } from './ReminderEditorController'
 import { ActiveReminders } from './ActiveReminders'
 import { remindersPopupFixture } from './fixtures'

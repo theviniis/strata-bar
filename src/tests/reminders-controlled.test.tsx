@@ -3,9 +3,9 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { FormEvent } from 'react'
 import { Reminders } from '@/features/reminders/Reminders'
 import { RemindersController } from '@/features/reminders/RemindersController'
-import { RemindersPopup } from '@/features/reminders/RemindersPopup'
+import { RemindersPopup } from '@/features/reminders/reminders.popup'
 import { ReminderAlertActions } from '@/features/reminders/ReminderAlertActions'
-import { ReminderAlert } from '@/features/reminders/ReminderAlert'
+import { ReminderAlert } from '@/features/reminders/reminderAlert.popup'
 import { CalendarSettings } from '@/features/reminders/CalendarSettings'
 import {
   reminderFixture,

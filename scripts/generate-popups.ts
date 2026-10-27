@@ -38,7 +38,13 @@ export function generatePopups(root = projectRoot) {
   const output = resolve(root, 'src/popups/.generated/popups.ts')
   const definitions = discoverPopups(resolve(root, 'src/features'))
   const imports = definitions.map(([, path], index) => {
-    const specifier = relative(dirname(output), path)
+    // UI and controllers live in .popup.tsx; registration stays lightweight so
+    // discovering every popup does not eagerly load every visual dependency.
+    const metadata = path.replace(/\.popup\.tsx?$/, '.popup-definition.ts')
+    const specifier = relative(
+      dirname(output),
+      existsSync(metadata) ? metadata : path
+    )
       .replaceAll('\\', '/')
       .replace(/\.tsx?$/, '')
     return `import popup${index} from ${JSON.stringify(specifier)}`

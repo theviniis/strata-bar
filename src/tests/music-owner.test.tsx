@@ -9,7 +9,7 @@ import {
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { StrictMode, type ReactNode } from 'react'
 import { MusicContent } from '@/features/music/MusicController'
-import { MusicPopupContent } from '@/features/music/MusicPopupController'
+import { MusicPopupContent } from '@/features/music/music.popup'
 import { useMusicInteractions } from '@/features/music/useMusicInteractions'
 import { useMusicPopupControls } from '@/features/music/useMusicPopupControls'
 import { PopupHost } from '@/popups/PopupHost'

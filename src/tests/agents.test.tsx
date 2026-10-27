@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import {
   AgentsPopupController as AgentsPopup,
   AgentsPopupStateController as AgentsPopupContent
-} from '@/features/agents/AgentsPopupController'
+} from '@/features/agents/agents.popup'
 import { PopupContext } from '@/popups/context'
 import { OpenCodeSessionsController as OpenCodeSessions } from '@/features/agents/OpenCodeSessionsController'
 import type { CreateAgentSessionResult } from '@/services/system/agents'

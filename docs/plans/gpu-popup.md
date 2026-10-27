@@ -72,9 +72,9 @@ Decisions already taken:
 - [x] `src/features/gpu/Gpu.tsx`: bar widget mirroring `Cpu.tsx`.
 - [x] `src/features/gpu/presentation.ts`: staleness plus percent/bytes/
       temperature/watts/fan formatters, keeping a `0 %` fan reading valid.
-- [x] `src/features/gpu/GpuPopup.tsx`: utilisation and temperature graphs plus
+- [x] `src/features/gpu/gpu.popup.tsx`: utilisation and temperature graphs plus
       the usage, memory, temperature, power, fan and shared-memory rows.
-- [x] `src/features/gpu/gpu.popup.tsx`: popup definition.
+- [x] `src/features/gpu/gpu.popup-definition.ts`: lightweight popup registration.
 - [x] `src/components/status-bar/NativeBar.tsx`: CPU | GPU | RAM.
 - [x] Studio shell copy that still claims GPU is unavailable (`App.tsx`) and the
       `--check-popups` fixture (`PopupCheckBar.tsx`).

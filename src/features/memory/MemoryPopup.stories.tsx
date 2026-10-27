@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Card } from '@/components/ui/card'
-import { MemoryPopup } from './MemoryPopup'
+import { MemoryPopup } from './memory.popup'
 import { memoryFixture, MEMORY_FIXTURE_TIME } from './fixtures'
 
 const meta = {

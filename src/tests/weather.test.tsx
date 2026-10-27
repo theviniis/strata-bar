@@ -8,7 +8,7 @@ import {
   waitFor
 } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { WeatherPopup } from '@/features/weather/WeatherPopup'
+import { WeatherPopup } from '@/features/weather/weather.popup'
 import { WeatherSettings } from '@/features/weather/WeatherSettings'
 import { weatherFixture } from '@/features/weather/fixtures'
 import {
