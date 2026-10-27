@@ -1,29 +1,16 @@
-import {
-  defaultView,
-  type WidgetView
-} from '@/components/status-bar/presentation'
 import { ScrollingText } from '@/components/ui/scrolling-text'
 import { WidgetItemTooltip } from '@/components/widget-item'
 import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
 import { useSystemChannel } from '@/hooks/useSystemChannel'
 import { WidgetPopup } from '@/popups/WidgetPopup'
-import {
-  bridge,
-  connect,
-  createMockBridge,
-  type DemoChannelData,
-  type SystemEvent
-} from '@/services/system/bridge'
-import type {
-  MediaAction,
-  MediaData,
-  MediaRequest
-} from '@/services/system/media.generated'
-import { useEffect, useRef, useState } from 'react'
+import { bridge, type SystemEvent } from '@/services/system/bridge'
+import type { MediaData, MediaRequest } from '@/services/system/media.generated'
+import { useState } from 'react'
 import { useWidgetView } from '@/components/status-bar/widget-view'
+import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
 
 import { Music } from './Music'
-import { musicFixture } from './fixtures'
+import { useMusicInteractions } from './useMusicInteractions'
 export function MusicController() {
   const view = useWidgetView()
   const event = useSystemChannel('media', 0, view.intervalMs)
@@ -40,39 +27,6 @@ export function MusicController() {
   )
 }
 
-export function DemoMusicController({
-  staticPreview = false,
-  view = defaultView
-}: {
-  staticPreview?: boolean
-  view?: WidgetView
-}) {
-  const [adapter] = useState(createMockBridge)
-  const [event, setEvent] = useState<SystemEvent<MediaData>>({
-    status: 'loading'
-  })
-  useEffect(() => {
-    if (staticPreview) return
-    return connect<DemoChannelData, 'media'>(
-      adapter,
-      'media',
-      {},
-      setEvent,
-      (error) => setEvent({ status: 'error', error: String(error) })
-    )
-  }, [adapter, staticPreview])
-  return (
-    <MusicContent
-      demo
-      tooltip={view.tooltip}
-      event={staticPreview ? { status: 'ready', data: musicFixture() } : event}
-      onAction={(request) =>
-        staticPreview ? Promise.resolve() : adapter.mediaAction!(request)
-      }
-    />
-  )
-}
-
 export function MusicContent({
   event,
   onAction,
@@ -85,20 +39,12 @@ export function MusicContent({
   /** The widget's configured tooltip toggle. */
   tooltip?: boolean
 }) {
+  const preview = useWidgetPreview()
   const current = event.status === 'ready' ? event.data : null
-  const [pending, setPending] = useState(false)
-  const [failure, setFailure] = useState<{
-    identity: string
-    message: string
-  } | null>(null)
+  const { state, interactions } = useMusicInteractions(current, onAction)
+  const pending = state.pending.playback
+  const error = state.error
   const [badArt, setBadArt] = useState<string | null>(null)
-  const busy = useRef(false)
-  const identity = `${current?.sessionId}/${current?.trackId}`
-  const error = failure?.identity === identity ? failure.message : ''
-  const latestIdentity = useRef(identity)
-  useEffect(() => {
-    latestIdentity.current = identity
-  }, [identity])
   const text = current
     ? `${current.title || 'Sem título'}${current.artist ? ` — ${current.artist}` : ''}`
     : event.status === 'loading'
@@ -110,26 +56,6 @@ export function MusicContent({
     current?.artwork.status === 'ready' ? current.artwork.value : null
   const tooltipText = `${demo ? 'Demonstração · ' : ''}${text}${error ? ` · ${error}` : ''}`
   const tip = useOverlayTooltip(tooltip ? tooltipText : '')
-  async function act(action: MediaAction) {
-    if (!current || busy.current) return
-    busy.current = true
-    setPending(true)
-    setFailure(null)
-    const sentIdentity = identity
-    try {
-      await onAction({
-        sessionId: current.sessionId,
-        trackId: current.trackId,
-        action
-      })
-    } catch (e) {
-      if (latestIdentity.current === sentIdentity)
-        setFailure({ identity: sentIdentity, message: String(e) })
-    } finally {
-      busy.current = false
-      setPending(false)
-    }
-  }
   return (
     <WidgetPopup.Root popup="music">
       <WidgetPopup.Anchor asChild>
@@ -139,7 +65,9 @@ export function MusicContent({
           demo={demo}
           artwork={artwork === badArt ? null : artwork}
           onArtworkError={() => setBadArt(artwork)}
-          onAction={act}
+          onAction={(action) => {
+            void interactions.dispatch(action)
+          }}
           tooltipTrigger={tip.trigger}
         >
           <WidgetPopup.Trigger asChild>
@@ -149,6 +77,7 @@ export function MusicContent({
             >
               <ScrollingText
                 text={text}
+                animate={!preview}
                 aria-describedby={tooltip ? tip.describedBy : undefined}
                 className="relative z-10 mx-1 flex-1 text-bar"
               />

@@ -3,9 +3,8 @@ import { useWidgetPreview } from '@/components/status-bar/widget-preview-context
 import { PREVIEW_TIME } from '@/services/system/widget-preview'
 import { timePresentation } from './presentation'
 
-export function useTime(staticPreview = false) {
-  const previewContext = useWidgetPreview()
-  const preview = staticPreview || previewContext
+export function useTime() {
+  const preview = useWidgetPreview()
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
     if (preview) return

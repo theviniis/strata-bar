@@ -23,6 +23,7 @@ interface HighlightRect {
 }
 
 export interface SlidingHighlightProps {
+  disabled?: boolean
   /** One DOM element that contains the items and receives positioning styles. */
   children: ReactElement
   /** Decorative classes; corner radii always follow the hovered item. */
@@ -38,7 +39,8 @@ export interface SlidingHighlightProps {
 export function SlidingHighlight({
   children,
   highlightClassName,
-  spring
+  spring,
+  disabled = false
 }: SlidingHighlightProps) {
   const reducedMotion = useReducedMotion()
   const [container, setContainer] = useState<HTMLElement | null>(null)
@@ -51,7 +53,7 @@ export function SlidingHighlight({
   const measure = useRef<(() => void) | undefined>(undefined)
 
   useEffect(() => {
-    if (!container) return
+    if (!container || disabled) return
     const update = () => {
       const target = active.current
       if (!target || !container.contains(target)) {
@@ -124,7 +126,7 @@ export function SlidingHighlight({
       mutation.disconnect()
       window.removeEventListener('resize', update)
     }
-  }, [container])
+  }, [container, disabled])
 
   const leave = (reset = true) => {
     active.current = null
@@ -141,6 +143,7 @@ export function SlidingHighlight({
         data-sliding-highlight-group=""
         className="relative isolate"
         onPointerMove={(event: PointerEvent<HTMLElement>) => {
+          if (disabled) return
           if (event.pointerType === 'touch') return
           const target =
             event.target instanceof Element
@@ -169,6 +172,7 @@ export function SlidingHighlight({
         {children}
       </Slot>
       {container &&
+        !disabled &&
         createPortal(
           <motion.span
             aria-hidden="true"

@@ -96,6 +96,17 @@ mapped-drive namespace.
 
 JSON schema version 2; unique widget IDs, known feature types, enabled state, update interval, display format, tooltip. Last-known-good config survives invalid edits. The native Settings window, opened from the tray, is the single configuration page: visual controls and the JSON tab edit one draft, and Apply calls the native `config_save` command. The native store re-validates, atomically writes `config.json` in the Tauri app configuration directory and watches the directory for external edits. `config_load` and revision-ordered `config` events hydrate bars, overlay and settings; failed saves and invalid files retain the last good configuration. Content edits do not change AppBar geometry. Audio routing lives in the root `audio.output` and `audio.input` settings, shared by every monitor and widget instance. Only source and target index are configurable; output derives a bus target and input a strip target. Version 1 migrates on read with both channels reset to Windows; only an explicit save persists version 2.
 
+The visual layout editor edits one connected or saved disconnected monitor at a
+time; it has no "Todos" selection. `editMonitorDraft` in
+`src/settings/monitor-layout.ts` owns effective widget projection and scoped
+mutations. Removing a widget retains its definition and monitor settings for
+restoration; adding a new definition preserves the default layout inherited by
+other and future monitors. The visual adapter owns monitor discovery, selection,
+navigation memory and drag previews. It restores the previous monitor when
+available, otherwise selects the first connected monitor, then a saved monitor;
+without either it shows an empty editor. Apply and native persistence retain
+their existing ownership. Appearance and integration settings remain shared.
+
 The settings window remains captioned, resizable and focusable, but its
 `WS_EX_DLGMODALFRAME` style excludes it from komorebi tiling. This supersedes
 the original tiler-managed wording in spec #5, as recorded in the
@@ -109,9 +120,30 @@ restoration after the run. The unmodified legacy geometry script failed its
 topmost assertion; that observation is retained separately from content-loop
 acceptance and does not establish a full geometry pass.
 
+Widget previews share the actual Widget rendering through
+`WidgetPreviewRuntime`: studio, theme selector and catalog receive the same
+fixed, native-shaped samples from `widget-preview.ts`. The runtime is explicit;
+it is never selected after a native error. Previews suppress subscriptions,
+actions, popup opening and continuous motion, including overflowing music text
+and spectrum transitions. The removed dynamic bar-demo path has no replacement;
+interactive popup demos retain their separate adapters. Native memory history
+and retention remain owned by Rust as recorded in ADR-0001.
+
 The browser studio is a labelled, display-only demo with no inline appearance controls, widget chips, account settings or JSON editor. Its preview is inert, so widget popups cannot expose a second editing path. The settings view also refuses to mount the editor outside native mode, including direct browser requests to `?view=settings`; there is no demo settings persistence adapter. The retained `strata.config.v1` localStorage persistence and storage-event reload belong only to browser demo routes: `loadConfig` and `watchConfig` return without reading or installing listeners when Tauri internals are present, and native hydration never writes browser storage. The demo bridge has no native configuration load/save commands. Native windows connect to the native store through `connectConfig`; browser persistence cannot feed native bars. Per-monitor overrides merge with validated defaults. CSP restricts content to bundled resources; no remote executable content or arbitrary user JS in MVP.
 
 ## Media service
+
+Each bar or music popup owns an independent Music interaction, bound to the
+current session and track. `music/interactions.ts` owns pending groups, queues
+and optimistic volume feedback; `useMusicInteractions` binds its lifetime to
+React. Closing, unmounting or changing identity discards unsent work and ignores
+old completions. `PopupHost` exposes its closing state to content so discard
+starts with the exit animation rather than waiting for unmount. Volume and mute
+share an ordered queue; consecutive unsent slider values coalesce without
+crossing a mute command. Playback, favorite, shuffle and repeat remain
+independent. The progress clock remains in `music/progress.ts`. Already submitted
+native actions may complete; every request still carries the original session
+and track for native validation.
 
 `media.rs` owns one native service for all monitor windows. `media_windows.rs`
 uses GSMTC events and Core Audio session/device callbacks; a cached-snapshot tick

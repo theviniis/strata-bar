@@ -6,8 +6,7 @@ import {
   widgetSchema,
   type WidgetConfig
 } from '@/services/configuration/config'
-import { addableTypes, addWidget } from '@/settings/layout'
-import { addToScope } from '@/settings/monitor-layout'
+import { editMonitorDraft } from '@/settings/monitor-layout'
 
 it('suppresses saved agents widgets on every bar section before mounting them', () => {
   const renderWidget = vi.fn((_widget: WidgetConfig) => null)
@@ -24,14 +23,11 @@ it('suppresses saved agents widgets on every bar section before mounting them', 
   expect(renderWidget.mock.calls.map(([widget]) => widget)).toEqual([clock])
 })
 
-it('blocks adding agents globally and per monitor without deleting saved settings', () => {
-  expect(addableTypes()).not.toContain('agents')
-  expect(addableTypes()).toContain('clock')
+it('blocks adding agents to a monitor without deleting saved settings', () => {
   const saved = structuredClone(defaultConfig)
   saved.widgets.right.push(widgetSchema.parse({ id: 'agents', type: 'agents' }))
-  expect(addWidget(saved, 'agents', 'right')).toBe(saved)
   expect(
-    addToScope(saved, 'DISPLAY1', [], 'agents', {
+    editMonitorDraft(saved, 'DISPLAY1').add('agents', {
       section: 'right',
       index: 0
     })

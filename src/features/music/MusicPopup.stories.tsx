@@ -53,10 +53,7 @@ function InteractivePlayer() {
     favoriteValue,
     repeat,
     muted,
-    setSeek: (value) =>
-      setPosition(
-        typeof value === 'function' ? (value(position) ?? 0) : (value ?? 0)
-      ),
+    setSeek: (value) => setPosition(value ?? 0),
     setVolumeDraft: setLevel,
     commitVolume: setLevel,
     act: async (action) => {

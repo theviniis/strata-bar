@@ -5,8 +5,6 @@ import { useResourceChannel } from '@/hooks/useResourceChannel'
 import { useWidgetView } from '@/components/status-bar/widget-view'
 import { WidgetPopup } from '@/popups/WidgetPopup'
 import { Gpu, type GpuProps } from './Gpu'
-import { gpuFixture, GPU_FIXTURE_TIME } from './fixtures'
-import type { SystemEvent } from '@/services/system/bridge'
 import type { WidgetView } from '@/components/status-bar/presentation'
 import { isGpuMetricStale } from './presentation'
 
@@ -15,32 +13,6 @@ export function GpuController() {
   const reading = useResourceChannel('gpu', view.intervalMs)
   return (
     <GpuPopupTrigger {...reading} lastData={reading.lastData} view={view} />
-  )
-}
-
-/** Adapts studio scalars without connecting a native resource channel. */
-export function DemoGpuController({
-  event,
-  view
-}: {
-  event: SystemEvent<number>
-  view: WidgetView
-}) {
-  const data = gpuFixture()
-  const reading =
-    event.status === 'ready'
-      ? {
-          ...event,
-          data: { ...data, percent: { ...data.percent, value: event.data } }
-        }
-      : event
-  return (
-    <GpuPopupTrigger
-      event={reading}
-      lastData={undefined}
-      now={GPU_FIXTURE_TIME}
-      view={view}
-    />
   )
 }
 

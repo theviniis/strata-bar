@@ -1,10 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { WorkspacesWidget } from '@/features/workspaces/WorkspacesWidget'
-import {
-  WorkspacesController,
-  DemoWorkspacesController
-} from '@/features/workspaces/WorkspacesController'
+import { WorkspacesController } from '@/features/workspaces/WorkspacesController'
 import { workspacesFixture } from '@/features/workspaces/fixtures'
 import { defaultView } from '@/components/status-bar/presentation'
 import { WidgetViewContext } from '@/components/status-bar/widget-view'
@@ -117,7 +114,7 @@ it('owns subscriptions, configured intervals, focus actions and cleanup', () => 
   expect(runtime.dispose).toHaveBeenCalledTimes(2)
 })
 
-it('keeps native preview and static demo actions inert', () => {
+it('keeps workspace preview actions inert', () => {
   const view = render(
     <WidgetPreviewContext value={true}>
       <WorkspacesController />
@@ -127,18 +124,6 @@ it('keeps native preview and static demo actions inert', () => {
   expect(runtime.connect).not.toHaveBeenCalled()
   expect(runtime.action).not.toHaveBeenCalled()
   view.unmount()
-  render(
-    <DemoWorkspacesController
-      event={{ status: 'ready', data: workspacesFixture() }}
-      view={defaultView}
-      inert
-    />
-  )
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Workspace 1 (populated)' })
-  )
-  expect(runtime.action).not.toHaveBeenCalled()
-  expect(runtime.connect).not.toHaveBeenCalled()
 })
 
 it('animates active workspace changes and cancels the indicator on unmount', () => {
@@ -154,13 +139,8 @@ it('animates active workspace changes and cancels the indicator on unmount', () 
   })
   try {
     const data = workspacesFixture()
-    const view = render(
-      <DemoWorkspacesController
-        event={{ status: 'ready', data }}
-        view={defaultView}
-        inert
-      />
-    )
+    const view = render(<WorkspacesController />)
+    act(() => runtime.emit?.({ status: 'ready', data }))
     expect(animate).not.toHaveBeenCalled()
     const next: WorkspacesData = {
       ...data,
@@ -169,13 +149,7 @@ it('animates active workspace changes and cancels the indicator on unmount', () 
         status: workspace.index === 0 ? 'active' : 'empty'
       }))
     }
-    view.rerender(
-      <DemoWorkspacesController
-        event={{ status: 'ready', data: next }}
-        view={defaultView}
-        inert
-      />
-    )
+    act(() => runtime.emit?.({ status: 'ready', data: next }))
     expect(animate).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({ offset: 1, width: '24px' })

@@ -73,9 +73,7 @@ export default function App() {
                     : 'relative'
                 }
               >
-                <div inert>
-                  <StudioBar config={config} staticPreview />
-                </div>
+                <StudioBar config={config} />
               </div>
               <div className="absolute inset-x-0 top-[54%] flex items-center justify-center gap-2.25 text-body text-foreground">
                 <span className="h-1.25 w-1.25 rounded-full bg-primary" /> Your

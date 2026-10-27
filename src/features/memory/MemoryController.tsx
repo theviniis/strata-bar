@@ -5,8 +5,6 @@ import { useResourceChannel } from '@/hooks/useResourceChannel'
 import { useWidgetView } from '@/components/status-bar/widget-view'
 import { WidgetPopup } from '@/popups/WidgetPopup'
 import { Memory, type MemoryProps } from './Memory'
-import { memoryFixture, MEMORY_FIXTURE_TIME } from './fixtures'
-import type { SystemEvent } from '@/services/system/bridge'
 import type { WidgetView } from '@/components/status-bar/presentation'
 import { isMemoryMetricStale } from './presentation'
 
@@ -15,32 +13,6 @@ export function MemoryController() {
   const reading = useResourceChannel('memory', view.intervalMs)
   return (
     <MemoryPopupTrigger {...reading} lastData={reading.lastData} view={view} />
-  )
-}
-
-/** Adapts studio scalars without connecting a native resource channel. */
-export function DemoMemoryController({
-  event,
-  view
-}: {
-  event: SystemEvent<number>
-  view: WidgetView
-}) {
-  const data = memoryFixture()
-  const reading =
-    event.status === 'ready'
-      ? {
-          ...event,
-          data: { ...data, percent: { ...data.percent, value: event.data } }
-        }
-      : event
-  return (
-    <MemoryPopupTrigger
-      event={reading}
-      lastData={undefined}
-      now={MEMORY_FIXTURE_TIME}
-      view={view}
-    />
   )
 }
 

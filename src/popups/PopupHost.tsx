@@ -76,6 +76,7 @@ export function PopupHost({
             params: resolved.params,
             mode,
             side: placement.side ?? 'bottom',
+            closing: placement.closing ?? false,
             close
           }}
         >

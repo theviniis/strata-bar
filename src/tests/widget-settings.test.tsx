@@ -7,6 +7,7 @@ import {
 } from '@/services/configuration/config'
 import { MonitorWidgetInspector } from '@/settings/MonitorWidgetInspector'
 import { WidgetInspector } from '@/settings/WidgetInspector'
+import { editMonitorDraft } from '@/settings/monitor-layout'
 import { readNavigation } from '@/settings/navigation'
 
 it('patches only the selected monitor without offering a scope selector', () => {
@@ -22,7 +23,7 @@ it('patches only the selected monitor without offering a scope selector', () => 
     <MonitorWidgetInspector
       widget={widget}
       draft={draft}
-      scope="DISPLAY1"
+      editor={editMonitorDraft(draft, 'DISPLAY1')}
       onChange={onChange}
     />
   )

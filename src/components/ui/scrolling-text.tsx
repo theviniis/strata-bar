@@ -4,12 +4,17 @@ import { cn } from '@/lib/utils'
 // Overflowing text travels at 24 px/s with pauses at both ends.
 export function ScrollingText({
   text,
+  animate = true,
   className,
   ...props
-}: Omit<ComponentProps<'span'>, 'children'> & { text: string }) {
+}: Omit<ComponentProps<'span'>, 'children'> & {
+  text: string
+  animate?: boolean
+}) {
   const viewport = useRef<HTMLSpanElement>(null)
   const content = useRef<HTMLSpanElement>(null)
   useEffect(() => {
+    if (!animate) return
     const box = viewport.current
     const label = content.current
     if (!box || !label) return
@@ -49,12 +54,13 @@ export function ScrollingText({
       motion?.removeEventListener?.('change', measure)
       window.removeEventListener('resize', measure)
     }
-  }, [text])
+  }, [text, animate])
   return (
     <span
       ref={viewport}
       className={cn(
         'block min-w-0 overflow-hidden whitespace-nowrap motion-reduce:text-ellipsis',
+        !animate && 'text-ellipsis',
         className
       )}
       {...props}

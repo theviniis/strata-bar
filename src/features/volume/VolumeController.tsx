@@ -13,19 +13,6 @@ export function VolumeController() {
   const event = useSystemChannel('volume', 0, view.intervalMs)
   return <VolumePopupTrigger event={event} view={view} />
 }
-export function DemoVolumeController({
-  event,
-  view
-}: {
-  event: SystemEvent<number>
-  view: WidgetView
-}) {
-  const adapted: SystemEvent<ChannelData['volume']> =
-    event.status === 'ready'
-      ? { ...event, data: { level: event.data, muted: false } }
-      : event
-  return <VolumePopupTrigger event={adapted} view={view} />
-}
 function VolumePopupTrigger({
   event: value,
   view

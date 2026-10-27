@@ -21,10 +21,28 @@ The explicit action that validates a draft and sends it to native `config_save`.
 Native validation and an atomic write must succeed before configuration events
 update the bars. A rejected draft or failed save preserves the saved document.
 
+**Monitor layout**:
+The ordered widgets shown in a monitor's left, center and right sections.
+Removing a widget from a monitor layout retains its settings for later reuse.
+
+**Default layout**:
+The initial widget arrangement inherited by a monitor without its own layout.
+Editing an individual monitor layout does not change this starting arrangement.
+
 **Content loop**:
 The path from a settings draft through Apply, native persistence and per-window
 configuration events to the real bars' rendered content. It includes widget
 composition and presentation; native geometry remains tracked separately in #3.
+
+**Widget preview**:
+A motionless, read-only illustration of a widget using fixed example readings
+and its configured presentation. The studio, catalog and theme selector use
+the same examples; a preview never controls the desktop or a player.
+
+**Music interaction**:
+The local set of pending player actions owned by one bar or popup for a specific
+player session and track. Closing its owner or changing that identity discards
+unsent actions; already submitted actions may still complete.
 
 **Settings window**:
 The single-instance native configuration editor opened from the tray at

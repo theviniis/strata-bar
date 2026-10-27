@@ -5,7 +5,8 @@ const ANIMATION_DURATION = 450
 
 export function useWorkspaceIndicator(
   activeIndex: number | undefined,
-  offline: boolean
+  offline: boolean,
+  animate = true
 ) {
   const containerRef = useRef<HTMLDivElement>(null)
   const indicatorRef = useRef<HTMLSpanElement>(null)
@@ -33,7 +34,9 @@ export function useWorkspaceIndicator(
     const previousIndex = previousIndexRef.current
 
     // Initial render: position without animation
-    if (previousIndex === null) {
+    if (!animate || previousIndex === null) {
+      animationRef.current?.cancel()
+      animationRef.current = null
       indicator.style.left = `${targetX}px`
       indicator.style.width = `${INDICATOR_WIDTH}px`
       previousIndexRef.current = activeIndex
@@ -103,7 +106,7 @@ export function useWorkspaceIndicator(
         animationRef.current = null
       }
     }
-  }, [activeIndex, offline])
+  }, [activeIndex, offline, animate])
 
   useLayoutEffect(() => {
     if (offline || activeIndex === undefined) {

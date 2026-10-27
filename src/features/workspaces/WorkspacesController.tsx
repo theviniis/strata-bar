@@ -30,20 +30,6 @@ export function WorkspacesController() {
   )
 }
 
-export function DemoWorkspacesController({
-  event,
-  view,
-  inert
-}: {
-  event: SystemEvent<WorkspacesData>
-  view: WidgetView
-  inert: boolean
-}) {
-  return (
-    <WorkspacesComposition event={event} view={view} inert={inert} showTitles />
-  )
-}
-
 function WorkspacesComposition({
   event,
   view,
@@ -60,7 +46,7 @@ function WorkspacesComposition({
   const activeIndex = snapshot?.workspaces.find(
     (workspace) => workspace.status === 'active'
   )?.index
-  const refs = useWorkspaceIndicator(activeIndex, offline)
+  const refs = useWorkspaceIndicator(activeIndex, offline, !inert)
   const text =
     event.status === 'error'
       ? event.error

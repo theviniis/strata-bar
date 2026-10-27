@@ -19,7 +19,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { WidgetConfig } from '@/services/configuration/config'
 import { useId } from 'react'
-import { valueAt } from './monitor-layout'
+import type { WidgetEdit } from './monitor-layout'
 
 export function Choice({
   label,
@@ -62,29 +62,15 @@ export function Choice({
 export function WidgetInspector({
   widget,
   onChange,
-  values = [widget],
-  onPatch,
   separatorMarginX = 0,
   onSeparatorMarginChange
 }: {
   widget: WidgetConfig
-  onChange(next: WidgetConfig): void
-  values?: WidgetConfig[]
-  onPatch?(path: string, value: unknown): void
+  onChange(patch: WidgetEdit): void
   separatorMarginX?: number
   onSeparatorMarginChange?(value: number): void
 }) {
   const id = useId()
-  const mixed = (path: string) =>
-    values.some(
-      (value) =>
-        JSON.stringify(valueAt(value, path)) !==
-        JSON.stringify(valueAt(values[0], path))
-    )
-  const update = (
-    path: 'intervalMs' | 'format' | 'tooltip' | 'workspaceSource',
-    value: unknown
-  ) => (onPatch ? onPatch(path, value) : onChange({ ...widget, [path]: value }))
   if (widget.type === 'separator') {
     return (
       <FieldSet>
@@ -124,14 +110,10 @@ export function WidgetInspector({
               <FieldLabel>Monitorar</FieldLabel>
               <ToggleGroup
                 variant="outline"
-                value={
-                  mixed('workspaceSource')
-                    ? []
-                    : [widget.workspaceSource ?? 'windows']
-                }
+                value={[widget.workspaceSource ?? 'windows']}
                 onValueChange={([source]) => {
                   if (source === 'komorebi' || source === 'windows')
-                    update('workspaceSource', source)
+                    onChange({ workspaceSource: source })
                 }}
               >
                 <ToggleGroupItem value="windows">
@@ -149,21 +131,9 @@ export function WidgetInspector({
               min={1000}
               max={60000}
               step={1}
-              placeholder={
-                mixed('intervalMs') ? 'Valores diferentes' : undefined
-              }
-              aria-label={
-                mixed('intervalMs')
-                  ? 'Intervalo (ms) — Valores diferentes'
-                  : undefined
-              }
-              value={
-                mixed('intervalMs') || Number.isNaN(widget.intervalMs)
-                  ? ''
-                  : widget.intervalMs
-              }
+              value={Number.isNaN(widget.intervalMs) ? '' : widget.intervalMs}
               onChange={(event) =>
-                update('intervalMs', event.target.valueAsNumber)
+                onChange({ intervalMs: event.target.valueAsNumber })
               }
             />
             <FieldDescription>
@@ -182,15 +152,13 @@ export function WidgetInspector({
             'workspaces'
           ].includes(widget.type) && (
             <Field>
-              <FieldLabel>
-                Formato{mixed('format') ? ' — Valores diferentes' : ''}
-              </FieldLabel>
+              <FieldLabel>Formato</FieldLabel>
               <ToggleGroup
                 variant="outline"
-                value={mixed('format') ? [] : [widget.format]}
+                value={[widget.format]}
                 onValueChange={([format]) => {
                   if (format === 'compact' || format === 'label')
-                    update('format', format)
+                    onChange({ format })
                 }}
               >
                 <ToggleGroupItem value="compact">Compacto</ToggleGroupItem>
@@ -201,8 +169,10 @@ export function WidgetInspector({
           <Field orientation="horizontal">
             <Checkbox
               id={`${id}-tooltip`}
-              checked={mixed('tooltip') ? 'indeterminate' : widget.tooltip}
-              onCheckedChange={(checked) => update('tooltip', checked === true)}
+              checked={widget.tooltip}
+              onCheckedChange={(checked) =>
+                onChange({ tooltip: checked === true })
+              }
             />
             <FieldLabel htmlFor={`${id}-tooltip`}>Mostrar tooltip</FieldLabel>
           </Field>

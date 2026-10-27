@@ -1,55 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { FaPause as Pause, FaPlay as Play } from 'react-icons/fa6'
 
-import type {
-  MediaAction,
-  MediaData,
-  MediaRequest
-} from '@/services/system/media.generated'
+import type { MediaData, MediaRequest } from '@/services/system/media.generated'
 import { MediaClock } from './progress'
-type ActionGroup = 'playback' | 'favorite' | 'volume' | 'shuffle' | 'repeat'
-
-/** Independent busy groups so one pending control never locks the rest. */
-function actionGroup(action: MediaAction): ActionGroup {
-  switch (action.action) {
-    case 'favorite':
-      return 'favorite'
-    case 'volume':
-    case 'mute':
-      return 'volume'
-    case 'shuffle':
-      return 'shuffle'
-    case 'repeat':
-      return 'repeat'
-    default:
-      return 'playback'
-  }
-}
-
+import { useMusicInteractions } from './useMusicInteractions'
 export function useMusicPopupControls(
   media: MediaData | null,
-  onAction: (request: MediaRequest) => Promise<unknown>
+  onAction: (request: MediaRequest) => Promise<unknown>,
+  active = true
 ) {
-  const [pending, setPending] = useState<Record<ActionGroup, boolean>>({
-    playback: false,
-    favorite: false,
-    volume: false,
-    shuffle: false,
-    repeat: false
-  })
-  const busy = useRef<Record<ActionGroup, boolean>>({
-    playback: false,
-    favorite: false,
-    volume: false,
-    shuffle: false,
-    repeat: false
-  })
-  const [error, setError] = useState('')
+  const { state, interactions } = useMusicInteractions(media, onAction, active)
+  const { pending, error, volumeDraft } = state
   const [positionMs, setPositionMs] = useState(0)
   const [clock] = useState(() => new MediaClock())
-  const [seek, setSeek] = useState<number | null>(null)
   const [badArt, setBadArt] = useState<string | null>(null)
-  const [volumeDraft, updateVolumeDraft] = useState<number | null>(null)
   const progress =
     media?.progress.status === 'ready' ? media.progress.value : null
   const artwork = media?.artwork.status === 'ready' ? media.artwork.value : null
@@ -57,7 +21,7 @@ export function useMusicPopupControls(
     media?.favorite.status === 'ready' ? media.favorite.value : null
   const volume = media?.volume.status === 'ready' ? media.volume.value : null
   const level = volumeDraft ?? volume?.level ?? 0
-  const muted = volume?.muted ?? false
+  const muted = state.muteDraft ?? volume?.muted ?? false
   const shuffle = media?.shuffle.status === 'ready' ? media.shuffle.value : null
   const repeat = media?.repeat.status === 'ready' ? media.repeat.value : null
   // A control only renders when the running player actually supports it; an
@@ -88,97 +52,20 @@ export function useMusicPopupControls(
     const timer = setInterval(() => setPositionMs(clock.read()), 100)
     return () => clearInterval(timer)
   }, [clock])
-  const sessionId = media?.sessionId
-  const trackId = media?.trackId
-  const queuedSeek = useRef<MediaAction | null>(null)
-  const act = useCallback(
-    async function dispatch(action: MediaAction): Promise<boolean> {
-      if (sessionId === undefined || trackId === undefined) return false
-      const group = actionGroup(action)
-      if (busy.current[group]) {
-        if (action.action === 'seek') queuedSeek.current = action
-        return false
-      }
-      busy.current[group] = true
-      setPending((value) => ({ ...value, [group]: true }))
-      setError('')
-      try {
-        let next: MediaAction | null = action
-        while (next) {
-          const current = next
-          await onAction({ sessionId, trackId, action: current })
-          if (current.action === 'seek') {
-            clock.seek(current.positionMs)
-            setPositionMs(clock.read())
-          }
-          next = group === 'playback' ? queuedSeek.current : null
-          if (group === 'playback') queuedSeek.current = null
-        }
-        return true
-      } catch (e) {
-        if (group === 'playback') queuedSeek.current = null
-        setError(String(e))
-        return false
-      } finally {
-        busy.current[group] = false
-        setPending((value) => ({ ...value, [group]: false }))
-        if (group === 'playback') setSeek(null)
-      }
-    },
-    [sessionId, trackId, onAction, clock]
-  )
-  // Keep the latest intent visible until the native session acknowledges it.
-  // Only one write is in flight; pointer moves replace the queued value.
-  const volumeQueue = useRef<number | null>(null)
-  const volumeWriting = useRef(false)
-  const lastVolume = useRef<number | null>(null)
-  const setVolumeDraft = useCallback(
-    (value: number) => {
-      if (sessionId === undefined || trackId === undefined) return
-      updateVolumeDraft(value)
-      if (lastVolume.current === value) return
-      lastVolume.current = value
-      volumeQueue.current = value
-      if (volumeWriting.current) return
-      volumeWriting.current = true
-      void (async () => {
-        try {
-          while (volumeQueue.current !== null) {
-            const level = volumeQueue.current
-            volumeQueue.current = null
-            await onAction({
-              sessionId,
-              trackId,
-              action: { action: 'volume', level }
-            })
-          }
-        } catch (e) {
-          volumeQueue.current = null
-          lastVolume.current = null
-          updateVolumeDraft(null)
-          setError(String(e))
-        } finally {
-          volumeWriting.current = false
-        }
-      })()
-    },
-    [onAction, sessionId, trackId]
-  )
+  useLayoutEffect(() => {
+    if (!state.confirmedSeek) return
+    clock.seek(state.confirmedSeek.positionMs)
+    const publish = () => setPositionMs(clock.read())
+    publish()
+  }, [clock, state.confirmedSeek])
+  useLayoutEffect(() => {
+    interactions.observeVolume(volume?.level ?? null, volume?.muted ?? null)
+  }, [interactions, volume?.level, volume?.muted])
+  const act = interactions.dispatch
+  const setVolumeDraft = interactions.setVolume
   const commitVolume = setVolumeDraft
-  useEffect(() => {
-    if (volumeDraft === null) return
-    const timer = setTimeout(
-      () => {
-        if (!volumeWriting.current) {
-          updateVolumeDraft(null)
-          lastVolume.current = null
-        }
-      },
-      volume?.level === volumeDraft ? 0 : 3000
-    )
-    return () => clearTimeout(timer)
-  }, [volumeDraft, volume?.level])
-  const position = seek ?? (progress ? positionMs : 0)
+  const setSeek = interactions.setSeek
+  const position = state.seekDraft ?? (progress ? positionMs : 0)
   const PlayIcon = playing ? Pause : Play
   const busyAny = Object.values(pending).some(Boolean)
   return {

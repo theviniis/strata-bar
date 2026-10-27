@@ -163,15 +163,17 @@ beforeEach(() => {
   }))
 })
 
-function openAudioOutput() {
-  openWidgetSettings('Volume')
+async function openAudioOutput() {
+  await openWidgetSettings('Volume')
 }
 
-function openWidgetSettings(name: string) {
+async function openWidgetSettings(name: string) {
   const done = screen.queryByRole('button', { name: 'Concluir' })
   if (done) fireEvent.click(done)
   fireEvent.click(screen.getByRole('button', { name: 'Layout' }))
-  fireEvent.click(screen.getByRole('button', { name: `Configurar ${name}` }))
+  fireEvent.click(
+    await screen.findByRole('button', { name: `Configurar ${name}` })
+  )
 }
 
 async function openEditor() {
@@ -256,10 +258,35 @@ it('restores the last menu and monitor after reopening without saving the draft'
   expect(bridge.configSave).not.toHaveBeenCalled()
 })
 
-it('remembers JSON and an explicit Todos selection across reopens', async () => {
+it('retains a saved monitor selection while its configuration is still loading', async () => {
+  const config = structuredClone(defaultConfig)
+  config.monitors.offline = { widgets: { cpu: { intervalMs: 9000 } } }
+  rememberNavigation({ monitor: { id: 'offline', connected: false } })
+  let complete!: (
+    result: Awaited<ReturnType<NonNullable<typeof bridge.configLoad>>>
+  ) => void
+  vi.mocked(bridge.configLoad!).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        complete = resolve
+      })
+  )
+  render(<SettingsView />)
+  await screen.findByRole('tab', { name: /Monitor 1/ })
+  expect(screen.getByRole('button', { name: 'Aplicar' })).toBeDisabled()
+  const { act } = await import('@testing-library/react')
+  await act(async () => complete({ config, revision: 1, error: null }))
+  expect(await screen.findByRole('tab', { name: /Salvo 1/ })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Configurar CPU' }))
+  expect(screen.getByLabelText('Intervalo (ms)')).toHaveValue(9000)
+})
+
+it('remembers JSON and a concrete monitor selection across reopens', async () => {
   const first = render(<SettingsView />)
   fireEvent.click(await screen.findByRole('tab', { name: /Monitor 1/ }))
-  fireEvent.click(screen.getByRole('tab', { name: 'Todos' }))
   fireEvent.click(screen.getByRole('button', { name: 'JSON' }))
   first.unmount()
   await openEditor()
@@ -268,7 +295,7 @@ it('remembers JSON and an explicit Todos selection across reopens', async () => 
   ).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Layout' }))
   await screen.findByRole('tab', { name: /Monitor 1/ })
-  expect(screen.getByRole('tab', { name: 'Todos' })).toHaveAttribute(
+  expect(screen.getByRole('tab', { name: /Monitor 1/ })).toHaveAttribute(
     'aria-selected',
     'true'
   )
@@ -296,16 +323,18 @@ it('retains the remembered monitor through a failed discovery and restores it on
   expect(
     await screen.findByText(/O monitor selecionado foi desconectado/)
   ).toBeInTheDocument()
-  expect(screen.getByRole('tab', { name: 'Todos' })).toHaveAttribute(
-    'aria-selected',
-    'true'
-  )
+  expect(
+    screen.getByText('Nenhum monitor disponível para editar.')
+  ).toBeInTheDocument()
+  expect(
+    screen.queryByRole('region', { name: 'Seção Centro' })
+  ).not.toBeInTheDocument()
   expect(bridge.configSave).not.toHaveBeenCalled()
 })
 
 it('removes a widget only from the selected monitor and restores it through the preview catalog', async () => {
   await openEditor()
-  expect(screen.getByRole('tab', { name: 'Todos' })).toHaveAttribute(
+  expect(screen.getByRole('tab', { name: /Monitor 1/ })).toHaveAttribute(
     'aria-selected',
     'true'
   )
@@ -341,7 +370,7 @@ it('removes a widget only from the selected monitor and restores it through the 
   expect(saved.monitors['screen-a']).toBeUndefined()
 })
 
-it('edits mixed widget fields globally without overwriting unrelated monitor values', async () => {
+it('edits the selected monitor without overwriting defaults or other monitor values', async () => {
   const config = structuredClone(defaultConfig)
   config.monitors = {
     'screen-a': { widgets: { cpu: { intervalMs: 4000, tooltip: false } } },
@@ -358,9 +387,9 @@ it('edits mixed widget fields globally without overwriting unrelated monitor val
   fireEvent.click(screen.getByRole('button', { name: 'Configurar CPU' }))
   expect(
     screen.getByRole('checkbox', { name: 'Mostrar tooltip' })
-  ).toHaveAttribute('data-state', 'indeterminate')
+  ).not.toBeChecked()
   const interval = screen.getByLabelText('Intervalo (ms)')
-  expect(interval).toHaveValue(null)
+  expect(interval).toHaveValue(4000)
   fireEvent.change(interval, { target: { value: '6000' } })
   fireEvent.click(screen.getByRole('button', { name: 'Concluir' }))
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
@@ -370,14 +399,12 @@ it('edits mixed widget fields globally without overwriting unrelated monitor val
     intervalMs: 6000,
     tooltip: false
   })
-  expect(saved.monitors['screen-b']!.widgets!.cpu).toEqual({
-    intervalMs: 6000,
-    tooltip: true
-  })
+  expect(saved.monitors['screen-b']).toEqual(config.monitors['screen-b'])
+  expect(saved.widgets).toEqual(config.widgets)
   expect(saved.monitors.offline).toEqual(config.monitors.offline)
 })
 
-it('disables bars independently and globally while retaining the widget configuration', async () => {
+it('disables only the selected bar while retaining defaults and widget configuration', async () => {
   await openEditor()
   fireEvent.click(await screen.findByRole('tab', { name: /Monitor 2/ }))
   fireEvent.click(
@@ -391,30 +418,17 @@ it('disables bars independently and globally while retaining the widget configur
   expect(
     screen.getByRole('switch', { name: 'Habilitar neste monitor' })
   ).toBeChecked()
-  fireEvent.click(screen.getByRole('tab', { name: 'Todos' }))
-  expect(
-    screen.getByRole('switch', { name: 'Habilitar em todos os monitores' })
-  ).not.toBeChecked()
-  fireEvent.click(
-    screen.getByRole('switch', {
-      name: 'Habilitar em todos os monitores'
-    })
-  )
-  fireEvent.click(
-    screen.getByRole('switch', {
-      name: 'Habilitar em todos os monitores'
-    })
-  )
+  expect(screen.queryByRole('tab', { name: 'Todos' })).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
   await waitFor(() => expect(bridge.configSave).toHaveBeenCalled())
   const saved = vi.mocked(bridge.configSave!).mock.calls[0][0]
-  expect(saved.bar.enabled).toBe(false)
-  expect(saved.monitors['screen-a']!.enabled).toBe(false)
+  expect(saved.bar.enabled).toBe(defaultConfig.bar.enabled)
+  expect(saved.monitors['screen-a']).toBeUndefined()
   expect(saved.monitors['screen-b']!.enabled).toBe(false)
   expect(saved.widgets).toEqual(defaultConfig.widgets)
 })
 
-it('returns to Todos after a selected connected monitor disappears and preserves its draft', async () => {
+it('keeps the saved selected monitor editable after disconnection and preserves its draft', async () => {
   await openEditor()
   fireEvent.click(await screen.findByRole('tab', { name: /Monitor 2/ }))
   fireEvent.click(
@@ -436,7 +450,7 @@ it('returns to Todos after a selected connected monitor disappears and preserves
       ]
     })
   )
-  expect(screen.getByRole('tab', { name: 'Todos' })).toHaveAttribute(
+  expect(screen.getByRole('tab', { name: /Salvo 1/ })).toHaveAttribute(
     'aria-selected',
     'true'
   )
@@ -449,6 +463,52 @@ it('returns to Todos after a selected connected monitor disappears and preserves
     vi.mocked(bridge.configSave!).mock.calls[0][0].monitors['screen-b']!.layout!
       .right
   ).toContain('cpu')
+})
+
+it('uses an empty layout editor when no connected or saved monitor exists', async () => {
+  vi.mocked(bridge.settingsMonitors!).mockResolvedValue([])
+  await openEditor()
+  expect(
+    await screen.findByText('Nenhum monitor disponível para editar.')
+  ).toBeInTheDocument()
+  expect(screen.queryByRole('tab', { name: 'Todos' })).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('switch', { name: 'Habilitar neste monitor' })
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'Configurar CPU' })
+  ).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() =>
+    expect(bridge.configSave).toHaveBeenCalledWith(defaultConfig)
+  )
+})
+
+it('selects and edits a saved disconnected monitor when there are no connected monitors', async () => {
+  const config = structuredClone(defaultConfig)
+  config.monitors.offline = { widgets: { cpu: { intervalMs: 9000 } } }
+  vi.mocked(bridge.settingsMonitors!).mockResolvedValue([])
+  vi.mocked(bridge.configLoad!).mockResolvedValue({
+    config,
+    revision: 1,
+    error: null
+  })
+  await openEditor()
+  expect(await screen.findByRole('tab', { name: /Salvo 1/ })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Configurar CPU' }))
+  expect(screen.getByLabelText('Intervalo (ms)')).toHaveValue(9000)
+  fireEvent.change(screen.getByLabelText('Intervalo (ms)'), {
+    target: { value: '7000' }
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Concluir' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() => expect(bridge.configSave).toHaveBeenCalled())
+  const saved = vi.mocked(bridge.configSave!).mock.calls[0][0]
+  expect(saved.monitors.offline!.widgets!.cpu!.intervalMs).toBe(7000)
+  expect(saved.widgets).toEqual(defaultConfig.widgets)
 })
 
 it('retries failed native monitor discovery without substituting demo monitors', async () => {
@@ -491,12 +551,10 @@ it('loads the saved configuration and applies the edited layout through native s
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
   await waitFor(() => expect(bridge.configSave).toHaveBeenCalledOnce())
   const saved = vi.mocked(bridge.configSave!).mock.calls[0][0]
-  expect(saved.layout!.left).toContain('cpu')
+  expect(saved.monitors['screen-a']!.layout!.left).toContain('cpu')
   expect(vi.mocked(bridge.configSave!).mock.calls[0][0]).toMatchObject({
     bar: { theme: 'light' },
-    widgets: {
-      left: expect.arrayContaining([expect.objectContaining({ id: 'cpu' })])
-    }
+    widgets: defaultConfig.widgets
   })
 })
 
@@ -766,16 +824,14 @@ it('edits widget behavior through the inspector before applying', async () => {
   await waitFor(() =>
     expect(bridge.configSave).toHaveBeenCalledWith(
       expect.objectContaining({
-        widgets: expect.objectContaining({
-          center: expect.arrayContaining([
-            expect.objectContaining({
-              id: 'cpu',
-              intervalMs: 5000,
-              format: 'compact',
-              tooltip: false
-            })
-          ])
-        })
+        widgets: defaultConfig.widgets,
+        monitors: {
+          'screen-a': {
+            widgets: {
+              cpu: { intervalMs: 5000, format: 'compact', tooltip: false }
+            }
+          }
+        }
       })
     )
   )
@@ -858,7 +914,7 @@ it('uses live Voicemeeter slot names and retains the target while Windows handli
     }
   )
   await openEditor()
-  openAudioOutput()
+  await openAudioOutput()
   fireEvent.click(
     within(screen.getByRole('dialog', { name: 'Configurar Volume' })).getByRole(
       'combobox',
@@ -903,7 +959,7 @@ it('offers bounded manual audio targets when the channel is unavailable', async 
     }
   )
   await openEditor()
-  openWidgetSettings('Microfone')
+  await openWidgetSettings('Microfone')
   fireEvent.click(
     within(
       screen.getByRole('dialog', { name: 'Configurar Microfone' })
@@ -948,7 +1004,7 @@ it('offers bounded manual audio targets when the channel is unavailable', async 
 
 it('applies per-agent visibility checkboxes through the normal save', async () => {
   await openAgentEditor()
-  openWidgetSettings('Agentes')
+  await openWidgetSettings('Agentes')
   fireEvent.click(
     screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
   )
@@ -1081,7 +1137,7 @@ it('connects Spotify in music settings immediately without saving or reverting t
     })
   })
   await openEditor()
-  openWidgetSettings('Música')
+  await openWidgetSettings('Música')
   expect(await screen.findByText(/Reverter não desfaz/)).toBeVisible()
   fireEvent.change(screen.getByRole('textbox', { name: 'Client ID' }), {
     target: { value: id }
@@ -1129,7 +1185,7 @@ it.each(['connect', 'disconnect', 'status'] as const)(
         new Error('Spotify unavailable')
       )
     await openEditor()
-    openWidgetSettings('Música')
+    await openWidgetSettings('Música')
     if (operation !== 'status') {
       const action = await screen.findByRole('button', {
         name: operation === 'connect' ? 'Conectar Spotify' : 'Desconectar'
@@ -1146,7 +1202,7 @@ it.each(['connect', 'disconnect', 'status'] as const)(
 
 it('opens Calendar credentials in the Lembretes settings section', async () => {
   await openEditor()
-  openWidgetSettings('Lembretes')
+  await openWidgetSettings('Lembretes')
   expect(
     await screen.findByLabelText('Client ID do Google')
   ).toBeInTheDocument()
@@ -1172,7 +1228,7 @@ it('connects and disconnects Calendar immediately while Reverter only reloads th
     return value
   })
   await openEditor()
-  openWidgetSettings('Lembretes')
+  await openWidgetSettings('Lembretes')
   fireEvent.change(await screen.findByLabelText('Client ID do Google'), {
     target: { value: ' client.apps.googleusercontent.com ' }
   })
@@ -1212,12 +1268,12 @@ it('receives OAuth completion after navigating away and returning while connecti
     error: null
   })
   await openEditor()
-  openWidgetSettings('Lembretes')
+  await openWidgetSettings('Lembretes')
   await screen.findByRole('button', {
     name: 'Aguardando autorização no navegador…'
   })
   fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
-  openWidgetSettings('Lembretes')
+  await openWidgetSettings('Lembretes')
   expect(
     await screen.findByRole('button', {
       name: 'Aguardando autorização no navegador…'
@@ -1237,7 +1293,7 @@ it('receives OAuth completion after navigating away and returning while connecti
 
 it('edits agent visibility only in the shared draft and reverts without saving', async () => {
   await openAgentEditor()
-  openWidgetSettings('Agentes')
+  await openWidgetSettings('Agentes')
   const codex = await screen.findByRole('checkbox', {
     name: 'Mostrar Codex na barra'
   })
@@ -1253,7 +1309,7 @@ it('edits agent visibility only in the shared draft and reverts without saving',
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
   )
-  openWidgetSettings('Agentes')
+  await openWidgetSettings('Agentes')
   await waitFor(() =>
     expect(
       screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
@@ -1268,7 +1324,7 @@ it('runs integration actions immediately and keeps them independent of Apply and
   const codex = vi.spyOn(agentAdapter, 'setCodex')
   const antigravity = vi.spyOn(agentAdapter, 'setAntigravity')
   await openAgentEditor()
-  openWidgetSettings('Agentes')
+  await openWidgetSettings('Agentes')
   expect(
     screen.getByText(/Aplicar e Reverter não desfazem essas ações/)
   ).toBeInTheDocument()
@@ -1318,7 +1374,7 @@ it('shows native integration failures without changing the draft or claiming a c
     new Error('OpenCode não está disponível')
   )
   await openAgentEditor()
-  openWidgetSettings('Agentes')
+  await openWidgetSettings('Agentes')
   const connect = await screen.findByRole('button', {
     name: 'Conectar OpenCode'
   })
@@ -1351,7 +1407,7 @@ it('recovers applied agent visibility after reopening and preserves saved values
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
   )
-  openWidgetSettings('Agentes')
+  await openWidgetSettings('Agentes')
   fireEvent.click(
     screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
   )
@@ -1362,7 +1418,7 @@ it('recovers applied agent visibility after reopening and preserves saved values
   )
   first.unmount()
   await openEditor()
-  openWidgetSettings('Agentes')
+  await openWidgetSettings('Agentes')
   expect(
     screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
   ).not.toBeChecked()
@@ -1401,7 +1457,7 @@ it('keeps global audio edits in Draft and restores the saved settings after a fa
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
   )
-  openAudioOutput()
+  await openAudioOutput()
   expect(screen.getByLabelText('Índice do alvo')).toHaveValue(3)
   fireEvent.change(screen.getByLabelText('Índice do alvo'), {
     target: { value: '5' }
@@ -1421,11 +1477,11 @@ it('keeps global audio edits in Draft and restores the saved settings after a fa
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
   )
-  openAudioOutput()
+  await openAudioOutput()
   expect(screen.getByLabelText('Índice do alvo')).toHaveValue(3)
   view.unmount()
   await openEditor()
-  openAudioOutput()
+  await openAudioOutput()
   expect(screen.getByLabelText('Índice do alvo')).toHaveValue(3)
 })
 
@@ -1438,7 +1494,7 @@ it('configures global audio inside its widget and hides removed controls', async
     error: null
   })
   await openEditor()
-  openAudioOutput()
+  await openAudioOutput()
   for (const name of [
     'Aplicar configurações em',
     'Instância do widget',
@@ -1479,12 +1535,12 @@ it('opens output and input settings from their respective widgets', async () => 
   expect(
     screen.queryByRole('button', { name: 'Áudio' })
   ).not.toBeInTheDocument()
-  openAudioOutput()
+  await openAudioOutput()
   expect(screen.getByRole('heading', { name: 'Saída de áudio' })).toBeVisible()
   expect(
     screen.queryByRole('heading', { name: 'Entrada de áudio' })
   ).not.toBeInTheDocument()
-  openWidgetSettings('Microfone')
+  await openWidgetSettings('Microfone')
   expect(
     screen.getByRole('heading', { name: 'Entrada de áudio' })
   ).toBeVisible()
@@ -1507,7 +1563,7 @@ it('edits global weather units inside the weather widget settings', async () => 
   expect(
     screen.queryByRole('button', { name: 'Clima' })
   ).not.toBeInTheDocument()
-  openWidgetSettings('Clima')
+  await openWidgetSettings('Clima')
   expect(screen.getByLabelText('Buscar cidade')).toBeVisible()
   fireEvent.click(screen.getByRole('combobox', { name: 'Temperatura' }))
   fireEvent.pointerDown(

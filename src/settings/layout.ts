@@ -1,11 +1,8 @@
 import {
-  types,
-  widgetSchema,
   type Config,
   type WidgetConfig,
   type WidgetType
 } from '../services/configuration/config'
-import { isWidgetAvailable } from '../services/configuration/widget-flags'
 
 export const sections = ['left', 'center', 'right'] as const
 export type Section = (typeof sections)[number]
@@ -100,56 +97,4 @@ export function moveWidget(
   )
   next.widgets[to.section].splice(target, 0, widget)
   return next
-}
-
-/** Appends a new widget of `type` to `section` with a collision-free ID. */
-export function addWidget(
-  config: Config,
-  type: WidgetType,
-  section: Section
-): Config {
-  if (!isWidgetAvailable(type)) return config
-  const next = structuredClone(config)
-  next.widgets[section].push(
-    widgetSchema.parse({ id: uniqueId(next, type), type })
-  )
-  return next
-}
-
-/** Removes a widget by ID, leaving every other widget untouched. */
-export function removeWidget(config: Config, id: string): Config {
-  const found = findWidget(config, id)
-  if (!found) return config
-  const next = structuredClone(config)
-  next.widgets[found.section].splice(found.index, 1)
-  if (next.layout)
-    for (const section of sections)
-      next.layout[section] = next.layout[section].filter((item) => item !== id)
-  for (const monitor of Object.values(next.monitors)) {
-    delete monitor.widgets?.[id]
-    if (monitor.layout)
-      for (const section of sections)
-        monitor.layout[section] = monitor.layout[section].filter(
-          (item) => item !== id
-        )
-  }
-  return next
-}
-
-/**
- * Disables a widget in place instead of deleting it: its interval, format and
- * routing survive, so toggling it back restores the previous configuration.
- */
-export function toggleWidget(config: Config, id: string): Config {
-  const found = findWidget(config, id)
-  if (!found) return config
-  const next = structuredClone(config)
-  const widget = next.widgets[found.section][found.index]
-  widget.enabled = !widget.enabled
-  return next
-}
-
-/** Widget types a user may add (the schema's full set, in a stable order). */
-export function addableTypes(): WidgetType[] {
-  return types.filter(isWidgetAvailable)
 }

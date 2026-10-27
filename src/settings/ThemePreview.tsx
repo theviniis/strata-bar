@@ -1,8 +1,9 @@
 import { themeStyle } from '@/services/theme/palettes'
-import { viewConfig } from './monitor-layout'
+import { defaultPreview } from './monitor-layout'
 import { StudioBar } from '@/components/status-bar/StudioBar'
 import type { Config } from '@/services/configuration/config'
 import { cn } from '@/lib/utils'
+import { widgetPreviewEvent } from '@/services/system/widget-preview'
 
 /** The same studio bar renders both halves at full width before clipping. */
 export function ThemePreview({ config }: { config: Config }) {
@@ -46,6 +47,8 @@ function PreviewSurface({
   theme: Exclude<Config['bar']['theme'], 'system'>
   className?: string
 }) {
+  const cpu = widgetPreviewEvent('cpu')
+  const percent = cpu.status === 'ready' ? cpu.data.percent.value : null
   return (
     <div
       data-theme={theme}
@@ -54,14 +57,16 @@ function PreviewSurface({
     >
       <StudioBar
         config={{
-          ...viewConfig(config, null, []),
+          ...defaultPreview(config),
           bar: { ...config.bar, theme }
         }}
-        staticPreview
       />
       <div className="mx-auto mt-2 flex w-fit items-center gap-2 rounded-md border border-border bg-popover px-3 py-1 text-micro text-popover-foreground">
         <span className="size-2 rounded-full bg-primary" />
-        CPU <span className="text-muted-foreground">24%</span>
+        CPU{' '}
+        <span className="text-muted-foreground">
+          {percent?.toFixed(1) ?? '—'}%
+        </span>
         <span className="h-1 w-10 rounded-full bg-chart-2" />
       </div>
       <div className="mt-2 flex justify-center gap-1">

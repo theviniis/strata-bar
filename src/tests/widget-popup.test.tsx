@@ -41,11 +41,13 @@ vi.mock('../services/system/bridge', async (original) => {
     }
   }
 })
+vi.mock('../hooks/useSystemChannel', () => ({
+  useSystemChannel: () => ({ status: 'loading' })
+}))
 import { WidgetPopup } from '../popups/WidgetPopup'
-import { DemoVolumeController } from '../features/volume/VolumeController'
-import { DemoMicrophoneController } from '../features/microphone/MicrophoneController'
+import { VolumeController } from '../features/volume/VolumeController'
+import { MicrophoneController } from '../features/microphone/MicrophoneController'
 import { RemindersController } from '../features/reminders/RemindersController'
-import { defaultView } from '../components/status-bar/presentation'
 import { WidgetItem } from '../components/widget-item'
 import { PopupHost } from '../popups/PopupHost'
 import { resolvePopup } from '../popups/resolve'
@@ -75,24 +77,8 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 it.each([
-  [
-    'audio',
-    () => (
-      <DemoVolumeController
-        event={{ status: 'ready', data: 50, timestamp: 0 }}
-        view={defaultView}
-      />
-    )
-  ],
-  [
-    'microphone',
-    () => (
-      <DemoMicrophoneController
-        event={{ status: 'ready', data: 50, timestamp: 0 }}
-        view={defaultView}
-      />
-    )
-  ],
+  ['audio', () => <VolumeController />],
+  ['microphone', () => <MicrophoneController />],
   ['reminders', () => <RemindersController />]
 ] as const)(
   'uses the rounded %s widget itself as the popup anchor',

@@ -22,18 +22,6 @@ export function ClockController({ showDate }: { showDate?: boolean }) {
     />
   )
 }
-export function DemoClockController({
-  view,
-  staticPreview = false
-}: {
-  view: WidgetView
-  staticPreview?: boolean
-}) {
-  const time = useTime(staticPreview)
-  return (
-    <ClockTrigger time={time} view={view} showDate={showLabel(view.format)} />
-  )
-}
 function ClockTrigger({
   time,
   view,

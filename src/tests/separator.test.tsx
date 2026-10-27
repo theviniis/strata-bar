@@ -9,8 +9,8 @@ import {
 import { NativeBarSurface } from '@/components/status-bar/NativeBar'
 import { WidgetPreview } from '@/components/status-bar/WidgetPreview'
 import { MonitorWidgetInspector } from '@/settings/MonitorWidgetInspector'
-import { addToScope, viewConfig } from '@/settings/monitor-layout'
-import { moveWidget, removeWidget, toggleWidget } from '@/settings/layout'
+import { editMonitorDraft } from '@/settings/monitor-layout'
+import { moveWidget } from '@/settings/layout'
 
 it('renders only explicit enabled separators, including consecutive items', () => {
   const config = configSchema.parse({
@@ -44,28 +44,32 @@ it('renders only explicit enabled separators, including consecutive items', () =
 })
 
 it('creates independent instances with one shared margin and round-trips the document', () => {
-  let config = addToScope(defaultConfig, null, [], 'separator', {
+  let config = editMonitorDraft(defaultConfig, 'DISPLAY1').add('separator', {
     section: 'left',
     index: 0
   })
-  config = addToScope(config, null, [], 'separator', {
+  config = editMonitorDraft(config, 'DISPLAY1').add('separator', {
     section: 'left',
     index: 1
   })
   config.bar.separatorMarginX = 4
   config = parseConfig(JSON.stringify(config))
-  expect(viewConfig(config, 'DISPLAY1', []).bar.separatorMarginX).toBe(4)
-  const view = viewConfig(config, null, [])
-  const moved = moveWidget(view, 'separator-2', { section: 'center', index: 0 })
-  expect(moved.widgets.center[0].id).toBe('separator-2')
-  expect(toggleWidget(moved, 'separator-2').widgets.center[0].enabled).toBe(
-    false
+  expect(editMonitorDraft(config, 'DISPLAY1').view.bar.separatorMarginX).toBe(4)
+  const view = editMonitorDraft(config, 'DISPLAY1').view
+  const moved = editMonitorDraft(config, 'DISPLAY1').reorder(
+    moveWidget(view, 'separator-2', { section: 'center', index: 0 }).widgets
   )
-  expect(
-    removeWidget(moved, 'separator-2').widgets.center.some(
-      (w) => w.id === 'separator-2'
-    )
-  ).toBe(false)
+  expect(editMonitorDraft(moved, 'DISPLAY1').view.widgets.center[0].id).toBe(
+    'separator-2'
+  )
+  const removed = editMonitorDraft(moved, 'DISPLAY1').remove('separator-2')
+  expect(editMonitorDraft(removed, 'DISPLAY1').view.widgets.center).toEqual(
+    defaultConfig.widgets.center
+  )
+  expect(editMonitorDraft(removed, 'DISPLAY1').view.widgets.left[0].id).toBe(
+    'separator'
+  )
+  expect(removed.widgets).toEqual(config.widgets)
 })
 
 it.each([-1, 33, Infinity, NaN])(
@@ -96,7 +100,7 @@ it('edits the shared margin from any separator without a monitor scope control',
         widget={widget}
         draft={config}
         onChange={onChange}
-        scope="DISPLAY1"
+        editor={editMonitorDraft(config, 'DISPLAY1')}
       />
     </>
   )

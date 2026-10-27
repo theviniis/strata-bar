@@ -13,19 +13,6 @@ export function MicrophoneController() {
   const event = useSystemChannel('microphone', 0, view.intervalMs)
   return <MicrophonePopupTrigger event={event} view={view} />
 }
-export function DemoMicrophoneController({
-  event,
-  view
-}: {
-  event: SystemEvent<number>
-  view: WidgetView
-}) {
-  const adapted: SystemEvent<ChannelData['microphone']> =
-    event.status === 'ready'
-      ? { ...event, data: { level: event.data, muted: false } }
-      : event
-  return <MicrophonePopupTrigger event={adapted} view={view} />
-}
 function MicrophonePopupTrigger({
   event: value,
   view

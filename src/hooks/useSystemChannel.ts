@@ -10,8 +10,8 @@ import {
   type SystemEvent
 } from '../services/system/bridge'
 
-// Feature widgets only render inside the native bar, which the host boots with the
-// native adapter in place; they must never read the demo scalars.
+// Feature widgets read native-shaped snapshots. Only the explicit preview
+// runtime supplies samples; native errors never select demo scalars.
 const native = bridge as NativeBridge
 
 /**

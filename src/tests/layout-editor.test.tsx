@@ -9,7 +9,33 @@ import {
 } from '@testing-library/react'
 import { expect, it, vi } from 'vitest'
 import { configSchema, type WidgetType } from '../services/configuration/config'
+import { editMonitorDraft } from '@/settings/monitor-layout'
 import { LayoutEditor } from '../settings/LayoutEditor'
+
+vi.mock('../settings/useMonitors', () => ({
+  useMonitors: () => ({
+    monitors: [
+      {
+        id: 'DISPLAY1',
+        deviceName: 'DISPLAY1',
+        name: 'Main',
+        width: 1920,
+        height: 1080,
+        primary: true
+      }
+    ],
+    error: null,
+    loading: false,
+    refresh: vi.fn()
+  })
+}))
+
+function readView() {
+  return editMonitorDraft(
+    JSON.parse(screen.getByLabelText('Draft').textContent!),
+    'DISPLAY1'
+  ).view
+}
 
 function widgetIds(region: HTMLElement) {
   return within(region)
@@ -48,7 +74,7 @@ it('keeps separators in the catalog and adds independent instances', () => {
       screen.getByRole('button', { name: 'Adicionar Separador em Centro' })
     )
   }
-  const draft = JSON.parse(screen.getByLabelText('Draft').textContent!)
+  const draft = readView()
   expect(
     draft.widgets.center.map((widget: { id: string }) => widget.id)
   ).toEqual(['separator', 'separator-2'])
@@ -59,15 +85,14 @@ it('keeps separators in the catalog and adds independent instances', () => {
   fireEvent.change(screen.getByLabelText('Margem horizontal (px)'), {
     target: { value: '10' }
   })
-  const changed = JSON.parse(screen.getByLabelText('Draft').textContent!)
+  const changed = readView()
   expect(changed.bar.separatorMarginX).toBe(10)
   expect(changed.widgets.center[1].marginX).toBeUndefined()
 })
 
 it('moves through adjacent columns with arrows, appends and preserves settings and keyboard focus', async () => {
   render(<Editor centerTypes={['gpu']} />)
-  const before = JSON.parse(screen.getByLabelText('Draft').textContent!).widgets
-    .left[0]
+  const before = readView().widgets.left[0]
   expect(
     screen.getByRole('button', { name: 'Mover CPU para a esquerda' })
   ).toBeDisabled()
@@ -88,9 +113,7 @@ it('moves through adjacent columns with arrows, appends and preserves settings a
   expect(
     screen.getByRole('button', { name: 'Mover CPU para Centro' })
   ).toHaveFocus()
-  expect(
-    JSON.parse(screen.getByLabelText('Draft').textContent!).widgets.right[0]
-  ).toEqual(before)
+  expect(readView().widgets.right[0]).toEqual(before)
   fireEvent.click(screen.getByRole('button', { name: 'Mover CPU para Centro' }))
   expect(
     screen.getByRole('button', { name: 'Mover CPU para Esquerda' })
@@ -130,22 +153,15 @@ it('adds from the preview catalog, configures without removal and excludes exist
     screen.getByRole('checkbox', { name: 'Mostrar tooltip' })
   ).not.toBeChecked()
   fireEvent.click(screen.getByRole('button', { name: 'Concluir' }))
-  expect(
-    JSON.parse(screen.getByLabelText('Draft').textContent!).widgets.center[0]
-      .tooltip
-  ).toBe(false)
+  expect(readView().widgets.center[0].tooltip).toBe(false)
   expect(within(center).getByTitle('volume')).toBeInTheDocument()
   expect(
     within(catalog).queryByRole('button', { name: 'Adicionar Volume' })
   ).not.toBeInTheDocument()
-  expect(
-    configSchema.safeParse(
-      JSON.parse(screen.getByLabelText('Draft').textContent!)
-    ).success
-  ).toBe(true)
+  expect(configSchema.safeParse(readView()).success).toBe(true)
   fireEvent.click(
     within(center).getByRole('button', {
-      name: 'Excluir definitivamente Volume'
+      name: 'Remover Volume'
     })
   )
   expect(within(center).queryByTitle('volume')).not.toBeInTheDocument()
@@ -184,11 +200,7 @@ it.each(['drop', 'cancel'] as const)(
       else {
         const center = screen.getByRole('region', { name: 'Seção Centro' })
         expect(within(center).getByTitle('volume')).toBeInTheDocument()
-        expect(
-          configSchema.safeParse(
-            JSON.parse(screen.getByLabelText('Draft').textContent!)
-          ).success
-        ).toBe(true)
+        expect(configSchema.safeParse(readView()).success).toBe(true)
       }
     } finally {
       cleanup()
@@ -211,8 +223,8 @@ it('adds multiple separators through successive catalog drags', async () => {
       await screen.findByRole('img', { name: 'Movendo Separador' })
       fireEvent.pointerUp(document)
       await waitFor(() => {
-        const draft = JSON.parse(screen.getByLabelText('Draft').textContent!)
-        expect(draft.layout.center).toHaveLength(index + 1)
+        const draft = readView()
+        expect(draft.widgets.center).toHaveLength(index + 1)
         expect(configSchema.safeParse(draft).success).toBe(true)
       })
     }
@@ -239,9 +251,9 @@ it('adds a catalog widget with the keyboard drag handle', async () => {
         screen.queryByRole('img', { name: 'Movendo Volume' })
       ).not.toBeInTheDocument()
     )
-    expect(
-      JSON.parse(screen.getByLabelText('Draft').textContent!).layout.center
-    ).toContain('volume')
+    expect(readView().widgets.center.map((widget) => widget.id)).toContain(
+      'volume'
+    )
   } finally {
     cleanup()
   }
@@ -346,9 +358,7 @@ it.each([
         expect(
           widgetIds(screen.getByRole('region', { name: 'Seção Centro' }))
         ).toEqual(['cpu'])
-        expect(
-          JSON.parse(screen.getByLabelText('Draft').textContent!).widgets.center
-        ).toEqual([])
+        expect(readView().widgets.center).toEqual([])
       }
       fireEvent.pointerUp(document)
       await waitFor(() => {
@@ -397,10 +407,7 @@ it.each(['drop', 'cancel', 'outside'] as const)(
       await waitFor(() =>
         expect(widgetIds(center)).toEqual(['gpu', 'cpu', 'volume'])
       )
-      expect(
-        JSON.parse(screen.getByLabelText('Draft').textContent!).widgets.left[0]
-          .id
-      ).toBe('cpu')
+      expect(readView().widgets.left[0].id).toBe('cpu')
       if (finish === 'cancel') fireEvent.keyDown(document, { code: 'Escape' })
       else {
         fireEvent.pointerMove(document, {
@@ -419,7 +426,7 @@ it.each(['drop', 'cancel', 'outside'] as const)(
           screen.queryByRole('img', { name: 'Movendo CPU' })
         ).not.toBeInTheDocument()
       )
-      const savedDraft = JSON.parse(screen.getByLabelText('Draft').textContent!)
+      const savedDraft = readView()
       expect(center).toHaveAttribute('data-drag-over', 'false')
       expect(
         savedDraft.widgets.center.map((item: { id: string }) => item.id)
@@ -448,11 +455,11 @@ it('keeps an insertion between cards stable while moving through their gap', asy
       )
     }
     fireEvent.pointerUp(document)
-    expect(
-      JSON.parse(
-        screen.getByLabelText('Draft').textContent!
-      ).widgets.center.map((widget: { id: string }) => widget.id)
-    ).toEqual(['gpu', 'cpu', 'volume'])
+    expect(readView().widgets.center.map((widget) => widget.id)).toEqual([
+      'gpu',
+      'cpu',
+      'volume'
+    ])
   } finally {
     cleanup()
   }

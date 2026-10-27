@@ -14,6 +14,8 @@ export function widgetPreviewEvent<C extends Channel>(
 ): SystemEvent<ChannelData[C]> {
   if (!samples) {
     const demo = demoChannelData()
+    if (demo.media.progress.value)
+      demo.media.progress.value.measuredAt = PREVIEW_TIME
     const metric = (value: number) => ({
       status: 'ready' as const,
       value,
@@ -60,7 +62,7 @@ export function widgetPreviewEvent<C extends Channel>(
         history: []
       },
       weather: demo.weather,
-      disk: demo.disk,
+      disk: { ...demo.disk, sampledAt: PREVIEW_TIME },
       volume: { level: demo.volume, muted: false },
       microphone: { level: demo.microphone, muted: false },
       workspaces: demo.workspaces,

@@ -1,10 +1,14 @@
 import type { MediaSpectrumData } from '@/services/system/media.generated'
+import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useState } from 'react'
 
 const idleBands = [0, 0, 0, 0, 0, 0]
 
 const HIDE_TIMEOUT = 30_000
+const spectrumClasses =
+  'flex shrink-0 self-stretch items-center justify-center gap-1 overflow-hidden rounded-full bg-transparent text-secondary py-1'
+const bandClasses = 'w-px shrink-0 self-stretch rounded-full bg-current'
 
 export function MediaSpectrum({
   data,
@@ -13,16 +17,38 @@ export function MediaSpectrum({
   data: MediaSpectrumData | null
   demo?: boolean
 }) {
+  const preview = useWidgetPreview()
   const reducedMotion = useReducedMotion()
   const [visible, setVisible] = useState(data !== null)
   if (data && !visible) setVisible(true)
 
   const playing = data !== null
   useEffect(() => {
-    if (playing) return
+    if (preview || playing) return
     const timeout = setTimeout(() => setVisible(false), HIDE_TIMEOUT)
     return () => clearTimeout(timeout)
-  }, [playing])
+  }, [playing, preview])
+
+  if (preview)
+    return data ? (
+      <div
+        role="img"
+        aria-label="Espectro de mídia · demonstração"
+        title="Demonstração · dados ilustrativos"
+        className={spectrumClasses}
+        style={{ paddingInline: 8 }}
+      >
+        {data.bands.map((value, index) => (
+          <span
+            key={index}
+            aria-hidden="true"
+            data-spectrum-band={index}
+            className={bandClasses}
+            style={{ transform: `scaleY(${0.05 + value * 0.95})` }}
+          />
+        ))}
+      </div>
+    ) : null
 
   return (
     <AnimatePresence initial={false}>
@@ -38,7 +64,7 @@ export function MediaSpectrum({
               ? 'Demonstração · dados ilustrativos'
               : 'Frequências do player ativo'
           }
-          className="flex shrink-0 self-stretch items-center justify-center gap-1 overflow-hidden rounded-full bg-transparent text-secondary py-1"
+          className={spectrumClasses}
           initial={
             reducedMotion ? false : { scaleX: 0, width: 0, paddingInline: 0 }
           }
@@ -51,7 +77,7 @@ export function MediaSpectrum({
               key={index}
               aria-hidden="true"
               data-spectrum-band={index}
-              className="w-px shrink-0 self-stretch rounded-full bg-current"
+              className={bandClasses}
               initial={false}
               animate={{ scaleY: 0.05 + value * 0.95 }}
               transition={

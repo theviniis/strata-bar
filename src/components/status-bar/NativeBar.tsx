@@ -104,7 +104,7 @@ export function NativeBarSurface({
             theme
           )}
         >
-          <SlidingHighlight>
+          <SlidingHighlight disabled={preview}>
             <nav
               ref={regionRef}
               className={cn(

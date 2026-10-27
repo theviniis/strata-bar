@@ -98,7 +98,6 @@ const MusicVolumeFooter = memo(function MusicVolumeFooter({
           aria-label={muted ? 'Ativar som do player' : 'Silenciar player'}
           aria-pressed={muted}
           title="Volume do player"
-          aria-disabled={pending}
           aria-busy={pending}
           onClick={() => void act({ action: 'mute', muted: !muted })}
         >

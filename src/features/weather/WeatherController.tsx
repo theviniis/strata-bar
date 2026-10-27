@@ -11,14 +11,10 @@ import { WidgetPopup } from '@/popups/WidgetPopup'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { WeatherData } from '@/services/system/weather.generated'
 import { useWeather } from './useWeather'
-import { weatherFixture } from './fixtures'
 import { condition, temperature } from './presentation'
 
 export function WeatherController() {
   return <WeatherTrigger event={useWeather()} />
-}
-export function DemoWeatherController() {
-  return <WeatherTrigger event={{ status: 'ready', data: weatherFixture() }} />
 }
 function WeatherTrigger({ event }: { event: SystemEvent<WeatherData> }) {
   const view = useWidgetView()

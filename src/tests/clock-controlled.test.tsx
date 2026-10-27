@@ -1,15 +1,11 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { Clock } from '@/features/clock/Clock'
-import {
-  ClockController,
-  DemoClockController
-} from '@/features/clock/ClockController'
+import { ClockController } from '@/features/clock/ClockController'
 import { ClockPopup } from '@/features/clock/ClockPopup'
 import { ClockPopupController } from '@/features/clock/ClockPopupController'
 import { clockFixture } from '@/features/clock/fixtures'
 import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
-import { defaultView } from '@/components/status-bar/presentation'
 
 vi.mock('@/services/system/overlay', () => ({
   overlay: { mode: 'demo', hide: vi.fn(async () => {}) }
@@ -78,7 +74,7 @@ it('aligns updates to the minute and clears the timer on unmount', () => {
   result.unmount()
   expect(vi.getTimerCount()).toBe(0)
 })
-it('keeps native and studio inert previews free of clock timers', () => {
+it('keeps the clock preview free of timers', () => {
   vi.useFakeTimers()
   const result = render(
     <WidgetPreviewContext value={true}>
@@ -87,9 +83,6 @@ it('keeps native and studio inert previews free of clock timers', () => {
   )
   expect(vi.getTimerCount()).toBe(0)
   result.unmount()
-  const demo = render(<DemoClockController view={defaultView} staticPreview />)
-  expect(vi.getTimerCount()).toBe(0)
-  demo.unmount()
 })
 it('controls calendar month, selected day and today from props across midnight', () => {
   const time = clockFixture()

@@ -3,7 +3,8 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { Music } from '@/features/music/Music'
 import { MusicPopup } from '@/features/music/MusicPopup'
 import { SpotifySettings } from '@/features/music/SpotifySettings'
-import { DemoMusicController } from '@/features/music/MusicController'
+import { WidgetPreview } from '@/components/status-bar/WidgetPreview'
+import { widgetSchema } from '@/services/configuration/config'
 import { musicFixture, musicControlsFixture } from '@/features/music/fixtures'
 const runtime = vi.hoisted(() => ({ connect: vi.fn() }))
 vi.mock('@/services/system/bridge', async (importOriginal) => ({
@@ -125,9 +126,15 @@ it('renders Spotify form values and keeps changes controlled by its parent', () 
 })
 it('uses the shared music visual for inert demo without media subscription timers', () => {
   vi.useFakeTimers()
-  const result = render(<DemoMusicController staticPreview />)
-  // ScrollingText is a generic primitive and uses a one-shot measurement frame.
-  expect(screen.getByRole('button', { name: 'Pausar' })).toBeEnabled()
+  const result = render(
+    <WidgetPreview
+      widget={widgetSchema.parse({ id: 'music', type: 'music' })}
+      theme="dark"
+    />
+  )
+  expect(
+    screen.getByRole('button', { name: 'Pausar', hidden: true })
+  ).toBeEnabled()
   expect(runtime.connect).not.toHaveBeenCalled()
   result.unmount()
   expect(vi.getTimerCount()).toBe(0)

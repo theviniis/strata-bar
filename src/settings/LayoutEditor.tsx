@@ -65,6 +65,7 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ComponentProps
@@ -79,17 +80,7 @@ import {
   type Section
 } from './layout'
 import { ManagerContext, type ColumnMoveFocus } from './manager-context'
-import {
-  addToScope,
-  aggregateIds,
-  barEnabled,
-  displayedLayout,
-  layoutFor,
-  removeFromScope,
-  setBarEnabled,
-  setLayout,
-  viewConfig
-} from './monitor-layout'
+import { editMonitorDraft, type MonitorDraft } from './monitor-layout'
 import { MonitorWidgetInspector } from './MonitorWidgetInspector'
 import {
   readNavigation,
@@ -124,30 +115,133 @@ export function LayoutEditor({
   const [selection, setSelection] = useState<SettingsNavigation['monitor']>(
     () => readNavigation().monitor
   )
+  const { choices, disconnected } = useMemo(() => {
+    const connectedIds = new Set(
+      monitors.map((m) => normalizeMonitorName(m.id))
+    )
+    const disconnected = Object.keys(source.monitors).filter(
+      (id) => !connectedIds.has(normalizeMonitorName(id))
+    )
+    return {
+      disconnected,
+      choices: [
+        ...monitors.map((monitor) => ({ id: monitor.id, connected: true })),
+        ...disconnected.map((id) => ({ id, connected: false }))
+      ]
+    }
+  }, [monitors, source.monitors])
+  const selected =
+    choices.find(
+      (choice) =>
+        selection &&
+        normalizeMonitorName(choice.id) === normalizeMonitorName(selection.id)
+    ) ?? (!loading && !error ? choices[0] : undefined)
   const [disconnectedNotice, setDisconnectedNotice] = useState(false)
-  useEffect(() => {
-    if (!loading && !error) rememberNavigation({ monitor: selection })
-  }, [selection, loading, error])
-  const selected = selection?.id ?? null
-  if (
-    selection?.connected &&
-    !loading &&
-    !monitors.some((m) => m.id === selection.id) &&
-    !error
-  ) {
-    setSelection(null)
-    setDisconnectedNotice(true)
+  if (!disabled && !loading && !error) {
+    const next = selected ?? null
+    if (
+      selection?.connected &&
+      !choices.some(
+        (choice) =>
+          choice.connected &&
+          normalizeMonitorName(choice.id) === normalizeMonitorName(selection.id)
+      )
+    )
+      setDisconnectedNotice(true)
+    if (selection?.id !== next?.id || selection?.connected !== next?.connected)
+      setSelection(next)
   }
-  const connectedIds = new Set(monitors.map((m) => normalizeMonitorName(m.id)))
-  const disconnected = Object.keys(source.monitors).filter(
-    (id) => !connectedIds.has(normalizeMonitorName(id))
+  useEffect(() => {
+    if (!disabled && !loading && !error)
+      rememberNavigation({ monitor: selected ?? null })
+  }, [selected, disabled, loading, error])
+
+  return (
+    <div className="flex flex-col gap-4">
+      {choices.length > 0 && (
+        <Tabs
+          value={selected?.id ?? ''}
+          onValueChange={(id) => {
+            setSelection(choices.find((choice) => choice.id === id) ?? null)
+            setDisconnectedNotice(false)
+          }}
+        >
+          <TabsList
+            className="h-auto w-full min-w-0 max-w-full justify-start overflow-x-auto"
+            aria-label="Monitores"
+          >
+            {monitors.map((monitor, index) => (
+              <TabsTrigger
+                key={monitor.id}
+                value={monitor.id}
+                title={`${monitor.name} · ${monitor.deviceName}`}
+              >
+                Monitor {index + 1} · {monitor.width}×{monitor.height}
+                {monitor.primary ? ' · Principal' : ''}
+                {monitor.id === 'studio-demo' ? ' · Demonstração' : ''}
+              </TabsTrigger>
+            ))}
+            {disconnected.map((id, index) => (
+              <TabsTrigger key={id} value={id} title={id}>
+                Salvo {index + 1} · Desconectado
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
+      {disconnectedNotice && (
+        <Alert role="status">
+          <AlertDescription>
+            O monitor selecionado foi desconectado. Suas configurações foram
+            preservadas.
+          </AlertDescription>
+        </Alert>
+      )}
+      {error && (
+        <Alert>
+          <AlertDescription>
+            {error}
+            <Button variant="outline" onClick={() => void refresh()}>
+              Tentar novamente
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {selected ? (
+        <MonitorLayoutEditor
+          key={selected.id}
+          draft={source}
+          onChange={commit}
+          disabled={disabled}
+          editor={editMonitorDraft(source, selected.id)}
+        />
+      ) : (
+        <Empty>
+          <EmptyHeader>
+            <EmptyDescription>
+              {loading
+                ? 'Consultando monitores…'
+                : 'Nenhum monitor disponível para editar.'}
+            </EmptyDescription>
+          </EmptyHeader>
+          {!loading && (
+            <Button variant="outline" onClick={() => void refresh()}>
+              Atualizar monitores
+            </Button>
+          )}
+        </Empty>
+      )}
+    </div>
   )
-  const scope =
-    selected &&
-    (monitors.some((m) => m.id === selected) || disconnected.includes(selected))
-      ? selected
-      : null
-  const draft = viewConfig(source, scope, monitors)
+}
+
+function MonitorLayoutEditor({
+  draft: source,
+  onChange: commit,
+  disabled,
+  editor
+}: LayoutEditorProps & { editor: MonitorDraft }) {
+  const draft = editor.view
   const editorRef = useRef<HTMLDivElement>(null)
   const pendingMoveFocus = useRef<ColumnMoveFocus | null>(null)
   useLayoutEffect(() => {
@@ -172,18 +266,7 @@ export function LayoutEditor({
     target?.focus()
     pendingMoveFocus.current = null
   }, [draft])
-  const commitLayout = (next: Config) =>
-    commit(
-      setLayout(source, scope, monitors, {
-        left: next.widgets.left.map((w) => w.id),
-        center: next.widgets.center.map((w) => w.id),
-        right: next.widgets.right.map((w) => w.id)
-      })
-    )
-  const onChange = commitLayout
-  const targets = aggregateIds(scope, monitors)
-  const activation = targets.map((id) => barEnabled(source, id))
-  const mixedBar = activation.some((v) => v !== activation[0])
+  const onChange = (next: Config) => commit(editor.reorder(next.widgets))
   const [catalogType, setCatalogType] = useState<WidgetType | null>(null)
   const layoutId = useId()
   const [drag, setDrag] = useState<{ id: string; config: Config } | null>(null)
@@ -209,8 +292,7 @@ export function LayoutEditor({
         event.activatorEvent instanceof KeyboardEvent
           ? dropTarget(drag.config, String(over.id))
           : findWidget(drag.config, drag.id)
-      if (target)
-        commit(addToScope(source, scope, monitors, catalogType, target))
+      if (target) commit(editor.add(catalogType, target))
       setCatalogType(null)
       return
     }
@@ -264,8 +346,7 @@ export function LayoutEditor({
     <ManagerContext.Provider
       value={{
         config: source,
-        scope,
-        monitors,
+        editor,
         onChange: commit,
         requestMoveFocus: (move) => {
           pendingMoveFocus.current = move
@@ -273,100 +354,15 @@ export function LayoutEditor({
       }}
     >
       <div ref={editorRef} className="flex flex-col gap-4">
-        <Tabs
-          className="min-w-0"
-          value={scope ?? 'all'}
-          onValueChange={(value) => {
-            setSelection(
-              value === 'all'
-                ? null
-                : {
-                    id: String(value),
-                    connected: monitors.some((m) => m.id === value)
-                  }
-            )
-            setDisconnectedNotice(false)
-          }}
-        >
-          <TabsList
-            className="h-auto w-full min-w-0 max-w-full justify-start overflow-x-auto"
-            aria-label="Monitores"
-          >
-            <TabsTrigger value="all">Todos</TabsTrigger>
-            {monitors.map((monitor, index) => (
-              <TabsTrigger
-                key={monitor.id}
-                value={monitor.id}
-                title={`${monitor.name} · ${monitor.deviceName}`}
-              >
-                Monitor {index + 1} · {monitor.width}×{monitor.height}
-                {monitor.primary ? ' · Principal' : ''}
-                {monitor.id === 'studio-demo' ? ' · Demonstração' : ''}
-              </TabsTrigger>
-            ))}
-            {disconnected.map((id, index) => (
-              <TabsTrigger key={id} value={id} title={id}>
-                Salvo {index + 1} · Desconectado
-              </TabsTrigger>
-            ))}
-            <div className="ml-auto flex items-center justify-between gap-4">
-              <label htmlFor={`${layoutId}-enabled`}>
-                {scope
-                  ? 'Habilitar neste monitor'
-                  : 'Habilitar em todos os monitores'}
-              </label>
-              <Switch
-                id={`${layoutId}-enabled`}
-                disabled={disabled}
-                checked={activation.every(Boolean)}
-                onCheckedChange={(enabled) =>
-                  commit(setBarEnabled(source, scope, monitors, enabled))
-                }
-              />
-            </div>
-          </TabsList>
-        </Tabs>
-        {disconnectedNotice && (
-          <Alert role="status">
-            <AlertDescription>
-              O monitor selecionado foi desconectado. Exibindo Todos; suas
-              configurações foram preservadas.
-            </AlertDescription>
-          </Alert>
-        )}
-        {error && (
-          <Alert>
-            <AlertDescription>
-              {error}
-              <Button variant="outline" onClick={() => void refresh()}>
-                Tentar novamente
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-        {!monitors.length && !error && (
-          <p>
-            Nenhum monitor disponível.{' '}
-            <Button variant="outline" onClick={() => void refresh()}>
-              Atualizar monitores
-            </Button>
-          </p>
-        )}
-
-        {!scope && (
-          <Alert role="note">
-            <AlertDescription>
-              Arrastar aplica a organização a todos os monitores conectados e ao
-              padrão para novos monitores.
-              {monitors.some(
-                (m) =>
-                  JSON.stringify(layoutFor(source, m.id)) !==
-                  JSON.stringify(layoutFor(source, null))
-              ) &&
-                ' Organizações diferentes: exibindo a ordem padrão com os widgets adicionais.'}
-            </AlertDescription>
-          </Alert>
-        )}
+        <div className="flex items-center justify-between gap-4">
+          <label htmlFor={layoutId}>Habilitar neste monitor</label>
+          <Switch
+            id={layoutId}
+            disabled={disabled}
+            checked={editor.enabled}
+            onCheckedChange={(enabled) => commit(editor.setEnabled(enabled))}
+          />
+        </div>
         <DndContext
           sensors={sensors}
           collisionDetection={layoutCollision}
@@ -415,10 +411,9 @@ export function LayoutEditor({
                   disabled={disabled}
                   onAdd={(type, section) =>
                     commit(
-                      addToScope(source, scope, monitors, type, {
+                      editor.add(type, {
                         section,
-                        index: displayedLayout(source, scope, monitors)[section]
-                          .length
+                        index: draft.widgets[section].length
                       })
                     )
                   }
@@ -626,17 +621,8 @@ function WidgetCard({
           size="icon-xs"
           variant="ghost"
           disabled={disabled}
-          aria-label={`${manager.scope ? 'Remover' : 'Excluir definitivamente'} ${typeLabels[widget.type]}`}
-          onClick={() =>
-            manager.onChange(
-              removeFromScope(
-                manager.config,
-                manager.scope,
-                manager.monitors,
-                widget.id
-              )
-            )
-          }
+          aria-label={`Remover ${typeLabels[widget.type]}`}
+          onClick={() => manager.onChange(manager.editor.remove(widget.id))}
         >
           <Trash2 aria-hidden="true" />
         </Button>
@@ -673,8 +659,7 @@ function WidgetCard({
                 widget={widget}
                 draft={manager.config}
                 onChange={manager.onChange}
-                scope={manager.scope}
-                monitors={manager.monitors}
+                editor={manager.editor}
               />
             </fieldset>
             <Button className="mt-4" onClick={() => setInspectorOpen(false)}>

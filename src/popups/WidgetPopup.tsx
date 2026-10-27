@@ -1,4 +1,5 @@
 import * as Popover from '@radix-ui/react-popover'
+import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
 import { Slot } from '@radix-ui/react-slot'
 import {
   createContext,
@@ -23,6 +24,7 @@ import { resolvePopup, type PopupId, type PopupParams } from './resolve'
 
 interface TriggerContextValue {
   native: boolean
+  preview: boolean
   open: boolean
   triggerRef(node: HTMLElement | null): void
   anchorRef(node: HTMLElement | null): void
@@ -44,6 +46,7 @@ type RootProps<K extends PopupId> = {
   : { params: PopupParams<K> })
 
 function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
+  const preview = useWidgetPreview()
   const anchor = useRef<HTMLElement>(null)
   const trigger = useRef<HTMLElement>(null)
   const native = overlay.mode === 'native'
@@ -61,6 +64,7 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
   const owner = useId()
   const changePreview = useCallback(
     (next: boolean) => {
+      if (preview) return
       if (!next) {
         previewClosingRef.current = true
         setPreviewClosing(true)
@@ -90,7 +94,7 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
       } else releasePopup(owner)
       setPreviewOpen(next)
     },
-    [popup, params, owner]
+    [popup, params, owner, preview]
   )
   useEffect(
     () => () => {
@@ -111,6 +115,7 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
   )
   const context = {
     native,
+    preview,
     open: native ? open : previewOpen,
     triggerRef: setTrigger,
     anchorRef: setAnchor,
@@ -118,7 +123,7 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
   }
   return (
     <TriggerContext.Provider value={context}>
-      {native ? (
+      {native || preview ? (
         children
       ) : (
         <Popover.Root open={previewOpen} onOpenChange={changePreview}>
@@ -271,7 +276,7 @@ function Anchor({
   className,
   ...props
 }: ComponentPropsWithoutRef<'div'> & { asChild?: boolean }) {
-  const { native, anchorRef, open } = useTrigger()
+  const { native, preview, anchorRef, open } = useTrigger()
   const anchorProps = {
     ...props,
     'data-popup-open': open,
@@ -281,7 +286,7 @@ function Anchor({
       className
     )
   }
-  if (!native)
+  if (!native && !preview)
     return <Popover.Anchor asChild={asChild} {...anchorProps} ref={anchorRef} />
   const Component = asChild ? Slot : 'div'
   return <Component {...anchorProps} ref={anchorRef} />
@@ -292,8 +297,8 @@ function Trigger({
   onClick,
   ...props
 }: ComponentPropsWithoutRef<'button'> & { asChild?: boolean }) {
-  const { native, triggerRef, open, toggle } = useTrigger()
-  if (!native)
+  const { native, preview, triggerRef, open, toggle } = useTrigger()
+  if (!native && !preview)
     return (
       <Popover.Trigger
         type="button"
@@ -324,6 +329,10 @@ function Trigger({
         className
       )}
       onClick={(event) => {
+        if (preview) {
+          event.preventDefault()
+          return
+        }
         onClick?.(event)
         if (!event.defaultPrevented) void toggle()
       }}

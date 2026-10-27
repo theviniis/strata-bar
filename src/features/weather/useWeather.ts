@@ -7,7 +7,7 @@ import {
   type NativeBridge,
   type SystemEvent
 } from '@/services/system/bridge'
-import { weatherFixture } from './fixtures'
+import { widgetPreviewEvent } from '@/services/system/widget-preview'
 
 export function useWeather() {
   const preview = useWidgetPreview()
@@ -24,5 +24,5 @@ export function useWeather() {
       (error) => setEvent({ status: 'error', error: String(error) })
     )
   }, [preview])
-  return preview ? { status: 'ready' as const, data: weatherFixture() } : event
+  return preview ? widgetPreviewEvent('weather') : event
 }

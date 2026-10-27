@@ -5,7 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { Config, WidgetConfig } from '@/services/configuration/config'
 import { Widget } from './Widget'
-import { WidgetPreviewContext } from './widget-preview-context'
+import { WidgetPreviewRuntime } from './WidgetPreviewRuntime'
 import { SeparatorMarginContext } from './separator-margin'
 
 /** The actual widget tree, with sample data and all native effects disabled. */
@@ -23,7 +23,7 @@ export const WidgetPreview = memo(function WidgetPreview({
   const resolved = useResolvedTheme(theme)
   return (
     <SeparatorMarginContext value={separatorMarginX}>
-      <WidgetPreviewContext.Provider value={true}>
+      <WidgetPreviewRuntime>
         <div
           inert
           aria-hidden="true"
@@ -40,7 +40,7 @@ export const WidgetPreview = memo(function WidgetPreview({
             <Widget widget={widget} />
           </TooltipProvider>
         </div>
-      </WidgetPreviewContext.Provider>
+      </WidgetPreviewRuntime>
     </SeparatorMarginContext>
   )
 })

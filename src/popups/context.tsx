@@ -5,6 +5,7 @@ export interface PopupContextValue {
   id: PopupId
   mode: 'native' | 'demo'
   side?: 'top' | 'bottom'
+  closing?: boolean
   params: unknown
   close(): void
 }

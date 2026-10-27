@@ -1,7 +1,9 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
+import { WidgetPreview } from '@/components/status-bar/WidgetPreview'
+import { widgetSchema } from '@/services/configuration/config'
 import { Gpu } from '@/features/gpu/Gpu'
-import { GpuController, DemoGpuController } from '@/features/gpu/GpuController'
+import { GpuController } from '@/features/gpu/GpuController'
 import { GpuPopupController } from '@/features/gpu/GpuPopupController'
 import { PopupContext } from '@/popups/context'
 import { gpuFixture, GPU_FIXTURE_TIME } from '@/features/gpu/fixtures'
@@ -124,15 +126,15 @@ it('uses the shared GPU visual in inert preview without a subscription or timer'
   view.unmount()
 })
 
-it('adapts studio GPU values to the shared visual without a native subscription', () => {
+it('renders the shared GPU preview without a native subscription', () => {
   vi.useFakeTimers()
   const view = render(
-    <DemoGpuController
-      event={{ status: 'ready', data: 48 }}
-      view={defaultView}
+    <WidgetPreview
+      widget={widgetSchema.parse({ id: 'gpu', type: 'gpu' })}
+      theme="dark"
     />
   )
-  expect(screen.getByLabelText('Uso da GPU')).toHaveTextContent('48.0%')
+  expect(screen.getByLabelText('Uso da GPU')).toHaveTextContent('27.0%')
   expect(runtime.connect).not.toHaveBeenCalled()
   expect(vi.getTimerCount()).toBe(0)
   view.unmount()

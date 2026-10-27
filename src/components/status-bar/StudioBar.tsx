@@ -1,19 +1,13 @@
 import type { Config } from '@/services/configuration/config'
 import { useEffect, useRef, useState } from 'react'
-import { DemoWidget } from './DemoWidget'
 import { NativeBarSurface } from './NativeBar'
+import { WidgetPreviewRuntime } from './WidgetPreviewRuntime'
 import { cornerRadius } from './curves'
 
 const BAR_WIDTH = 1440
 
-/** One demo bar renderer shared by the studio and the settings theme selector. */
-export function StudioBar({
-  config,
-  staticPreview = false
-}: {
-  config: Config
-  staticPreview?: boolean
-}) {
+/** Frozen bar preview shared by the studio and the settings theme selector. */
+export function StudioBar({ config }: { config: Config }) {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(BAR_WIDTH)
   useEffect(() => {
@@ -41,15 +35,14 @@ export function StudioBar({
           transformOrigin: 'top left'
         }}
       >
-        <NativeBarSurface
-          preview
-          ariaLabel="Status bar"
-          widgets={config.widgets}
-          bar={config.bar}
-          renderWidget={(widget) => (
-            <DemoWidget widget={widget} staticPreview={staticPreview} />
-          )}
-        />
+        <WidgetPreviewRuntime>
+          <NativeBarSurface
+            preview
+            ariaLabel="Status bar"
+            widgets={config.widgets}
+            bar={config.bar}
+          />
+        </WidgetPreviewRuntime>
       </div>
     </div>
   )
