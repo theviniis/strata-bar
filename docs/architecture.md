@@ -59,6 +59,17 @@ komorebi exclusion is shared with the bar: `floating_frame_style` strips `WS_CAP
 
 The frontend half is `?view=overlay`, routed in `src/main.tsx`, which loads `src/overlay/Overlay.tsx`: one `overlay:render` listener, one pill (`TooltipSurface`) sharing the exact pill/arrow classes with the studio tooltip (`src/components/ui/tooltip-classes.ts`), no timers and no subscriptions. `useOverlayTooltip` measures the real pill off-screen with the real classes before calling `overlay_show`, waits 150ms of hover or focus intent, and keeps its hidden `role="tooltip"` span plus `aria-describedby` inside the bar document, because cross-window ARIA association is impossible. The browser studio has no overlay window: `src/services/system/overlay.ts` selects a labelled no-op adapter there.
 
+Widget popup lifetime policy lives in the `src/popups/lifetime.ts` module.
+Its interface owns opening identity, replacement, pending exit acknowledgement
+and document-local exclusivity through the coordinator. The native adapter in
+`useOverlayPopover` owns measurement, transport, focus and anchor motion; the
+Radix adapter in `WidgetPopup` owns studio placement and motion. Native close
+releases ownership immediately and waits for the matching docking acknowledgement;
+studio close retains ownership until the exit animation finishes. Studio owner
+identity survives reopening, while every opening has a distinct session.
+`usePopupLifetime` binds the module to React without resetting ownership when
+callbacks change. Native cross-window ownership and geometry remain native.
+
 ## workspaces channel
 
 The `workspaces` channel is event-driven, not polled: `src-tauri/src/workspaces.rs` creates a message-mode named pipe (`\\.\pipe\strata-bar-workspaces-<pid>`), spawns `komorebic subscribe-pipe <name>` with a fixed argument list and no shell, and streams newline/concatenated JSON notifications from komorebi. Each notification carries the full komorebi `State`; the watcher keeps the latest parsed copy and projects one payload per subscribed bar window, filtered to that window's monitor via `MonitorFromWindow`. The project step reduces each workspace to `{index, name, status: active|populated|empty, layer, windows}`; only changes are emitted (per-window summary dedup) to bound event volume. A broken pipe sets status `unavailable`, then reconnects after a delay; a missing `komorebic.exe` never rejects subscription and never falls back to demo data. Focus actions (`focus-monitor-workspace`, `cycle-workspace`) are bounds-checked against the cached state before spawning `komorebic`, so the UI can only reach monitors and workspaces komorebi currently reports.
@@ -101,8 +112,12 @@ time; it has no "Todos" selection. `editMonitorDraft` in
 `src/settings/monitor-layout.ts` owns effective widget projection and scoped
 mutations. Removing a widget retains its definition and monitor settings for
 restoration; adding a new definition preserves the default layout inherited by
-other and future monitors. The visual adapter owns monitor discovery, selection,
-navigation memory and drag previews. It restores the previous monitor when
+other and future monitors. The same module owns temporary move previews, catalog
+identities, insertion rules and conversion back to the canonical Draft on drop;
+its move interface receives the current editor so newer Widget settings survive.
+Cancelling discards the temporary move without changing the Draft. The visual
+adapter owns monitor discovery, selection, navigation memory, input sensors,
+collision geometry and focus. It restores the previous monitor when
 available, otherwise selects the first connected monitor, then a saved monitor;
 without either it shows an empty editor. Apply and native persistence retain
 their existing ownership. Appearance and integration settings remain shared.

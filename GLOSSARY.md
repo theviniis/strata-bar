@@ -39,6 +39,10 @@ A motionless, read-only illustration of a widget using fixed example readings
 and its configured presentation. The studio, catalog and theme selector use
 the same examples; a preview never controls the desktop or a player.
 
+**Widget popup**:
+A floating view opened from a widget for details and everyday actions. Opening
+another widget popup replaces the previous one in that bar or interactive demo.
+
 **Music interaction**:
 The local set of pending player actions owned by one bar or popup for a specific
 player session and track. Closing its owner or changing that identity discards

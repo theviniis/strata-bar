@@ -25,11 +25,7 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import type { Config, WidgetConfig } from '@/services/configuration/config'
-import {
-  normalizeMonitorName,
-  widgetSchema,
-  type WidgetType
-} from '@/services/configuration/config'
+import { normalizeMonitorName } from '@/services/configuration/config'
 import {
   closestCenter,
   DndContext,
@@ -73,14 +69,17 @@ import {
 import { createPortal } from 'react-dom'
 import {
   findWidget,
-  moveWidget,
   sectionLabels,
   sections,
   typeLabels,
   type Section
 } from './layout'
 import { ManagerContext, type ColumnMoveFocus } from './manager-context'
-import { editMonitorDraft, type MonitorDraft } from './monitor-layout'
+import {
+  editMonitorDraft,
+  type MonitorDraft,
+  type MonitorLayoutMove
+} from './monitor-layout'
 import { MonitorWidgetInspector } from './MonitorWidgetInspector'
 import {
   readNavigation,
@@ -266,15 +265,10 @@ function MonitorLayoutEditor({
     target?.focus()
     pendingMoveFocus.current = null
   }, [draft])
-  const onChange = (next: Config) => commit(editor.reorder(next.widgets))
-  const [catalogType, setCatalogType] = useState<WidgetType | null>(null)
   const layoutId = useId()
-  const [drag, setDrag] = useState<{ id: string; config: Config } | null>(null)
-  const display = drag?.config ?? draft
-  const location = drag ? findWidget(display, drag.id) : undefined
-  const activeWidget = location
-    ? display.widgets[location.section][location.index]
-    : undefined
+  const [drag, setDrag] = useState<MonitorLayoutMove | null>(null)
+  const display = drag?.view ?? draft
+  const activeWidget = drag?.widget
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -282,64 +276,25 @@ function MonitorLayoutEditor({
 
   function onDragEnd(event: DragEndEvent) {
     setDrag(null)
-    const { active, over } = event
-    if (!over || !drag) {
-      setCatalogType(null)
-      return
-    }
-    if (catalogType) {
-      const target =
-        event.activatorEvent instanceof KeyboardEvent
-          ? dropTarget(drag.config, String(over.id))
-          : findWidget(drag.config, drag.id)
-      if (target) commit(editor.add(catalogType, target))
-      setCatalogType(null)
-      return
-    }
-    if (!(event.activatorEvent instanceof KeyboardEvent)) {
-      if (drag.config !== draft) onChange(drag.config)
-      return
-    }
-    if (active.id === over.id) return
-    const overId = String(over.id)
-    const target = dropTarget(draft, overId)
-    if (!target) return
-    const next = moveWidget(drag.config, String(active.id), target)
-    if (next !== draft) onChange(next)
+    const next = drag?.drop(
+      editor,
+      event.over ? String(event.over.id) : null,
+      event.activatorEvent instanceof KeyboardEvent ? 'keyboard' : 'pointer'
+    )
+    if (next) commit(next)
   }
 
   function previewMove(event: DragMoveEvent) {
-    const { active, over, activatorEvent, delta } = event
-    if (
-      !over ||
-      active.id === over.id ||
-      !(activatorEvent instanceof MouseEvent)
-    )
-      return
+    const { over, activatorEvent, delta } = event
+    if (!over || !(activatorEvent instanceof MouseEvent)) return
     const pointerY = activatorEvent.clientY + delta.y
-    setDrag((current) => {
-      if (!current) return current
-      const from = findWidget(current.config, current.id)
-      const overId = String(over.id)
-      const target = dropTarget(current.config, overId)
-      if (!from || !target) return current
-      let index = target.index
-      if (
-        !overId.startsWith('section:') &&
-        pointerY > over.rect.top + over.rect.height / 2
-      )
-        index += 1
-      if (from.section === target.section && from.index < index) index -= 1
-      if (from.section === target.section && from.index === index)
-        return current
-      return {
-        ...current,
-        config: moveWidget(current.config, current.id, {
-          section: target.section,
-          index
-        })
-      }
-    })
+    setDrag(
+      (current) =>
+        current?.preview(
+          String(over.id),
+          pointerY > over.rect.top + over.rect.height / 2
+        ) ?? null
+    )
   }
 
   return (
@@ -368,24 +323,9 @@ function MonitorLayoutEditor({
           collisionDetection={layoutCollision}
           measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
           onDragStart={({ active }) => {
-            const id = String(active.id)
-            if (id.startsWith('catalog:')) {
-              const type = id.slice(8) as WidgetType
-              setCatalogType(type)
-              const preview = structuredClone(draft)
-              // Catalog handles remain mounted for repeatable items. Their
-              // draggable ID must not also register a sortable preview node.
-              const previewId = `preview:${id}`
-              preview.widgets.right.push(
-                widgetSchema.parse({ id: previewId, type })
-              )
-              setDrag({ id: previewId, config: preview })
-            } else setDrag({ id, config: draft })
+            setDrag(editor.beginMove(String(active.id)))
           }}
-          onDragCancel={() => {
-            setDrag(null)
-            setCatalogType(null)
-          }}
+          onDragCancel={() => setDrag(null)}
           onDragOver={previewMove}
           onDragMove={previewMove}
           onDragEnd={onDragEnd}
@@ -400,7 +340,6 @@ function MonitorLayoutEditor({
                       section={section}
                       widgets={display.widgets[section]}
                       draft={display}
-                      onChange={onChange}
                       disabled={disabled}
                     />
                   ))}
@@ -429,12 +368,7 @@ function MonitorLayoutEditor({
                   aria-label={`Movendo ${typeLabels[activeWidget.type]}`}
                   className="rounded-md bg-card/60 glass-surface shadow-lg"
                 >
-                  <WidgetCard
-                    widget={activeWidget}
-                    draft={display}
-                    onChange={onChange}
-                    disabled
-                  />
+                  <WidgetCard widget={activeWidget} draft={display} disabled />
                 </div>
               )}
             </DragOverlay>,
@@ -444,12 +378,6 @@ function MonitorLayoutEditor({
       </div>
     </ManagerContext.Provider>
   )
-}
-
-function dropTarget(config: Config, id: string) {
-  if (!id.startsWith('section:')) return findWidget(config, id)
-  const section = id.slice('section:'.length) as Section
-  return { section, index: config.widgets[section].length }
 }
 
 // Pointer drops use the item or section actually under the cursor. Keyboard
@@ -480,7 +408,10 @@ const layoutCollision: CollisionDetection = (args) => {
   return candidates.length ? [{ id: candidates[0].id }] : hits
 }
 
-interface SectionColumnProps extends LayoutEditorProps {
+interface SectionColumnProps extends Pick<
+  LayoutEditorProps,
+  'draft' | 'disabled'
+> {
   section: Section
   widgets: WidgetConfig[]
 }
@@ -489,7 +420,6 @@ function SectionColumn({
   section,
   widgets,
   draft,
-  onChange,
   disabled
 }: SectionColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `section:${section}` })
@@ -526,7 +456,6 @@ function SectionColumn({
                 key={widget.id}
                 widget={widget}
                 draft={draft}
-                onChange={onChange}
                 disabled={disabled}
               />
             ))}
@@ -544,16 +473,14 @@ function SectionColumn({
   )
 }
 
-interface SortableWidgetProps extends LayoutEditorProps {
+interface SortableWidgetProps extends Pick<
+  LayoutEditorProps,
+  'draft' | 'disabled'
+> {
   widget: WidgetConfig
 }
 
-function SortableWidget({
-  widget,
-  draft,
-  onChange,
-  disabled
-}: SortableWidgetProps) {
+function SortableWidget({ widget, draft, disabled }: SortableWidgetProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useSortable({
     id: widget.id,
     disabled
@@ -574,7 +501,6 @@ function SortableWidget({
         <WidgetCard
           widget={widget}
           draft={draft}
-          onChange={onChange}
           disabled={disabled}
           dragHandleProps={{ ...attributes, ...listeners }}
         />
@@ -586,7 +512,6 @@ function SortableWidget({
 function WidgetCard({
   widget,
   draft,
-  onChange,
   disabled,
   dragHandleProps
 }: SortableWidgetProps & {
@@ -717,8 +642,8 @@ function WidgetCard({
                     direction,
                     target
                   })
-                  onChange(
-                    moveWidget(draft, widget.id, {
+                  manager.onChange(
+                    manager.editor.move(widget.id, {
                       section: target,
                       index: draft.widgets[target].length
                     })

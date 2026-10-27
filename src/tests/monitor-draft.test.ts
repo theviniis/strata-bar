@@ -1,7 +1,6 @@
 import { expect, it } from 'vitest'
 import { configSchema } from '@/services/configuration/config'
 import { editMonitorDraft } from '@/settings/monitor-layout'
-import { moveWidget } from '@/settings/layout'
 
 function initialDraft() {
   return configSchema.parse({
@@ -27,9 +26,7 @@ it.each([false, true])(
       original.layout = { left: ['cpu'], center: ['clock'], right: [] }
     const before = structuredClone(original)
     let editor = editMonitorDraft(original, 'DISPLAY1')
-    let next = editor.reorder(
-      moveWidget(editor.view, 'cpu', { section: 'right', index: 0 }).widgets
-    )
+    let next = editor.move('cpu', { section: 'right', index: 0 })
     editor = editMonitorDraft(next, 'DISPLAY1')
     next = editor.updateWidget('cpu', { intervalMs: 5000, tooltip: false })
     next = editMonitorDraft(next, 'DISPLAY1').setEnabled(false)
@@ -116,3 +113,136 @@ it('resolves monitor aliases without creating a second override or freezing unre
   expect(next.widgets).toEqual(original.widgets)
   expect(() => editMonitorDraft(original, '')).toThrow('Selecione um monitor')
 })
+
+it.each(['pointer', 'keyboard'] as const)(
+  'commits a %s move without changing Widget settings or Default layout',
+  (input) => {
+    const original = initialDraft()
+    const before = structuredClone(original)
+    const editor = editMonitorDraft(original, 'DISPLAY2')
+    let move = editor.beginMove('cpu')
+    if (input === 'pointer') move = move.preview('section:right', false)
+    expect(original).toEqual(before)
+    const next = move.drop(editor, 'section:right', input)!
+    expect(configSchema.parse(next)).toEqual(next)
+    expect(editMonitorDraft(next, 'DISPLAY2').view.widgets.right).toEqual([
+      expect.objectContaining({ id: 'cpu', intervalMs: 9000 })
+    ])
+    expect(next.widgets).toEqual(original.widgets)
+    expect(next.layout).toEqual(original.layout)
+    expect(next.monitors.DISPLAY2.widgets).toEqual(
+      original.monitors.DISPLAY2.widgets
+    )
+    expect(next.monitors.offline).toEqual(original.monitors.offline)
+    expect(editMonitorDraft(next, 'future-monitor').view.widgets).toEqual(
+      original.widgets
+    )
+    expect(original).toEqual(before)
+  }
+)
+
+it.each(['pointer', 'keyboard'] as const)(
+  'keeps catalog identities temporary across repeated %s separator additions',
+  (input) => {
+    const original = initialDraft()
+    let next = original
+    for (let index = 0; index < 2; index += 1) {
+      const editor = editMonitorDraft(next, 'DISPLAY2')
+      let move = editor.beginMove('catalog:separator')
+      expect(move.widget?.id).toBe('preview:catalog:separator')
+      if (input === 'pointer') move = move.preview('section:left', false)
+      next = move.drop(editor, 'section:left', input)!
+      expect(configSchema.parse(next)).toEqual(next)
+    }
+    expect(
+      editMonitorDraft(next, 'DISPLAY2').view.widgets.left.map((w) => w.id)
+    ).toEqual(['cpu', 'separator', 'separator-2'])
+    expect(JSON.stringify(next)).not.toContain('preview:')
+    expect(editMonitorDraft(next, 'future-monitor').view.widgets).toEqual(
+      original.widgets
+    )
+    expect(next.monitors.DISPLAY2.widgets).toEqual(
+      original.monitors.DISPLAY2.widgets
+    )
+  }
+)
+
+it.each(['pointer', 'keyboard'] as const)(
+  'restores retained settings when a removed widget returns through a %s catalog move',
+  (input) => {
+    const original = initialDraft()
+    const removed = editMonitorDraft(original, 'DISPLAY2').remove('cpu')
+    const editor = editMonitorDraft(removed, 'DISPLAY2')
+    let move = editor.beginMove('catalog:cpu')
+    if (input === 'pointer') move = move.preview('section:center', false)
+    const restored = move.drop(editor, 'section:center', input)!
+    expect(
+      editMonitorDraft(restored, 'DISPLAY2').view.widgets.center[1]
+    ).toMatchObject({
+      id: 'cpu',
+      intervalMs: 9000
+    })
+    expect(restored.widgets).toEqual(original.widgets)
+    expect(restored.monitors.DISPLAY2.widgets).toEqual(
+      original.monitors.DISPLAY2.widgets
+    )
+  }
+)
+
+it('discards a moved or catalog preview on an outside drop without mutating the Draft', () => {
+  const original = initialDraft()
+  const before = structuredClone(original)
+  const editor = editMonitorDraft(original, 'DISPLAY2')
+  for (const id of ['cpu', 'catalog:separator']) {
+    const move = editor.beginMove(id).preview('section:center', false)
+    expect(move.drop(editor, null, 'pointer')).toBeUndefined()
+    expect(editor.view.widgets).toEqual(
+      editMonitorDraft(original, 'DISPLAY2').view.widgets
+    )
+  }
+  expect(original).toEqual(before)
+})
+
+it('keeps repeated same-column previews stable around an insertion point', () => {
+  const original = initialDraft()
+  original.widgets.left.push(original.widgets.center.pop()!)
+  original.widgets.left.push({ ...original.widgets.left[0], id: 'cpu-2' })
+  const editor = editMonitorDraft(original, 'DISPLAY2')
+  const move = editor.beginMove('cpu').preview('clock', true)
+  expect(move.view.widgets.left.map((w) => w.id)).toEqual([
+    'clock',
+    'cpu',
+    'cpu-2'
+  ])
+  expect(move.preview('clock', true)).toBe(move)
+  expect(
+    move.drop(editor, 'clock', 'pointer')?.monitors.DISPLAY2.layout?.left
+  ).toEqual(['clock', 'cpu', 'cpu-2'])
+})
+
+it.each(['pointer', 'keyboard'] as const)(
+  'preserves newer canonical settings when a %s preview is committed',
+  (input) => {
+    const original = initialDraft()
+    const editor = editMonitorDraft(original, 'DISPLAY2')
+    let move = editor.beginMove('cpu')
+    if (input === 'pointer') move = move.preview('section:right', false)
+    const updated = editor.updateWidget('cpu', { tooltip: false })
+    updated.bar.separatorMarginX = 8
+    const next = move.drop(
+      editMonitorDraft(updated, 'DISPLAY2'),
+      'section:right',
+      input
+    )!
+    expect(configSchema.parse(next)).toEqual(next)
+    expect(next.bar.separatorMarginX).toBe(8)
+    expect(
+      editMonitorDraft(next, 'DISPLAY2').view.widgets.right[0]
+    ).toMatchObject({
+      id: 'cpu',
+      intervalMs: 9000,
+      tooltip: false
+    })
+    expect(next.widgets).toEqual(original.widgets)
+  }
+)

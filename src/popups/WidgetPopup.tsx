@@ -6,7 +6,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useId,
   useRef,
   useState,
   type ComponentPropsWithoutRef,
@@ -17,10 +16,10 @@ import { cn } from '../lib/utils'
 import { overlayTextClasses } from '../overlay/typography'
 import { overlay } from '../services/system/overlay'
 import { POPUP_GAP } from './constants'
-import { claimPopup, releasePopup } from './coordinator'
 import { bouncePopupAnchor } from './motion'
 import { PopupHost } from './PopupHost'
 import { resolvePopup, type PopupId, type PopupParams } from './resolve'
+import { usePopupLifetime } from './usePopupLifetime'
 
 interface TriggerContextValue {
   native: boolean
@@ -55,54 +54,40 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
     params,
     anchor
   )
-  const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewClosing, setPreviewClosing] = useState(false)
-  const previewClosingRef = useRef(false)
   const bounce = useRef<ReturnType<typeof bouncePopupAnchor>>(undefined)
-  const [previewError, setPreviewError] = useState('')
   const [theme, setTheme] = useState('dark')
-  const owner = useId()
-  const changePreview = useCallback(
-    (next: boolean) => {
-      if (preview) return
-      if (!next) {
-        previewClosingRef.current = true
-        setPreviewClosing(true)
-        return
-      }
-      bounce.current?.complete()
-      previewClosingRef.current = false
-      setPreviewClosing(false)
-      if (next) {
-        try {
-          resolvePopup(popup, params)
-        } catch (e) {
-          setPreviewError(String(e))
-          return
-        }
-        setPreviewError('')
+  const {
+    lifetime,
+    open: previewOpen,
+    closing: previewClosing,
+    error: previewError,
+    session
+  } = usePopupLifetime(
+    {
+      mode: 'demo',
+      prepare() {
+        resolvePopup(popup, params)
         setTheme(
           trigger.current
             ?.closest('[data-theme]')
             ?.getAttribute('data-theme') ?? 'dark'
         )
-        claimPopup(owner, () => {
-          previewClosingRef.current = false
-          setPreviewOpen(false)
-          setPreviewClosing(false)
-        })
-      } else releasePopup(owner)
-      setPreviewOpen(next)
+        return () => {}
+      },
+      hide() {},
+      beforeOpen: () => bounce.current?.complete(),
+      dock() {
+        bounce.current?.stop()
+        bounce.current = bouncePopupAnchor(anchor.current ?? trigger.current)
+      },
+      cleanup: () => bounce.current?.stop(),
+      restoreFocus: () => trigger.current?.focus()
     },
-    [popup, params, owner, preview]
+    !native && !preview
   )
-  useEffect(
-    () => () => {
-      bounce.current?.stop()
-      releasePopup(owner)
-    },
-    [owner]
-  )
+  const changePreview = (next: boolean) => {
+    if (!preview) void lifetime.setOpen(next)
+  }
   const setAnchor = useCallback((node: HTMLElement | null) => {
     anchor.current = node
   }, [])
@@ -156,15 +141,7 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
                   anchor={anchor}
                   trigger={trigger}
                   onExited={() => {
-                    if (!previewClosingRef.current) return
-                    previewClosingRef.current = false
-                    setPreviewOpen(false)
-                    setPreviewClosing(false)
-                    releasePopup(owner)
-                    bounce.current?.stop()
-                    bounce.current = bouncePopupAnchor(
-                      anchor.current ?? trigger.current
-                    )
+                    lifetime.closed({ session, docked: true })
                   }}
                   popup={popup}
                   params={params}

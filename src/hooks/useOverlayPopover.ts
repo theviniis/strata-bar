@@ -1,5 +1,5 @@
 import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, type RefObject } from 'react'
 import { bouncePopupAnchor } from '../popups/motion'
 import { overlay } from '../services/system/overlay'
 import {
@@ -8,7 +8,8 @@ import {
   type PopupId,
   type PopupParams
 } from '../popups/resolve'
-import { claimPopup, releasePopup } from '../popups/coordinator'
+import type { PopupClosed } from '../popups/lifetime'
+import { usePopupLifetime } from '../popups/usePopupLifetime'
 
 /** Every opening owns a new session, including repeated clicks on one widget. */
 export function useOverlayPopover<K extends PopupId>(
@@ -17,50 +18,63 @@ export function useOverlayPopover<K extends PopupId>(
   anchorRef?: RefObject<HTMLElement | null>
 ) {
   const preview = useWidgetPreview()
-  const [open, setOpen] = useState(false)
-  const [error, setError] = useState('')
   const ref = useRef<HTMLElement>(null)
-  const active = useRef<string | null>(null)
-  const exiting = useRef<string | null>(null)
   const bounce = useRef<ReturnType<typeof bouncePopupAnchor>>(undefined)
-  const close = useCallback(() => {
-    const session = active.current
-    if (session) exiting.current = session
-    active.current = null
-    setOpen(false)
-    if (session) {
-      releasePopup(session)
-      return overlay.hide(session)
-    }
-    return Promise.resolve()
-  }, [])
+  const enabled = !preview && overlay.mode === 'native'
+  const { lifetime, open, error } = usePopupLifetime(
+    {
+      mode: 'native',
+      prepare() {
+        const anchor =
+          anchorRef?.current ??
+          ref.current?.closest('[data-overlay-anchor]') ??
+          ref.current
+        const rect = anchor?.getBoundingClientRect()
+        if (!rect) return
+        const definition = resolvePopup(component, params)
+        const metadata = popupMetadata(component)
+        return (session) =>
+          overlay.show({
+            v: 1,
+            kind: 'popover',
+            component,
+            params: definition.input,
+            session,
+            text: metadata.label,
+            anchor: {
+              x: rect.x,
+              y: rect.y,
+              width: rect.width,
+              height: rect.height
+            },
+            size: { width: 1, height: 1 },
+            side:
+              rect.top + rect.height / 2 < window.innerHeight / 2
+                ? 'bottom'
+                : 'top'
+          })
+      },
+      hide: (session) => overlay.hide(session),
+      beforeOpen: () => bounce.current?.complete(),
+      dock() {
+        bounce.current?.stop()
+        bounce.current = bouncePopupAnchor(anchorRef?.current ?? ref.current)
+      },
+      cleanup: () => bounce.current?.stop(),
+      restoreFocus: () => ref.current?.focus()
+    },
+    enabled
+  )
+  const close = useCallback(() => lifetime.setOpen(false), [lifetime])
   useEffect(() => {
-    if (preview || overlay.mode !== 'native') return
+    if (!enabled) return
     let cancelled = false
     let stop: (() => void) | undefined
     void import('@tauri-apps/api/event')
       .then(async ({ listen }) => {
-        const dispose = await listen<{
-          session: string
-          restoreFocus?: boolean
-          docked?: boolean
-        }>('overlay:closed', (event) => {
-          const { session, docked } = event.payload
-          if (session === active.current || session === exiting.current) {
-            if (docked && (!active.current || active.current === session)) {
-              bounce.current?.stop()
-              bounce.current = bouncePopupAnchor(
-                anchorRef?.current ?? ref.current
-              )
-            }
-            exiting.current = null
-            if (active.current && active.current !== session) return
-            releasePopup(event.payload.session)
-            active.current = null
-            setOpen(false)
-            if (event.payload.restoreFocus) ref.current?.focus()
-          }
-        })
+        const dispose = await listen<PopupClosed>('overlay:closed', (event) =>
+          lifetime.closed(event.payload)
+        )
         if (cancelled) dispose()
         else stop = dispose
       })
@@ -76,61 +90,13 @@ export function useOverlayPopover<K extends PopupId>(
     window.addEventListener('pointerdown', outside)
     return () => {
       cancelled = true
-      bounce.current?.stop()
       stop?.()
       window.removeEventListener('pointerdown', outside)
       window.removeEventListener('keydown', escape)
-      const session = active.current
-      active.current = null
-      if (session) {
-        releasePopup(session)
-        void overlay.hide(session).catch(console.error)
-      }
     }
-  }, [close, preview, anchorRef])
+  }, [close, enabled, lifetime])
   async function toggle() {
-    if (preview || overlay.mode !== 'native') return
-    if (active.current) return close()
-    const anchor =
-      anchorRef?.current ??
-      ref.current?.closest('[data-overlay-anchor]') ??
-      ref.current
-    const rect = anchor?.getBoundingClientRect()
-    if (!rect) return
-    bounce.current?.complete()
-    exiting.current = null
-    const session = crypto.randomUUID()
-    active.current = session
-    try {
-      setError('')
-      const definition = resolvePopup(component, params)
-      const metadata = popupMetadata(component)
-      claimPopup(session, () => {
-        void close().catch(console.error)
-      })
-      await overlay.show({
-        v: 1,
-        kind: 'popover',
-        component,
-        params: definition.input,
-        session,
-        text: metadata.label,
-        anchor: {
-          x: rect.x,
-          y: rect.y,
-          width: rect.width,
-          height: rect.height
-        },
-        size: { width: 1, height: 1 },
-        side:
-          rect.top + rect.height / 2 < window.innerHeight / 2 ? 'bottom' : 'top'
-      })
-      if (active.current === session) setOpen(true)
-    } catch (error) {
-      if (active.current === session) active.current = null
-      releasePopup(session)
-      setError(String(error))
-    }
+    if (enabled) return lifetime.toggle()
   }
   const triggerRef = useCallback((node: HTMLElement | null) => {
     ref.current = node
