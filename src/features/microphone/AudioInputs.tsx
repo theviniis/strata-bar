@@ -133,6 +133,7 @@ function AudioInputContentItem({
       variant="outline"
       disabled={isLoading || disabled}
       aria-pressed={!!isActive}
+      disableAnimation
       {...props}
     >
       <Mic size={16} className="shrink-0 text-primary" />

@@ -129,6 +129,7 @@ function AudioOutputContentItem({
       variant="outline"
       disabled={isLoading || disabled}
       aria-pressed={!!isActive}
+      disableAnimation
       {...props}
     >
       <Volume2 size={16} className="shrink-0 text-primary" />

@@ -11,9 +11,10 @@ import {
   EmptyMedia,
   EmptyTitle
 } from '@/components/ui/empty'
-import type { Reminder } from '@/services/system/reminders.generated'
 import { cn } from '@/lib/utils'
+import type { Reminder } from '@/services/system/reminders.generated'
 import { ChevronDownIcon, Ghost, RefreshCw, Trash } from 'lucide-react'
+import { motion, useReducedMotion } from 'motion/react'
 import type { ComponentProps, ReactNode } from 'react'
 
 export interface ActiveRemindersProps {
@@ -28,38 +29,59 @@ export function ActiveReminders({
   onOpenChange,
   items
 }: ActiveRemindersProps) {
+  const reducedMotion = useReducedMotion()
+
   return (
     <Collapsible
       open={isOpen}
       onOpenChange={onOpenChange}
       aria-label="Lembretes ativos"
-      className="space-y-2"
+      className="flex flex-col"
     >
       <CollapsibleTrigger
         render={
-          <Button variant="ghost" className="w-full">
+          <Button variant="ghost" className="w-full" disableAnimation>
             Ativos ({activeCount})
             <ChevronDownIcon className="ml-auto group-data-panel-open/button:rotate-180" />
           </Button>
         }
       />
 
-      <CollapsibleContent className="grid gap-2">
-        {activeCount === 0 && (
-          <Empty>
-            <EmptyHeader>
-              <EmptyMedia>
-                <Ghost />
-              </EmptyMedia>
-              <EmptyTitle>Nenhum lembrete ativo.</EmptyTitle>
-              <EmptyDescription>
-                Adicione novos lembretes para aparecer aqui.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
+      <CollapsibleContent
+        keepMounted
+        render={({ children, ...props }) => (
+          <div {...props} hidden={false} inert={!isOpen} aria-hidden={!isOpen}>
+            <motion.div
+              initial={false}
+              animate={{ height: isOpen ? 'auto' : 0 }}
+              transition={{
+                duration: reducedMotion ? 0 : 0.35,
+                ease: 'easeOut'
+              }}
+              className="overflow-hidden"
+            >
+              {children}
+            </motion.div>
+          </div>
         )}
+      >
+        <div className="grid gap-2 pt-2">
+          {activeCount === 0 && (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia>
+                  <Ghost />
+                </EmptyMedia>
+                <EmptyTitle>Nenhum lembrete ativo.</EmptyTitle>
+                <EmptyDescription>
+                  Adicione novos lembretes para aparecer aqui.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
 
-        {items}
+          {items}
+        </div>
       </CollapsibleContent>
     </Collapsible>
   )

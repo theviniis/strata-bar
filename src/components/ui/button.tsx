@@ -56,6 +56,7 @@ export type ButtonProps = ButtonPrimitive.Props &
       isLoading?: boolean
       text?: ReactNode
     }
+    disableAnimation?: boolean
   }
 
 function Button({
@@ -65,6 +66,7 @@ function Button({
   size = 'default',
   asChild = false,
   disabled = false,
+  disableAnimation = false,
   loading = {
     isLoading: false,
     text: 'Carregando...'
@@ -76,8 +78,8 @@ function Button({
   return (
     <Comp
       data-slot="button"
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
+      whileHover={{ scale: disableAnimation ? 1 : 1.05 }}
+      whileTap={{ scale: disableAnimation ? 1 : 0.95 }}
       transition={{ type: 'spring', stiffness: 400, damping: 17 }}
       className={cn(buttonVariants({ variant, size, className }))}
       disabled={loading.isLoading || disabled}

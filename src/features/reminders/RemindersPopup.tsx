@@ -139,6 +139,7 @@ export function RemindersPopup({
                       variant="outline"
                       id={`${id}-date`}
                       className="w-full justify-between font-normal"
+                      disableAnimation
                     >
                       {date
                         ? date.toLocaleDateString('pt-BR')

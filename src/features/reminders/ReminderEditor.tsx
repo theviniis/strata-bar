@@ -2,6 +2,7 @@ import { EditorContent, type Editor } from '@tiptap/react'
 import { BubbleMenu } from '@tiptap/react/menus'
 import type { ComponentProps, KeyboardEventHandler, Ref } from 'react'
 import { Button } from '@/components/ui/button'
+import { useFocusBorder } from '@/components/ui/use-focus-border'
 
 export interface ReminderEditorProps {
   editor: Editor | null
@@ -39,9 +40,14 @@ export function ReminderEditor({
   onApplyLink,
   onLinkKeyDown
 }: ReminderEditorProps) {
+  const focusBorder = useFocusBorder<HTMLDivElement>()
   return (
     <div ref={boundary} onKeyDown={onKeyDown}>
-      <EditorContent editor={editor} />
+      <EditorContent
+        editor={editor}
+        className="rounded-md border border-border/50"
+        {...focusBorder}
+      />
       {editor && (
         <BubbleMenu editor={editor} {...bubbleProps}>
           <div
