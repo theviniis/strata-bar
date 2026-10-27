@@ -1,6 +1,7 @@
 import { MotionConfig } from 'motion/react'
 import type { ReactNode, SyntheticEvent } from 'react'
-import { WidgetPreviewContext } from './widget-preview-context'
+import { WidgetRuntimeContext } from './widget-runtime-context'
+import { previewWidgetRuntime } from '@/services/system/widget-runtime'
 
 function blockInteraction(event: SyntheticEvent) {
   event.preventDefault()
@@ -10,7 +11,7 @@ function blockInteraction(event: SyntheticEvent) {
 /** Explicit sample runtime shared by every frozen bar and widget preview. */
 export function WidgetPreviewRuntime({ children }: { children: ReactNode }) {
   return (
-    <WidgetPreviewContext value={true}>
+    <WidgetRuntimeContext value={previewWidgetRuntime}>
       <MotionConfig reducedMotion="always">
         <div
           inert
@@ -25,6 +26,6 @@ export function WidgetPreviewRuntime({ children }: { children: ReactNode }) {
           {children}
         </div>
       </MotionConfig>
-    </WidgetPreviewContext>
+    </WidgetRuntimeContext>
   )
 }

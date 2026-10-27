@@ -144,7 +144,7 @@ function NativeSettingsView() {
                     >
                       <LayoutEditor
                         disabled={disabled}
-                        draft={editor.form.getValues()}
+                        draft={editor.draft}
                         onChange={editor.replaceDraft}
                       />
                     </SettingsPage>
@@ -155,7 +155,7 @@ function NativeSettingsView() {
                     >
                       <BarSettings
                         disabled={disabled}
-                        draft={editor.form.getValues()}
+                        draft={editor.draft}
                         onChange={editor.replaceDraft}
                       />
                     </SettingsPage>

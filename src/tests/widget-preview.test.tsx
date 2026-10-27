@@ -15,6 +15,12 @@ import {
   widgetPreviewEvent
 } from '@/services/system/widget-preview'
 import { bridge, connect } from '@/services/system/bridge'
+import { WidgetRuntimeContext } from '@/components/status-bar/widget-runtime-context'
+import {
+  liveWidgetRuntime,
+  previewWidgetRuntime
+} from '@/services/system/widget-runtime'
+import { useSystemChannel } from '@/hooks/use-system-channel'
 import { overlay } from '@/services/system/overlay'
 import { listen } from '@tauri-apps/api/event'
 
@@ -279,4 +285,25 @@ it('keeps a real native failure visible instead of selecting preview samples', (
     '—'
   )
   expect(view.container).toHaveTextContent('Sensor unavailable')
+})
+
+it('discards preview readings when switching to a live subscription still awaiting data', () => {
+  vi.mocked(connect).mockImplementationOnce(() => () => {})
+  function Reading() {
+    const event = useSystemChannel('cpu')
+    return <output>{event.status}</output>
+  }
+  const view = render(
+    <WidgetRuntimeContext value={previewWidgetRuntime}>
+      <Reading />
+    </WidgetRuntimeContext>
+  )
+  expect(screen.getByRole('status')).toHaveTextContent('ready')
+  view.rerender(
+    <WidgetRuntimeContext value={liveWidgetRuntime}>
+      <Reading />
+    </WidgetRuntimeContext>
+  )
+  expect(screen.getByRole('status')).toHaveTextContent('loading')
+  expect(connect).toHaveBeenCalledOnce()
 })

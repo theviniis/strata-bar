@@ -1,4 +1,4 @@
-import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
+import { useWidgetRuntime } from '@/components/status-bar/widget-runtime-context'
 import { useWidgetView } from '@/components/status-bar/widget-view'
 import { ScrollingText } from '@/components/ui/scrolling-text'
 import { WidgetItemTooltip } from '@/components/widget-item'
@@ -38,7 +38,7 @@ export function MusicContent({
   /** The widget's configured tooltip toggle. */
   tooltip?: boolean
 }) {
-  const preview = useWidgetPreview()
+  const runtime = useWidgetRuntime()
   const current = event.status === 'ready' ? event.data : null
   const { state, interactions } = useMusicInteractions(current, onAction)
   const pending = state.pending.playback
@@ -76,7 +76,7 @@ export function MusicContent({
             >
               <ScrollingText
                 text={text}
-                animate={!preview}
+                animate={runtime.animated}
                 aria-describedby={tooltip ? tip.describedBy : undefined}
                 className="relative z-10 mx-1 flex-1 text-bar"
               />

@@ -1,15 +1,15 @@
-import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
+import { useWidgetRuntime } from '@/components/status-bar/widget-runtime-context'
 import { useSystemChannel } from '@/hooks/use-system-channel'
 import { bridge } from '@/services/system/bridge'
 import { MediaSpectrum } from './media-spectrum.widget'
 
 export function MediaSpectrumController() {
   const event = useSystemChannel('mediaSpectrum')
-  const preview = useWidgetPreview()
+  const runtime = useWidgetRuntime()
   return (
     <MediaSpectrum
       data={event.status === 'ready' ? event.data : null}
-      demo={preview || bridge.mode === 'demo'}
+      demo={!runtime.interactive || bridge.mode === 'demo'}
     />
   )
 }

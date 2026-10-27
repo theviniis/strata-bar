@@ -1,18 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
-import { widgetPreviewEvent } from '@/services/system/widget-preview'
-import {
-  bridge,
-  connect,
-  type Channel,
-  type ChannelData,
-  type NativeBridge,
-  type SystemEvent
-} from '../services/system/bridge'
-
-// Feature widgets read native-shaped snapshots. Only the explicit preview
-// runtime supplies samples; native errors never select demo scalars.
-const native = bridge as NativeBridge
+import { useWidgetRuntime } from '@/components/status-bar/widget-runtime-context'
+import type { Channel } from '../services/system/bridge'
 
 /**
  * `intervalMs` comes from the widget's configured polling cadence; changing it
@@ -25,20 +13,26 @@ export function useSystemChannel<C extends Channel>(
   intervalMs = 2000,
   workspaceSource?: 'komorebi' | 'windows'
 ) {
-  const preview = useWidgetPreview()
-  const [value, setValue] = useState<SystemEvent<ChannelData[C]>>({
-    status: 'loading',
-    data: null
-  })
+  const runtime = useWidgetRuntime()
+  const [reading, setReading] = useState(() => ({
+    runtime,
+    channel,
+    event: runtime.initial(channel)
+  }))
   useEffect(() => {
-    if (preview) return
-    return connect<ChannelData, C>(
-      native,
+    return runtime.subscribe(
       channel,
       { intervalMs, workspaceSource },
-      setValue,
-      (error) => setValue({ status: 'error', data: null, error: String(error) })
+      (event) => setReading({ runtime, channel, event }),
+      (error) =>
+        setReading({
+          runtime,
+          channel,
+          event: { status: 'error', data: null, error: String(error) }
+        })
     )
-  }, [channel, revision, intervalMs, preview, workspaceSource])
-  return preview ? widgetPreviewEvent(channel) : value
+  }, [channel, revision, intervalMs, runtime, workspaceSource])
+  return reading.runtime === runtime && reading.channel === channel
+    ? reading.event
+    : runtime.initial(channel)
 }

@@ -8,7 +8,8 @@ import {
 } from '@/features/memory/src/fixtures'
 import { defaultView } from '@/components/status-bar/presentation'
 import { WidgetViewContext } from '@/components/status-bar/widget-view'
-import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
+import { WidgetRuntimeContext } from '@/components/status-bar/widget-runtime-context'
+import { previewWidgetRuntime } from '@/services/system/widget-runtime'
 import type { ChannelData, SystemEvent } from '@/services/system/bridge'
 
 const runtime = vi.hoisted(() => ({
@@ -115,9 +116,9 @@ it('owns the subscription, retains failed readings and resubscribes on interval 
 it('uses the shared RAM visual in inert preview without a subscription or timer', () => {
   vi.useFakeTimers()
   const view = render(
-    <WidgetPreviewContext value={true}>
+    <WidgetRuntimeContext value={previewWidgetRuntime}>
       <MemoryController />
-    </WidgetPreviewContext>
+    </WidgetRuntimeContext>
   )
   expect(screen.getByLabelText('Uso da RAM')).toHaveTextContent('%')
   expect(runtime.connect).not.toHaveBeenCalled()

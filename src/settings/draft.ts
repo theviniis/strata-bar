@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useCallback, useEffect, useState } from 'react'
-import { useForm, type UseFormReturn } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import {
   configSchema,
   migrateConfig,
@@ -104,7 +104,8 @@ export function firstError(errors: unknown): string | null {
 }
 
 export type ConfigEditor = {
-  form: UseFormReturn<ConfigDraft, unknown, ValidConfig>
+  /** Current visual document; invalid JSON remains in jsonText until corrected. */
+  draft: ConfigDraft
   /** The last loaded/accepted document: what Revert returns to. */
   saved: ValidConfig
   /** Latest field or native failure, in one slot. */
@@ -231,7 +232,7 @@ export function useConfigEditor(persistence: ConfigPersistence): ConfigEditor {
   }, [form])
 
   return {
-    form,
+    draft: form.getValues(),
     saved,
     error:
       textError ??

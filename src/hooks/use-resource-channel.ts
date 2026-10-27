@@ -1,33 +1,21 @@
 import { useEffect, useState } from 'react'
-import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
-import {
-  PREVIEW_TIME,
-  widgetPreviewEvent
-} from '@/services/system/widget-preview'
-import {
-  bridge,
-  connect,
-  type ChannelData,
-  type NativeBridge,
-  type SystemEvent
-} from '@/services/system/bridge'
+import { useWidgetRuntime } from '@/components/status-bar/widget-runtime-context'
+import type { ChannelData, SystemEvent } from '@/services/system/bridge'
 
 /** Resource channels share retention and freshness behavior across bar and popup. */
 export function useResourceChannel<C extends 'cpu' | 'gpu' | 'memory' | 'disk'>(
   channel: C,
   intervalMs = 2000
 ) {
-  const preview = useWidgetPreview()
+  const runtime = useWidgetRuntime()
   const [reading, setReading] = useState<{
     channel: C
     event: SystemEvent<ChannelData[C]>
     lastData?: ChannelData[C]
   }>({ channel, event: { status: 'loading' } })
-  const [now, setNow] = useState(Date.now)
+  const [now, setNow] = useState(runtime.now)
   useEffect(() => {
-    if (preview) return
-    return connect<ChannelData, C>(
-      bridge as NativeBridge,
+    return runtime.subscribe(
       channel,
       { intervalMs },
       (event) =>
@@ -49,17 +37,13 @@ export function useResourceChannel<C extends 'cpu' | 'gpu' | 'memory' | 'disk'>(
           event: { status: 'error', error: String(error) }
         }))
     )
-  }, [channel, intervalMs, preview])
-  useEffect(() => {
-    if (preview) return
-    const timer = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(timer)
-  }, [preview])
-  if (preview)
+  }, [channel, intervalMs, runtime])
+  useEffect(() => runtime.observeTime(setNow, 1000), [runtime])
+  if (!runtime.interactive)
     return {
-      event: widgetPreviewEvent(channel),
+      event: runtime.initial(channel),
       lastData: undefined,
-      now: PREVIEW_TIME
+      now: runtime.now()
     }
   return {
     ...(reading.channel === channel

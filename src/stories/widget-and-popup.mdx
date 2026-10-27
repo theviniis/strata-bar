@@ -589,18 +589,19 @@ bloqueia a interação do usuário com a amostra.
 
 ```tsx
 import { Widget } from '@/components/status-bar/widget'
-import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
+import { WidgetRuntimeContext } from '@/components/status-bar/widget-runtime-context'
+import { previewWidgetRuntime } from '@/services/system/widget-runtime'
 import { widgetSchema } from '@/services/configuration/config'
 
 const widget = widgetSchema.parse({ id: 'cpu-preview', type: 'cpu' })
 
 export function StaticCpuPreview() {
   return (
-    <WidgetPreviewContext value={true}>
+    <WidgetRuntimeContext value={previewWidgetRuntime}>
       <div inert>
         <Widget widget={widget} />
       </div>
-    </WidgetPreviewContext>
+    </WidgetRuntimeContext>
   )
 }
 ```

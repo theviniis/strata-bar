@@ -11,7 +11,8 @@ import {
   agentQuestionFixture,
   agentPermissionFixture
 } from '@/features/agents/src/fixtures'
-import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
+import { WidgetRuntimeContext } from '@/components/status-bar/widget-runtime-context'
+import { previewWidgetRuntime } from '@/services/system/widget-runtime'
 import type { AgentsSnapshot } from '@/services/system/agents.generated'
 const runtime = vi.hoisted(() => ({ connect: vi.fn(), dispose: vi.fn() }))
 vi.mock('@/stores/agents', async (importOriginal) => {
@@ -175,9 +176,9 @@ it('connects once per active controller and disposes on unmount', () => {
 })
 it('renders the same agent visual in inert preview without connecting', () => {
   render(
-    <WidgetPreviewContext value={true}>
+    <WidgetRuntimeContext value={previewWidgetRuntime}>
       <AgentsController />
-    </WidgetPreviewContext>
+    </WidgetRuntimeContext>
   )
   expect(
     screen.getByRole('button', { name: 'Abrir agentes de IA' })

@@ -5,7 +5,8 @@ import { ClockController } from '@/features/clock/widget/clock.controller'
 import { ClockPopup } from '@/features/clock/popup/clock.popup'
 import { ClockPopupController } from '@/features/clock/popup/clock.popup.controller'
 import { clockFixture } from '@/features/clock/src/fixtures'
-import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
+import { WidgetRuntimeContext } from '@/components/status-bar/widget-runtime-context'
+import { previewWidgetRuntime } from '@/services/system/widget-runtime'
 
 vi.mock('@/services/system/overlay', () => ({
   overlay: { mode: 'demo', hide: vi.fn(async () => {}) }
@@ -77,9 +78,9 @@ it('aligns updates to the minute and clears the timer on unmount', () => {
 it('keeps the clock preview free of timers', () => {
   vi.useFakeTimers()
   const result = render(
-    <WidgetPreviewContext value={true}>
+    <WidgetRuntimeContext value={previewWidgetRuntime}>
       <ClockController />
-    </WidgetPreviewContext>
+    </WidgetRuntimeContext>
   )
   expect(vi.getTimerCount()).toBe(0)
   result.unmount()

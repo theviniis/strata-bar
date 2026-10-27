@@ -5,7 +5,8 @@ import { WorkspacesController } from '@/features/workspaces/widget/workspaces.co
 import { workspacesFixture } from '@/features/workspaces/src/fixtures'
 import { defaultView } from '@/components/status-bar/presentation'
 import { WidgetViewContext } from '@/components/status-bar/widget-view'
-import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
+import { WidgetRuntimeContext } from '@/components/status-bar/widget-runtime-context'
+import { previewWidgetRuntime } from '@/services/system/widget-runtime'
 import type { WorkspacesData, SystemEvent } from '@/services/system/bridge'
 
 const runtime = vi.hoisted(() => ({
@@ -116,9 +117,9 @@ it('owns subscriptions, configured intervals, focus actions and cleanup', () => 
 
 it('keeps workspace preview actions inert', () => {
   const view = render(
-    <WidgetPreviewContext value={true}>
+    <WidgetRuntimeContext value={previewWidgetRuntime}>
       <WorkspacesController />
-    </WidgetPreviewContext>
+    </WidgetRuntimeContext>
   )
   fireEvent.click(screen.getAllByRole('button')[0])
   expect(runtime.connect).not.toHaveBeenCalled()

@@ -1,5 +1,5 @@
 import type { WidgetView } from '@/components/status-bar/presentation'
-import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
+import { useWidgetRuntime } from '@/components/status-bar/widget-runtime-context'
 import { useWidgetView } from '@/components/status-bar/widget-view'
 import { useOverlayTooltip } from '@/hooks/use-overlay-tooltip'
 import { useSystemChannel } from '@/hooks/use-system-channel'
@@ -13,7 +13,7 @@ import { WorkspacesWidget } from './workspaces.widget'
 
 export function WorkspacesController() {
   const view = useWidgetView()
-  const preview = useWidgetPreview()
+  const runtime = useWidgetRuntime()
   const event = useSystemChannel(
     'workspaces',
     0,
@@ -24,7 +24,7 @@ export function WorkspacesController() {
     <WorkspacesComposition
       event={event}
       view={view}
-      inert={preview}
+      inert={!runtime.interactive}
       showTitles={bridge.mode === 'demo'}
     />
   )

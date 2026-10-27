@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { widgetSchema, types } from '@/services/configuration/config'
 import { Widget } from './widget'
-import { WidgetPreviewContext } from './widget-preview-context'
+import { WidgetRuntimeContext } from './widget-runtime-context'
+import { previewWidgetRuntime } from '@/services/system/widget-runtime'
 
 const meta = {
   title: 'Composição/Widget',
@@ -9,11 +10,11 @@ const meta = {
   tags: ['autodocs'],
   decorators: [
     (Story) => (
-      <WidgetPreviewContext value={true}>
+      <WidgetRuntimeContext value={previewWidgetRuntime}>
         <div inert className="w-fit rounded-md border p-3">
           <Story />
         </div>
-      </WidgetPreviewContext>
+      </WidgetRuntimeContext>
     )
   ],
   parameters: {
@@ -52,7 +53,7 @@ const widget = widgetSchema.parse({ id: 'cpu-main', type: 'cpu', format: 'label'
 
 ### Preview e isolamento
 
-Estas stories envolvem o componente em \`WidgetPreviewContext value={true}\` e
+Estas stories envolvem o componente em \`WidgetRuntimeContext value={previewWidgetRuntime}\` e
 um elemento \`inert\`: usam amostras estáticas e não iniciam subscriptions,
 roteamento de áudio ou ações nativas. O provider é uma dependência dos
 controladores, não dos visuais. Não copie esse provider para a barra em produção.

@@ -5,6 +5,11 @@ popups. Memory terminology follows Windows concepts.
 
 ## Language
 
+**Audio selection**:
+The choice of the Windows input or output device from its widget popup. This
+choice is separate from the configured destination of gain and mute controls,
+which may use Windows or Voicemeeter.
+
 **Widget settings**:
 The preferences and setup options for a widget, grouped in its own section of
 Settings. Settings is their single source of truth for every widget, including

@@ -9,7 +9,11 @@ import { PopupContext } from '@/popups/context'
 import { gpuFixture, GPU_FIXTURE_TIME } from '@/features/gpu/src/fixtures'
 import { defaultView } from '@/components/status-bar/presentation'
 import { WidgetViewContext } from '@/components/status-bar/widget-view'
-import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
+import { WidgetRuntimeContext } from '@/components/status-bar/widget-runtime-context'
+import {
+  liveWidgetRuntime,
+  previewWidgetRuntime
+} from '@/services/system/widget-runtime'
 import type { ChannelData, SystemEvent } from '@/services/system/bridge'
 
 const runtime = vi.hoisted(() => ({
@@ -34,6 +38,7 @@ afterEach(() => {
   runtime.connect.mockClear()
   runtime.dispose.mockClear()
   vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
 it('renders GPU states and presentation only from props and forwards refs and events', () => {
@@ -116,9 +121,9 @@ it('owns the subscription, retains failed readings and resubscribes on interval 
 it('uses the shared GPU visual in inert preview without a subscription or timer', () => {
   vi.useFakeTimers()
   const view = render(
-    <WidgetPreviewContext value={true}>
+    <WidgetRuntimeContext value={previewWidgetRuntime}>
       <GpuController />
-    </WidgetPreviewContext>
+    </WidgetRuntimeContext>
   )
   expect(screen.getByLabelText('Uso da GPU')).toHaveTextContent('%')
   expect(runtime.connect).not.toHaveBeenCalled()
@@ -143,8 +148,17 @@ it('renders the shared GPU preview without a native subscription', () => {
 it('resolves the popup subscription in its own window and cleans it up', () => {
   vi.useFakeTimers()
   vi.setSystemTime(GPU_FIXTURE_TIME)
-  const intervals = vi.spyOn(globalThis, 'setInterval')
-  const clearInterval = vi.spyOn(globalThis, 'clearInterval')
+  const observe = liveWidgetRuntime.observeTime
+  const stopTime = vi.fn()
+  vi.spyOn(liveWidgetRuntime, 'observeTime').mockImplementation(
+    (listener, cadence) => {
+      const stop = observe(listener, cadence)
+      return () => {
+        stop()
+        stopTime()
+      }
+    }
+  )
   const view = render(
     <PopupContext
       value={{ id: 'gpu', mode: 'native', params: undefined, close: vi.fn() }}
@@ -160,14 +174,12 @@ it('resolves the popup subscription in its own window and cleans it up', () => {
   expect(screen.getByText('20.6 W · desatualizada')).toBeVisible()
   view.unmount()
   expect(runtime.dispose).toHaveBeenCalledOnce()
-  expect(clearInterval).toHaveBeenCalledWith(intervals.mock.results[0].value)
-  intervals.mockRestore()
-  clearInterval.mockRestore()
+  expect(stopTime).toHaveBeenCalledOnce()
 })
 
 it('renders the demo popup without connecting a native resource channel', () => {
   vi.useFakeTimers()
-  const intervals = vi.spyOn(globalThis, 'setInterval')
+  const observeTime = vi.spyOn(liveWidgetRuntime, 'observeTime')
   const view = render(
     <PopupContext
       value={{ id: 'gpu', mode: 'demo', params: undefined, close: vi.fn() }}
@@ -178,7 +190,6 @@ it('renders the demo popup without connecting a native resource channel', () => 
   expect(screen.getByText(/Dados de demonstração/)).toBeVisible()
   expect(screen.getByText('27.3%')).toBeVisible()
   expect(runtime.connect).not.toHaveBeenCalled()
-  expect(intervals).not.toHaveBeenCalled()
-  intervals.mockRestore()
+  expect(observeTime).not.toHaveBeenCalled()
   view.unmount()
 })

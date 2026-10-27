@@ -148,12 +148,29 @@ acceptance and does not establish a full geometry pass.
 
 Widget previews share the actual Widget rendering through
 `WidgetPreviewRuntime`: studio, theme selector and catalog receive the same
-fixed, native-shaped samples from `widget-preview.ts`. The runtime is explicit;
-it is never selected after a native error. Previews suppress subscriptions,
+fixed, native-shaped samples from `widget-preview.ts`. `WidgetRuntimeContext`
+selects the live or preview adapter in `widget-runtime.ts`. The module owns
+subscriptions, initial readings, recurring time observations and effect
+execution; the preview adapter supplies fixed time and never starts those
+effects. Widget-specific visual choices use its interaction and motion policy.
+The runtime is explicit; it is never selected after a native error. Previews suppress subscriptions,
 actions, popup opening and continuous motion, including overflowing music text
 and spectrum transitions. The removed dynamic bar-demo path has no replacement;
 interactive popup demos retain their separate adapters. Native memory history
 and retention remain owned by Rust as recorded in ADR-0001.
+
+The Draft module exposes its current document and controlled editing actions;
+the form implementation stays private. Visual and JSON edits share validation,
+and only Apply crosses the persistence seam. Invalid JSON retains the last
+visual document without permitting it to be saved until the JSON is corrected.
+
+Audio selection is shared by the input and output Widget popups through
+`useAudioSelection`. It owns concurrent-selection exclusion, confirmation
+precedence, errors and teardown, and derives the route identity used by the
+existing serial gain/mute writer. A newer device observation supersedes a
+pending command's confirmation. Device selection still targets Windows when
+gain/mute is routed to Voicemeeter. Each caller retains its channel-specific
+retry behavior and its native or interactive demo adapter.
 
 The browser studio is a labelled, display-only demo with no inline appearance controls, widget chips, account settings or JSON editor. Its preview is inert, so widget popups cannot expose a second editing path. The settings view also refuses to mount the editor outside native mode, including direct browser requests to `?view=settings`; there is no demo settings persistence adapter. The retained `strata.config.v1` localStorage persistence and storage-event reload belong only to browser demo routes: `loadConfig` and `watchConfig` return without reading or installing listeners when Tauri internals are present, and native hydration never writes browser storage. The demo bridge has no native configuration load/save commands. Native windows connect to the native store through `connectConfig`; browser persistence cannot feed native bars. Per-monitor overrides merge with validated defaults. CSP restricts content to bundled resources; no remote executable content or arbitrary user JS in MVP.
 

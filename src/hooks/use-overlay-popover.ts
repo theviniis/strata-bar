@@ -1,4 +1,4 @@
-import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
+import { useWidgetRuntime } from '@/components/status-bar/widget-runtime-context'
 import { useCallback, useEffect, useRef, type RefObject } from 'react'
 import { bouncePopupAnchor } from '../popups/motion'
 import { overlay } from '../services/system/overlay'
@@ -17,10 +17,10 @@ export function useOverlayPopover<K extends PopupId>(
   params?: PopupParams<K>,
   anchorRef?: RefObject<HTMLElement | null>
 ) {
-  const preview = useWidgetPreview()
+  const runtime = useWidgetRuntime()
   const ref = useRef<HTMLElement>(null)
   const bounce = useRef<ReturnType<typeof bouncePopupAnchor>>(undefined)
-  const enabled = !preview && overlay.mode === 'native'
+  const enabled = runtime.interactive && overlay.mode === 'native'
   const { lifetime, open, error } = usePopupLifetime(
     {
       mode: 'native',

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useSyncExternalStore } from 'react'
-import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
+import { useWidgetRuntime } from '@/components/status-bar/widget-runtime-context'
 import type { MediaData, MediaRequest } from '@/services/system/media.generated'
 import { MusicInteractions } from './interactions'
 
@@ -9,24 +9,27 @@ export function useMusicInteractions(
   onAction: (request: MediaRequest) => Promise<unknown>,
   active = true
 ) {
-  const preview = useWidgetPreview()
+  const runtime = useWidgetRuntime()
   const sessionId = media?.sessionId
   const trackId = media?.trackId
   const interactions = useMemo(
     () =>
       new MusicInteractions(
-        !active || preview || sessionId === undefined || trackId === undefined
+        !active ||
+          !runtime.interactive ||
+          sessionId === undefined ||
+          trackId === undefined
           ? null
           : { sessionId, trackId }
       ),
-    [sessionId, trackId, active, preview]
+    [sessionId, trackId, active, runtime]
   )
   useLayoutEffect(() => {
     interactions.setTransport(onAction)
   }, [interactions, onAction])
   useLayoutEffect(() => {
-    if (active && !preview) return interactions.open()
-  }, [interactions, active, preview])
+    if (active) return runtime.effect(() => interactions.open())
+  }, [interactions, active, runtime])
   const state = useSyncExternalStore(
     interactions.subscribe,
     interactions.getSnapshot

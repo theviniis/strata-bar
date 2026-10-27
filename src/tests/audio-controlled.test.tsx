@@ -6,7 +6,8 @@ import { Volume } from '@/features/volume/widget/volume.widget'
 import { Microphone } from '@/features/microphone/widget/microphone.widget'
 import { VolumeController } from '@/features/volume/widget/volume.controller'
 import { MicrophoneController } from '@/features/microphone/widget/microphone.controller'
-import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
+import { WidgetRuntimeContext } from '@/components/status-bar/widget-runtime-context'
+import { previewWidgetRuntime } from '@/services/system/widget-runtime'
 import { WidgetViewContext } from '@/components/status-bar/widget-view'
 import { defaultView } from '@/components/status-bar/presentation'
 import {
@@ -180,10 +181,10 @@ it('owns independent subscriptions, follows intervals and cleans up', () => {
 it('renders inert audio previews without subscriptions or timers', () => {
   vi.useFakeTimers()
   const view = render(
-    <WidgetPreviewContext value={true}>
+    <WidgetRuntimeContext value={previewWidgetRuntime}>
       <VolumeController />
       <MicrophoneController />
-    </WidgetPreviewContext>
+    </WidgetRuntimeContext>
   )
   expect(screen.getAllByRole('button')).toHaveLength(2)
   expect(runtime.connect).not.toHaveBeenCalled()

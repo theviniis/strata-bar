@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor
+} from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import {
   useConfigEditor,
@@ -41,6 +48,38 @@ function Editor({ persistence }: { persistence: ConfigPersistence }) {
 }
 
 describe('draft validation', () => {
+  it('shares visual and JSON edits, preserves saved state on rejection and reloads on Revert', async () => {
+    const persistence = {
+      load: vi.fn().mockResolvedValue(structuredClone(defaultConfig)),
+      save: vi.fn().mockRejectedValue(new Error('Write failed'))
+    }
+    const { result } = renderHook(() => useConfigEditor(persistence))
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    const visual = structuredClone(result.current.draft)
+    visual.bar.height = 40
+    await act(async () => result.current.replaceDraft(visual))
+    expect(JSON.parse(result.current.jsonText).bar.height).toBe(40)
+    const json = { ...visual, bar: { ...visual.bar, height: 42 } }
+    await act(async () => result.current.replaceText(JSON.stringify(json)))
+    expect(result.current.draft.bar.height).toBe(42)
+    expect(persistence.save).not.toHaveBeenCalled()
+    await act(async () => result.current.replaceText('{ invalid'))
+    act(() => result.current.apply())
+    expect(persistence.save).not.toHaveBeenCalled()
+    expect(result.current.draft.bar.height).toBe(42)
+    await act(async () => result.current.replaceText(JSON.stringify(json)))
+    await act(async () => result.current.apply())
+    expect(persistence.save).toHaveBeenCalledWith(json)
+    expect(result.current.error?.message).toBe('Write failed')
+    expect(result.current.saved).toEqual(defaultConfig)
+    const external = { ...json, bar: { ...json.bar, height: 44 } }
+    persistence.load.mockResolvedValue(external)
+    await act(async () => result.current.revert())
+    expect(result.current.draft).toEqual(external)
+    expect(JSON.parse(result.current.jsonText)).toEqual(external)
+    expect(result.current.error).toBeNull()
+  })
+
   it.each(['Invalid height', 'Duplicate ID'])(
     'blocks saving a draft with %s',
     async (name) => {

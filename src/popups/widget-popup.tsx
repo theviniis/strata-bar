@@ -1,5 +1,5 @@
 import * as Popover from '@radix-ui/react-popover'
-import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
+import { useWidgetRuntime } from '@/components/status-bar/widget-runtime-context'
 import { Slot } from '@radix-ui/react-slot'
 import {
   createContext,
@@ -45,7 +45,7 @@ type RootProps<K extends PopupId> = {
   : { params: PopupParams<K> })
 
 function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
-  const preview = useWidgetPreview()
+  const preview = !useWidgetRuntime().interactive
   const anchor = useRef<HTMLElement>(null)
   const trigger = useRef<HTMLElement>(null)
   const native = overlay.mode === 'native'

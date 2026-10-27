@@ -13,7 +13,8 @@ import {
   REMINDER_FIXTURE_TIME
 } from '@/features/reminders/src/fixtures'
 import { getRemindersStore } from '@/stores/reminders'
-import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
+import { WidgetRuntimeContext } from '@/components/status-bar/widget-runtime-context'
+import { previewWidgetRuntime } from '@/services/system/widget-runtime'
 
 beforeEach(() => {
   vi.stubGlobal(
@@ -188,9 +189,9 @@ it('cleans the countdown interval and leaves inert previews without timers', () 
     view.unmount()
     expect(vi.getTimerCount()).toBe(0)
     const preview = render(
-      <WidgetPreviewContext value={true}>
+      <WidgetRuntimeContext value={previewWidgetRuntime}>
         <RemindersController />
-      </WidgetPreviewContext>
+      </WidgetRuntimeContext>
     )
     expect(vi.getTimerCount()).toBe(0)
     expect(screen.queryByLabelText('Tempo restante')).not.toBeInTheDocument()

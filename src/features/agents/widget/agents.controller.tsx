@@ -1,4 +1,4 @@
-import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
+import { useWidgetRuntime } from '@/components/status-bar/widget-runtime-context'
 import { useWidgetView } from '@/components/status-bar/widget-view'
 import { WidgetItemTooltip } from '@/components/widget-item'
 import { useOverlayTooltip } from '@/hooks/use-overlay-tooltip'
@@ -10,22 +10,22 @@ import { Slot } from '@radix-ui/react-slot'
 import { Agents } from './agents.widget'
 
 export function AgentsController() {
-  const preview = useWidgetPreview()
+  const runtime = useWidgetRuntime()
   const view = useWidgetView()
   const [useStore] = useState(getAgentsStore)
   const visible = useConfig((state) => state.config.agents.visible)
   const count = useStore((state) =>
-    !preview
+    runtime.interactive
       ? (state.snapshot?.alerts.items.filter((alert) => visible[alert.agent])
           .length ?? 0)
       : 0
   )
   const paused = useStore(
-    (state) => !preview && (state.snapshot?.alerts.paused ?? false)
+    (state) => runtime.interactive && (state.snapshot?.alerts.paused ?? false)
   )
   useEffect(
-    () => (preview ? undefined : useStore.getState().connect()),
-    [useStore, preview]
+    () => runtime.effect(() => useStore.getState().connect()),
+    [useStore, runtime]
   )
   const text = paused
     ? 'Agentes de IA · novos alertas pausados'

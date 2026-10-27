@@ -1,4 +1,4 @@
-import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
+import { useWidgetRuntime } from '@/components/status-bar/widget-runtime-context'
 import type { MediaSpectrumData } from '@/services/system/media.generated'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useState } from 'react'
@@ -17,19 +17,23 @@ export function MediaSpectrum({
   data: MediaSpectrumData | null
   demo?: boolean
 }) {
-  const preview = useWidgetPreview()
+  const runtime = useWidgetRuntime()
   const reducedMotion = useReducedMotion()
   const [visible, setVisible] = useState(data !== null)
   if (data && !visible) setVisible(true)
 
   const playing = data !== null
-  useEffect(() => {
-    if (preview || playing) return
-    const timeout = setTimeout(() => setVisible(false), HIDE_TIMEOUT)
-    return () => clearTimeout(timeout)
-  }, [playing, preview])
+  useEffect(
+    () =>
+      runtime.effect(() => {
+        if (playing) return
+        const timeout = setTimeout(() => setVisible(false), HIDE_TIMEOUT)
+        return () => clearTimeout(timeout)
+      }),
+    [playing, runtime]
+  )
 
-  if (preview)
+  if (!runtime.animated)
     return data ? (
       <div
         role="img"

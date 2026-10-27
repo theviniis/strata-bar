@@ -1,4 +1,4 @@
-import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
+import { useWidgetRuntime } from '@/components/status-bar/widget-runtime-context'
 import { useWidgetView } from '@/components/status-bar/widget-view'
 import { WidgetItemTooltip } from '@/components/widget-item'
 import { useOverlayTooltip } from '@/hooks/use-overlay-tooltip'
@@ -11,21 +11,20 @@ import { useReminderAnchor } from '../src/use-reminder-anchor'
 import { Reminders } from './reminders.widget'
 
 export function RemindersController() {
-  const preview = useWidgetPreview()
+  const runtime = useWidgetRuntime()
   const view = useWidgetView()
   const anchor = useReminderAnchor()
-  const snapshot = useReminders((s) => (preview ? null : s.snapshot))
-  const error = useReminders((s) => (preview ? null : s.error))
-  const [now, setNow] = useState(Date.now)
+  const snapshot = useReminders((s) =>
+    runtime.interactive ? s.snapshot : null
+  )
+  const error = useReminders((s) => (runtime.interactive ? s.error : null))
+  const [now, setNow] = useState(runtime.now)
   const active =
     snapshot?.reminders.some((r) => r.status === 'scheduled') ?? false
   useEffect(() => {
     if (!active) return
-    const tick = () => setNow(Date.now())
-    tick()
-    const timer = setInterval(tick, 1000)
-    return () => clearInterval(timer)
-  }, [active])
+    return runtime.observeTime(setNow, 1000)
+  }, [active, runtime])
   const next = nextReminder(snapshot?.reminders ?? [], now)
   const ringing = snapshot?.reminders.some((r) => r.status === 'ringing')
   const text = error

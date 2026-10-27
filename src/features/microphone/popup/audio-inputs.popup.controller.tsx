@@ -4,9 +4,8 @@ import {
   type SystemEvent,
   type VolumeChange
 } from '@/services/system/bridge'
-import { useAudioControl } from '@/features/audio/src/use-audio-control'
-import { useConfig } from '@/stores/config'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useAudioSelection } from '@/features/audio/src/use-audio-selection'
+import { useCallback, useState } from 'react'
 import { useSystemChannel } from '@/hooks/use-system-channel'
 import { usePopupContext } from '@/popups/context'
 import { AudioInputs } from './audio-inputs.popup'
@@ -91,51 +90,23 @@ function AudioInputsContent({
   setVolume,
   retry
 }: AudioProps) {
-  const [pending, setPending] = useState<string | null>(null)
-  const [error, setError] = useState('')
-  const [confirmed, setConfirmed] = useState<{
-    base: typeof inputs
-    data: ChannelData['audioInputs']
-  } | null>(null)
-  const busy = useRef(false)
-  const mounted = useRef(true)
-  useEffect(() => {
-    mounted.current = true
-    return () => {
-      mounted.current = false
-    }
-  }, [])
-  const data =
-    (confirmed?.base === inputs ? confirmed.data : null) ??
-    (inputs.status === 'ready' ? inputs.data : null)
-  async function select(id: string) {
-    if (busy.current) return
-    busy.current = true
-    setPending(id)
-    setError('')
-    try {
-      const result = await selectInput({ deviceId: id })
-      if (mounted.current) setConfirmed({ base: inputs, data: result })
-    } catch (e) {
-      if (mounted.current) setError(String(e))
-    } finally {
-      busy.current = false
-      if (mounted.current) setPending(null)
-    }
-  }
-  const route = useConfig((state) => state.config.audio.input)
-  const routeKey = `${route.source}:${route.targetIndex}:${route.source === 'windows' && inputs.status === 'ready' ? inputs.data.defaultDeviceId : ''}`
-  const audio = useAudioControl(volume, setVolume, routeKey)
+  const audio = useAudioSelection({
+    direction: 'input',
+    devices: inputs,
+    volume,
+    selectDevice: selectInput,
+    writeVolume: setVolume
+  })
   return (
     <AudioInputs
       inputs={inputs}
       volume={volume}
-      data={data}
-      pending={pending}
-      error={error || audio.error}
+      data={audio.data}
+      pending={audio.pending}
+      error={audio.error}
       level={audio.level}
       muted={audio.muted}
-      select={(id) => void select(id)}
+      select={audio.select}
       mute={audio.mute}
       setLevel={audio.setLevel}
       retry={retry}
