@@ -21,6 +21,7 @@ use windows::{
 };
 const CALLBACK: u32 = WM_APP + 42;
 const REFRESH_GEOMETRY: u32 = WM_APP + 43;
+const FULLSCREEN_TIMER: usize = 0x53544653;
 const SUBCLASS: usize = 0x53545241;
 const OVERLAY_SUBCLASS: usize = 0x5354524F;
 const SETTINGS_SUBCLASS: usize = 0x53545253;
@@ -98,9 +99,6 @@ impl BarGeometry {
         } else {
             ABE_TOP
         }
-    }
-    fn topmost(self) -> bool {
-        !FULLSCREEN_APP.load(Ordering::Relaxed)
     }
     fn strip(self, monitor: RECT) -> RECT {
         let height = self.height.clamp(1, (monitor.bottom - monitor.top).max(1));
@@ -221,6 +219,7 @@ struct Reservation {
     rect: RECT,
     geometry: Cell<BarGeometry>,
     busy: Cell<bool>,
+    fullscreen: Cell<bool>,
     applied: Cell<Option<[i32; 4]>>,
     shaped: Cell<Option<(BarGeometry, i32)>>,
     taskbar_message: u32,
@@ -300,6 +299,48 @@ unsafe fn enforce_frame(hwnd: HWND, topmost: bool) {
     }
 }
 
+unsafe fn apply_fullscreen_visibility(hwnd: HWND, fullscreen: bool) {
+    enforce_frame(hwnd, !fullscreen);
+    let _ = SetWindowPos(
+        hwnd,
+        Some(if fullscreen {
+            HWND_BOTTOM
+        } else {
+            HWND_TOPMOST
+        }),
+        0,
+        0,
+        0,
+        0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+    );
+    let _ = ShowWindow(
+        hwnd,
+        if fullscreen {
+            SW_HIDE
+        } else {
+            SW_SHOWNOACTIVATE
+        },
+    );
+    if !fullscreen {
+        enforce_frame(hwnd, true);
+        restore_bar_transparency(hwnd);
+    }
+}
+
+/// Reconcile visibility per monitor, including borderless apps without a shell notification.
+unsafe fn refresh_fullscreen(hwnd: HWND, state: &Reservation) {
+    let fullscreen = foreground_fullscreen_monitor()
+        .is_some_and(|monitor| foreground_covers_monitor(monitor, state.rect));
+    if state.fullscreen.replace(fullscreen) != fullscreen {
+        if fullscreen {
+            retry_active_reminder(&state.app);
+            overlay_hide(&state.app);
+        }
+        apply_fullscreen_visibility(hwnd, fullscreen);
+    }
+}
+
 unsafe fn position(hwnd: HWND, state: &Reservation) {
     if state.busy.replace(true) {
         return;
@@ -316,7 +357,7 @@ unsafe fn position(hwnd: HWND, state: &Reservation) {
         Some(HANDLE(signed_height as isize as *mut _)),
     );
     // tao re-applies its own frame and stacking styles on visibility changes.
-    enforce_frame(hwnd, geometry.topmost());
+    enforce_frame(hwnd, !state.fullscreen.get());
     let mut d = data(hwnd);
     d.uEdge = geometry.edge();
     d.rc = geometry.strip(state.rect);
@@ -346,7 +387,7 @@ unsafe fn position(hwnd: HWND, state: &Reservation) {
     if !matches {
         if let Err(e) = SetWindowPos(
             hwnd,
-            Some(if geometry.topmost() {
+            Some(if !state.fullscreen.get() {
                 HWND_TOPMOST
             } else {
                 HWND_NOTOPMOST
@@ -409,12 +450,17 @@ unsafe extern "system" fn procedure(
             }
         }
     }
+    if msg == WM_TIMER && wp.0 == FULLSCREEN_TIMER {
+        refresh_fullscreen(hwnd, state);
+        return LRESULT(0);
+    }
     if msg == REFRESH_GEOMETRY {
+        refresh_fullscreen(hwnd, state);
         position(hwnd, state);
         return LRESULT(0);
     }
     if msg == WM_STYLECHANGED {
-        enforce_frame(hwnd, state.geometry.get().topmost());
+        enforce_frame(hwnd, !state.fullscreen.get());
         restore_bar_transparency(hwnd);
         return LRESULT(0);
     }
@@ -428,6 +474,7 @@ unsafe extern "system" fn procedure(
         return result;
     }
     if msg == WM_NCDESTROY {
+        let _ = KillTimer(Some(hwnd), FULLSCREEN_TIMER);
         let mut d = data(hwnd);
         SHAppBarMessage(ABM_REMOVE, &mut d);
         let _ = RemoveWindowSubclass(hwnd, Some(procedure), SUBCLASS);
@@ -446,20 +493,7 @@ unsafe extern "system" fn procedure(
                 retry_active_reminder(&state.app);
                 overlay_hide(&state.app);
             }
-            let top = if !state.geometry.get().topmost() {
-                HWND_NOTOPMOST
-            } else {
-                HWND_TOPMOST
-            };
-            let _ = SetWindowPos(
-                hwnd,
-                Some(top),
-                0,
-                0,
-                0,
-                0,
-                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
-            );
+            refresh_fullscreen(hwnd, state);
         }
         return LRESULT(0);
     }
@@ -657,6 +691,7 @@ fn activate_bar(
                     },
                     geometry: Cell::new(geometry),
                     busy: Cell::new(false),
+                    fullscreen: Cell::new(false),
                     applied: Cell::new(None),
                     shaped: Cell::new(None),
                     taskbar_message: RegisterWindowMessageW(w!("TaskbarCreated")),
@@ -672,6 +707,7 @@ fn activate_bar(
                     window.destroy().map_err(|e| e.to_string())?;
                     return Err("Windows rejected AppBar registration".into());
                 }
+                SetTimer(Some(hwnd), FULLSCREEN_TIMER, 250, None);
                 position(hwnd, &*pointer);
             }
             unsafe {
@@ -679,7 +715,7 @@ fn activate_bar(
                 // tao clears its initial don't-focus marker before a hidden window is shown.
                 // Use the same show policy as the floating overlay, without WS_EX_NOACTIVATE.
                 let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
-                enforce_frame(hwnd, geometry.topmost());
+                enforce_frame(hwnd, true);
             }
             // ShowWindow/DPI initialization must finish before the final placement.
             unsafe {
@@ -1705,6 +1741,34 @@ fn foreground_covers_monitor(window: RECT, monitor: RECT) -> bool {
         && window.bottom >= monitor.bottom
 }
 
+fn foreground_fullscreen_monitor() -> Option<RECT> {
+    unsafe {
+        let foreground = GetForegroundWindow();
+        if foreground.0.is_null()
+            || foreground == GetShellWindow()
+            || foreground == GetDesktopWindow()
+            || !IsWindowVisible(foreground).as_bool()
+            || IsIconic(foreground).as_bool()
+        {
+            return None;
+        }
+        let mut process = 0;
+        GetWindowThreadProcessId(foreground, Some(&mut process));
+        if process == std::process::id() {
+            return None;
+        }
+        let monitor = monitor_rect(foreground)?;
+        let mut rect = RECT::default();
+        if GetWindowRect(foreground, &mut rect).is_ok()
+            && (foreground_covers_monitor(rect, monitor) || FULLSCREEN_APP.load(Ordering::Relaxed))
+        {
+            Some(monitor)
+        } else {
+            None
+        }
+    }
+}
+
 fn fullscreen_application_active() -> bool {
     if FULLSCREEN_APP.load(Ordering::Relaxed) {
         return true;
@@ -1899,6 +1963,37 @@ pub fn bar_snapshot() -> serde_json::Value {
 #[cfg(test)]
 mod geometry_tests {
     use super::*;
+    #[test]
+    fn fullscreen_hides_bar_and_restores_it_without_activation() {
+        unsafe {
+            let hwnd = CreateWindowExW(
+                WS_EX_TOOLWINDOW,
+                w!("STATIC"),
+                w!("Strata fullscreen test"),
+                WS_POPUP,
+                0,
+                0,
+                100,
+                36,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+            let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+            let foreground = GetForegroundWindow();
+            apply_fullscreen_visibility(hwnd, true);
+            let hidden = !IsWindowVisible(hwnd).as_bool();
+            apply_fullscreen_visibility(hwnd, false);
+            let restored = IsWindowVisible(hwnd).as_bool();
+            let unchanged_focus = foreground == GetForegroundWindow();
+            DestroyWindow(hwnd).unwrap();
+            assert!(hidden, "fullscreen must hide the bar HWND");
+            assert!(restored, "leaving fullscreen must restore the bar");
+            assert!(unchanged_focus, "restoring the bar must not steal focus");
+        }
+    }
     #[test]
     fn transparent_bar_forwards_activation_without_painting_a_system_caption() {
         struct Probe {
@@ -2218,7 +2313,6 @@ mod geometry_tests {
             [-2560, -80, 0, 0]
         );
         assert_eq!(geometry.edge(), ABE_BOTTOM);
-        assert!(geometry.topmost());
         config.bar.position = crate::config_contract::BarPosition::Top;
         let geometry = BarGeometry::from_config(&config, 1.5);
         let rect = geometry.strip(RECT {
