@@ -8,14 +8,14 @@ import {
   waitFor
 } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { WeatherPopup } from '@/features/weather/weather.popup'
-import { WeatherSettings } from '@/features/weather/WeatherSettings'
-import { weatherFixture } from '@/features/weather/fixtures'
+import { WeatherPopup } from '@/features/weather/popup/weather.popup'
+import { WeatherSettings } from '@/features/weather/src/weather-settings'
+import { weatherFixture } from '@/features/weather/src/fixtures'
 import {
   condition,
   localTime,
   temperature
-} from '@/features/weather/presentation'
+} from '@/features/weather/src/presentation'
 import {
   configSchema,
   defaultConfig,

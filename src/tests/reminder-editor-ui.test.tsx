@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import type { Editor } from '@tiptap/react'
 import { Fragment, StrictMode, Suspense } from 'react'
 import { expect, it, vi } from 'vitest'
-import { ReminderEditorController as ReminderEditor } from '@/features/reminders/ReminderEditorController'
+import { ReminderEditorController as ReminderEditor } from '@/features/reminders/src/reminder-editor-controller'
 
 it.each([false, true])(
   'mounts after suspension and reopens with live validation (StrictMode=%s)',

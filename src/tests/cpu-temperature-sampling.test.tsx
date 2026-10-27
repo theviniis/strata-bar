@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { CpuPopup } from '@/features/cpu/cpu.popup'
+import { CpuPopup } from '@/features/cpu/popup/cpu.popup'
 import type { CpuData } from '@/services/system/cpu.generated'
 
 function observation(): CpuData {

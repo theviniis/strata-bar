@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
-import { CpuPopup } from '@/features/cpu/cpu.popup'
-import { cpuFixture, CPU_FIXTURE_TIME } from '@/features/cpu/fixtures'
+import { CpuPopup } from '@/features/cpu/popup/cpu.popup'
+import { cpuFixture, CPU_FIXTURE_TIME } from '@/features/cpu/src/fixtures'
 import {
   configSchema,
   colorThemeSchema,

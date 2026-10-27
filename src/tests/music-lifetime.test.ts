@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { MusicInteractions } from '@/features/music/interactions'
+import { MusicInteractions } from '@/features/music/src/interactions'
 import { demoMedia } from '@/services/system/media'
 import type { MediaRequest } from '@/services/system/media.generated'
 

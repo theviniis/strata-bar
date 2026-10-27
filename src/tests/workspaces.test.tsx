@@ -1,7 +1,7 @@
-import { WorkspacesWidget } from '../features/workspaces/WorkspacesWidget'
+import { WorkspacesWidget } from '../features/workspaces/widget/workspaces.widget'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { it, expect, vi } from 'vitest'
-import { Workspaces } from '../features/workspaces/Workspaces'
+import { Workspaces } from '../features/workspaces/src/workspaces'
 import type { Workspace } from '../services/system/bridge'
 
 const visualProps = {

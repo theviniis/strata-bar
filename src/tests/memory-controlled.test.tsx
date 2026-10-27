@@ -1,8 +1,11 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { Memory } from '@/features/memory/Memory'
-import { MemoryController } from '@/features/memory/MemoryController'
-import { memoryFixture, MEMORY_FIXTURE_TIME } from '@/features/memory/fixtures'
+import { Memory } from '@/features/memory/widget/memory.widget'
+import { MemoryController } from '@/features/memory/widget/memory.controller'
+import {
+  memoryFixture,
+  MEMORY_FIXTURE_TIME
+} from '@/features/memory/src/fixtures'
 import { defaultView } from '@/components/status-bar/presentation'
 import { WidgetViewContext } from '@/components/status-bar/widget-view'
 import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'

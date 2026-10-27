@@ -69,12 +69,12 @@ Decisions already taken:
       events through the parser, and make the studio demo preview illustrative
       like CPU/RAM.
 - [x] Widen `useResourceChannel` to `'cpu' | 'memory' | 'gpu'`.
-- [x] `src/features/gpu/Gpu.tsx`: bar widget mirroring `Cpu.tsx`.
-- [x] `src/features/gpu/presentation.ts`: staleness plus percent/bytes/
+- [x] `src/features/gpu/widget/gpu.widget.tsx`: bar widget mirroring `Cpu.tsx`.
+- [x] `src/features/gpu/src/presentation.ts`: staleness plus percent/bytes/
       temperature/watts/fan formatters, keeping a `0 %` fan reading valid.
-- [x] `src/features/gpu/gpu.popup.tsx`: utilisation and temperature graphs plus
+- [x] `src/features/gpu/popup/gpu.popup.tsx`: utilisation and temperature graphs plus
       the usage, memory, temperature, power, fan and shared-memory rows.
-- [x] `src/features/gpu/gpu.popup.tsx`: popup registration in the same module.
+- [x] `src/features/gpu/popup/gpu.popup.tsx`: popup registration in the same module.
 - [x] `src/components/status-bar/NativeBar.tsx`: CPU | GPU | RAM.
 - [x] Studio shell copy that still claims GPU is unavailable (`App.tsx`) and the
       `--check-popups` fixture (`PopupCheckBar.tsx`).

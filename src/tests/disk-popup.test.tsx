@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { DiskPopup } from '../features/disk/disk.popup'
-import { formatDiskBytes } from '../features/disk/presentation'
+import { DiskPopup } from '../features/disk/popup/disk.popup'
+import { formatDiskBytes } from '../features/disk/src/presentation'
 import type { DiskData, DiskVolume } from '../services/system/disk.generated'
-import { diskFixture, DISK_FIXTURE_TIME } from '../features/disk/fixtures'
+import { diskFixture, DISK_FIXTURE_TIME } from '../features/disk/src/fixtures'
 
 function volume(
   mount: string,

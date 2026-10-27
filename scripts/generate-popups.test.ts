@@ -33,7 +33,8 @@ afterEach(() => {
 
 it('generates from a clean tree, discovers nested definitions and ignores other files', () => {
   const root = fixture()
-  definition(root, 'volume/audioOutputs.popup.tsx')
+  definition(root, 'volume/popup/audio-outputs.popup.tsx')
+  definition(root, 'volume/popup/audio-outputs.popup.controller.tsx')
   definition(root, 'clock/clock.popup.tsx')
   definition(root, 'clock/ClockPopup.tsx')
   expect(generatePopups(root)).toBe(true)
@@ -42,7 +43,8 @@ it('generates from a clean tree, discovers nested definitions and ignores other 
     'utf8'
   )
   expect(generated).toContain('export type PopupId = "audioOutputs" | "clock"')
-  expect(generated).toContain('../../features/volume/audioOutputs.popup')
+  expect(generated).toContain('../../features/volume/popup/audio-outputs.popup')
+  expect(generated).not.toContain('popup.controller')
   expect(generated).not.toContain('.popup.tsx')
   expect(generated).not.toContain('ClockPopup.tsx')
   expect(generatePopups(root)).toBe(false)
@@ -108,13 +110,28 @@ it('accepts legacy TS definitions and rejects a TS/TSX duplicate ID', () => {
 it.each([
   '.popup.tsx',
   '1clock.popup.tsx',
-  'audio-outputs.popup.tsx',
+  'audio--outputs.popup.tsx',
+  'audio-.popup.tsx',
+  'audio-2outputs.popup.tsx',
   'áudio.popup.tsx'
 ])('rejects invalid definition name %s with its path', (name) => {
   const root = fixture()
   const path = definition(root, name)
   expect(() => generatePopups(root)).toThrow(`Invalid popup ID`)
   expect(() => generatePopups(root)).toThrow(path)
+})
+
+it('preserves camelCase IDs and rejects collisions after kebab-case normalization', () => {
+  const root = fixture()
+  definition(root, 'reminders/popup/reminder-alert.popup.tsx')
+  definition(root, 'microphone/popup/audio-inputs.popup.tsx')
+  expect(discoverPopups(join(root, 'src/features')).map(([id]) => id)).toEqual([
+    'audioInputs',
+    'reminderAlert'
+  ])
+  const duplicate = definition(root, 'legacy/reminderAlert.popup.ts')
+  expect(() => generatePopups(root)).toThrow('Duplicate popup ID')
+  expect(() => generatePopups(root)).toThrow(duplicate)
 })
 
 it('accepts ASCII identifier names and escapes prototype keys safely', () => {

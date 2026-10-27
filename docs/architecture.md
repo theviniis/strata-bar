@@ -70,12 +70,16 @@ identity survives reopening, while every opening has a distinct session.
 `usePopupLifetime` binds the module to React without resetting ownership when
 callbacks change. Native cross-window ownership and geometry remain native.
 
-Each feature's `*.popup.tsx` holds its visual, controller and native/demo
-adapters as named exports, plus a default `definePopup` registration with label,
-schema and the local controller as `Content`. Discovery imports these modules
-directly into the generated registry. Their dependencies load with the registry;
-mounting and subscriptions still begin when the host renders the popup. Stories
-and tests import the prop-driven visual from the same module.
+Each feature uses one internal `src/`, plus `widget/`, `popup/` and
+`stories/` directories as needed. Files and directories use lowercase/kebab-case;
+React component exports stay PascalCase. Widget visuals and controllers live in
+`<name>.widget.tsx` and `<name>.controller.tsx`. Each `<name>.popup.tsx`
+holds its prop-driven visual, schema and default `definePopup` registration;
+`<name>.popup.controller.tsx` owns state, subscriptions and native/demo adapters.
+Controllers reference visuals during rendering, not during module initialization.
+Discovery imports popup modules directly. Dependencies load with the registry;
+mounting and subscriptions begin when the host renders the popup. Kebab-case
+filenames normalize to existing camelCase popup IDs in both TypeScript and Rust.
 
 ## workspaces channel
 

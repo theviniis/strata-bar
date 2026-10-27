@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { GpuPopup } from '@/features/gpu/gpu.popup'
+import { GpuPopup } from '@/features/gpu/popup/gpu.popup'
 import type { GpuData } from '@/services/system/gpu.generated'
 
 const at = 100000

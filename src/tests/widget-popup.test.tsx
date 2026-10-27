@@ -45,9 +45,9 @@ vi.mock('../hooks/useSystemChannel', () => ({
   useSystemChannel: () => ({ status: 'loading' })
 }))
 import { WidgetPopup } from '../popups/WidgetPopup'
-import { VolumeController } from '../features/volume/VolumeController'
-import { MicrophoneController } from '../features/microphone/MicrophoneController'
-import { RemindersController } from '../features/reminders/RemindersController'
+import { VolumeController } from '../features/volume/widget/volume.controller'
+import { MicrophoneController } from '../features/microphone/widget/microphone.controller'
+import { RemindersController } from '../features/reminders/widget/reminders.controller'
 import { WidgetItem } from '../components/widget-item'
 import { PopupHost } from '../popups/PopupHost'
 import { resolvePopup } from '../popups/resolve'

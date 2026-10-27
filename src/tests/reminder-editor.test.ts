@@ -1,7 +1,7 @@
 import { Editor } from '@tiptap/react'
 import { afterEach, expect, it } from 'vitest'
-import { reminderEditorExtensions } from '@/features/reminders/editor-extensions'
-import { reminderFormSchema } from '@/features/reminders/form'
+import { reminderEditorExtensions } from '@/features/reminders/src/editor-extensions'
+import { reminderFormSchema } from '@/features/reminders/src/form'
 
 let editor: Editor
 function create(content = '') {

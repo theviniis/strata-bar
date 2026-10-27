@@ -18,8 +18,14 @@ export function discoverPopups(root: string) {
       const path = resolve(directory, entry.name)
       if (entry.isDirectory()) visit(path)
       else if (entry.isFile() && /\.popup\.tsx?$/.test(entry.name)) {
-        const id = entry.name.replace(/\.popup\.tsx?$/, '')
-        if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(id)) {
+        const name = entry.name.replace(/\.popup\.tsx?$/, '')
+        const id = name.replace(/-([a-z])/g, (_, letter: string) =>
+          letter.toUpperCase()
+        )
+        if (
+          !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) &&
+          !/^[a-z][a-z0-9]*(?:-[a-z][a-z0-9]*)+$/.test(name)
+        ) {
           throw new Error(`Invalid popup ID '${id}': ${path}`)
         }
         const previous = definitions.get(id)

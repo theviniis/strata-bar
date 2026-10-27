@@ -1,16 +1,16 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { Agents } from '@/features/agents/Agents'
-import { AgentsController } from '@/features/agents/AgentsController'
-import { AgentQuestion } from '@/features/agents/AgentQuestion'
-import { AgentPermissionCard } from '@/features/agents/AgentPermissionCard'
-import { AgentAlerts } from '@/features/agents/AgentAlerts'
-import { AgentsPopup } from '@/features/agents/agents.popup'
+import { Agents } from '@/features/agents/widget/agents.widget'
+import { AgentsController } from '@/features/agents/widget/agents.controller'
+import { AgentQuestion } from '@/features/agents/src/agent-question'
+import { AgentPermissionCard } from '@/features/agents/src/agent-permission-card'
+import { AgentAlerts } from '@/features/agents/src/agent-alerts'
+import { AgentsPopup } from '@/features/agents/popup/agents.popup'
 import {
   agentsFixture,
   agentQuestionFixture,
   agentPermissionFixture
-} from '@/features/agents/fixtures'
+} from '@/features/agents/src/fixtures'
 import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
 import type { AgentsSnapshot } from '@/services/system/agents.generated'
 const runtime = vi.hoisted(() => ({ connect: vi.fn(), dispose: vi.fn() }))

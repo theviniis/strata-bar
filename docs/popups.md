@@ -6,10 +6,10 @@ components own their content, data and actions. Volume is the reference feature.
 
 ## Add a popup
 
-1. Create `*.popup.tsx` under its feature with the actual visual component,
-   controller and native/demo adapters as named exports. Content can be any React
+1. Create `*.popup.tsx` under its feature in its `popup/` directory with the actual visual component as a named export.
+   Put state, subscriptions and native/demo adapters in `*.popup.controller.tsx`. Content can be any React
    layout; it does not need predefined header/body/footer slots.
-2. Export `definePopup(...)` as default in that same file, with the local
+2. Export `definePopup(...)` as default in that same file, with the imported
    controller as `Content`. The filename supplies the ID: `clock.popup.tsx` is
    `clock`.
 3. Wrap the widget in `WidgetPopup.Root`, an optional `Anchor` and a `Trigger`.
@@ -18,9 +18,10 @@ components own their content, data and actions. Volume is the reference feature.
 There is no catalog or registry to edit. For a popup without parameters:
 
 ```tsx
-// At the end of src/features/clock/clock.popup.tsx, after its components.
+// At the end of src/features/clock/popup/clock.popup.tsx, after its components.
 // Import definePopup at the top of that same file.
 import { definePopup } from '@/popups/definition'
+import { ClockPopupController } from './clock.popup.controller'
 
 export default definePopup({
   label: 'Calendário',
@@ -32,18 +33,24 @@ Only `label` and `Content` are required. An omitted schema accepts `{}` or omitt
 params, rejecting extra fields. Add a Zod schema when the content needs parameters:
 
 ```tsx
-// src/features/workspaces/workspaceDetails.popup.tsx
+// src/features/workspaces/popup/workspace-details.popup.tsx
 import { z } from 'zod'
 import { definePopup } from '@/popups/definition'
-import { usePopupContext } from '@/popups/context'
+import { WorkspaceDetailsController } from './workspace-details.popup.controller'
 
-export function WorkspaceDetails() {
-  const { params, mode, close } = usePopupContext('workspaceDetails')
-  // params.workspace is inferred from the schema's output.
+export function WorkspaceDetails({
+  workspace,
+  demo,
+  close
+}: {
+  workspace: number
+  demo: boolean
+  close: () => void
+}) {
   return (
     <section>
-      <h2>Workspace {params.workspace + 1}</h2>
-      <p>{mode === 'demo' ? 'Example data' : 'Live data'}</p>
+      <h2>Workspace {workspace + 1}</h2>
+      <p>{demo ? 'Example data' : 'Live data'}</p>
       <button onClick={close}>Close</button>
     </section>
   )
@@ -52,8 +59,26 @@ export function WorkspaceDetails() {
 export default definePopup({
   label: 'Workspace details',
   schema: z.object({ workspace: z.number().int().nonnegative() }).strict(),
-  Content: WorkspaceDetails
+  Content: WorkspaceDetailsController
 })
+```
+
+```tsx
+// src/features/workspaces/popup/workspace-details.popup.controller.tsx
+import { usePopupContext } from '@/popups/context'
+import { WorkspaceDetails } from './workspace-details.popup'
+
+export function WorkspaceDetailsController() {
+  const { params, mode, close } = usePopupContext('workspaceDetails')
+  // params.workspace is inferred from the schema's output.
+  return (
+    <WorkspaceDetails
+      workspace={params.workspace}
+      demo={mode === 'demo'}
+      close={close}
+    />
+  )
+}
 ```
 
 ```tsx
@@ -128,12 +153,14 @@ size and aligns to that monitor's origin on the overflowing axis, allowing clipp
 ## Automatic discovery
 
 Popup implementations are discovered under `src/features/**/*.popup.tsx`. IDs
-must match `[A-Za-z_$][A-Za-z0-9_$]*` and be unique across features; errors identify
-invalid or conflicting paths. Renaming a definition changes its public string ID.
+use lowercase/kebab-case filenames, normalized to camelCase: `audio-outputs`
+registers `audioOutputs`. Legacy ASCII identifiers remain accepted. IDs must be
+unique after normalization; errors identify invalid or conflicting paths.
 
-Use one `*.popup.tsx` for JSX, controller, adapters and default registration.
-The generated map imports the complete module directly. Dependencies load with
-the registry, while mounting and subscriptions remain owned by the popup host.
+Keep JSX, schema and default registration in `*.popup.tsx`; import its controller
+from `*.popup.controller.tsx`. The generated map imports the complete module
+directly. Dependencies load with the registry, while mounting and subscriptions
+remain owned by the popup host. Controllers access visual exports during rendering.
 Keep prop-driven visuals available as named exports for stories and tests.
 
 Legacy `*.popup.ts` files are still

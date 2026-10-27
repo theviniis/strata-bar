@@ -1,10 +1,10 @@
 import { Profiler } from 'react'
 import { act, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { CpuController } from '@/features/cpu/CpuController'
-import { MemoryController } from '@/features/memory/MemoryController'
-import { cpuFixture, CPU_FIXTURE_TIME } from '@/features/cpu/fixtures'
-import { memoryFixture } from '@/features/memory/fixtures'
+import { CpuController } from '@/features/cpu/widget/cpu.controller'
+import { MemoryController } from '@/features/memory/widget/memory.controller'
+import { cpuFixture, CPU_FIXTURE_TIME } from '@/features/cpu/src/fixtures'
+import { memoryFixture } from '@/features/memory/src/fixtures'
 const runtime = vi.hoisted(() => ({
   emit: new Map<string, (event: unknown) => void>()
 }))

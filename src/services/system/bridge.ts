@@ -16,7 +16,7 @@ import { parseSnapshot } from '@/services/configuration/config'
 
 import type { WeatherCity, WeatherData } from './weather.generated'
 import { parseWeatherEvent } from './weather'
-import { weatherFixture } from '@/features/weather/fixtures'
+import { weatherFixture } from '@/features/weather/src/fixtures'
 
 export type BridgeMode = 'demo' | 'native'
 

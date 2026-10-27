@@ -98,7 +98,12 @@ powershell -File scripts/test-live-geometry.ps1
   `className` strings — do not add per-component `.css` files or shell selectors.
 - Theme: `<main data-theme={dark|light}>` is the `group` root; light-mode overrides use
   `group-data-[theme=light]:` utilities.
-- React components are PascalCase files/functions (`NativeBar.tsx`); hooks are `useXxx` (`useSystemChannel`);
+- Feature files and directories use lowercase/kebab-case. Each feature has one `src/` for internals,
+  `widget/<name>.widget.tsx` and `<name>.controller.tsx`, `popup/<name>.popup.tsx` and
+  `<name>.popup.controller.tsx`, and `stories/`, only where needed. Popup visuals, schemas and registration
+  stay in `.popup.tsx`; controllers own state, subscriptions and native/demo adapters. React functions
+  remain PascalCase; hooks remain `useXxx` (feature filenames use `use-xxx`).
+- Outside features, React components are PascalCase files/functions (`NativeBar.tsx`); hooks are `useXxx` (`useSystemChannel`);
   services and stores use lower-case modules (`bridge.ts`, `config.ts`).
 - Types are derived, never duplicated by hand: the config model comes from `z.infer` on the Zod schema and
   channel payloads come from the bridge contract (`ChannelData`). Type-only imports use `import type`.

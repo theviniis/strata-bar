@@ -43,7 +43,7 @@ vi.mock('../services/system/overlay', () => ({ overlay: host.overlay }))
 import { defaultConfig } from '../services/configuration/config'
 import { useConfig } from '../stores/config'
 import NativeBar from '../components/status-bar/NativeBar'
-import { optionLabel } from '../features/audio/presentation'
+import { optionLabel } from '../features/audio/src/presentation'
 import { PopupHost } from '../popups/PopupHost'
 import { resetVoicemeeterCapability } from '../hooks/useVoicemeeterCapability'
 

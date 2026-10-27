@@ -1,10 +1,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { Clock } from '@/features/clock/Clock'
-import { ClockController } from '@/features/clock/ClockController'
-import { ClockPopup } from '@/features/clock/clock.popup'
-import { ClockPopupController } from '@/features/clock/clock.popup'
-import { clockFixture } from '@/features/clock/fixtures'
+import { Clock } from '@/features/clock/widget/clock.widget'
+import { ClockController } from '@/features/clock/widget/clock.controller'
+import { ClockPopup } from '@/features/clock/popup/clock.popup'
+import { ClockPopupController } from '@/features/clock/popup/clock.popup.controller'
+import { clockFixture } from '@/features/clock/src/fixtures'
 import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
 
 vi.mock('@/services/system/overlay', () => ({

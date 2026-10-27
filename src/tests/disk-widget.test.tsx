@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { DiskBar } from '../features/disk/Disk'
-import { localVolumes } from '../features/disk/presentation'
+import { DiskBar } from '../features/disk/widget/disk.widget'
+import { localVolumes } from '../features/disk/src/presentation'
 import type { DiskVolume } from '../services/system/disk.generated'
 
 function volume(

@@ -7,7 +7,7 @@ import {
 import { Input } from '@/components/ui/input'
 import type { AudioSourceConfig } from '@/services/configuration/config'
 import { useSystemChannel } from '@/hooks/useSystemChannel'
-import { optionLabel } from '@/features/audio/presentation'
+import { optionLabel } from '@/features/audio/src/presentation'
 import { useId } from 'react'
 import { Choice } from './WidgetInspector'
 

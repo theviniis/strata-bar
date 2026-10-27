@@ -1,17 +1,17 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { FormEvent } from 'react'
-import { Reminders } from '@/features/reminders/Reminders'
-import { RemindersController } from '@/features/reminders/RemindersController'
-import { RemindersPopup } from '@/features/reminders/reminders.popup'
-import { ReminderAlertActions } from '@/features/reminders/ReminderAlertActions'
-import { ReminderAlert } from '@/features/reminders/reminderAlert.popup'
-import { CalendarSettings } from '@/features/reminders/CalendarSettings'
+import { Reminders } from '@/features/reminders/widget/reminders.widget'
+import { RemindersController } from '@/features/reminders/widget/reminders.controller'
+import { RemindersPopup } from '@/features/reminders/popup/reminders.popup'
+import { ReminderAlertActions } from '@/features/reminders/src/reminder-alert-actions'
+import { ReminderAlert } from '@/features/reminders/popup/reminder-alert.popup'
+import { CalendarSettings } from '@/features/reminders/src/calendar-settings'
 import {
   reminderFixture,
   remindersPopupFixture,
   REMINDER_FIXTURE_TIME
-} from '@/features/reminders/fixtures'
+} from '@/features/reminders/src/fixtures'
 import { getRemindersStore } from '@/stores/reminders'
 import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
 

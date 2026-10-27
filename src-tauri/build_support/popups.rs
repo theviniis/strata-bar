@@ -10,6 +10,32 @@ fn valid_id(id: &str) -> bool {
     bytes.next().is_some_and(start) && bytes.all(|b| start(b) || b.is_ascii_digit())
 }
 
+fn popup_id(name: &str) -> Option<String> {
+    if valid_id(name) {
+        return Some(name.to_owned());
+    }
+    let mut parts = name.split('-');
+    let valid_part = |part: &str| {
+        part.as_bytes().first().is_some_and(u8::is_ascii_lowercase)
+            && part
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+    };
+    let first = parts.next()?;
+    if !valid_part(first) {
+        return None;
+    }
+    let mut id = first.to_owned();
+    for part in parts {
+        if !valid_part(part) {
+            return None;
+        }
+        id.push_str(&part[..1].to_ascii_uppercase());
+        id.push_str(&part[1..]);
+    }
+    Some(id)
+}
+
 /// Same discovery and naming rules as scripts/generate-popups.ts; no JS execution.
 pub fn discover(root: &Path) -> io::Result<BTreeMap<String, PathBuf>> {
     fn visit(directory: &Path, entries: &mut BTreeMap<String, PathBuf>) -> io::Result<()> {
@@ -26,13 +52,13 @@ pub fn discover(root: &Path) -> io::Result<BTreeMap<String, PathBuf>> {
                 }) else {
                     continue;
                 };
-                if !valid_id(id) {
-                    return Err(io::Error::new(
+                let id = popup_id(id).ok_or_else(|| {
+                    io::Error::new(
                         io::ErrorKind::InvalidInput,
                         format!("Invalid popup ID '{id}': {}", path.display()),
-                    ));
-                }
-                if let Some(previous) = entries.get(id) {
+                    )
+                })?;
+                if let Some(previous) = entries.get(&id) {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
                         format!(
@@ -102,7 +128,8 @@ mod tests {
         let root = Fixture::new();
         let clock = root.add("clock/clock.popup.tsx");
         root.add("clock/ClockPopup.tsx");
-        root.add("volume/audioOutputs.popup.tsx");
+        root.add("volume/popup/audio-outputs.popup.tsx");
+        root.add("volume/popup/audio-outputs.popup.controller.tsx");
         let ids = |root: &Path| discover(root).unwrap().into_keys().collect::<Vec<_>>();
         assert_eq!(ids(&root.0), ["audioOutputs", "clock"]);
         let calendar = clock.with_file_name("calendar.popup.tsx");
@@ -115,7 +142,7 @@ mod tests {
     #[test]
     fn invalid_names_and_duplicate_ids_report_the_paths() {
         let root = Fixture::new();
-        let invalid = root.add("bad-name.popup.tsx");
+        let invalid = root.add("bad--name.popup.tsx");
         assert!(discover(&root.0)
             .unwrap_err()
             .to_string()
@@ -139,5 +166,21 @@ mod tests {
         assert!(error.contains("Duplicate popup ID"));
         assert!(error.contains(&legacy.display().to_string()));
         assert!(error.contains(&tsx.display().to_string()));
+    }
+
+    #[test]
+    fn kebab_case_names_preserve_ids_and_reject_normalized_collisions() {
+        assert_eq!(popup_id("audio-inputs").as_deref(), Some("audioInputs"));
+        assert_eq!(popup_id("reminder-alert").as_deref(), Some("reminderAlert"));
+        for name in ["audio--inputs", "audio-", "audio-2inputs", "áudio-inputs"] {
+            assert_eq!(popup_id(name), None);
+        }
+        let root = Fixture::new();
+        let first = root.add("volume/popup/audio-outputs.popup.tsx");
+        let second = root.add("legacy/audioOutputs.popup.ts");
+        let error = discover(&root.0).unwrap_err().to_string();
+        assert!(error.contains("Duplicate popup ID"));
+        assert!(error.contains(&first.display().to_string()));
+        assert!(error.contains(&second.display().to_string()));
     }
 }

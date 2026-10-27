@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { expect, it, vi } from 'vitest'
-import { useMusicPopupControls } from '@/features/music/useMusicPopupControls'
+import { useMusicPopupControls } from '@/features/music/src/use-music-popup-controls'
 import { demoMedia } from '@/services/system/media'
 
 it('sends volume while dragging, keeps the draft through stale echoes, and coalesces pending moves', async () => {

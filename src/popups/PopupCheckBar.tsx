@@ -1,7 +1,7 @@
-import { VolumeController } from '../features/volume/VolumeController'
-import { MemoryController } from '../features/memory/MemoryController'
-import { CpuController } from '../features/cpu/CpuController'
-import { GpuController } from '../features/gpu/GpuController'
+import { VolumeController } from '../features/volume/widget/volume.controller'
+import { MemoryController } from '../features/memory/widget/memory.controller'
+import { CpuController } from '../features/cpu/widget/cpu.controller'
+import { GpuController } from '../features/gpu/widget/gpu.controller'
 import { useState } from 'react'
 
 /** Development-only fixture for --check-popups; excludes unrelated widget work. */

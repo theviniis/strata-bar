@@ -1,11 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { Music } from '@/features/music/Music'
-import { MusicPopup } from '@/features/music/music.popup'
-import { SpotifySettings } from '@/features/music/SpotifySettings'
+import { Music } from '@/features/music/widget/music.widget'
+import { MusicPopup } from '@/features/music/popup/music.popup'
+import { SpotifySettings } from '@/features/music/src/spotify-settings'
 import { WidgetPreview } from '@/components/status-bar/WidgetPreview'
 import { widgetSchema } from '@/services/configuration/config'
-import { musicFixture, musicControlsFixture } from '@/features/music/fixtures'
+import {
+  musicFixture,
+  musicControlsFixture
+} from '@/features/music/src/fixtures'
 const runtime = vi.hoisted(() => ({ connect: vi.fn() }))
 vi.mock('@/services/system/bridge', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/system/bridge')>()),

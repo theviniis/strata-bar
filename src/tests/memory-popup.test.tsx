@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { MemoryPopup } from '../features/memory/memory.popup'
+import { MemoryPopup } from '../features/memory/popup/memory.popup'
 
 const ready = (value: number) => ({
   status: 'ready' as const,

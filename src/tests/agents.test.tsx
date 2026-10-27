@@ -3,20 +3,20 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import {
   AgentsPopupController as AgentsPopup,
   AgentsPopupStateController as AgentsPopupContent
-} from '@/features/agents/agents.popup'
+} from '@/features/agents/popup/agents.popup.controller'
 import { PopupContext } from '@/popups/context'
-import { OpenCodeSessionsController as OpenCodeSessions } from '@/features/agents/OpenCodeSessionsController'
+import { OpenCodeSessionsController as OpenCodeSessions } from '@/features/agents/src/open-code-sessions-controller'
 import type { CreateAgentSessionResult } from '@/services/system/agents'
 import type { AgentMessage } from '@/services/system/agents'
-import { AgentQuestionController as AgentQuestion } from '@/features/agents/AgentQuestionController'
-import { AgentPermissionCardController as AgentPermissionCard } from '@/features/agents/AgentPermissionCardController'
+import { AgentQuestionController as AgentQuestion } from '@/features/agents/src/agent-question-controller'
+import { AgentPermissionCardController as AgentPermissionCard } from '@/features/agents/src/agent-permission-card-controller'
 import type {
   AgentPermission,
   OpenCodeSnapshot
 } from '@/services/system/agents'
-import { AgentAlertsController as AgentAlerts } from '@/features/agents/AgentAlertsController'
+import { AgentAlertsController as AgentAlerts } from '@/features/agents/src/agent-alerts-controller'
 import { createDemoAgentsAdapter } from '@/services/system/agents'
-import { AgentAlertCount } from '@/features/agents/Agents'
+import { AgentAlertCount } from '@/features/agents/widget/agents.widget'
 import { defaultConfig } from '@/services/configuration/config'
 import { useConfig } from '@/stores/config'
 

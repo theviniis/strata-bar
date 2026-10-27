@@ -1,11 +1,11 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { AudioOutputs } from '@/features/volume/audioOutputs.popup'
-import { AudioInputs } from '@/features/microphone/audioInputs.popup'
-import { Volume } from '@/features/volume/Volume'
-import { Microphone } from '@/features/microphone/Microphone'
-import { VolumeController } from '@/features/volume/VolumeController'
-import { MicrophoneController } from '@/features/microphone/MicrophoneController'
+import { AudioOutputs } from '@/features/volume/popup/audio-outputs.popup'
+import { AudioInputs } from '@/features/microphone/popup/audio-inputs.popup'
+import { Volume } from '@/features/volume/widget/volume.widget'
+import { Microphone } from '@/features/microphone/widget/microphone.widget'
+import { VolumeController } from '@/features/volume/widget/volume.controller'
+import { MicrophoneController } from '@/features/microphone/widget/microphone.controller'
 import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
 import { WidgetViewContext } from '@/components/status-bar/widget-view'
 import { defaultView } from '@/components/status-bar/presentation'
@@ -13,7 +13,7 @@ import {
   audioInputsFixture,
   audioOutputsFixture,
   audioLevelFixture
-} from '@/features/audio/fixtures'
+} from '@/features/audio/src/fixtures'
 import type { ChannelData, SystemEvent } from '@/services/system/bridge'
 
 const runtime = vi.hoisted(() => ({

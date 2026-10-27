@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { MediaClock } from '@/features/music/progress'
+import { MediaClock } from '@/features/music/src/progress'
 import { demoMedia } from '@/services/system/media'
 
 it('smooths small corrections without stopping or reversing playback', () => {

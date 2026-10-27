@@ -234,10 +234,10 @@ CPU aceita parâmetros vazios, então `params` pode ser omitido. A validação e
 runtime também rejeita valores inválidos; um ID qualquer do tipo `string` não
 é automaticamente um UUID válido.
 
-O conteúdo não vai em `children`: o JSX, o controlador e os adaptadores ficam
-em `*.popup.tsx`. Por exemplo, `src/features/cpu/cpu.popup.tsx` contém
-`CpuPopupController`, `CpuPopup` e o `export default definePopup(...)` que
-registra o controlador. JSX, adaptadores, schema e metadados ficam juntos.
+O conteúdo não vai em `children`: o visual, schema e registro ficam em
+`popup/<nome>.popup.tsx`; lógica e adaptadores ficam em
+`popup/<nome>.popup.controller.tsx`. Por exemplo, a feature CPU exporta
+`CpuPopup` no primeiro e `CpuPopupController` no segundo.
 
 Passe dados serializáveis em `params`. Callbacks, refs e instâncias de stores
 ficam no controlador de cada janela e não atravessam o transporte nativo.
@@ -255,19 +255,27 @@ percorrem:
 
 ```text
 src/features/details/
-  details.popup.tsx
-  DetailsTrigger.tsx
-  DetailsPopup.stories.tsx
+  src/
+    fixtures.tsx
+  widget/
+    details.widget.tsx
+    details.controller.tsx
+  popup/
+    details.popup.tsx
+    details.popup.controller.tsx
+  stories/
+    details.stories.tsx
+    details-popup.stories.tsx
 ```
 
 O ID vem do **nome do arquivo**, removendo `.popup.tsx`: `details.popup.tsx`
 registra `details`, independentemente do nome da pasta. Esse ID deve ser único
-em toda a árvore de features. Use um identificador ASCII, como `details` ou
-`audioDetails`; nomes com hífen, acento ou começando por número são rejeitados.
+em toda a árvore de features. Use lowercase/kebab-case, como `details` ou `audio-details`; o segundo registra
+`audioDetails`. Nomes com acento, segmentos vazios ou começando por número são rejeitados.
 
 ### 5.2. Crie o visual por props
 
-Em `src/features/details/details.popup.tsx`, comece pelo visual por props.
+Em `src/features/details/popup/details.popup.tsx`, comece pelo visual por props.
 O host já fornece a superfície externa do popup; o visual pode usar a composição
 de Card existente para organizar seu conteúdo.
 
@@ -307,14 +315,15 @@ Subscriptions, acesso a stores, timers e estado de interação ficam no
 controlador. Quando houver formulário ou operação pendente, acrescente ao
 visual as props de valores, erros, pending e callbacks correspondentes.
 
-### 5.3. Acrescente o controlador no mesmo arquivo
+### 5.3. Crie o controlador separado
 
-No mesmo `src/features/details/details.popup.tsx`, acrescente o controlador.
+Em `src/features/details/popup/details.popup.controller.tsx`, acrescente o controlador.
 Use o contexto do host para ler parâmetros validados, modo e função de fechar;
 mantenha os imports no início do arquivo:
 
 ```tsx
 import { usePopupContext } from '@/popups/context'
+import { DetailsPopup } from './details.popup'
 
 export function DetailsPopupController() {
   const { params, mode, close } = usePopupContext('details')
@@ -338,13 +347,14 @@ nativo, uma falha deve aparecer como falha, sem trocar para dados demo.
 
 ### 5.4. Registre no mesmo details.popup.tsx
 
-Ao final do mesmo `src/features/details/details.popup.tsx`, exporte a definição
-como `default`, apontando diretamente para o controlador local. Acrescente os
+Ao final do mesmo `src/features/details/popup/details.popup.tsx`, exporte a definição
+como `default`, apontando diretamente para o controlador importado. Acrescente os
 imports abaixo ao início desse arquivo:
 
 ```tsx
 import { z } from 'zod'
 import { definePopup } from '@/popups/definition'
+import { DetailsPopupController } from './details.popup.controller'
 
 export default definePopup({
   label: 'Detalhes',
@@ -439,7 +449,7 @@ iniciar ou reconstruir o Storybook.
 
 ### 5.6. Ligue o trigger ao ID registrado
 
-Em `src/features/details/DetailsTrigger.tsx`, componha o popup no controlador ou
+Em `src/features/details/widget/details.controller.tsx`, componha o popup no controlador ou
 na fronteira de integração que será montada pela feature:
 
 ```tsx
@@ -468,12 +478,12 @@ O fluxo completo fica:
 
 ```text
 details.popup.tsx → gerador → registro e tipos
-DetailsTrigger → Root/Trigger → host → details.popup.tsx (controlador e visual)
+DetailsTrigger → Root/Trigger → host → details.popup.controller.tsx → details.popup.tsx (visual)
 ```
 
 ### 5.7. Crie a story isolada do visual
 
-Em `src/features/details/DetailsPopup.stories.tsx`, forneça props determinísticas.
+Em `src/features/details/stories/details-popup.stories.tsx`, forneça props determinísticas.
 A story não precisa abrir uma janela, instalar subscription nem importar o bridge:
 
 ```tsx
@@ -644,8 +654,8 @@ visuais ou as stories de `WidgetPopup`, que abrem conteúdo demo no browser.
     <tr>
       <td>Estou tentando passar o conteúdo como filho de Root</td>
       <td>
-        Coloque JSX, controlador e registro em <code>{'*.popup.tsx'}</code>; os
-        filhos de Root compõem o trigger e a âncora.
+        Coloque JSX e registro em <code>{'*.popup.tsx'}</code> e lógica no
+        controller separado; os filhos de Root compõem o trigger e a âncora.
       </td>
     </tr>
     <tr>

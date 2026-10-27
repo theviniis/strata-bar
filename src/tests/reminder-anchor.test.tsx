@@ -1,7 +1,7 @@
 import { act, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { useReminderAnchor } from '@/features/reminders/useReminderAnchor'
-import { Reminders } from '@/features/reminders/Reminders'
+import { useReminderAnchor } from '@/features/reminders/src/use-reminder-anchor'
+import { Reminders } from '@/features/reminders/widget/reminders.widget'
 
 const transport = vi.hoisted(() => ({
   invoke: vi.fn(),
