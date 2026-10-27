@@ -210,6 +210,8 @@ pub enum AgentNotificationStatus {
     Blocked,
     Unavailable,
     Error,
+    // Part of the shared TypeScript contract; only the browser demo emits it.
+    #[allow(dead_code)]
     Demo,
 }
 

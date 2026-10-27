@@ -6,10 +6,11 @@ edition = "2021"
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
-ts-rs = "11.1"
+# Serde validation attributes on enums do not affect TypeScript declarations.
+ts-rs = { version = "11.1", features = ["no-serde-warnings"] }
 
 [dependencies]
-ts-rs = "11.1"
+ts-rs = { version = "11.1", features = ["no-serde-warnings"] }
 notify = "8"
 tauri = { version = "2", features = ["tray-icon"] }
 serde_json = "1"

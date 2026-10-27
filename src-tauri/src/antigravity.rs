@@ -165,6 +165,7 @@ impl Monitor {
             "Monitor desativado; não foi possível remover os hooks: {error}"
         ));
     }
+    #[cfg(test)]
     pub fn observe(&mut self, event: HookEvent, raw: &str, at: f64) -> Result<bool, String> {
         self.receive(parse_hook(event, raw, at)?)
     }

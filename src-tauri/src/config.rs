@@ -20,6 +20,7 @@ const FILE: &str = "config.json";
 /// Published JSON Schema for the hand-edited document. A remote URL keeps the
 /// reference working from any machine without shipping a second copy next to
 /// `config.json`; editors fetch it for completion and inline range errors.
+#[cfg(test)]
 pub const SCHEMA_URL: &str =
     "https://raw.githubusercontent.com/theviniis/strata-bar/main/config.schema.json";
 const MIN_INTERVAL_MS: u32 = 1_000;

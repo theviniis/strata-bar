@@ -347,6 +347,7 @@ impl Client {
         }
     }
 
+    #[cfg(test)]
     pub fn with_api(api: Box<dyn RemoteApi>) -> Self {
         Self {
             api: Some(api),
