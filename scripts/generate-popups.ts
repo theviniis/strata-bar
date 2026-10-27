@@ -17,8 +17,8 @@ export function discoverPopups(root: string) {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       const path = resolve(directory, entry.name)
       if (entry.isDirectory()) visit(path)
-      else if (entry.isFile() && entry.name.endsWith('.popup.ts')) {
-        const id = entry.name.slice(0, -'.popup.ts'.length)
+      else if (entry.isFile() && /\.popup\.tsx?$/.test(entry.name)) {
+        const id = entry.name.replace(/\.popup\.tsx?$/, '')
         if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(id)) {
           throw new Error(`Invalid popup ID '${id}': ${path}`)
         }
@@ -40,7 +40,7 @@ export function generatePopups(root = projectRoot) {
   const imports = definitions.map(([, path], index) => {
     const specifier = relative(dirname(output), path)
       .replaceAll('\\', '/')
-      .replace(/\.ts$/, '')
+      .replace(/\.tsx?$/, '')
     return `import popup${index} from ${JSON.stringify(specifier)}`
   })
   const entries = definitions.map(

@@ -234,8 +234,8 @@ CPU aceita parâmetros vazios, então `params` pode ser omitido. A validação e
 runtime também rejeita valores inválidos; um ID qualquer do tipo `string` não
 é automaticamente um UUID válido.
 
-O conteúdo não vai em `children`: ele vem do registro em `*.popup.ts`. Por
-exemplo, `src/features/cpu/cpu.popup.ts` aponta para `CpuPopupController` por
+O conteúdo não vai em `children`: ele vem do registro em `*.popup.tsx`. Por
+exemplo, `src/features/cpu/cpu.popup.tsx` aponta para `CpuPopupController` por
 `definePopup` e `lazyContent`. Esse controlador resolve suas dependências
 na janela que apresenta o popup e passa props a `CpuPopup`.
 
@@ -257,12 +257,12 @@ percorrem:
 src/features/details/
   DetailsPopup.tsx
   DetailsPopupController.tsx
-  details.popup.ts
+  details.popup.tsx
   DetailsTrigger.tsx
   DetailsPopup.stories.tsx
 ```
 
-O ID vem do **nome do arquivo**, removendo `.popup.ts`: `details.popup.ts`
+O ID vem do **nome do arquivo**, removendo `.popup.tsx`: `details.popup.tsx`
 registra `details`, independentemente do nome da pasta. Esse ID deve ser único
 em toda a árvore de features. Use um identificador ASCII, como `details` ou
 `audioDetails`; nomes com hífen, acento ou começando por número são rejeitados.
@@ -338,11 +338,11 @@ Se a feature consumir dados, o controlador escolhe a fonte pelo modo e é dono
 do setup/cleanup. No modo demo, use dados ilustrativos e ações simuladas. No modo
 nativo, uma falha deve aparecer como falha, sem trocar para dados demo.
 
-### 5.4. Crie o arquivo details.popup.ts
+### 5.4. Crie o arquivo details.popup.tsx
 
-Em `src/features/details/details.popup.ts`, exporte a definição como `default`:
+Em `src/features/details/details.popup.tsx`, exporte a definição como `default`:
 
-```ts
+```tsx
 import { z } from 'zod'
 import { definePopup, lazyContent } from '@/popups/definition'
 
@@ -432,7 +432,7 @@ pnpm generate:popups
 pnpm typecheck
 ```
 
-O gerador descobre `*.popup.ts` recursivamente em `src/features/` e atualiza
+O gerador descobre `*.popup.tsx` recursivamente em `src/features/` e atualiza
 `src/popups/.generated/popups.ts`, incluindo o ID `details` e sua definição.
 `PopupId`, `PopupParams` e `PopupValues` passam a refletir o schema, permitindo
 que `usePopupContext('details')` conheça `params.title`.
@@ -477,7 +477,7 @@ própria integração no registro de widgets.
 O fluxo completo fica:
 
 ```text
-details.popup.ts → gerador → registro e tipos
+details.popup.tsx → gerador → registro e tipos
 DetailsTrigger → Root/Trigger → host → DetailsPopupController → DetailsPopup
 ```
 
@@ -527,7 +527,7 @@ e os estados de erro/pending quando existirem.
 
 Para validar no Windows, recompile e reinicie o host nativo, por exemplo com
 `pnpm desktop` após encerrar a instância de desenvolvimento anterior. O build
-Rust também descobre os nomes dos arquivos `*.popup.ts` e gera a lista de IDs
+Rust também descobre os nomes dos arquivos `*.popup.tsx` e gera a lista de IDs
 permitidos pela overlay. Atualizar apenas o frontend mantém o executável antigo
 sem o novo ID, podendo resultar em `Invalid popup component or session`.
 Não altere manualmente a lista gerada de IDs nativos.
@@ -654,7 +654,7 @@ visuais ou as stories de `WidgetPopup`, que abrem conteúdo demo no browser.
     <tr>
       <td>Estou tentando passar o conteúdo como filho de Root</td>
       <td>
-        Registre o conteúdo em <code>*.popup.ts</code>; os filhos de Root
+        Registre o conteúdo em <code>*.popup.tsx</code>; os filhos de Root
         compõem o trigger e a âncora.
       </td>
     </tr>

@@ -33,8 +33,8 @@ afterEach(() => {
 
 it('generates from a clean tree, discovers nested definitions and ignores other files', () => {
   const root = fixture()
-  definition(root, 'volume/audioOutputs.popup.ts')
-  definition(root, 'clock/clock.popup.ts')
+  definition(root, 'volume/audioOutputs.popup.tsx')
+  definition(root, 'clock/clock.popup.tsx')
   definition(root, 'clock/ClockPopup.tsx')
   expect(generatePopups(root)).toBe(true)
   const generated = readFileSync(
@@ -43,20 +43,21 @@ it('generates from a clean tree, discovers nested definitions and ignores other 
   )
   expect(generated).toContain('export type PopupId = "audioOutputs" | "clock"')
   expect(generated).toContain('../../features/volume/audioOutputs.popup')
+  expect(generated).not.toContain('.popup.tsx')
   expect(generated).not.toContain('ClockPopup.tsx')
   expect(generatePopups(root)).toBe(false)
 })
 
 it('updates additions, removals and renames without a central list', () => {
   const root = fixture()
-  const path = definition(root, 'clock.popup.ts')
+  const path = definition(root, 'clock.popup.tsx')
   generatePopups(root)
-  renameSync(path, join(dirname(path), 'calendar.popup.ts'))
+  renameSync(path, join(dirname(path), 'calendar.popup.tsx'))
   expect(generatePopups(root)).toBe(true)
   expect(discoverPopups(join(root, 'src/features')).map(([id]) => id)).toEqual([
     'calendar'
   ])
-  rmSync(join(dirname(path), 'calendar.popup.ts'))
+  rmSync(join(dirname(path), 'calendar.popup.tsx'))
   expect(generatePopups(root)).toBe(true)
   expect(
     readFileSync(join(root, 'src/popups/.generated/popups.ts'), 'utf8')
@@ -65,8 +66,8 @@ it('updates additions, removals and renames without a central list', () => {
 
 it('rejects duplicate IDs with both conflicting paths', () => {
   const root = fixture()
-  const first = definition(root, 'first/clock.popup.ts')
-  const second = definition(root, 'second/clock.popup.ts')
+  const first = definition(root, 'first/clock.popup.tsx')
+  const second = definition(root, 'second/clock.popup.tsx')
   expect(() => generatePopups(root)).toThrow('Duplicate popup ID')
   try {
     generatePopups(root)
@@ -76,11 +77,23 @@ it('rejects duplicate IDs with both conflicting paths', () => {
   }
 })
 
+it('accepts legacy TS definitions and rejects a TS/TSX duplicate ID', () => {
+  const root = fixture()
+  const legacy = definition(root, 'clock/clock.popup.ts')
+  expect(discoverPopups(join(root, 'src/features'))).toEqual([
+    ['clock', legacy]
+  ])
+  const tsx = definition(root, 'other/clock.popup.tsx')
+  expect(() => generatePopups(root)).toThrow('Duplicate popup ID')
+  expect(() => generatePopups(root)).toThrow(legacy)
+  expect(() => generatePopups(root)).toThrow(tsx)
+})
+
 it.each([
-  '.popup.ts',
-  '1clock.popup.ts',
-  'audio-outputs.popup.ts',
-  'áudio.popup.ts'
+  '.popup.tsx',
+  '1clock.popup.tsx',
+  'audio-outputs.popup.tsx',
+  'áudio.popup.tsx'
 ])('rejects invalid definition name %s with its path', (name) => {
   const root = fixture()
   const path = definition(root, name)
@@ -91,7 +104,7 @@ it.each([
 it('accepts ASCII identifier names and escapes prototype keys safely', () => {
   const root = fixture()
   for (const name of ['_details', '$details', 'x1', '__proto__'])
-    definition(root, `${name}.popup.ts`)
+    definition(root, `${name}.popup.tsx`)
   generatePopups(root)
   const generated = readFileSync(
     join(root, 'src/popups/.generated/popups.ts'),
@@ -107,16 +120,16 @@ it('retains required input and transformed context types through generated impor
     join(projectRoot, 'src/popups/definition').replaceAll('\\', '/')
   )
   writeFileSync(
-    definition(root, 'workspaceDetails.popup.ts'),
+    definition(root, 'workspaceDetails.popup.tsx'),
     `
     import { z } from 'zod'
     import { definePopup } from ${helper}
-    export default definePopup({ label: 'Details', Content: () => null,
+    export default definePopup({ label: 'Details', Content: () => <section>Details</section>,
       schema: z.object({ workspace: z.string().transform(Number) }).strict() })
   `
   )
   writeFileSync(
-    definition(root, 'empty.popup.ts'),
+    definition(root, 'empty.popup.tsx'),
     `
     import { definePopup } from ${helper}
     export default definePopup({ label: 'Empty', Content: () => null })
@@ -164,7 +177,8 @@ it('retains required input and transformed context types through generated impor
     jsx: ts.JsxEmit.ReactJSX,
     paths: {
       zod: [join(projectRoot, 'node_modules/zod')],
-      react: [join(projectRoot, 'node_modules/@types/react/index.d.ts')]
+      react: [join(projectRoot, 'node_modules/@types/react/index.d.ts')],
+      'react/*': [join(projectRoot, 'node_modules/@types/react/*')]
     }
   })
   expect(

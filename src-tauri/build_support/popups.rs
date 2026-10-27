@@ -20,11 +20,10 @@ pub fn discover(root: &Path) -> io::Result<BTreeMap<String, PathBuf>> {
             if kind.is_dir() {
                 visit(&path, entries)?;
             } else if kind.is_file() {
-                let Some(id) = path
-                    .file_name()
-                    .and_then(|s| s.to_str())
-                    .and_then(|s| s.strip_suffix(".popup.ts"))
-                else {
+                let Some(id) = path.file_name().and_then(|s| s.to_str()).and_then(|s| {
+                    s.strip_suffix(".popup.tsx")
+                        .or_else(|| s.strip_suffix(".popup.ts"))
+                }) else {
                     continue;
                 };
                 if !valid_id(id) {
@@ -101,12 +100,12 @@ mod tests {
     #[test]
     fn discovers_nested_definitions_and_tracks_renames_and_removals() {
         let root = Fixture::new();
-        let clock = root.add("clock/clock.popup.ts");
+        let clock = root.add("clock/clock.popup.tsx");
         root.add("clock/ClockPopup.tsx");
-        root.add("volume/audioOutputs.popup.ts");
+        root.add("volume/audioOutputs.popup.tsx");
         let ids = |root: &Path| discover(root).unwrap().into_keys().collect::<Vec<_>>();
         assert_eq!(ids(&root.0), ["audioOutputs", "clock"]);
-        let calendar = clock.with_file_name("calendar.popup.ts");
+        let calendar = clock.with_file_name("calendar.popup.tsx");
         fs::rename(clock, &calendar).unwrap();
         assert_eq!(ids(&root.0), ["audioOutputs", "calendar"]);
         fs::remove_file(calendar).unwrap();
@@ -116,17 +115,29 @@ mod tests {
     #[test]
     fn invalid_names_and_duplicate_ids_report_the_paths() {
         let root = Fixture::new();
-        let invalid = root.add("bad-name.popup.ts");
+        let invalid = root.add("bad-name.popup.tsx");
         assert!(discover(&root.0)
             .unwrap_err()
             .to_string()
             .contains(&invalid.display().to_string()));
         fs::remove_file(invalid).unwrap();
-        let first = root.add("a/clock.popup.ts");
-        let second = root.add("b/clock.popup.ts");
+        let first = root.add("a/clock.popup.tsx");
+        let second = root.add("b/clock.popup.tsx");
         let error = discover(&root.0).unwrap_err().to_string();
         assert!(error.contains("Duplicate popup ID"));
         assert!(error.contains(&first.display().to_string()));
         assert!(error.contains(&second.display().to_string()));
+    }
+
+    #[test]
+    fn legacy_ts_definitions_share_the_tsx_id_namespace() {
+        let root = Fixture::new();
+        let legacy = root.add("clock/clock.popup.ts");
+        assert_eq!(discover(&root.0).unwrap().get("clock"), Some(&legacy));
+        let tsx = root.add("other/clock.popup.tsx");
+        let error = discover(&root.0).unwrap_err().to_string();
+        assert!(error.contains("Duplicate popup ID"));
+        assert!(error.contains(&legacy.display().to_string()));
+        assert!(error.contains(&tsx.display().to_string()));
     }
 }

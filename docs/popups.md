@@ -8,15 +8,15 @@ components own their content, data and actions. Volume is the reference feature.
 
 1. Create a content component under its feature. Content can be any React layout;
    it does not need predefined header/body/footer slots.
-2. Add a `*.popup.ts` definition beside the component, exporting `definePopup(...)`
-   as its default export. The filename is the ID: `clock.popup.ts` becomes `clock`.
+2. Add a `*.popup.tsx` definition beside the component, exporting `definePopup(...)`
+   as its default export. The filename is the ID: `clock.popup.tsx` becomes `clock`.
 3. Wrap the widget in `WidgetPopup.Root`, an optional `Anchor` and a `Trigger`.
    Continue using string IDs, for example `popup="clock"`.
 
 There is no catalog or registry to edit. For a popup without parameters:
 
-```ts
-// src/features/clock/clock.popup.ts
+```tsx
+// src/features/clock/clock.popup.tsx
 import { definePopup } from '@/popups/definition'
 import { ClockPopup } from './ClockPopup'
 
@@ -26,8 +26,8 @@ export default definePopup({ label: 'Calendário', Content: ClockPopup })
 Only `label` and `Content` are required. An omitted schema accepts `{}` or omitted
 params, rejecting extra fields. Add a Zod schema when the content needs parameters:
 
-```ts
-// src/features/workspaces/workspaceDetails.popup.ts
+```tsx
+// src/features/workspaces/workspaceDetails.popup.tsx
 import { z } from 'zod'
 import { definePopup } from '@/popups/definition'
 import { WorkspaceDetails } from './WorkspaceDetails'
@@ -126,9 +126,13 @@ size and aligns to that monitor's origin on the overflowing axis, allowing clipp
 
 ## Automatic discovery
 
-Definitions are discovered recursively under `src/features/**/*.popup.ts`. IDs
+Definitions are discovered recursively under `src/features/**/*.popup.tsx`. IDs
 must match `[A-Za-z_$][A-Za-z0-9_$]*` and be unique across features; errors identify
 invalid or conflicting paths. Renaming a definition changes its public string ID.
+
+Use `*.popup.tsx` for every new definition. Legacy `*.popup.ts` files are still
+recognized, sharing the same ID namespace: `clock.popup.ts` and
+`clock.popup.tsx` cannot coexist, even in different features.
 
 `pnpm generate:popups` writes `src/popups/.generated/popups.ts`, with imports,
 the internal map and the ID union. It is ignored by Git, ESLint and Prettier;

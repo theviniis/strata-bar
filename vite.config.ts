@@ -18,7 +18,7 @@ function popupDiscovery() {
           !path
             .replaceAll('\\', '/')
             .startsWith(features.replaceAll('\\', '/') + '/') ||
-          !path.endsWith('.popup.ts')
+          !/\.popup\.tsx?$/.test(path)
         )
           return
         try {
@@ -58,7 +58,10 @@ export default defineConfig({
     }
   },
   test: {
-    include: ['src/tests/**/*.test.{ts,tsx}'],
+    include: [
+      'src/tests/**/*.test.{ts,tsx}',
+      'scripts/generate-popups.test.ts'
+    ],
     environment: 'jsdom',
     // Avoid contention between full editor trees in concurrent Windows workers.
     maxWorkers: 2,
