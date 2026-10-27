@@ -11,7 +11,7 @@ import {
   newestTimestamp,
   projectResourceWindow,
   type ResourceGraphPoint
-} from './resource-graph'
+} from './resource-graph-utils'
 
 export function ResourceGraph({
   points,

@@ -1,7 +1,7 @@
 import type { Config, WidgetConfig } from '@/services/configuration/config'
 import type { MonitorDraft } from './monitor-layout'
-import { WidgetInspector } from './WidgetInspector'
-import { WidgetSettings } from './WidgetSettings'
+import { WidgetInspector } from './widget-inspector'
+import { WidgetSettings } from './widget-settings'
 
 export function MonitorWidgetInspector({
   widget,

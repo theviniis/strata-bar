@@ -5,7 +5,7 @@ import {
   waitFor
 } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { QueryProvider } from '@/components/QueryProvider'
+import { QueryProvider } from '@/components/query-provider'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { CalendarSettingsController as CalendarSettings } from '@/features/reminders/src/calendar-settings-controller'
 import { RemindersPopupController as RemindersPopup } from '@/features/reminders/popup/reminders.popup.controller'

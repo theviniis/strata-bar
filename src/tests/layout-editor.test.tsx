@@ -10,9 +10,9 @@ import {
 import { expect, it, vi } from 'vitest'
 import { configSchema, type WidgetType } from '../services/configuration/config'
 import { editMonitorDraft } from '@/settings/monitor-layout'
-import { LayoutEditor } from '../settings/LayoutEditor'
+import { LayoutEditor } from '../settings/layout-editor'
 
-vi.mock('../settings/useMonitors', () => ({
+vi.mock('../settings/use-monitors', () => ({
   useMonitors: () => ({
     monitors: [
       {

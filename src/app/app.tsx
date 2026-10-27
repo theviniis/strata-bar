@@ -1,10 +1,10 @@
-import { useResolvedTheme } from '@/hooks/useResolvedTheme'
-import { Logo } from '@/components/Logo'
-import { QueryProvider } from '@/components/QueryProvider'
+import { useResolvedTheme } from '@/hooks/use-resolved-theme'
+import { Logo } from '@/components/logo'
+import { QueryProvider } from '@/components/query-provider'
 
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useEffect } from 'react'
-import { StudioBar } from '../components/status-bar/StudioBar'
+import { StudioBar } from '../components/status-bar/studio-bar'
 import { loadConfig, useConfig, watchConfig } from '../stores/config'
 
 const focusRing =

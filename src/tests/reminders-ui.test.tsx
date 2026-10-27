@@ -9,7 +9,7 @@ import {
 } from '@testing-library/react'
 import type { Editor } from '@tiptap/react'
 import type { ReactNode } from 'react'
-import { QueryProvider } from '@/components/QueryProvider'
+import { QueryProvider } from '@/components/query-provider'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { RemindersController as Reminders } from '@/features/reminders/widget/reminders.controller'
 import {
@@ -18,7 +18,7 @@ import {
 } from '@/features/reminders/src/presentation'
 import { RemindersPopupController as RemindersPopup } from '@/features/reminders/popup/reminders.popup.controller'
 import { getRemindersStore } from '@/stores/reminders'
-import { PopupHost } from '@/popups/PopupHost'
+import { PopupHost } from '@/popups/popup-host'
 import { createDemoRemindersAdapter } from '@/services/system/reminders'
 import { DemoReminderAlertsController as DemoReminderAlerts } from '@/features/reminders/src/demo-reminder-alerts-controller'
 

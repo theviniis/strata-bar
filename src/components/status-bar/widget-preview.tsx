@@ -1,11 +1,11 @@
-import { useResolvedTheme } from '@/hooks/useResolvedTheme'
+import { useResolvedTheme } from '@/hooks/use-resolved-theme'
 import { themeStyle } from '@/services/theme/palettes'
 import { memo } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { Config, WidgetConfig } from '@/services/configuration/config'
-import { Widget } from './Widget'
-import { WidgetPreviewRuntime } from './WidgetPreviewRuntime'
+import { Widget } from './widget'
+import { WidgetPreviewRuntime } from './widget-preview-runtime'
 import { SeparatorMarginContext } from './separator-margin'
 
 /** The actual widget tree, with sample data and all native effects disabled. */

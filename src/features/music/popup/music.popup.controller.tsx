@@ -8,7 +8,7 @@ import {
 import type { MediaData, MediaRequest } from '@/services/system/media.generated'
 import { useCallback, useEffect, useState } from 'react'
 import { useMusicPopupControls } from '../src/use-music-popup-controls'
-import { useSystemChannel } from '@/hooks/useSystemChannel'
+import { useSystemChannel } from '@/hooks/use-system-channel'
 import { usePopupContext } from '@/popups/context'
 import { MusicPopup } from './music.popup'
 

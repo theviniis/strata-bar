@@ -11,15 +11,15 @@ import {
   type ComponentPropsWithoutRef,
   type ReactNode
 } from 'react'
-import { useOverlayPopover } from '../hooks/useOverlayPopover'
+import { useOverlayPopover } from '../hooks/use-overlay-popover'
 import { cn } from '../lib/utils'
 import { overlayTextClasses } from '../overlay/typography'
 import { overlay } from '../services/system/overlay'
 import { POPUP_GAP } from './constants'
 import { bouncePopupAnchor } from './motion'
-import { PopupHost } from './PopupHost'
+import { PopupHost } from './popup-host'
 import { resolvePopup, type PopupId, type PopupParams } from './resolve'
-import { usePopupLifetime } from './usePopupLifetime'
+import { usePopupLifetime } from './use-popup-lifetime'
 
 interface TriggerContextValue {
   native: boolean

@@ -1,11 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { ResourceGraph } from '@/components/ResourceGraph'
+import { ResourceGraph } from '@/components/resource-graph'
 import {
   newestTimestamp,
   projectResourceWindow,
   type ResourceGraphPoint
-} from '@/components/resource-graph'
+} from '@/components/resource-graph-utils'
 
 const at = 100000
 const point = (

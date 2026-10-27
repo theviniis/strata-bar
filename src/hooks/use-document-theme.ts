@@ -1,7 +1,7 @@
 import { useLayoutEffect } from 'react'
 import type { Config } from '@/services/configuration/config'
 import { themeStyle } from '@/services/theme/palettes'
-import { useResolvedTheme } from './useResolvedTheme'
+import { useResolvedTheme } from './use-resolved-theme'
 
 export function applyDocumentTheme(
   palette: Config['bar']['colorTheme'],

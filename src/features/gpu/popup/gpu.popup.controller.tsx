@@ -1,4 +1,4 @@
-import { useResourceChannel } from '@/hooks/useResourceChannel'
+import { useResourceChannel } from '@/hooks/use-resource-channel'
 import { usePopupContext } from '@/popups/context'
 import { gpuFixture } from '../src/fixtures'
 import { useState } from 'react'

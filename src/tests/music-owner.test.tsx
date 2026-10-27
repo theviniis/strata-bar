@@ -12,7 +12,7 @@ import { MusicContent } from '@/features/music/widget/music.controller'
 import { MusicPopupContent } from '@/features/music/popup/music.popup.controller'
 import { useMusicInteractions } from '@/features/music/src/use-music-interactions'
 import { useMusicPopupControls } from '@/features/music/src/use-music-popup-controls'
-import { PopupHost } from '@/popups/PopupHost'
+import { PopupHost } from '@/popups/popup-host'
 import { demoMedia } from '@/services/system/media'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { MediaData, MediaRequest } from '@/services/system/media.generated'
@@ -35,7 +35,7 @@ vi.mock('@/services/system/bridge', async (original) => ({
     return () => {}
   }
 }))
-vi.mock('@/hooks/useOverlayTooltip', () => ({
+vi.mock('@/hooks/use-overlay-tooltip', () => ({
   useOverlayTooltip: () => ({ trigger: {}, describedBy: 'music-tip' })
 }))
 vi.mock('@/services/system/overlay', () => ({

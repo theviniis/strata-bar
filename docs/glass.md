@@ -64,19 +64,19 @@ Evite repetir o estilo em cada uso do componente.
   deslizante, sem borda e com `bg-muted/60`.
 - `src/components/ui/item.tsx`: variante `outline`, usada pelos cards
   arrastáveis do editor de layout, com a receita completa. O preview do
-  `DragOverlay` em `src/settings/LayoutEditor.tsx` usa `bg-card/60` para manter
+  `DragOverlay` em `src/settings/layout-editor.tsx` usa `bg-card/60` para manter
   a translucidez durante o arraste.
 - `src/components/ui/popover.tsx`: superfície flutuante com `bg-popover/80`,
   borda `border-border/50`, sombra suave e a utilitária.
-- `src/settings/WidgetCatalog.tsx`: cada entrada arrastável do catálogo usa a
+- `src/settings/widget-catalog.tsx`: cada entrada arrastável do catálogo usa a
   receita com borda e `bg-muted/30`.
-- `src/settings/BarSettings.tsx`: o seletor de paleta herda o vidro dos botões e
+- `src/settings/bar-settings.tsx`: o seletor de paleta herda o vidro dos botões e
   adiciona o hover translúcido `hover:bg-muted/50` com `hover:text-foreground`
   para manter a legibilidade, além do lift em motion.
-- `src/popups/PopupSurface.tsx`: mantém fundo opaco `bg-popover`, cantos
+- `src/popups/popup-surface.tsx`: mantém fundo opaco `bg-popover`, cantos
   `rounded-2xl` e brilho interno, sem borda nem sombra externa para evitar
   artefatos de recorte na janela. Usa `backdrop-blur-lg` explicitamente.
-- `src/components/status-bar/NativeBar.tsx`: usa a utilitária nos segmentos do
+- `src/components/status-bar/native-bar.tsx`: usa a utilitária nos segmentos do
   fundo, com `bg-background`, sem borda e com `backdrop-blur-lg`.
 - `src/features/music/Music.tsx`: mantém blur e reflexo em camadas separadas
   para que a capa não encubra o reflexo; essa composição não usa a utilitária.

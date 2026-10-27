@@ -1,6 +1,6 @@
 import { themeStyle } from '@/services/theme/palettes'
 import { defaultPreview } from './monitor-layout'
-import { StudioBar } from '@/components/status-bar/StudioBar'
+import { StudioBar } from '@/components/status-bar/studio-bar'
 import type { Config } from '@/services/configuration/config'
 import { cn } from '@/lib/utils'
 import { widgetPreviewEvent } from '@/services/system/widget-preview'

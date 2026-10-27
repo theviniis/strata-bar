@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useResourceChannel } from '@/hooks/useResourceChannel'
+import { useResourceChannel } from '@/hooks/use-resource-channel'
 import { usePopupContext } from '@/popups/context'
 import { DiskPopup } from './disk.popup'
 import { diskFixture } from '../src/fixtures'

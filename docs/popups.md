@@ -82,7 +82,7 @@ export function WorkspaceDetailsController() {
 ```
 
 ```tsx
-import { WidgetPopup } from '@/popups/WidgetPopup'
+import { WidgetPopup } from '@/popups/widget-popup'
 
 ;<WidgetPopup.Root popup="workspaceDetails" params={{ workspace: index }}>
   <WidgetPopup.Anchor asChild>

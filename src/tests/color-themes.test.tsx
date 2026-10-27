@@ -6,11 +6,11 @@ import {
   configSchema,
   defaultConfig
 } from '@/services/configuration/config'
-import { useDocumentTheme } from '@/hooks/useDocumentTheme'
+import { useDocumentTheme } from '@/hooks/use-document-theme'
 import { colorThemes, themeStyle } from '@/services/theme/palettes'
-import { BarSettings } from '@/settings/BarSettings'
+import { BarSettings } from '@/settings/bar-settings'
 import type { ConfigDraft } from '@/settings/draft'
-import { ThemePreview } from '@/settings/ThemePreview'
+import { ThemePreview } from '@/settings/theme-preview'
 
 afterEach(() => {
   vi.unstubAllGlobals()

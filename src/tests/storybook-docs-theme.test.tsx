@@ -4,7 +4,7 @@ import { Channel } from 'storybook/internal/channels'
 import { GLOBALS_UPDATED } from 'storybook/internal/core-events'
 import type { DocsContainerProps } from '@storybook/addon-docs/blocks'
 import type { ReactNode } from 'react'
-import { StorybookDocsContainer } from '../../.storybook/DocsContainer'
+import { StorybookDocsContainer } from '../../.storybook/docs-container'
 
 vi.mock('@storybook/addon-docs/blocks', () => ({
   DocsContainer: ({

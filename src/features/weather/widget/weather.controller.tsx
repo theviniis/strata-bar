@@ -1,6 +1,6 @@
 import { WeatherWidget } from './weather.widget'
 import { useWidgetView } from '@/components/status-bar/widget-view'
-import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
+import { useOverlayTooltip } from '@/hooks/use-overlay-tooltip'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { WeatherData } from '@/services/system/weather.generated'
 import { condition } from '../src/presentation'

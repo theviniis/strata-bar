@@ -18,7 +18,7 @@ import {
   CardContent
 } from '@/components/ui/card'
 import { Empty, EmptyHeader, EmptyDescription } from '@/components/ui/empty'
-import { WidgetPreview } from '@/components/status-bar/WidgetPreview'
+import { WidgetPreview } from '@/components/status-bar/widget-preview'
 import {
   types,
   widgetSchema,

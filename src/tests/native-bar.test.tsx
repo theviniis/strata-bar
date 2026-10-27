@@ -94,7 +94,7 @@ vi.mock('../services/system/bridge', () => ({
     return () => {}
   }
 }))
-import NativeBar from '../components/status-bar/NativeBar'
+import NativeBar from '../components/status-bar/native-bar'
 
 it('preserves the widget pill shape through popup trigger composition', () => {
   render(<NativeBar />)

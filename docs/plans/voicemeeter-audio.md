@@ -88,8 +88,8 @@ The `voicemeeter` channel publishes `{ application, strips[], buses[] }` with
 index, slot, physical flag, assigned device name, gain and mute. Names come from
 `VBVMR_GetParameterStringA`, with the existing engine label fallback.
 
-`src/settings/AudioSettings.tsx` edits the global channels in the shared draft.
-`src/hooks/useAudioRouting.ts` derives bus/strip targets and pushes both routes
+`src/settings/audio-settings.tsx` edits the global channels in the shared draft.
+`src/hooks/use-audio-routing.ts` derives bus/strip targets and pushes both routes
 on startup and configuration events. Controllers read the global channel for
 labels and tooltips (`Bus n` / `Strip n`); there is no custom label override.
 Device popups retain daily Windows endpoint switching and volume/mute controls.

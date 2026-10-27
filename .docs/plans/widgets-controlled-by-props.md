@@ -179,7 +179,7 @@ relevante, usando o formato abaixo. As entradas desta execução estão ao final
 ### 2026-10-22 — Inventário e início da referência CPU
 
 - Status: em andamento.
-- Inventário: 13 registros em `src/components/status-bar/Widget.tsx`: CPU, memória, GPU, disco, relógio, volume, microfone, komorebi, música, lembretes, agentes, rede e janela ativa. Os dois últimos são placeholders. Popups: CPU, memória, GPU, disco, relógio, audioOutputs, audioInputs, música, lembretes, reminderAlert e agentes; controles relacionados estão nos diretórios das features.
+- Inventário: 13 registros em `src/components/status-bar/widget.tsx`: CPU, memória, GPU, disco, relógio, volume, microfone, komorebi, música, lembretes, agentes, rede e janela ativa. Os dois últimos são placeholders. Popups: CPU, memória, GPU, disco, relógio, audioOutputs, audioInputs, música, lembretes, reminderAlert e agentes; controles relacionados estão nos diretórios das features.
 - Dependências: recursos usam `useResourceChannel` (subscription, retenção e timer de freshness); relógio usa `useTime`; áudio usa `useSystemChannel`, bridge e estado de dispositivos; komorebi usa canal, bridge e refs/animação de Workspaces; música usa canal, adapter demo, identidade de faixa, pending, progresso e configurações Spotify; lembretes usam store, relógio, anchor, editor e integração Calendar; agentes usam stores, configuração de visibilidade, conexão e estado das perguntas/permissões. Todos os widgets leem WidgetViewContext; previews inertes usam WidgetPreviewContext. Tooltip e popup têm refs e integração próprias. Popups resolvem dependências por janela via PopupContext.
 - Baseline: `pnpm check` passou Prettier, ESLint e TypeScript antes das alterações; Vitest descobriu checkouts em `.worktrees` e falhou em suites externas. Limitada a descoberta a `src/tests/**/*.test.{ts,tsx}` e ignoradas `.worktrees` no ESLint. Não atribuir essas falhas à migração.
 - CPU: `CpuController` resolve canal/configuração/tooltip/popup; `Cpu` recebe props explícitas; `CpuPopupController` resolve o modo da janela e `CpuPopup` é o visual compartilhado. Fixtures determinísticas e stories separadas de widget e popup.
@@ -288,14 +288,14 @@ relevante, usando o formato abaixo. As entradas desta execução estão ao final
 ### 2026-10-23 — Documentação de Widget e WidgetPopup no Storybook
 
 - Status: concluída a documentação de composição; gates visuais/nativos anteriores permanecem pendentes.
-- Adicionados `src/components/status-bar/Widget.stories.tsx` e `src/popups/WidgetPopup.stories.tsx`, com páginas Autodocs em Composição/Widget e Composição/WidgetPopup. A descoberta do Storybook agora inclui components e popups além das features.
+- Adicionados `src/components/status-bar/widget.stories.tsx` e `src/popups/widget-popup.stories.tsx`, com páginas Autodocs em Composição/Widget e Composição/WidgetPopup. A descoberta do Storybook agora inclui components e popups além das features.
 - Documentados configuração, responsabilidades do host/controladores/visuais, previews inertes, API Root/Trigger/Anchor, parâmetros tipados e diferenças browser/Windows. Exemplos incluem galeria dos 13 widgets, compact/label, roteamento de áudio, âncora completa, trigger desativado e popup único ativo. Adicionada função play de abertura/Escape/foco; sua execução em navegador não foi verificada nesta sessão.
 - Validação: TypeScript, ESLint dirigido, Prettier e `git diff --check` passaram; `pnpm build-storybook` passou e o índice gerado contém ambas páginas docs e suas 11 stories. Sem alterações de comportamento nos componentes documentados.
 
 ### 2026-10-23 — Guia de utilização em MDX
 
 - Status: guia concluído e compilado.
-- Criado `src/stories/WidgetAndPopup.mdx`, página Guias/Usando Widget e WidgetPopup, seguindo os blocos Meta/Canvas da documentação oficial do Storybook 10.6. Descoberta MDX adicionada à configuração existente.
+- Criado `src/stories/widget-and-popup.mdx`, página Guias/Usando Widget e WidgetPopup, seguindo os blocos Meta/Canvas da documentação oficial do Storybook 10.6. Descoberta MDX adicionada à configuração existente.
 - Guia passo a passo com configuração, filtragem/ordem de instâncias, composição Root/Trigger/asChild/Anchor, parâmetros, tooltip/refs, preview inerte e solução de erros comuns. Reutiliza seis canvases das stories existentes, sem duplicar implementações.
 - Validação: `pnpm build-storybook`, `pnpm typecheck`, Prettier e `git diff --check` passaram. Entrada MDX confirmada no índice gerado. Revisão visual e gates nativos anteriores permanecem pendentes.
 
@@ -318,7 +318,7 @@ relevante, usando o formato abaixo. As entradas desta execução estão ao final
 ### 2026-10-23 — Paleta Strata no Storybook
 
 - Aplicadas variantes claro/escuro da paleta de `src/app/styles.css` à interface manager e à documentação MDX/Autodocs. `.storybook/theme.ts` contém os equivalentes sRGB dos tokens OKLCH, com rosa/lilás, superfícies, textos, bordas, inputs e fonte Geist.
-- `.storybook/manager.ts` aplica a marca Strata e acompanha o global theme da toolbar. `DocsContainer.tsx` usa a mesma paleta e acompanha GLOBALS_UPDATED, inclusive em MDX sem meta CSF anexada, preservando tema já selecionado e removendo listener ao desmontar.
+- `.storybook/manager.ts` aplica a marca Strata e acompanha o global theme da toolbar. `docs-container.tsx` usa a mesma paleta e acompanha GLOBALS_UPDATED, inclusive em MDX sem meta CSF anexada, preservando tema já selecionado e removendo listener ao desmontar.
 - Validação: três testes de tema/sincronização passaram, TypeScript, ESLint dirigido, Prettier e `git diff --check` passaram. Build Storybook passou. Servidor da porta 6006 reiniciado para descobrir manager.ts; HTTP via loopback confirmou bundle manager com paleta e Geist, e módulo de tema servido ao preview. Não foi feita inspeção visual via navegador.
 
 ## Decisões adotadas

@@ -1,4 +1,4 @@
-import { Unsupported } from '@/components/status-bar/Unsupported'
+import { Unsupported } from '@/components/status-bar/unsupported'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 const meta = {
   tags: ['autodocs'],

@@ -9,7 +9,7 @@ import {
   type PopupParams
 } from '../popups/resolve'
 import type { PopupClosed } from '../popups/lifetime'
-import { usePopupLifetime } from '../popups/usePopupLifetime'
+import { usePopupLifetime } from '../popups/use-popup-lifetime'
 
 /** Every opening owns a new session, including repeated clicks on one widget. */
 export function useOverlayPopover<K extends PopupId>(

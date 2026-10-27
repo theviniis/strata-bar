@@ -10,7 +10,7 @@ import {
 import { createMockBridge } from '@/services/system/bridge'
 import type { MediaRequest } from '@/services/system/media.generated'
 
-vi.mock('@/hooks/useOverlayTooltip', () => ({
+vi.mock('@/hooks/use-overlay-tooltip', () => ({
   useOverlayTooltip: () => ({ trigger: {}, describedBy: 'music-tip' })
 }))
 

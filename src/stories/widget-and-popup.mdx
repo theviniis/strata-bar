@@ -1,6 +1,6 @@
 import { Canvas, Meta } from '@storybook/addon-docs/blocks'
-import * as WidgetStories from '../components/status-bar/Widget.stories'
-import * as PopupStories from '../popups/WidgetPopup.stories'
+import * as WidgetStories from '../components/status-bar/widget.stories'
+import * as PopupStories from '../popups/widget-popup.stories'
 
 <Meta title="Guias/Usando Widget e WidgetPopup" />
 
@@ -63,7 +63,7 @@ Crie a configuração com `widgetSchema.parse`. O schema completa os defaults e
 valida tipo, formato, intervalo e preferências de áudio.
 
 ```tsx
-import { Widget } from '@/components/status-bar/Widget'
+import { Widget } from '@/components/status-bar/widget'
 import { widgetSchema } from '@/services/configuration/config'
 
 const cpu = widgetSchema.parse({
@@ -112,7 +112,7 @@ O pai decide presença, ordem e seção. Filtre `enabled` antes de renderizar e 
 um `id` único para cada instância. `Widget` não faz essa filtragem por conta própria.
 
 ```tsx
-import { Widget } from '@/components/status-bar/Widget'
+import { Widget } from '@/components/status-bar/widget'
 import type { WidgetConfig } from '@/services/configuration/config'
 
 export function WidgetSection({ widgets }: { widgets: WidgetConfig[] }) {
@@ -142,7 +142,7 @@ Este exemplo mínimo é uma composição alternativa de trigger para o popup de 
 Não deve envolver um `Widget` que já tenha seu próprio trigger.
 
 ```tsx
-import { WidgetPopup } from '@/popups/WidgetPopup'
+import { WidgetPopup } from '@/popups/widget-popup'
 
 export function CpuDetailsButton() {
   return (
@@ -166,7 +166,7 @@ use `asChild` para compor atributos e ref em um único elemento.
 
 ```tsx
 import { WidgetItem } from '@/components/widget-item'
-import { WidgetPopup } from '@/popups/WidgetPopup'
+import { WidgetPopup } from '@/popups/widget-popup'
 
 export function CpuDetailsButton() {
   return (
@@ -190,7 +190,7 @@ botão pequeno estiver dentro de um widget maior e o popup deva se alinhar ao
 widget completo.
 
 ```tsx
-import { WidgetPopup } from '@/popups/WidgetPopup'
+import { WidgetPopup } from '@/popups/widget-popup'
 
 export function AnchoredCpuDetails() {
   return (
@@ -219,7 +219,7 @@ um UUID de lembrete existente. Passe o ID recebido do modelo, sem criar um ID
 novo apenas para abrir o alerta.
 
 ```tsx
-import { WidgetPopup } from '@/popups/WidgetPopup'
+import { WidgetPopup } from '@/popups/widget-popup'
 
 export function ReminderDetails({ reminderId }: { reminderId: string }) {
   return (
@@ -438,7 +438,7 @@ montagem e subscriptions começam quando o host apresenta o popup.
 que `usePopupContext('details')` conheça `params.title`.
 
 Não edite o arquivo gerado nem adicione uma entrada manual em `resolve.ts` ou
-`PopupHost.tsx`. Corrija a definição de origem e execute o gerador novamente.
+`popup-host.tsx`. Corrija a definição de origem e execute o gerador novamente.
 IDs duplicados ou nomes inválidos fazem a geração falhar, indicando os arquivos.
 
 `pnpm dev`, `pnpm build`, `pnpm test` e `pnpm typecheck` já executam a geração.
@@ -453,7 +453,7 @@ Em `src/features/details/widget/details.controller.tsx`, componha o popup no con
 na fronteira de integração que será montada pela feature:
 
 ```tsx
-import { WidgetPopup } from '@/popups/WidgetPopup'
+import { WidgetPopup } from '@/popups/widget-popup'
 
 export function DetailsTrigger({ title }: { title: string }) {
   return (
@@ -546,8 +546,8 @@ refs no mesmo botão:
 ```tsx
 import { Slot } from '@radix-ui/react-slot'
 import { WidgetItem, WidgetItemTooltip } from '@/components/widget-item'
-import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
-import { WidgetPopup } from '@/popups/WidgetPopup'
+import { useOverlayTooltip } from '@/hooks/use-overlay-tooltip'
+import { WidgetPopup } from '@/popups/widget-popup'
 
 export function CpuDetailsWithTooltip() {
   const tip = useOverlayTooltip('Detalhes da CPU')
@@ -588,7 +588,7 @@ preview existente. O contexto impede subscriptions e ações nativas; `inert`
 bloqueia a interação do usuário com a amostra.
 
 ```tsx
-import { Widget } from '@/components/status-bar/Widget'
+import { Widget } from '@/components/status-bar/widget'
 import { WidgetPreviewContext } from '@/components/status-bar/widget-preview-context'
 import { widgetSchema } from '@/services/configuration/config'
 

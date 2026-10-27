@@ -13,8 +13,8 @@ import { colorThemes } from '@/services/theme/palettes'
 import { Check } from 'lucide-react'
 import { useId } from 'react'
 import type { ConfigDraft } from './draft'
-import { SettingsSection } from './SettingsLayout'
-import { ThemePreview } from './ThemePreview'
+import { SettingsSection } from './settings-layout'
+import { ThemePreview } from './theme-preview'
 
 interface BarSettingsProps {
   disabled?: boolean

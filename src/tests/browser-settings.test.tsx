@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { SettingsView } from '../settings/SettingsView'
+import { SettingsView } from '../settings/settings-view'
 
 it('does not expose a configuration editor outside the native runtime', () => {
   render(<SettingsView />)

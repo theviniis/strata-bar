@@ -1,15 +1,15 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { WidgetPreview } from '@/components/status-bar/WidgetPreview'
+import { WidgetPreview } from '@/components/status-bar/widget-preview'
 import {
   defaultConfig,
   types,
   widgetSchema
 } from '@/services/configuration/config'
-import { StudioBar } from '@/components/status-bar/StudioBar'
-import { WidgetPreviewRuntime } from '@/components/status-bar/WidgetPreviewRuntime'
-import { Widget } from '@/components/status-bar/Widget'
-import { ThemePreview } from '@/settings/ThemePreview'
+import { StudioBar } from '@/components/status-bar/studio-bar'
+import { WidgetPreviewRuntime } from '@/components/status-bar/widget-preview-runtime'
+import { Widget } from '@/components/status-bar/widget'
+import { ThemePreview } from '@/settings/theme-preview'
 import {
   PREVIEW_TIME,
   widgetPreviewEvent

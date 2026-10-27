@@ -75,9 +75,9 @@ Decisions already taken:
 - [x] `src/features/gpu/popup/gpu.popup.tsx`: utilisation and temperature graphs plus
       the usage, memory, temperature, power, fan and shared-memory rows.
 - [x] `src/features/gpu/popup/gpu.popup.tsx`: popup registration in the same module.
-- [x] `src/components/status-bar/NativeBar.tsx`: CPU | GPU | RAM.
-- [x] Studio shell copy that still claims GPU is unavailable (`App.tsx`) and the
-      `--check-popups` fixture (`PopupCheckBar.tsx`).
+- [x] `src/components/status-bar/native-bar.tsx`: CPU | GPU | RAM.
+- [x] Studio shell copy that still claims GPU is unavailable (`app.tsx`) and the
+      `--check-popups` fixture (`popup-check-bar.tsx`).
 
 ## 4. Tests
 

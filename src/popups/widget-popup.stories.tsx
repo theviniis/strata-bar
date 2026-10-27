@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, userEvent, within, waitFor } from 'storybook/test'
 import { WidgetItem } from '@/components/widget-item'
-import { WidgetPopup } from './WidgetPopup'
+import { WidgetPopup } from './widget-popup'
 
 const meta = {
   title: 'Composição/WidgetPopup',

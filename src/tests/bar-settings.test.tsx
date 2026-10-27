@@ -1,9 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { BarSettings } from '../settings/BarSettings'
+import { BarSettings } from '../settings/bar-settings'
 import { defaultConfig } from '../services/configuration/config'
 
-vi.mock('../settings/ThemePreview', () => ({ ThemePreview: () => null }))
+vi.mock('../settings/theme-preview', () => ({ ThemePreview: () => null }))
 afterEach(() => vi.unstubAllGlobals())
 
 it('edits shared widget spacing and allows zero spacing', () => {

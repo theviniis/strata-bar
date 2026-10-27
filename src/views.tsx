@@ -6,11 +6,11 @@ import { lazy } from 'react'
  * bar is imported eagerly, so a bar window never pays for the studio shell, the
  * popup-check fixture or the shared popup surface — those are loaded on demand.
  */
-export const OverlayView = lazy(() => import('./overlay/Overlay'))
-export const StudioView = lazy(() => import('./app/App'))
+export const OverlayView = lazy(() => import('./overlay/overlay'))
+export const StudioView = lazy(() => import('./app/app'))
 export const PopupCheckView = lazy(() =>
-  import('./popups/PopupCheckBar').then((module) => ({
+  import('./popups/popup-check-bar').then((module) => ({
     default: module.PopupCheckBar
   }))
 )
-export const SettingsView = lazy(() => import('./settings/SettingsView'))
+export const SettingsView = lazy(() => import('./settings/settings-view'))

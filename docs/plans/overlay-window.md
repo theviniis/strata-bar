@@ -75,7 +75,7 @@ bar strip. `desktop.rs` creates it with `inner_size(width, 36.0)` and pins
 
 The browser studio is out of scope: it keeps the in-window shadcn tooltip
 (`src/components/ui/tooltip.tsx` on Base UI, applied in
-`src/components/status-bar/Widget.tsx`), which works there because the document
+`src/components/status-bar/widget.tsx`), which works there because the document
 is not clipped.
 
 ## Decisions
@@ -266,14 +266,14 @@ Set `data-view` on `<html>` so the transparent background can be scoped.
 
 ### New files
 
-- `src/overlay/Overlay.tsx`: mounts once, listens to `overlay:render` and `overlay:clear`, keeps
+- `src/overlay/overlay.tsx`: mounts once, listens to `overlay:render` and `overlay:clear`, keeps
   `{ kind, text, side }` in state, renders nothing while idle. No timers, no channel subscriptions.
-- `src/overlay/TooltipSurface.tsx`: the pill + arrow using the same class string as
+- `src/overlay/tooltip-surface.tsx`: the pill + arrow using the same class string as
   `TooltipContent`, extracted to `src/components/ui/tooltip-classes.ts` and imported by both so
   the two cannot drift.
 - `src/overlay/measure.ts`: `measureTooltip(text)`, the off-screen probe that measures the real
   pill with the real classes before `overlay_show`; owns `TOOLTIP_ARROW_ALLOWANCE`.
-- `src/hooks/useOverlayTooltip.ts`: `pointerenter`/`focus` → 150 ms timer →
+- `src/hooks/use-overlay-tooltip.ts`: `pointerenter`/`focus` → 150 ms timer →
   measure with a hidden span → `overlay.show(...)`; `pointerleave`/`blur`/`Esc`/click/window
   blur/`visibilitychange` → `overlay.hide()`. One tooltip owner at a time, cleared on unmount.
 - `src/services/system/overlay.ts`: transport only — `overlayShow`/`overlayHide` equivalents

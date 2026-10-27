@@ -99,7 +99,7 @@ Decisions already taken:
 
 ## 4. Content loop (native bars obey config)
 
-- [x] Rewrite `NativeBar.tsx` to render from config: widget presence and
+- [x] Rewrite `native-bar.tsx` to render from config: widget presence and
       order per `left`/`center`/`right`, `enabled`, `intervalMs`,
       `format`, `tooltip`, `bar.theme`, `bar.spacing` and `agents`
       visibility.
@@ -115,7 +115,7 @@ Decisions already taken:
 
 ## 5. Studio demotion and persistence boundaries
 
-- [x] Delete `App.tsx` inline Appearance/Position/Height controls, widget
+- [x] Delete `app.tsx` inline Appearance/Position/Height controls, widget
       chips and JSON textarea; the studio keeps hero + live demo preview,
       clearly labelled.
 - [x] `loadConfig` / `watchConfig` keep serving the browser demo only;
@@ -129,7 +129,7 @@ Decisions already taken:
       fallback paths, monitor overrides, JSON tab round-trip.
 - [x] Views: settings window render/config event handling.
 - [x] Native bar: config-driven rendering and per-monitor projection tests
-      (replacing the hardcoded `NativeBar.tsx` expectations).
+      (replacing the hardcoded `native-bar.tsx` expectations).
 - [x] Store: extend `config.test.ts` patterns for the save command path.
 - [x] The seven pre-existing failures documented in AGENTS.md were resolved
       separately in issue #8; the final suite must remain green.

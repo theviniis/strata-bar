@@ -1,5 +1,5 @@
 import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
-import { useSystemChannel } from '@/hooks/useSystemChannel'
+import { useSystemChannel } from '@/hooks/use-system-channel'
 import { bridge } from '@/services/system/bridge'
 import { MediaSpectrum } from './media-spectrum.widget'
 

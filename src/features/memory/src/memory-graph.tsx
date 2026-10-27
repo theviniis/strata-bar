@@ -1,4 +1,4 @@
-import { ResourceGraph } from '@/components/ResourceGraph'
+import { ResourceGraph } from '@/components/resource-graph'
 import type { MemoryPoint } from '@/services/system/memory.generated'
 
 export function MemoryGraph({

@@ -35,7 +35,7 @@ vi.mock('@/services/system/bridge', () => ({
 vi.mock('@/services/system/overlay', () => ({
   overlay: { resize: vi.fn(), hide: vi.fn() }
 }))
-import { PopupHost } from '@/popups/PopupHost'
+import { PopupHost } from '@/popups/popup-host'
 import { useConfig } from '@/stores/config'
 import { defaultConfig } from '@/services/configuration/config'
 

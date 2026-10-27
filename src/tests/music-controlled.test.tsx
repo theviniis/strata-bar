@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { Music } from '@/features/music/widget/music.widget'
 import { MusicPopup } from '@/features/music/popup/music.popup'
 import { SpotifySettings } from '@/features/music/src/spotify-settings'
-import { WidgetPreview } from '@/components/status-bar/WidgetPreview'
+import { WidgetPreview } from '@/components/status-bar/widget-preview'
 import { widgetSchema } from '@/services/configuration/config'
 import {
   musicFixture,
@@ -14,7 +14,7 @@ vi.mock('@/services/system/bridge', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/system/bridge')>()),
   connect: runtime.connect
 }))
-vi.mock('@/hooks/useOverlayTooltip', () => ({
+vi.mock('@/hooks/use-overlay-tooltip', () => ({
   useOverlayTooltip: () => ({ trigger: {}, describedBy: 'tip' })
 }))
 vi.stubGlobal(

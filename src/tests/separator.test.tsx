@@ -6,9 +6,9 @@ import {
   parseConfig,
   widgetSchema
 } from '@/services/configuration/config'
-import { NativeBarSurface } from '@/components/status-bar/NativeBar'
-import { WidgetPreview } from '@/components/status-bar/WidgetPreview'
-import { MonitorWidgetInspector } from '@/settings/MonitorWidgetInspector'
+import { NativeBarSurface } from '@/components/status-bar/native-bar'
+import { WidgetPreview } from '@/components/status-bar/widget-preview'
+import { MonitorWidgetInspector } from '@/settings/monitor-widget-inspector'
 import { editMonitorDraft } from '@/settings/monitor-layout'
 import { moveWidget } from '@/settings/layout'
 

@@ -1,6 +1,6 @@
 import { act, render } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { PopupSurface } from '@/popups/PopupSurface'
+import { PopupSurface } from '@/popups/popup-surface'
 import { overlay } from '@/services/system/overlay'
 
 afterEach(() => vi.restoreAllMocks())

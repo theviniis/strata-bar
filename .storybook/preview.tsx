@@ -1,8 +1,8 @@
 import { themeStyle } from '../src/services/theme/palettes'
-import { useDocumentTheme } from '../src/hooks/useDocumentTheme'
+import { useDocumentTheme } from '../src/hooks/use-document-theme'
 import type { ReactNode } from 'react'
 import type { Preview } from '@storybook/react-vite'
-import { StorybookDocsContainer } from './DocsContainer'
+import { StorybookDocsContainer } from './docs-container'
 import '@fontsource-variable/geist'
 import '../src/app/styles.css'
 

@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { NativeBarSurface } from '@/components/status-bar/NativeBar'
+import { NativeBarSurface } from '@/components/status-bar/native-bar'
 import { defaultConfig } from '@/services/configuration/config'
 
 const query = '(prefers-color-scheme: dark)'

@@ -5,7 +5,7 @@ import {
   type DocsContainerProps
 } from '@storybook/addon-docs/blocks'
 import { GLOBALS_UPDATED } from 'storybook/internal/core-events'
-import { useDocumentTheme } from '../src/hooks/useDocumentTheme'
+import { useDocumentTheme } from '../src/hooks/use-document-theme'
 import { strataThemes } from './theme'
 
 type Context = DocsContainerProps['context']

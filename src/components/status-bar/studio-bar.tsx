@@ -1,7 +1,7 @@
 import type { Config } from '@/services/configuration/config'
 import { useEffect, useRef, useState } from 'react'
-import { NativeBarSurface } from './NativeBar'
-import { WidgetPreviewRuntime } from './WidgetPreviewRuntime'
+import { NativeBarSurface } from './native-bar'
+import { WidgetPreviewRuntime } from './widget-preview-runtime'
 import { cornerRadius } from './curves'
 
 const BAR_WIDTH = 1440

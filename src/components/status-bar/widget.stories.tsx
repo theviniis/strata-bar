@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { widgetSchema, types } from '@/services/configuration/config'
-import { Widget } from './Widget'
+import { Widget } from './widget'
 import { WidgetPreviewContext } from './widget-preview-context'
 
 const meta = {

@@ -6,10 +6,10 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import type { AudioSourceConfig } from '@/services/configuration/config'
-import { useSystemChannel } from '@/hooks/useSystemChannel'
+import { useSystemChannel } from '@/hooks/use-system-channel'
 import { optionLabel } from '@/features/audio/src/presentation'
 import { useId } from 'react'
-import { Choice } from './WidgetInspector'
+import { Choice } from './widget-inspector'
 
 export function AudioInspectorFields({
   channel,

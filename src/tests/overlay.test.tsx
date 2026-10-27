@@ -13,8 +13,8 @@ vi.mock('../services/system/overlay', async (importOriginal) => {
   return { ...actual, overlay: { mode: 'native', ...transport } }
 })
 
-import { TOOLTIP_DELAY, useOverlayTooltip } from '../hooks/useOverlayTooltip'
-import { TooltipSurface } from '../overlay/TooltipSurface'
+import { TOOLTIP_DELAY, useOverlayTooltip } from '../hooks/use-overlay-tooltip'
+import { TooltipSurface } from '../overlay/tooltip-surface'
 
 function Target({ text }: { text: string }) {
   const tip = useOverlayTooltip(text)

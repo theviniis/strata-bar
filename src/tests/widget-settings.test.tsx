@@ -5,8 +5,8 @@ import {
   defaultConfig,
   widgetSchema
 } from '@/services/configuration/config'
-import { MonitorWidgetInspector } from '@/settings/MonitorWidgetInspector'
-import { WidgetInspector } from '@/settings/WidgetInspector'
+import { MonitorWidgetInspector } from '@/settings/monitor-widget-inspector'
+import { WidgetInspector } from '@/settings/widget-inspector'
 import { editMonitorDraft } from '@/settings/monitor-layout'
 import { readNavigation } from '@/settings/navigation'
 

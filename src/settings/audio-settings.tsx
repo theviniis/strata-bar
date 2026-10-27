@@ -1,6 +1,6 @@
-import { SettingsSection } from './SettingsLayout'
+import { SettingsSection } from './settings-layout'
 import type { Config } from '@/services/configuration/config'
-import { AudioInspectorFields } from './AudioInspectorFields'
+import { AudioInspectorFields } from './audio-inspector-fields'
 
 export function AudioSettings({
   draft,

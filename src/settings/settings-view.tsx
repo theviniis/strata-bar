@@ -1,5 +1,5 @@
-import { Logo } from '@/components/Logo'
-import { QueryProvider } from '@/components/QueryProvider'
+import { Logo } from '@/components/logo'
+import { QueryProvider } from '@/components/query-provider'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Breadcrumb,
@@ -9,7 +9,7 @@ import {
   BreadcrumbSeparator
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
-import { SettingsPage, SettingsContent } from './SettingsLayout'
+import { SettingsPage, SettingsContent } from './settings-layout'
 import { Field, FieldLabel, FieldSet } from '@/components/ui/field'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -41,9 +41,9 @@ import {
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useMemo, useState, type CSSProperties } from 'react'
-import { BarSettings } from './BarSettings'
+import { BarSettings } from './bar-settings'
 import { createNativePersistence, useConfigEditor } from './draft'
-import { LayoutEditor } from './LayoutEditor'
+import { LayoutEditor } from './layout-editor'
 import {
   readNavigation,
   rememberNavigation,

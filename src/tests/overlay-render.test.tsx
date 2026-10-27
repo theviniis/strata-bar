@@ -18,7 +18,7 @@ vi.mock('@tauri-apps/api/event', () => ({
   }
 }))
 
-import Overlay from '../overlay/Overlay'
+import Overlay from '../overlay/overlay'
 import { measureTooltip } from '../overlay/measure'
 import { overlayTextClasses } from '../overlay/typography'
 

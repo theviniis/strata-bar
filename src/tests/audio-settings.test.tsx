@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { expect, it, vi } from 'vitest'
 import { useState } from 'react'
-import { AudioInspectorFields } from '@/settings/AudioInspectorFields'
+import { AudioInspectorFields } from '@/settings/audio-inspector-fields'
 import type { AudioSourceConfig } from '@/services/configuration/config'
 
-vi.mock('@/hooks/useSystemChannel', () => ({
+vi.mock('@/hooks/use-system-channel', () => ({
   useSystemChannel: () => ({
     status: 'ready',
     data: {

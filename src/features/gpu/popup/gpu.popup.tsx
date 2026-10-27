@@ -1,10 +1,10 @@
 import { definePopup } from '@/popups/definition'
-import { ResourceGraph } from '@/components/ResourceGraph'
+import { ResourceGraph } from '@/components/resource-graph'
 import { mapDataStatus } from '@/components/popup-status'
 import {
   newestTimestamp,
   projectResourceWindow
-} from '@/components/resource-graph'
+} from '@/components/resource-graph-utils'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { GpuData } from '@/services/system/gpu.generated'
 import {

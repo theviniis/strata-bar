@@ -19,7 +19,7 @@ vi.mock('@tauri-apps/api/event', () => ({
     }
   }
 }))
-import { useOverlayPopover } from '../hooks/useOverlayPopover'
+import { useOverlayPopover } from '../hooks/use-overlay-popover'
 function Trigger() {
   const { triggerRef, open, toggle } = useOverlayPopover('audioOutputs')
   return (

@@ -7,7 +7,7 @@ import {
 import { useAudioControl } from '@/features/audio/src/use-audio-control'
 import { useConfig } from '@/stores/config'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useSystemChannel } from '@/hooks/useSystemChannel'
+import { useSystemChannel } from '@/hooks/use-system-channel'
 import { usePopupContext } from '@/popups/context'
 import { AudioOutputs } from './audio-outputs.popup'
 

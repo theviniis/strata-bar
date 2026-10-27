@@ -9,9 +9,9 @@ import {
   defaultConfig
 } from '@/services/configuration/config'
 import { colorThemes, themeStyle } from '@/services/theme/palettes'
-import { BarSettings } from './BarSettings'
+import { BarSettings } from './bar-settings'
 import type { ConfigDraft } from './draft'
-import { ThemePreview } from './ThemePreview'
+import { ThemePreview } from './theme-preview'
 
 const meta = {
   title: 'Settings/Color themes',

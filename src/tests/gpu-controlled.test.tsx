@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { WidgetPreview } from '@/components/status-bar/WidgetPreview'
+import { WidgetPreview } from '@/components/status-bar/widget-preview'
 import { widgetSchema } from '@/services/configuration/config'
 import { Gpu } from '@/features/gpu/widget/gpu.widget'
 import { GpuController } from '@/features/gpu/widget/gpu.controller'

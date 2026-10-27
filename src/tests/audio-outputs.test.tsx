@@ -37,7 +37,7 @@ vi.mock('../services/system/bridge', () => ({
 vi.mock('../services/system/overlay', () => ({
   overlay: { hide: host.hide, resize: host.resize }
 }))
-import { PopupHost } from '../popups/PopupHost'
+import { PopupHost } from '../popups/popup-host'
 function AudioOutputs(props: { session?: string; arrowX?: number }) {
   return (
     <PopupHost id="audioOutputs" mode="native" {...props} close={host.hide} />

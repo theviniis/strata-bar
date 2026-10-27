@@ -1,8 +1,8 @@
 import type { WidgetView } from '@/components/status-bar/presentation'
 import { useWidgetPreview } from '@/components/status-bar/widget-preview-context'
 import { useWidgetView } from '@/components/status-bar/widget-view'
-import { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
-import { useSystemChannel } from '@/hooks/useSystemChannel'
+import { useOverlayTooltip } from '@/hooks/use-overlay-tooltip'
+import { useSystemChannel } from '@/hooks/use-system-channel'
 import {
   bridge,
   type SystemEvent,

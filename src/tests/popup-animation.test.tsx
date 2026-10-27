@@ -6,7 +6,7 @@ const motion = vi.hoisted(() => ({ animate: vi.fn() }))
 vi.mock('motion/react', () => ({
   useAnimate: () => [useRef(null), motion.animate]
 }))
-import { PopupSurface } from '../popups/PopupSurface'
+import { PopupSurface } from '../popups/popup-surface'
 import {
   popupDockKeyframes,
   popupOpenKeyframes,

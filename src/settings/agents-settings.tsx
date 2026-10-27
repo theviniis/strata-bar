@@ -1,4 +1,4 @@
-import { SettingsSection } from './SettingsLayout'
+import { SettingsSection } from './settings-layout'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'

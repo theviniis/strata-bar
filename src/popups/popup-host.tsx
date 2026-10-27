@@ -2,7 +2,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Component, Suspense, type ReactNode } from 'react'
 import type { OverlaySide } from '../services/system/overlay'
 import { PopupContext } from './context'
-import { PopupSurface } from './PopupSurface'
+import { PopupSurface } from './popup-surface'
 import { isPopupId, popupMetadata, resolvePopup } from './resolve'
 
 class ContentBoundary extends Component<

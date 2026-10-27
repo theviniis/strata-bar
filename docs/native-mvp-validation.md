@@ -54,7 +54,7 @@ Implemented under the recorded exception in [implementation-plan.md](implementat
 - `gpu` channel polled on the shared 2 s tick. Vendor-neutral readings: DXGI adapter selection (software adapters skipped, largest dedicated VRAM preferred) and PDH `GPU Engine` / `GPU Adapter Memory` counters keyed by the adapter LUID. Temperature, power draw and fan speed come from the read-only MAHM v2 mapping already used for CPU package temperature, matched to the adapter by `VEN_`/`DEV_`.
 - Independent per-metric status. A stopped fan is a real `0 %`, not `unavailable`; without MSI Afterburner the usage and memory readings keep working and only temperature, power and fan report `unavailable`; a native failure is never replaced with demo values.
 - Bar order `CPU | GPU | RAM` with a `[GPU] 27.3%`-style pill, plus a `Detalhes da GPU` popup with utilisation and temperature graphs and six rows (usage, dedicated memory, temperature, power, fan, shared memory).
-- The debug `--check-popups` fixture (`PopupCheckBar.tsx`) and `popup_check.rs` now cover the GPU bar widget and popup on real monitors: four consumers per bar, `Detalhes da GPU`, six `dd` rows, two graphs, `GiB` units, and no demo markers.
+- The debug `--check-popups` fixture (`popup-check-bar.tsx`) and `popup_check.rs` now cover the GPU bar widget and popup on real monitors: four consumers per bar, `Detalhes da GPU`, six `dd` rows, two graphs, `GiB` units, and no demo markers.
 
 Verified by code, unit tests and a live probe in this session:
 

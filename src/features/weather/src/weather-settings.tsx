@@ -25,7 +25,7 @@ import type {
   WeatherCity,
   WeatherConfig
 } from '@/services/system/weather.generated'
-import { Choice } from '@/settings/WidgetInspector'
+import { Choice } from '@/settings/widget-inspector'
 import { MapPin } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cityLabel, cityRegionLabel } from './presentation'

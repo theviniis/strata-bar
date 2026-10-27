@@ -1,5 +1,5 @@
-import { useResolvedTheme } from '@/hooks/useResolvedTheme'
-import { PopupHost } from '@/popups/PopupHost'
+import { useResolvedTheme } from '@/hooks/use-resolved-theme'
+import { PopupHost } from '@/popups/popup-host'
 import {
   playDemoReminderSound,
   prepareDemoReminderSound

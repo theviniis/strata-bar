@@ -15,7 +15,7 @@ import {
 import { bridge, connect } from '../services/system/bridge'
 import { createAgentsStore } from '@/stores/agents'
 import { createDemoAgentsAdapter } from '@/services/system/agents'
-import { SettingsView } from '../settings/SettingsView'
+import { SettingsView } from '../settings/settings-view'
 import { rememberNavigation } from '../settings/navigation'
 
 vi.mock('@/services/configuration/widget-flags', async (importOriginal) => {

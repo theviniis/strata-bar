@@ -41,18 +41,18 @@ vi.mock('../services/system/bridge', async (original) => {
     }
   }
 })
-vi.mock('../hooks/useSystemChannel', () => ({
+vi.mock('../hooks/use-system-channel', () => ({
   useSystemChannel: () => ({ status: 'loading' })
 }))
-import { WidgetPopup } from '../popups/WidgetPopup'
+import { WidgetPopup } from '../popups/widget-popup'
 import { VolumeController } from '../features/volume/widget/volume.controller'
 import { MicrophoneController } from '../features/microphone/widget/microphone.controller'
 import { RemindersController } from '../features/reminders/widget/reminders.controller'
 import { WidgetItem } from '../components/widget-item'
-import { PopupHost } from '../popups/PopupHost'
+import { PopupHost } from '../popups/popup-host'
 import { resolvePopup } from '../popups/resolve'
 import { discoveredPopups as popupRegistry } from '../popups/.generated/popups'
-import { PopupSurface } from '../popups/PopupSurface'
+import { PopupSurface } from '../popups/popup-surface'
 import {
   Tooltip,
   TooltipTrigger,

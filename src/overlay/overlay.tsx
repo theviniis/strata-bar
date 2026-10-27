@@ -1,13 +1,13 @@
-import { useDocumentTheme } from '@/hooks/useDocumentTheme'
+import { useDocumentTheme } from '@/hooks/use-document-theme'
 import { useConfig } from '@/stores/config'
 import { themeStyle } from '@/services/theme/palettes'
 import { useEffect, useState } from 'react'
-import { QueryProvider } from '@/components/QueryProvider'
+import { QueryProvider } from '@/components/query-provider'
 import type { OverlayRender, OverlaySnapshot } from '../services/system/overlay'
-import { PopupHost } from '../popups/PopupHost'
+import { PopupHost } from '../popups/popup-host'
 import { warmPopupContents } from '../popups/warmup'
 import { overlay } from '../services/system/overlay'
-import { TooltipSurface } from './TooltipSurface'
+import { TooltipSurface } from './tooltip-surface'
 import { overlayTextClasses } from './typography'
 
 /**

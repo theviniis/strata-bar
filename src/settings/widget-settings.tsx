@@ -2,9 +2,9 @@ import type { Config, WidgetConfig } from '@/services/configuration/config'
 import { CalendarSettingsController } from '@/features/reminders/src/calendar-settings-controller'
 import { SpotifySettingsController } from '@/features/music/src/spotify-settings-controller'
 import { WeatherSettings } from '@/features/weather/src/weather-settings'
-import { AgentsSettings } from './AgentsSettings'
-import { AudioInspectorFields } from './AudioInspectorFields'
-import { SettingsSection } from './SettingsLayout'
+import { AgentsSettings } from './agents-settings'
+import { AudioInspectorFields } from './audio-inspector-fields'
+import { SettingsSection } from './settings-layout'
 
 /** Integration controls live beside the widget that uses them. */
 export function WidgetSettings({

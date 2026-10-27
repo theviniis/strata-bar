@@ -12,11 +12,11 @@ pass; the workspaces and GPU widgets are recorded exceptions (`docs/plans/worksp
 ## Repository Structure
 
 - `src/` — React 19 frontend: app shell, feature widgets, hooks, services, Zustand stores and tests.
-  - `src/app/` — studio shell (`App.tsx`) and global styles (`styles.css`).
-  - `src/components/` — status-bar components (`NativeBar.tsx`, `Widget.tsx`) and shadcn-style `ui/`.
+  - `src/app/` — studio shell (`app.tsx`) and global styles (`styles.css`).
+  - `src/components/` — status-bar components (`native-bar.tsx`, `widget.tsx`) and shadcn-style `ui/`.
   - `src/features/` — individual widgets: `clock/`, `cpu/`, `disk/`, `gpu/`, `memory/`, `volume/`, `workspaces/`.
-  - `src/hooks/` — React hooks such as `useSystemChannel.ts` and `useOverlayTooltip.ts`.
-  - `src/overlay/` — the shared floating surface: `Overlay.tsx` (`?view=overlay`), `TooltipSurface.tsx`
+  - `src/hooks/` — React hooks such as `use-system-channel.ts` and `use-overlay-tooltip.ts`.
+  - `src/overlay/` — the shared floating surface: `overlay.tsx` (`?view=overlay`), `tooltip-surface.tsx`
     and the off-screen `measure.ts` probe.
   - `src/services/` — transport and config adapters: `system/bridge.ts`, `system/overlay.ts`,
     `configuration/config.ts`.
@@ -98,13 +98,13 @@ powershell -File scripts/test-live-geometry.ps1
   `className` strings — do not add per-component `.css` files or shell selectors.
 - Theme: `<main data-theme={dark|light}>` is the `group` root; light-mode overrides use
   `group-data-[theme=light]:` utilities.
-- Feature files and directories use lowercase/kebab-case. Each feature has one `src/` for internals,
+- Frontend files and directories in `src/` and `.storybook/` use lowercase/kebab-case,
+  including components, hooks, stories and MDX documents. React functions remain PascalCase;
+  hooks remain `useXxx`, with filenames such as `use-system-channel.ts`.
+- Each feature has one `src/` for internals,
   `widget/<name>.widget.tsx` and `<name>.controller.tsx`, `popup/<name>.popup.tsx` and
   `<name>.popup.controller.tsx`, and `stories/`, only where needed. Popup visuals, schemas and registration
-  stay in `.popup.tsx`; controllers own state, subscriptions and native/demo adapters. React functions
-  remain PascalCase; hooks remain `useXxx` (feature filenames use `use-xxx`).
-- Outside features, React components are PascalCase files/functions (`NativeBar.tsx`); hooks are `useXxx` (`useSystemChannel`);
-  services and stores use lower-case modules (`bridge.ts`, `config.ts`).
+  stay in `.popup.tsx`; controllers own state, subscriptions and native/demo adapters.
 - Types are derived, never duplicated by hand: the config model comes from `z.infer` on the Zod schema and
   channel payloads come from the bridge contract (`ChannelData`). Type-only imports use `import type`.
 - Prefer named exports for components/hooks; the app shells use default exports.
@@ -242,8 +242,8 @@ flowchart TD
 
 - Widget registration: add a type to `types` and the Zod schema in `src/services/configuration/config.ts`,
   then register its icon/label in `meta` and its formatter in `formatters` in
-  `src/components/status-bar/Widget.tsx`. Widgets that need custom rendering (`clock`, `workspaces`, `disk`)
-  branch before the formatter path in `Widget.tsx` and ship a feature component under `src/features/<name>/`.
+  `src/components/status-bar/widget.tsx`. Widgets that need custom rendering (`clock`, `workspaces`, `disk`)
+  branch before the formatter path in `widget.tsx` and ship a feature component under `src/features/<name>/`.
 - Channels: native capability map is returned by the `capabilities` command in `src-tauri/src/main.rs`;
   frontend adapters live in `src/services/system/bridge.ts`. Unsupported channels reject subscription;
   `workspaces` is reported by capability and, when komorebi or `komorebic.exe` is absent, subscribes to a

@@ -159,12 +159,12 @@ Add `Win32_System_Pipes` and `Win32_Storage_FileSystem` features to the
   `DemoChannelData.workspaces` for the studio preview (this is the first
   non-scalar demo payload, which is unavoidable for a workspace strip); add
   `workspacesAction(...)` to the native adapter and a no-op on the demo adapter.
-- `src/features/workspaces/WorkspacesWidget.tsx`: consume `useSystemChannel('workspaces')`
+- `src/features/workspaces/Workspaceswidget.tsx`: consume `useSystemChannel('workspaces')`
   and render the workspace strip; clicking calls
   `bridge.workspacesAction({ action: 'focusWorkspace', monitor, workspace })`.
 - Shared presentational component with a normalized view-model, reused by the
   native bar and the studio preview.
-- `src/components/status-bar/Widget.tsx`: add the `meta` entry/icon and a
+- `src/components/status-bar/widget.tsx`: add the `meta` entry/icon and a
   dedicated render branch (like `Clock`), with a demo preview.
 - `src/services/configuration/config.ts`: add `'workspaces'` to `types` and to the
   default config.

@@ -98,7 +98,7 @@ vi.mock('@tauri-apps/api/webviewWindow', () => ({
   })
 }))
 
-import NativeBar from '../components/status-bar/NativeBar'
+import NativeBar from '../components/status-bar/native-bar'
 import {
   defaultConfig,
   parseConfig,

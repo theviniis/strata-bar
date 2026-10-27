@@ -1,4 +1,4 @@
-import { WidgetPreview } from '@/components/status-bar/WidgetPreview'
+import { WidgetPreview } from '@/components/status-bar/widget-preview'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -80,14 +80,14 @@ import {
   type MonitorDraft,
   type MonitorLayoutMove
 } from './monitor-layout'
-import { MonitorWidgetInspector } from './MonitorWidgetInspector'
+import { MonitorWidgetInspector } from './monitor-widget-inspector'
 import {
   readNavigation,
   rememberNavigation,
   type SettingsNavigation
 } from './navigation'
-import { useMonitors } from './useMonitors'
-import { WidgetCatalog } from './WidgetCatalog'
+import { useMonitors } from './use-monitors'
+import { WidgetCatalog } from './widget-catalog'
 
 interface LayoutEditorProps {
   disabled?: boolean

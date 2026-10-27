@@ -1,4 +1,4 @@
-import { useDocumentTheme } from '@/hooks/useDocumentTheme'
+import { useDocumentTheme } from '@/hooks/use-document-theme'
 import { useConfig } from '@/stores/config'
 
 export function DocumentTheme() {

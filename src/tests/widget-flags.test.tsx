@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react'
 import { expect, it, vi } from 'vitest'
-import { NativeBarSurface } from '@/components/status-bar/NativeBar'
+import { NativeBarSurface } from '@/components/status-bar/native-bar'
 import {
   defaultConfig,
   widgetSchema,

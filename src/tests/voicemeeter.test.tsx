@@ -1,7 +1,7 @@
 import { act, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VoicemeeterData } from '../services/system/bridge'
-import { useAudioRouting } from '../hooks/useAudioRouting'
+import { useAudioRouting } from '../hooks/use-audio-routing'
 
 type Listener = (event: {
   status: string
@@ -42,10 +42,10 @@ vi.mock('../services/system/bridge', () => ({
 vi.mock('../services/system/overlay', () => ({ overlay: host.overlay }))
 import { defaultConfig } from '../services/configuration/config'
 import { useConfig } from '../stores/config'
-import NativeBar from '../components/status-bar/NativeBar'
+import NativeBar from '../components/status-bar/native-bar'
 import { optionLabel } from '../features/audio/src/presentation'
-import { PopupHost } from '../popups/PopupHost'
-import { resetVoicemeeterCapability } from '../hooks/useVoicemeeterCapability'
+import { PopupHost } from '../popups/popup-host'
+import { resetVoicemeeterCapability } from '../hooks/use-voicemeeter-capability'
 
 type VoicemeeterAudio = typeof defaultConfig.audio.output
 

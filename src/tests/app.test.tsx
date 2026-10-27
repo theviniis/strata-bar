@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { it, expect, vi, beforeEach } from 'vitest'
-import App from '../app/App'
+import App from '../app/app'
 
 beforeEach(() => {
   vi.stubGlobal(

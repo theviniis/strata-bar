@@ -5,9 +5,9 @@ import {
   WidgetItemOutput,
   WidgetItemTooltip
 } from '@/components/widget-item'
-import { WidgetPopup } from '@/popups/WidgetPopup'
+import { WidgetPopup } from '@/popups/widget-popup'
 import type { WidgetView } from '@/components/status-bar/presentation'
-import type { useOverlayTooltip } from '@/hooks/useOverlayTooltip'
+import type { useOverlayTooltip } from '@/hooks/use-overlay-tooltip'
 import type { WeatherData } from '@/services/system/weather.generated'
 import { condition, temperature } from '../src/presentation'
 
