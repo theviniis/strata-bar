@@ -14,7 +14,7 @@ const meta = {
       description: {
         component: `API composta para abrir um **popup registrado** a partir de um widget.
 A composição pertence ao controlador; o visual recebe o trigger, os callbacks e
-as refs resultantes. O JSX fica em \`*.popup.tsx\`; os metadados de registro ficam em \`*.popup-definition.ts\`.
+as refs resultantes. JSX, controlador e registro ficam juntos em \`*.popup.tsx\`.
 
 ### Partes da composição
 

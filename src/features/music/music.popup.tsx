@@ -1,3 +1,4 @@
+import { definePopup } from '@/popups/definition'
 import { CardFooter } from '@/components/ui/card'
 import { ScrollingText } from '@/components/ui/scrolling-text'
 import { WidgetItemOutput } from '@/components/widget-item'
@@ -432,3 +433,8 @@ function MusicPopupState({
     <MusicPopup event={event} media={media} demo={demo} controls={controls} />
   )
 }
+
+export default definePopup({
+  label: 'Player de musica',
+  Content: MusicPopupController
+})

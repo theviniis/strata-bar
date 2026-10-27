@@ -1,3 +1,4 @@
+import { definePopup } from '@/popups/definition'
 import { mapDataStatus } from '@/components/popup-status'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
@@ -283,3 +284,8 @@ function AudioOutputsContent({
     />
   )
 }
+
+export default definePopup({
+  label: 'Saída de áudio',
+  Content: AudioOutputsController
+})

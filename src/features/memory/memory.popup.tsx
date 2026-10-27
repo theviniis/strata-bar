@@ -1,3 +1,4 @@
+import { definePopup } from '@/popups/definition'
 import { mapDataStatus } from '@/components/popup-status'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { MemoryData } from '@/services/system/memory.generated'
@@ -81,3 +82,8 @@ function DemoMemoryPopup() {
     />
   )
 }
+
+export default definePopup({
+  label: 'Memória',
+  Content: MemoryPopupController
+})

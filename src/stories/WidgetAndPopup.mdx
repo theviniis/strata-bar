@@ -236,9 +236,8 @@ runtime também rejeita valores inválidos; um ID qualquer do tipo `string` não
 
 O conteúdo não vai em `children`: o JSX, o controlador e os adaptadores ficam
 em `*.popup.tsx`. Por exemplo, `src/features/cpu/cpu.popup.tsx` contém
-`CpuPopupController` e `CpuPopup`. O arquivo leve `cpu.popup-definition.ts`
-registra o controlador com `definePopup` e `lazyContent`, mantendo suas
-dependências fora da inicialização da barra.
+`CpuPopupController`, `CpuPopup` e o `export default definePopup(...)` que
+registra o controlador. JSX, adaptadores, schema e metadados ficam juntos.
 
 Passe dados serializáveis em `params`. Callbacks, refs e instâncias de stores
 ficam no controlador de cada janela e não atravessam o transporte nativo.
@@ -257,7 +256,6 @@ percorrem:
 ```text
 src/features/details/
   details.popup.tsx
-  details.popup-definition.ts
   DetailsTrigger.tsx
   DetailsPopup.stories.tsx
 ```
@@ -338,21 +336,19 @@ Se a feature consumir dados, o controlador escolhe a fonte pelo modo e é dono
 do setup/cleanup. No modo demo, use dados ilustrativos e ações simuladas. No modo
 nativo, uma falha deve aparecer como falha, sem trocar para dados demo.
 
-### 5.4. Registre em details.popup-definition.ts
+### 5.4. Registre no mesmo details.popup.tsx
 
-Em `src/features/details/details.popup-definition.ts`, exporte os metadados
-leves como `default`. O JSX fica no `.popup.tsx`, carregado sob demanda:
+Ao final do mesmo `src/features/details/details.popup.tsx`, exporte a definição
+como `default`, apontando diretamente para o controlador local. Acrescente os
+imports abaixo ao início desse arquivo:
 
-```ts
+```tsx
 import { z } from 'zod'
-import { definePopup, lazyContent } from '@/popups/definition'
+import { definePopup } from '@/popups/definition'
 
 export default definePopup({
   label: 'Detalhes',
-  Content: lazyContent(
-    () => import('./details.popup'),
-    'DetailsPopupController'
-  ),
+  Content: DetailsPopupController,
   schema: z
     .object({
       title: z.string().trim().min(1).max(120)
@@ -385,15 +381,6 @@ export default definePopup({
       <td>
         Componente sem props externas. Aponte para o controlador, que resolve
         suas dependências na própria janela.
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <code>lazyContent</code>
-      </td>
-      <td>
-        O primeiro argumento importa o módulo; o segundo é o nome exato do
-        export nomeado desse módulo. O conteúdo é carregado quando necessário.
       </td>
     </tr>
     <tr>
@@ -434,8 +421,9 @@ pnpm typecheck
 ```
 
 O gerador descobre `*.popup.tsx` recursivamente em `src/features/` e atualiza
-`src/popups/.generated/popups.ts`, incluindo o ID `details` e importando seu
-`details.popup-definition.ts`. Ele não importa o JSX na inicialização da barra.
+`src/popups/.generated/popups.ts`, incluindo o ID `details` e importando o
+default de `details.popup.tsx`. Os módulos são importados pelo registro;
+montagem e subscriptions começam quando o host apresenta o popup.
 `PopupId`, `PopupParams` e `PopupValues` passam a refletir o schema, permitindo
 que `usePopupContext('details')` conheça `params.title`.
 
@@ -479,7 +467,7 @@ própria integração no registro de widgets.
 O fluxo completo fica:
 
 ```text
-details.popup.tsx + details.popup-definition.ts → gerador → registro e tipos
+details.popup.tsx → gerador → registro e tipos
 DetailsTrigger → Root/Trigger → host → details.popup.tsx (controlador e visual)
 ```
 
@@ -656,9 +644,8 @@ visuais ou as stories de `WidgetPopup`, que abrem conteúdo demo no browser.
     <tr>
       <td>Estou tentando passar o conteúdo como filho de Root</td>
       <td>
-        Coloque o JSX em <code>{'*.popup.tsx'}</code> e os metadados em
-        <code>{'*.popup-definition.ts'}</code>; os filhos de Root compõem o
-        trigger e a âncora.
+        Coloque JSX, controlador e registro em <code>{'*.popup.tsx'}</code>; os
+        filhos de Root compõem o trigger e a âncora.
       </td>
     </tr>
     <tr>

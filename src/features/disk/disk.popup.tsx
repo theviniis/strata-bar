@@ -1,3 +1,4 @@
+import { definePopup } from '@/popups/definition'
 import { mapDataStatus } from '@/components/popup-status'
 import { Progress } from '@/components/ui/progress'
 import type { SystemEvent } from '@/services/system/bridge'
@@ -100,3 +101,8 @@ function DemoDiskPopup() {
     />
   )
 }
+
+export default definePopup({
+  label: 'Discos',
+  Content: DiskPopupController
+})

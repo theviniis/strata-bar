@@ -1,3 +1,5 @@
+import { definePopup } from '@/popups/definition'
+import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { BellRing, X } from 'lucide-react'
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -99,3 +101,14 @@ export function ReminderAlertController() {
     />
   )
 }
+
+export default definePopup({
+  label: 'Alerta de lembrete',
+  Content: ReminderAlertController,
+  schema: z
+    .object({
+      id: z.uuid(),
+      revision: z.number().int().nonnegative().optional()
+    })
+    .strict()
+})

@@ -71,11 +71,11 @@ identity survives reopening, while every opening has a distinct session.
 callbacks change. Native cross-window ownership and geometry remain native.
 
 Each feature's `*.popup.tsx` holds its visual, controller and native/demo
-adapters as named exports. A same-stem `*.popup-definition.ts` owns only label,
-schema and lazy registration. Discovery derives IDs from the `.popup.tsx`
-filenames but imports the lightweight definitions into the generated registry,
-so the bar does not load popup visuals before content is requested. Stories and
-tests import the prop-driven visual directly from the `.popup.tsx` module.
+adapters as named exports, plus a default `definePopup` registration with label,
+schema and the local controller as `Content`. Discovery imports these modules
+directly into the generated registry. Their dependencies load with the registry;
+mounting and subscriptions still begin when the host renders the popup. Stories
+and tests import the prop-driven visual from the same module.
 
 ## workspaces channel
 

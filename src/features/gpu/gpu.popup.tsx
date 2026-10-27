@@ -1,3 +1,4 @@
+import { definePopup } from '@/popups/definition'
 import { ResourceGraph } from '@/components/ResourceGraph'
 import { mapDataStatus } from '@/components/popup-status'
 import {
@@ -159,3 +160,8 @@ function DemoGpuPopup() {
     />
   )
 }
+
+export default definePopup({
+  label: 'GPU',
+  Content: GpuPopupController
+})

@@ -1,3 +1,4 @@
+import { definePopup } from '@/popups/definition'
 import { mapDataStatus } from '@/components/popup-status'
 import { Sunrise, Sunset, Wind } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -301,3 +302,8 @@ function NativeWeatherPopup() {
     />
   )
 }
+
+export default definePopup({
+  label: 'Clima',
+  Content: WeatherPopupController
+})

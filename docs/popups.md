@@ -9,44 +9,32 @@ components own their content, data and actions. Volume is the reference feature.
 1. Create `*.popup.tsx` under its feature with the actual visual component,
    controller and native/demo adapters as named exports. Content can be any React
    layout; it does not need predefined header/body/footer slots.
-2. Put lightweight registration in the matching `*.popup-definition.ts`,
-   exporting `definePopup(...)` as default and lazily importing the controller
-   from `*.popup.tsx`. The UI filename supplies the ID: `clock.popup.tsx` is `clock`.
+2. Export `definePopup(...)` as default in that same file, with the local
+   controller as `Content`. The filename supplies the ID: `clock.popup.tsx` is
+   `clock`.
 3. Wrap the widget in `WidgetPopup.Root`, an optional `Anchor` and a `Trigger`.
    Continue using string IDs, for example `popup="clock"`.
 
 There is no catalog or registry to edit. For a popup without parameters:
 
-```ts
-// src/features/clock/clock.popup-definition.ts
-import { definePopup, lazyContent } from '@/popups/definition'
+```tsx
+// At the end of src/features/clock/clock.popup.tsx, after its components.
+// Import definePopup at the top of that same file.
+import { definePopup } from '@/popups/definition'
 
 export default definePopup({
   label: 'Calendário',
-  Content: lazyContent(() => import('./clock.popup'), 'ClockPopupController')
+  Content: ClockPopupController
 })
 ```
 
 Only `label` and `Content` are required. An omitted schema accepts `{}` or omitted
 params, rejecting extra fields. Add a Zod schema when the content needs parameters:
 
-```ts
-// src/features/workspaces/workspaceDetails.popup-definition.ts
-import { z } from 'zod'
-import { definePopup, lazyContent } from '@/popups/definition'
-
-export default definePopup({
-  label: 'Workspace details',
-  schema: z.object({ workspace: z.number().int().nonnegative() }).strict(),
-  Content: lazyContent(
-    () => import('./workspaceDetails.popup'),
-    'WorkspaceDetails'
-  )
-})
-```
-
 ```tsx
 // src/features/workspaces/workspaceDetails.popup.tsx
+import { z } from 'zod'
+import { definePopup } from '@/popups/definition'
 import { usePopupContext } from '@/popups/context'
 
 export function WorkspaceDetails() {
@@ -60,6 +48,12 @@ export function WorkspaceDetails() {
     </section>
   )
 }
+
+export default definePopup({
+  label: 'Workspace details',
+  schema: z.object({ workspace: z.number().int().nonnegative() }).strict(),
+  Content: WorkspaceDetails
+})
 ```
 
 ```tsx
@@ -137,11 +131,10 @@ Popup implementations are discovered under `src/features/**/*.popup.tsx`. IDs
 must match `[A-Za-z_$][A-Za-z0-9_$]*` and be unique across features; errors identify
 invalid or conflicting paths. Renaming a definition changes its public string ID.
 
-Use `*.popup.tsx` for the JSX, controller and adapters, with the same-stem
-`*.popup-definition.ts` for label, schema and lazy registration. The generated
-map imports only the lightweight registration; visual dependencies load when
-content is requested. Keep prop-driven visuals available as named exports for
-stories and tests. Inline definitions remain supported for compatibility.
+Use one `*.popup.tsx` for JSX, controller, adapters and default registration.
+The generated map imports the complete module directly. Dependencies load with
+the registry, while mounting and subscriptions remain owned by the popup host.
+Keep prop-driven visuals available as named exports for stories and tests.
 
 Legacy `*.popup.ts` files are still
 recognized, sharing the same ID namespace: `clock.popup.ts` and

@@ -67,6 +67,11 @@ export default tseslint.config(
     files: ['src/components/ui/**/*.tsx'],
     rules: { 'react-refresh/only-export-components': 'off' }
   },
+  {
+    // Popup modules deliberately export their registration and React visuals together.
+    files: ['src/features/**/*.popup.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' }
+  },
   // Keep this last: it disables every rule that would fight the Prettier formatter.
   prettier
 )

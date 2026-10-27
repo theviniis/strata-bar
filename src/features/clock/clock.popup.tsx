@@ -1,3 +1,4 @@
+import { definePopup } from '@/popups/definition'
 import { Calendar } from '@/components/ui/calendar'
 import type { TimePresentation } from './presentation'
 import { useTime } from './useTime'
@@ -62,3 +63,8 @@ export function ClockPopupController() {
     />
   )
 }
+
+export default definePopup({
+  label: 'Calendário',
+  Content: ClockPopupController
+})

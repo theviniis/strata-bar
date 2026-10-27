@@ -1,3 +1,4 @@
+import { definePopup } from '@/popups/definition'
 import { ResourceGraph } from '@/components/ResourceGraph'
 import { mapDataStatus } from '@/components/popup-status'
 import {
@@ -146,3 +147,8 @@ function DemoCpuPopup() {
     />
   )
 }
+
+export default definePopup({
+  label: 'CPU',
+  Content: CpuPopupController
+})

@@ -1,3 +1,4 @@
+import { definePopup } from '@/popups/definition'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type {
@@ -237,3 +238,8 @@ export function AgentsPopupStateController({
     />
   )
 }
+
+export default definePopup({
+  label: 'Agentes de IA',
+  Content: AgentsPopupController
+})
