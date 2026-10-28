@@ -13,9 +13,7 @@ use windows::{
     Win32::{
         Foundation::PROPERTYKEY,
         Media::Audio::{Endpoints::*, *},
-        System::{
-            Com::*,
-        },
+        System::Com::*,
     },
 };
 
@@ -47,7 +45,8 @@ impl Timer {
             Some(deadline) if *deadline > now => false,
             _ => {
                 // Never schedule behind the clock: a stall must not become a burst.
-                self.due.insert(channel, now + Duration::from_millis(interval_ms));
+                self.due
+                    .insert(channel, now + Duration::from_millis(interval_ms));
                 true
             }
         }
@@ -131,8 +130,8 @@ struct Data {
     next: u64,
     subs: HashMap<String, Sub>,
     latest: HashMap<String, Value>,
-    incoming: HashMap<String,u64>,
-    emitted: HashMap<String,u64>,
+    incoming: HashMap<String, u64>,
+    emitted: HashMap<String, u64>,
     sensor_service: Value,
     audio_latency: std::collections::VecDeque<Value>,
 }
@@ -161,7 +160,10 @@ enum Request {
 impl Metrics {
     pub fn spectrum_output(&self) -> (u32, Option<bool>) {
         let data = self.data.lock().unwrap();
-        let muted = data.latest.get("volume").filter(|v| v["status"] == "ready")
+        let muted = data
+            .latest
+            .get("volume")
+            .filter(|v| v["status"] == "ready")
             .and_then(|v| v["data"]["muted"].as_bool());
         (data.output_generation, muted)
     }
@@ -181,7 +183,19 @@ impl Metrics {
         window: String,
         interval: u64,
     ) -> Result<Value, String> {
-        if !["cpu", "gpu", "memory", "disk", "volume", "audioOutputs", "microphone", "audioInputs", "voicemeeter"].contains(&channel.as_str()) {
+        if ![
+            "cpu",
+            "gpu",
+            "memory",
+            "disk",
+            "volume",
+            "audioOutputs",
+            "microphone",
+            "audioInputs",
+            "voicemeeter",
+        ]
+        .contains(&channel.as_str())
+        {
             return Err(format!("Unsupported channel: {channel}"));
         }
         if !(MIN_INTERVAL_MS..=MAX_INTERVAL_MS).contains(&interval) {
@@ -252,11 +266,19 @@ impl Metrics {
     fn publish(&self, app: &AppHandle, channel: &str, value: Value) {
         let windows = {
             let mut d = self.data.lock().unwrap();
-            *d.incoming.entry(channel.into()).or_default()+=1;
+            *d.incoming.entry(channel.into()).or_default() += 1;
             // Core Audio may repeat the same state. Do not wake every WebView
             // for a notification that cannot change the displayed volume.
-            if (channel=="volume" || channel=="microphone") && d.latest.get(channel).is_some_and(|old|old["status"]==value["status"] && old["data"]==value["data"] && old["error"]==value["error"]){return;}
-            *d.emitted.entry(channel.into()).or_default()+=1;
+            if (channel == "volume" || channel == "microphone")
+                && d.latest.get(channel).is_some_and(|old| {
+                    old["status"] == value["status"]
+                        && old["data"] == value["data"]
+                        && old["error"] == value["error"]
+                })
+            {
+                return;
+            }
+            *d.emitted.entry(channel.into()).or_default() += 1;
             d.latest.insert(channel.into(), value.clone());
             d.subs
                 .values()
@@ -273,7 +295,12 @@ impl Metrics {
     pub fn volume(&self, level: Option<f32>, muted: Option<bool>) -> Result<Value, String> {
         self.audio_volume(false, level, muted)
     }
-    pub fn audio_volume(&self, capture: bool, level: Option<f32>, muted: Option<bool>) -> Result<Value, String> {
+    pub fn audio_volume(
+        &self,
+        capture: bool,
+        level: Option<f32>,
+        muted: Option<bool>,
+    ) -> Result<Value, String> {
         if level.is_some_and(|v| !v.is_finite() || !(0.0..=100.0).contains(&v)) {
             return Err("Volume must be between 0 and 100".into());
         }
@@ -288,10 +315,15 @@ impl Metrics {
         self.audio_device(false, id)
     }
     pub fn audio_device(&self, capture: bool, id: String) -> Result<Value, String> {
-        if id.is_empty() || id.contains('\0') || id.len() > 4096 { return Err("Invalid endpoint ID".into()); }
+        if id.is_empty() || id.contains('\0') || id.len() > 4096 {
+            return Err("Invalid endpoint ID".into());
+        }
         let (tx, rx) = mpsc::sync_channel(1);
-        self.tx.send(Request::Output(capture, id, tx)).map_err(|e| e.to_string())?;
-        rx.recv_timeout(Duration::from_secs(3)).map_err(|e| e.to_string())?
+        self.tx
+            .send(Request::Output(capture, id, tx))
+            .map_err(|e| e.to_string())?;
+        rx.recv_timeout(Duration::from_secs(3))
+            .map_err(|e| e.to_string())?
     }
     /// Routes a channel through Voicemeeter (`Some`) or back to the Windows
     /// default endpoints (`None`). The worker owns the routing, so reads and
@@ -327,7 +359,8 @@ impl Metrics {
         let intervals: serde_json::Map<String, Value> = POLLED
             .into_iter()
             .filter_map(|channel| {
-                self.interval(channel).map(|ms| (channel.to_string(), json!(ms)))
+                self.interval(channel)
+                    .map(|ms| (channel.to_string(), json!(ms)))
             })
             .collect();
         let d = self.data.lock().unwrap();
@@ -339,7 +372,16 @@ impl Metrics {
     fn run(&self, app: AppHandle, rx: mpsc::Receiver<Request>) {
         unsafe {
             if let Err(e) = CoInitializeEx(None, COINIT_MULTITHREADED).ok() {
-                for c in ["cpu", "gpu", "memory", "disk", "volume", "audioOutputs", "microphone", "audioInputs"] {
+                for c in [
+                    "cpu",
+                    "gpu",
+                    "memory",
+                    "disk",
+                    "volume",
+                    "audioOutputs",
+                    "microphone",
+                    "audioInputs",
+                ] {
                     self.publish(&app, c, error(&e));
                 }
                 return;
@@ -357,12 +399,20 @@ impl Metrics {
                     eprintln!("Audio device notifications: {err}");
                 }
             }
-            let mut audio: [Option<(IAudioEndpointVolume, IAudioEndpointVolumeCallback)>; 2] = [None, None];
+            let mut audio: [Option<(IAudioEndpointVolume, IAudioEndpointVolumeCallback)>; 2] =
+                [None, None];
             let sensor_client = crate::sensors::Client::new();
             let mut sensor_trace = std::env::var_os("STRATA_SENSOR_TRACE").and_then(|path| {
-                match std::fs::OpenOptions::new().create_new(true).write(true).open(path) {
+                match std::fs::OpenOptions::new()
+                    .create_new(true)
+                    .write(true)
+                    .open(path)
+                {
                     Ok(file) => Some(file),
-                    Err(error) => { eprintln!("Sensor trace: {error}"); None }
+                    Err(error) => {
+                        eprintln!("Sensor trace: {error}");
+                        None
+                    }
                 }
             });
             let sensor_trace_started = Instant::now();
@@ -372,12 +422,14 @@ impl Metrics {
             let mut vm_due = Instant::now();
             let mut vm_pending: HashMap<&'static str, VmWrite> = HashMap::new();
             let mut timer = Timer::default();
-            let mut ticks=0;
+            let mut ticks = 0;
             let mut devices_active = [false; 2];
             let mut volume_active = [false; 2];
             loop {
                 let dirty = changed.swap(false, Ordering::AcqRel);
-                if dirty { self.data.lock().unwrap().output_generation += 1; }
+                if dirty {
+                    self.data.lock().unwrap().output_generation += 1;
+                }
                 // Voicemeeter maintenance: keep the remote session warm when the
                 // routing menu or a routed audio channel needs it, then publish
                 // per-channel levels and the strip/bus snapshot (the remote API
@@ -407,7 +459,11 @@ impl Metrics {
                                 self.publish(&app, channel, envelope("unavailable", Value::Null));
                             }
                             if menu_wanted {
-                                self.publish(&app, "voicemeeter", envelope("unavailable", Value::Null));
+                                self.publish(
+                                    &app,
+                                    "voicemeeter",
+                                    envelope("unavailable", Value::Null),
+                                );
                             }
                         }
                         Ok(state) => {
@@ -419,14 +475,18 @@ impl Metrics {
                                     Ok((level, muted)) => {
                                         let read_ms = read_started.elapsed().as_secs_f64() * 1000.0;
                                         let value = json!({"level": level, "muted": muted});
-                                        let outcome = vm_pending
-                                            .get(channel)
-                                            .map(|pending| pending.observe((level, muted), Instant::now()));
+                                        let outcome = vm_pending.get(channel).map(|pending| {
+                                            pending.observe((level, muted), Instant::now())
+                                        });
                                         // A stale observation is not a confirmation. Other bars
                                         // also keep their last confirmed value until the engine catches up.
                                         if !matches!(outcome, Some(Ok(false))) {
                                             let publication = Instant::now();
-                                            self.publish(&app, channel, envelope("ready", value.clone()));
+                                            self.publish(
+                                                &app,
+                                                channel,
+                                                envelope("ready", value.clone()),
+                                            );
                                             if let Some(pending) = vm_pending.remove(channel) {
                                                 let result = match outcome {
                                                     Some(Err(error)) => Err(error),
@@ -471,7 +531,8 @@ impl Metrics {
                             }
                             if menu_wanted
                                 && !vm_reconnect
-                                && (matches!(state, crate::voicemeeter::Poll::Changed) || !vm_published)
+                                && (matches!(state, crate::voicemeeter::Poll::Changed)
+                                    || !vm_published)
                             {
                                 match voicemeeter.snapshot() {
                                     Ok(snapshot) => self.publish(
@@ -493,9 +554,9 @@ impl Metrics {
                         vm_available = false;
                         vm_published = false;
                         for (_, pending) in vm_pending.drain() {
-                            let _ = pending.reply.send(Err(
-                                "Reconectando a sessão do Voicemeeter".into()
-                            ));
+                            let _ = pending
+                                .reply
+                                .send(Err("Reconectando a sessão do Voicemeeter".into()));
                         }
                         for channel in &routed {
                             self.publish(&app, channel, envelope("unavailable", Value::Null));
@@ -508,10 +569,17 @@ impl Metrics {
                 } else if !vm_wanted {
                     vm_published = false;
                 }
-                for (index, flow, devices_channel, volume_channel) in [(0, eRender, "audioOutputs", "volume"), (1, eCapture, "audioInputs", "microphone")] {
+                for (index, flow, devices_channel, volume_channel) in [
+                    (0, eRender, "audioOutputs", "volume"),
+                    (1, eCapture, "audioInputs", "microphone"),
+                ] {
                     let active = self.active(devices_channel);
                     if active && (dirty || !devices_active[index]) {
-                        match enumerator.as_ref().map_err(|e| e.clone()).and_then(|en| crate::audio_policy::endpoints(en, flow)) {
+                        match enumerator
+                            .as_ref()
+                            .map_err(|e| e.clone())
+                            .and_then(|en| crate::audio_policy::endpoints(en, flow))
+                        {
                             Ok(v) => self.publish(&app, devices_channel, envelope("ready", v)),
                             Err(e) => self.publish(&app, devices_channel, error(e)),
                         }
@@ -543,8 +611,14 @@ impl Metrics {
                                 match e.RegisterControlChangeNotify(&cb) {
                                     Ok(()) => {
                                         match audio_read(&e) {
-                                            Ok(v) => self.publish(&app, volume_channel, envelope("ready", v)),
-                                            Err(err) => self.publish(&app, volume_channel, error(err)),
+                                            Ok(v) => self.publish(
+                                                &app,
+                                                volume_channel,
+                                                envelope("ready", v),
+                                            ),
+                                            Err(err) => {
+                                                self.publish(&app, volume_channel, error(err))
+                                            }
                                         };
                                         audio[index] = Some((e, cb));
                                     }
@@ -552,9 +626,21 @@ impl Metrics {
                                 }
                             }
                             Err(e) => {
-                                let absent = enumerator.as_ref().ok().and_then(|en| crate::audio_policy::endpoints(en, flow).ok()).is_some_and(|v|v["defaultDeviceId"].is_null());
-                                self.publish(&app, volume_channel, if absent { envelope("unavailable", Value::Null) } else { error(e) });
-                            },
+                                let absent = enumerator
+                                    .as_ref()
+                                    .ok()
+                                    .and_then(|en| crate::audio_policy::endpoints(en, flow).ok())
+                                    .is_some_and(|v| v["defaultDeviceId"].is_null());
+                                self.publish(
+                                    &app,
+                                    volume_channel,
+                                    if absent {
+                                        envelope("unavailable", Value::Null)
+                                    } else {
+                                        error(e)
+                                    },
+                                );
+                            }
                         }
                     } else if !active_volume {
                         if let Some((e, cb)) = audio[index].take() {
@@ -587,7 +673,9 @@ impl Metrics {
                     // user's bar. Leave five minutes beyond the one-hour soak
                     // for the deliberate service-restart check.
                     if sensor_trace_started.elapsed() >= Duration::from_secs(65 * 60)
-                        || sensor_trace.as_ref().is_some_and(|file| file.metadata().is_ok_and(|m| m.len() >= 128 * 1024 * 1024))
+                        || sensor_trace.as_ref().is_some_and(|file| {
+                            file.metadata().is_ok_and(|m| m.len() >= 128 * 1024 * 1024)
+                        })
                     {
                         sensor_trace = None;
                     }
@@ -599,8 +687,16 @@ impl Metrics {
                             sensor_trace = None;
                         }
                     }
-                    ticks+=1;
-                    if ticks==10{let report=json!({"metrics":self.diagnostics(),"windows":crate::desktop::profile(),"sensors":sensor_client.diagnostics()});if let Err(e)=std::fs::write(std::env::temp_dir().join("strata-runtime-profile.json"),report.to_string()){eprintln!("Runtime profile: {e}");}}
+                    ticks += 1;
+                    if ticks == 10 {
+                        let report = json!({"metrics":self.diagnostics(),"windows":crate::desktop::profile(),"sensors":sensor_client.diagnostics()});
+                        if let Err(e) = std::fs::write(
+                            std::env::temp_dir().join("strata-runtime-profile.json"),
+                            report.to_string(),
+                        ) {
+                            eprintln!("Runtime profile: {e}");
+                        }
+                    }
                 }
                 let mut wait = timer.next_wait(Instant::now());
                 if vm_wanted {
@@ -644,9 +740,9 @@ impl Metrics {
                                         reply,
                                     };
                                     if let Some(previous) = vm_pending.insert(channel, pending) {
-                                        let _ = previous
-                                            .reply
-                                            .send(Err("Comando substituído por outro controle".into()));
+                                        let _ = previous.reply.send(Err(
+                                            "Comando substituído por outro controle".into(),
+                                        ));
                                     }
                                     vm_due = Instant::now() + Duration::from_millis(50);
                                 }
@@ -659,7 +755,8 @@ impl Metrics {
                         let result: Result<Value, String> = {
                             let flow = if capture { eCapture } else { eRender };
                             (|| -> windows::core::Result<Value> {
-                                let e = endpoint(enumerator.as_ref().map_err(|e| e.clone())?, flow)?;
+                                let e =
+                                    endpoint(enumerator.as_ref().map_err(|e| e.clone())?, flow)?;
                                 if let Some(v) = level {
                                     e.SetMasterVolumeLevelScalar(v / 100., std::ptr::null())?;
                                 }
@@ -706,7 +803,9 @@ impl Metrics {
                 }
             }
             for (_, pending) in vm_pending.drain() {
-                let _ = pending.reply.send(Err("Controle de áudio encerrado".into()));
+                let _ = pending
+                    .reply
+                    .send(Err("Controle de áudio encerrado".into()));
             }
             for slot in &mut audio {
                 if let Some((e, cb)) = slot.take() {
@@ -770,7 +869,9 @@ impl IMMNotificationClient_Impl for DeviceNotify_Impl {
         role: ERole,
         _: &PCWSTR,
     ) -> windows::core::Result<()> {
-        if (flow == eRender || flow == eCapture) && (role == eMultimedia || role == eConsole || role == eCommunications) {
+        if (flow == eRender || flow == eCapture)
+            && (role == eMultimedia || role == eConsole || role == eCommunications)
+        {
             self.changed.store(true, Ordering::Release);
             let _ = self.tx.send(Request::Wake);
         }
@@ -852,18 +953,30 @@ mod channel_source_tests {
     #[test]
     fn spectrum_observes_only_the_routed_output_snapshot_and_its_generation() {
         let (tx, _) = mpsc::channel();
-        let metrics = Metrics { data: Default::default(), tx };
+        let metrics = Metrics {
+            data: Default::default(),
+            tx,
+        };
         assert_eq!(metrics.spectrum_output(), (0, None));
         for muted in [true, false] {
             let mut data = metrics.data.lock().unwrap();
             data.output_generation = 3;
-            data.latest.insert("volume".into(), envelope("ready", json!({"level":50,"muted":muted})));
-            data.latest.insert("audioOutputs".into(), envelope("unavailable", Value::Null));
+            data.latest.insert(
+                "volume".into(),
+                envelope("ready", json!({"level":50,"muted":muted})),
+            );
+            data.latest
+                .insert("audioOutputs".into(), envelope("unavailable", Value::Null));
             drop(data);
             assert_eq!(metrics.spectrum_output(), (3, Some(muted)));
         }
         for status in ["loading", "unavailable", "error"] {
-            metrics.data.lock().unwrap().latest.insert("volume".into(), envelope(status, Value::Null));
+            metrics
+                .data
+                .lock()
+                .unwrap()
+                .latest
+                .insert("volume".into(), envelope(status, Value::Null));
             assert_eq!(metrics.spectrum_output(), (3, None));
         }
     }
@@ -946,7 +1059,9 @@ mod lifecycle_tests {
     #[test]
     fn invalid_requests_do_not_create_resources() {
         let m = owner();
-        assert!(m.subscribe("network".into(), "bar-one".into(), 2000).is_err());
+        assert!(m
+            .subscribe("network".into(), "bar-one".into(), 2000)
+            .is_err());
         assert!(m.subscribe("cpu".into(), "bar-one".into(), 1).is_err());
         assert_eq!(m.diagnostics()["subscribers"], 0);
         assert!(m.volume(Some(f32::NAN), None).is_err());
@@ -954,8 +1069,11 @@ mod lifecycle_tests {
         for level in [f32::NAN, f32::INFINITY, -1., 101.] {
             assert!(m.audio_volume(true, Some(level), None).is_err());
         }
-        for id in ["", "bad\0id"] { assert!(m.audio_device(true, id.into()).is_err()); }
-        m.subscribe("microphone".into(), "bar-one".into(), 2000).unwrap();
+        for id in ["", "bad\0id"] {
+            assert!(m.audio_device(true, id.into()).is_err());
+        }
+        m.subscribe("microphone".into(), "bar-one".into(), 2000)
+            .unwrap();
         assert!(m.active("microphone"));
         assert!(!m.active("volume"));
     }
@@ -964,7 +1082,8 @@ mod lifecycle_tests {
         let m = owner();
         for interval in [1000, 1500, 2000, 5000, 60_000] {
             assert!(
-                m.subscribe("cpu".into(), "bar-one".into(), interval).is_ok(),
+                m.subscribe("cpu".into(), "bar-one".into(), interval)
+                    .is_ok(),
                 "{interval} ms must be accepted"
             );
         }
@@ -976,7 +1095,8 @@ mod lifecycle_tests {
         let m = owner();
         m.subscribe("cpu".into(), "bar-one".into(), 5000).unwrap();
         m.subscribe("cpu".into(), "bar-two".into(), 2000).unwrap();
-        m.subscribe("memory".into(), "bar-one".into(), 10_000).unwrap();
+        m.subscribe("memory".into(), "bar-one".into(), 10_000)
+            .unwrap();
         assert_eq!(m.interval("cpu"), Some(2000));
         assert_eq!(m.interval("memory"), Some(10_000));
         assert_eq!(m.interval("gpu"), None);
@@ -991,7 +1111,8 @@ mod lifecycle_tests {
         let m = owner();
         // Volume and microphone are Core Audio callbacks, komorebi is a pipe.
         for channel in ["volume", "microphone", "audioOutputs", "voicemeeter"] {
-            m.subscribe(channel.into(), "bar-one".into(), 60_000).unwrap();
+            m.subscribe(channel.into(), "bar-one".into(), 60_000)
+                .unwrap();
             assert_eq!(m.interval(channel), None, "{channel} is event-driven");
         }
     }

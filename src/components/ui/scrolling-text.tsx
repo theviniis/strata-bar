@@ -1,3 +1,4 @@
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useEffect, useRef, type ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -11,20 +12,20 @@ export function ScrollingText({
   text: string
   animate?: boolean
 }) {
+  const reducedMotion = useReducedMotion()
   const viewport = useRef<HTMLSpanElement>(null)
   const content = useRef<HTMLSpanElement>(null)
   useEffect(() => {
-    if (!animate) return
+    if (!animate || reducedMotion) return
     const box = viewport.current
     const label = content.current
     if (!box || !label) return
-    const motion = window.matchMedia?.('(prefers-reduced-motion: reduce)')
     let animation: Animation | undefined
     const measure = () => {
       animation?.cancel()
       animation = undefined
       const distance = label.scrollWidth - box.clientWidth
-      if (distance <= 0 || box.clientWidth === 0 || motion?.matches) return
+      if (distance <= 0 || box.clientWidth === 0) return
       const travel = (distance / 24) * 1000
       const duration = 2 * travel + 2400
       const pause = 1200 / duration
@@ -45,22 +46,20 @@ export function ScrollingText({
         : new ResizeObserver(measure)
     observer?.observe(box)
     observer?.observe(label)
-    motion?.addEventListener?.('change', measure)
     window.addEventListener('resize', measure)
     measure()
     return () => {
       animation?.cancel()
       observer?.disconnect()
-      motion?.removeEventListener?.('change', measure)
       window.removeEventListener('resize', measure)
     }
-  }, [text, animate])
+  }, [text, animate, reducedMotion])
   return (
     <span
       ref={viewport}
       className={cn(
-        'block min-w-0 overflow-hidden whitespace-nowrap motion-reduce:text-ellipsis',
-        !animate && 'text-ellipsis',
+        'block min-w-0 overflow-hidden whitespace-nowrap',
+        (!animate || reducedMotion) && 'text-ellipsis',
         className
       )}
       {...props}

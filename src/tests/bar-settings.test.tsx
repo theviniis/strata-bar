@@ -35,3 +35,23 @@ it('edits shared widget spacing and allows zero spacing', () => {
     bar: { ...defaultConfig.bar, spacing: 0 }
   })
 })
+
+it('edits the application animation preference', () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  const onChange = vi.fn()
+  render(<BarSettings draft={defaultConfig} onChange={onChange} />)
+  const toggle = screen.getByRole('switch', { name: 'Reduzir animações' })
+  expect(toggle).not.toBeChecked()
+  fireEvent.click(toggle)
+  expect(onChange).toHaveBeenLastCalledWith({
+    ...defaultConfig,
+    bar: { ...defaultConfig.bar, reduceMotion: true }
+  })
+})

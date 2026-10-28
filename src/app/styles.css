@@ -3,6 +3,8 @@
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/geist';
 
+@custom-variant motion-reduce (&:where([data-reduce-motion="true"], [data-reduce-motion="true"] *));
+
 @custom-variant dark (&:is(.dark *));
 
 @utility glass-surface {

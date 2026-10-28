@@ -1,0 +1,533 @@
+{
+  "observations": [
+    {
+      "bytes": 0.0,
+      "elapsedMs": 12.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": null
+    },
+    {
+      "bytes": 256000.0,
+      "elapsedMs": 263.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 8.112433254638505
+    },
+    {
+      "bytes": 2357358.0,
+      "elapsedMs": 514.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 37.41646558569026
+    },
+    {
+      "bytes": 5080279.0,
+      "elapsedMs": 765.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 53.82561643434675
+    },
+    {
+      "bytes": 8032854.0,
+      "elapsedMs": 1016.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 63.88006266451423
+    },
+    {
+      "bytes": 10997521.0,
+      "elapsedMs": 1267.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 69.99233968001994
+    },
+    {
+      "bytes": 13114833.0,
+      "elapsedMs": 1517.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 69.60849499833506
+    },
+    {
+      "bytes": 15987125.0,
+      "elapsedMs": 1769.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 72.71647845222047
+    },
+    {
+      "bytes": 19002546.0,
+      "elapsedMs": 2031.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 75.20606942479964
+    },
+    {
+      "bytes": 21853389.0,
+      "elapsedMs": 2283.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 76.90454933356794
+    },
+    {
+      "bytes": 25798318.0,
+      "elapsedMs": 2534.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 81.76242149810486
+    },
+    {
+      "bytes": 27992694.0,
+      "elapsedMs": 2785.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 80.70821781207283
+    },
+    {
+      "bytes": 31679157.0,
+      "elapsedMs": 3134.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 81.11786101257398
+    },
+    {
+      "bytes": 34472620.0,
+      "elapsedMs": 3386.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 81.69822461174593
+    },
+    {
+      "bytes": 36480434.0,
+      "elapsedMs": 3636.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 80.48334882641429
+    },
+    {
+      "bytes": 40481916.0,
+      "elapsedMs": 3908.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 83.07341491298328
+    },
+    {
+      "bytes": 43520553.0,
+      "elapsedMs": 4168.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 83.73956278238383
+    },
+    {
+      "bytes": 45728563.0,
+      "elapsedMs": 4424.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 82.8795842369876
+    },
+    {
+      "bytes": 49595187.0,
+      "elapsedMs": 4677.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 85.01265243017936
+    },
+    {
+      "bytes": 52266265.0,
+      "elapsedMs": 4928.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 85.02698298899581
+    },
+    {
+      "bytes": 55510315.0,
+      "elapsedMs": 5178.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 85.92480936895524
+    },
+    {
+      "bytes": 58770272.0,
+      "elapsedMs": 5469.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 86.1345893262634
+    },
+    {
+      "bytes": 60896470.0,
+      "elapsedMs": 5726.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 85.22753589797016
+    },
+    {
+      "bytes": 62043350.0,
+      "elapsedMs": 5978.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 83.16845871121453
+    },
+    {
+      "bytes": 63452472.0,
+      "elapsedMs": 6231.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 81.59238469882845
+    },
+    {
+      "bytes": 65090872.0,
+      "elapsedMs": 6489.0,
+      "error": null,
+      "limited": false,
+      "phase": "download",
+      "rateMbps": 80.37219148316224
+    },
+    {
+      "bytes": 65280000.0,
+      "elapsedMs": 6741.0,
+      "error": null,
+      "limited": true,
+      "phase": "download",
+      "rateMbps": 77.58693000147703
+    },
+    {
+      "bytes": 65280000.0,
+      "elapsedMs": 6745.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": null
+    },
+    {
+      "bytes": 66816000.0,
+      "elapsedMs": 6996.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 28.15585807216431
+    },
+    {
+      "bytes": 71168000.0,
+      "elapsedMs": 7255.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 43.87305092783284
+    },
+    {
+      "bytes": 76509184.0,
+      "elapsedMs": 7511.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 61.15776753894127
+    },
+    {
+      "bytes": 78237696.0,
+      "elapsedMs": 7768.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 53.844613070230636
+    },
+    {
+      "bytes": 80867328.0,
+      "elapsedMs": 8019.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 49.69984232386844
+    },
+    {
+      "bytes": 83054592.0,
+      "elapsedMs": 8269.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 52.27294919382431
+    },
+    {
+      "bytes": 83382272.0,
+      "elapsedMs": 8636.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 42.1464595802514
+    },
+    {
+      "bytes": 86011904.0,
+      "elapsedMs": 9083.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 48.105516443724525
+    },
+    {
+      "bytes": 88616960.0,
+      "elapsedMs": 9461.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 41.406007444112
+    },
+    {
+      "bytes": 91860992.0,
+      "elapsedMs": 9736.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 43.07936239979401
+    },
+    {
+      "bytes": 93990912.0,
+      "elapsedMs": 9999.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 39.602662129843836
+    },
+    {
+      "bytes": 95129600.0,
+      "elapsedMs": 10255.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 36.7233683853877
+    },
+    {
+      "bytes": 97169408.0,
+      "elapsedMs": 10526.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 42.74801867139775
+    },
+    {
+      "bytes": 99463168.0,
+      "elapsedMs": 10776.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 48.214705316608
+    },
+    {
+      "bytes": 103591936.0,
+      "elapsedMs": 11137.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 51.71110957895031
+    },
+    {
+      "bytes": 106541056.0,
+      "elapsedMs": 11396.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 48.83121324282019
+    },
+    {
+      "bytes": 109293568.0,
+      "elapsedMs": 11649.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 46.31965476404275
+    },
+    {
+      "bytes": 111456256.0,
+      "elapsedMs": 11963.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 43.53129058534351
+    },
+    {
+      "bytes": 113381376.0,
+      "elapsedMs": 12219.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 41.497345765670005
+    },
+    {
+      "bytes": 116109312.0,
+      "elapsedMs": 12470.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 39.67904669749801
+    },
+    {
+      "bytes": 118730752.0,
+      "elapsedMs": 12726.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 37.98274415702529
+    },
+    {
+      "bytes": 120565760.0,
+      "elapsedMs": 12978.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 36.45051618108176
+    },
+    {
+      "bytes": 122761216.0,
+      "elapsedMs": 13231.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 45.12845616636889
+    },
+    {
+      "bytes": 124792832.0,
+      "elapsedMs": 13485.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 53.14054544440368
+    },
+    {
+      "bytes": 126849024.0,
+      "elapsedMs": 13739.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 60.57987378249831
+    },
+    {
+      "bytes": 131772416.0,
+      "elapsedMs": 14000.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 58.40364365908217
+    },
+    {
+      "bytes": 134696960.0,
+      "elapsedMs": 14260.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 56.37977093244422
+    },
+    {
+      "bytes": 137801728.0,
+      "elapsedMs": 14524.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 54.47304725440736
+    },
+    {
+      "bytes": 140685312.0,
+      "elapsedMs": 14776.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 52.75925321393738
+    },
+    {
+      "bytes": 143699968.0,
+      "elapsedMs": 15028.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 51.15792939941226
+    },
+    {
+      "bytes": 146714624.0,
+      "elapsedMs": 15304.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 49.51016774708555
+    },
+    {
+      "bytes": 149336064.0,
+      "elapsedMs": 15554.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 48.103288631861545
+    },
+    {
+      "bytes": 152088576.0,
+      "elapsedMs": 15810.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 46.744543807032684
+    },
+    {
+      "bytes": 154841088.0,
+      "elapsedMs": 16061.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 45.488961917802
+    },
+    {
+      "bytes": 156545024.0,
+      "elapsedMs": 16311.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 44.299405614948824
+    },
+    {
+      "bytes": 157528064.0,
+      "elapsedMs": 16571.0,
+      "error": null,
+      "limited": false,
+      "phase": "upload",
+      "rateMbps": 43.126427545117515
+    },
+    {
+      "bytes": 158052352.0,
+      "elapsedMs": 16823.0,
+      "error": null,
+      "limited": true,
+      "phase": "upload",
+      "rateMbps": 42.050502381975036
+    },
+    {
+      "bytes": 158052352.0,
+      "elapsedMs": 16823.0,
+      "error": null,
+      "limited": false,
+      "phase": "complete",
+      "rateMbps": null
+    }
+  ],
+  "timestamp": 1793158375158.0
+}

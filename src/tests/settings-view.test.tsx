@@ -1580,3 +1580,33 @@ it('edits global weather units inside the weather widget settings', async () => 
     )
   )
 })
+
+it('keeps reduced motion enabled after Apply and reloading Settings', async () => {
+  await openEditor()
+  fireEvent.click(screen.getByRole('button', { name: 'Aparência' }))
+  const toggle = screen.getByRole('switch', { name: 'Reduzir animações' })
+  fireEvent.click(toggle)
+  expect(toggle).toBeChecked()
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+  await waitFor(() => expect(bridge.configSave).toHaveBeenCalled())
+  const saved = vi.mocked(bridge.configSave!).mock.calls[0][0]
+  expect(saved.bar.reduceMotion).toBe(true)
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
+  )
+  expect(
+    screen.getByRole('switch', { name: 'Reduzir animações' })
+  ).toBeChecked()
+  vi.mocked(bridge.configLoad!).mockResolvedValue({
+    config: saved,
+    revision: 2,
+    error: null
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Aplicar' })).toBeEnabled()
+  )
+  expect(
+    screen.getByRole('switch', { name: 'Reduzir animações' })
+  ).toBeChecked()
+})

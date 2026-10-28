@@ -17,7 +17,10 @@ import {
 } from './layout'
 
 export type WidgetEdit = Partial<
-  Pick<WidgetConfig, 'intervalMs' | 'format' | 'tooltip' | 'workspaceSource'>
+  Pick<
+    WidgetConfig,
+    'intervalMs' | 'format' | 'tooltip' | 'workspaceSource' | 'networkDirection'
+  >
 >
 
 function defaultLayout(config: Config): WidgetLayout {

@@ -4,6 +4,7 @@ import {
   FieldLabel,
   FieldTitle
 } from '@/components/ui/field'
+import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
@@ -29,6 +30,7 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
   const spacingId = useId()
   const heightId = useId()
   const positionId = useId()
+  const motionId = useId()
   return (
     <FieldGroup className="@container">
       <SettingsSection title="Temas" wide>
@@ -157,6 +159,19 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
             />
           </Field>
         </FieldGroup>
+      </SettingsSection>
+      <SettingsSection title="Acessibilidade">
+        <Field orientation="horizontal" data-disabled={disabled}>
+          <FieldLabel htmlFor={motionId}>Reduzir animações</FieldLabel>
+          <Switch
+            id={motionId}
+            disabled={disabled}
+            checked={draft.bar.reduceMotion}
+            onCheckedChange={(reduceMotion) =>
+              onChange({ ...draft, bar: { ...draft.bar, reduceMotion } })
+            }
+          />
+        </Field>
       </SettingsSection>
       <SettingsSection title="Posicionamento e comportamento">
         <FieldGroup>

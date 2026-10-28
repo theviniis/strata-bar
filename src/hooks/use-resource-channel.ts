@@ -3,10 +3,9 @@ import { useWidgetRuntime } from '@/components/status-bar/widget-runtime-context
 import type { ChannelData, SystemEvent } from '@/services/system/bridge'
 
 /** Resource channels share retention and freshness behavior across bar and popup. */
-export function useResourceChannel<C extends 'cpu' | 'gpu' | 'memory' | 'disk'>(
-  channel: C,
-  intervalMs = 2000
-) {
+export function useResourceChannel<
+  C extends 'cpu' | 'gpu' | 'memory' | 'disk' | 'network'
+>(channel: C, intervalMs = 2000) {
   const runtime = useWidgetRuntime()
   const [reading, setReading] = useState<{
     channel: C

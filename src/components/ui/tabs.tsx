@@ -1,3 +1,4 @@
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { cn } from '@/lib/utils'
 import { Tabs as TabsPrimitive } from '@base-ui/react/tabs'
 import { cva, type VariantProps } from 'class-variance-authority'
@@ -5,8 +6,7 @@ import {
   AnimatePresence,
   LayoutGroup,
   motion,
-  useIsPresent,
-  useReducedMotion
+  useIsPresent
 } from 'motion/react'
 import {
   createContext,

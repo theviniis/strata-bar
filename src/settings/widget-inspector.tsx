@@ -105,6 +105,27 @@ export function WidgetInspector({
       <FieldSet>
         <FieldLegend>Configurar {widget.id}</FieldLegend>
         <FieldGroup>
+          {widget.type === 'network' && (
+            <Field>
+              <FieldLabel>Tráfego exibido</FieldLabel>
+              <ToggleGroup
+                variant="outline"
+                value={[widget.networkDirection ?? 'both']}
+                onValueChange={([networkDirection]) => {
+                  if (
+                    networkDirection === 'both' ||
+                    networkDirection === 'download' ||
+                    networkDirection === 'upload'
+                  )
+                    onChange({ networkDirection })
+                }}
+              >
+                <ToggleGroupItem value="download">Download</ToggleGroupItem>
+                <ToggleGroupItem value="upload">Upload</ToggleGroupItem>
+                <ToggleGroupItem value="both">Ambos</ToggleGroupItem>
+              </ToggleGroup>
+            </Field>
+          )}
           {widget.type === 'workspaces' && (
             <Field>
               <FieldLabel>Monitorar</FieldLabel>
@@ -149,6 +170,7 @@ export function WidgetInspector({
             'memory',
             'gpu',
             'disk',
+            'network',
             'workspaces'
           ].includes(widget.type) && (
             <Field>

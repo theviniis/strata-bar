@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 
 const INDICATOR_WIDTH = 24
 const ANIMATION_DURATION = 450
@@ -8,6 +9,8 @@ export function useWorkspaceIndicator(
   offline: boolean,
   animate = true
 ) {
+  const reducedMotion = useReducedMotion()
+  animate = animate && !reducedMotion
   const containerRef = useRef<HTMLDivElement>(null)
   const indicatorRef = useRef<HTMLSpanElement>(null)
   const itemsRef = useRef(new Map<number, HTMLButtonElement>())

@@ -330,7 +330,9 @@ function MonitorLayoutEditor({
           onDragMove={previewMove}
           onDragEnd={onDragEnd}
         >
-          <MotionConfig reducedMotion="user">
+          <MotionConfig
+            reducedMotion={draft.bar.reduceMotion ? 'always' : 'never'}
+          >
             <LayoutGroup id={layoutId}>
               <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
                 <div className="grid min-w-0 gap-4 md:grid-cols-3">

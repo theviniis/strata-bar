@@ -1,4 +1,5 @@
-import { useAnimate, useReducedMotion } from 'motion/react'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { useAnimate } from 'motion/react'
 import type { FocusEventHandler } from 'react'
 
 export function useFocusBorder<T extends HTMLElement>(

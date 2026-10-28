@@ -1,3 +1,4 @@
+import { useConfig } from '@/stores/config'
 import { animate } from 'motion'
 import type { OverlaySide, OverlaySize } from '../services/system/overlay'
 import { POPUP_GAP } from './constants'
@@ -31,10 +32,7 @@ export function popupOpenKeyframes(
 }
 
 export function popupMotionEnabled() {
-  return (
-    typeof window !== 'undefined' &&
-    !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-  )
+  return !useConfig.getState().config.bar.reduceMotion
 }
 
 export function popupDockKeyframes(

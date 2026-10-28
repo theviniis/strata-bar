@@ -1,3 +1,4 @@
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { Button } from '@/components/ui/button'
 import {
   Collapsible,
@@ -14,7 +15,7 @@ import {
 import { cn } from '@/lib/utils'
 import type { Reminder } from '@/services/system/reminders.generated'
 import { ChevronDownIcon, Ghost, RefreshCw, Trash } from 'lucide-react'
-import { motion, useReducedMotion } from 'motion/react'
+import { motion } from 'motion/react'
 import type { ComponentProps, ReactNode } from 'react'
 
 export interface ActiveRemindersProps {

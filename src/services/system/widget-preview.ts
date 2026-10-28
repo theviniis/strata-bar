@@ -61,6 +61,12 @@ export function widgetPreviewEvent<C extends Channel>(
         pagingFileBytes: metric(0),
         history: []
       },
+      network: {
+        ...demo.network,
+        sampledAt: PREVIEW_TIME,
+        history: [],
+        observationStartedAt: PREVIEW_TIME
+      },
       weather: demo.weather,
       disk: { ...demo.disk, sampledAt: PREVIEW_TIME },
       volume: { level: demo.volume, muted: false },

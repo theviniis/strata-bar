@@ -117,7 +117,12 @@ pub fn project(config: &Config, monitor: Option<&str>) -> Config {
             .chain(&mut projected.widgets.right)
         {
             if let Some(value) = overrides.get(&widget.id) {
-                if let Some(source) = &value.workspace_source { widget.workspace_source = Some(source.clone()); }
+                if let Some(source) = &value.workspace_source {
+                    widget.workspace_source = Some(source.clone());
+                }
+                if let Some(direction) = &value.network_direction {
+                    widget.network_direction = Some(direction.clone());
+                }
                 if let Some(enabled) = value.enabled {
                     widget.enabled = enabled;
                 }
@@ -195,7 +200,12 @@ pub fn validate(config: &Config) -> Result<(), String> {
             return Err("Audio targetIndex must be between 0 and 7".into());
         }
     }
-    if let Some(weather) = &config.weather { weather.validate()?; }
+    if let Some(weather) = &config.weather {
+        weather.validate()?;
+    }
+    if let Some(network) = &config.network {
+        network.validate()?;
+    }
     validate_bar(&config.bar)?;
     let mut monitors = std::collections::HashSet::new();
     let ids: std::collections::HashSet<_> = config
@@ -562,6 +572,9 @@ pub fn apply_external_change(app: &AppHandle) {
 /// projection to every bar and the last one would win. `emit_to` addresses a
 /// single window, which is what a per-monitor projection requires.
 pub fn publish(app: &AppHandle, snapshot: &ConfigSnapshot) {
+    if let Some(network) = app.try_state::<crate::network::Network>() {
+        network.configure(snapshot.config.network.clone().unwrap_or_default());
+    }
     if let Some(weather) = app.try_state::<crate::weather::Weather>() {
         weather.configure(snapshot.config.weather.clone().unwrap_or_default());
     }
@@ -578,7 +591,7 @@ pub fn publish(app: &AppHandle, snapshot: &ConfigSnapshot) {
 
 /// Include global audio so a route-only edit is never deduplicated away.
 fn bar_render_state(snapshot: &ConfigSnapshot) -> serde_json::Value {
-    serde_json::json!({"bar": snapshot.config.bar, "widgets": snapshot.config.widgets, "agents": snapshot.config.agents, "audio": snapshot.config.audio, "weather": snapshot.config.weather, "error": snapshot.error})
+    serde_json::json!({"bar": snapshot.config.bar, "widgets": snapshot.config.widgets, "agents": snapshot.config.agents, "audio": snapshot.config.audio, "weather": snapshot.config.weather, "network": snapshot.config.network, "error": snapshot.error})
 }
 
 fn publish_windows(app: &AppHandle, snapshot: &ConfigSnapshot) {
@@ -691,6 +704,26 @@ fn run_loop(app: AppHandle, rx: Receiver<notify::Result<notify::Event>>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn reduced_motion_defaults_and_survives_restart() {
+        let directory = Directory::new();
+        let store = ConfigStore::open(directory.path());
+        let mut value = serde_json::to_value(defaults()).unwrap();
+        value["bar"].as_object_mut().unwrap().remove("reduceMotion");
+        assert!(!parse(&value.to_string()).unwrap().bar.reduce_motion);
+        value["bar"]["reduceMotion"] = serde_json::json!(true);
+        store.save(parse(&value.to_string()).unwrap()).unwrap();
+        let restored = ConfigStore::open(directory.path()).snapshot().unwrap();
+        assert!(restored.config.bar.reduce_motion);
+        assert!(
+            project(&restored.config, Some("DISPLAY2"))
+                .bar
+                .reduce_motion
+        );
+        value["bar"]["reduceMotion"] = serde_json::json!("true");
+        assert!(parse(&value.to_string()).is_err());
+    }
+
     #[test]
     fn color_palettes_default_validate_project_and_survive_restart() {
         let directory = Directory::new();
@@ -1016,6 +1049,7 @@ mod tests {
             tooltip: true,
             margin_x: None,
             workspace_source: None,
+            network_direction: None,
         });
         assert!(store.save(invalid).unwrap_err().contains("duplicated"));
     }

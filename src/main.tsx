@@ -1,3 +1,4 @@
+import { AnimationPreference } from './components/animation-preference'
 import { DocumentTheme } from './components/document-theme'
 import { applyDocumentTheme } from './hooks/use-document-theme'
 import React, { Suspense } from 'react'
@@ -61,28 +62,30 @@ async function mount() {
   }
   createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-      {view !== 'overlay' && <DocumentTheme />}
-      <Suspense
-        fallback={
-          <div className="flex items-center gap-2 px-4 py-2 bg-card text-card-foreground rounded">
-            <Spinner />
-            <p>Carregando...</p>
-          </div>
-        }
-      >
-        {view === 'overlay' ? (
-          <OverlayView />
-        ) : view === 'settings' ? (
-          <SettingsView />
-        ) : import.meta.env.DEV &&
-          new URLSearchParams(window.location.search).has('popup-check') ? (
-          <PopupCheckView />
-        ) : native || view === 'bar' ? (
-          <NativeBar />
-        ) : (
-          <StudioView />
-        )}
-      </Suspense>
+      <AnimationPreference>
+        {view !== 'overlay' && <DocumentTheme />}
+        <Suspense
+          fallback={
+            <div className="flex items-center gap-2 px-4 py-2 bg-card text-card-foreground rounded">
+              <Spinner />
+              <p>Carregando...</p>
+            </div>
+          }
+        >
+          {view === 'overlay' ? (
+            <OverlayView />
+          ) : view === 'settings' ? (
+            <SettingsView />
+          ) : import.meta.env.DEV &&
+            new URLSearchParams(window.location.search).has('popup-check') ? (
+            <PopupCheckView />
+          ) : native || view === 'bar' ? (
+            <NativeBar />
+          ) : (
+            <StudioView />
+          )}
+        </Suspense>
+      </AnimationPreference>
     </React.StrictMode>
   )
 }

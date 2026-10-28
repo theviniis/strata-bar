@@ -11,7 +11,7 @@ export const widgetFlags: Readonly<Record<WidgetType, boolean>> = {
   memory: true,
   gpu: true,
   disk: true,
-  network: false,
+  network: true,
   music: true,
   mediaSpectrum: true,
   volume: true,

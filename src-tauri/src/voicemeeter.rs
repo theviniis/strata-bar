@@ -813,7 +813,11 @@ mod tests {
                 return Ok(());
             }
             if self.0.delayed.load(Ordering::SeqCst) {
-                self.0.staged.lock().unwrap().insert(parameter.to_string(), value);
+                self.0
+                    .staged
+                    .lock()
+                    .unwrap()
+                    .insert(parameter.to_string(), value);
                 return Ok(());
             }
             self.0
@@ -912,7 +916,10 @@ mod tests {
         fake.0.delayed.store(true, Ordering::SeqCst);
         let mut client = Client::with_api(Box::new(fake.clone()));
         client.poll().unwrap();
-        assert_eq!(client.write(bus_0(), Some(85.0), Some(true)), Ok((85, true)));
+        assert_eq!(
+            client.write(bus_0(), Some(85.0), Some(true)),
+            Ok((85, true))
+        );
         // The engine has accepted the setters but has not processed them yet.
         assert_eq!(client.read(bus_0()), Ok((50, false)));
         let staged = std::mem::take(&mut *fake.0.staged.lock().unwrap());

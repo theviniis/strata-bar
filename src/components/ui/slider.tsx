@@ -1,8 +1,10 @@
 'use client'
 
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
+
 import * as SliderPrimitive from '@radix-ui/react-slider'
 import * as React from 'react'
-import { motion, useReducedMotion } from 'motion/react'
+import { motion } from 'motion/react'
 
 import { cn } from '@/lib/utils'
 import { cva, type VariantProps } from 'class-variance-authority'

@@ -1,6 +1,7 @@
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useWidgetRuntime } from '@/components/status-bar/widget-runtime-context'
 import type { MediaSpectrumData } from '@/services/system/media.generated'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 
 const idleBands = [0, 0, 0, 0, 0, 0]

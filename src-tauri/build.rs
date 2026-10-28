@@ -19,6 +19,9 @@ mod media_contract;
 #[path = "src/memory_contract.rs"]
 #[allow(dead_code)]
 mod memory_contract;
+#[path = "src/network_contract.rs"]
+#[allow(dead_code)]
+mod network_contract;
 #[path = "build_support/popups.rs"]
 mod popups;
 #[path = "src/reminders_contract.rs"]
@@ -31,11 +34,52 @@ mod weather_contract;
 
 fn main() {
     use ts_rs::TS;
+    println!("cargo:rerun-if-changed=src/network_contract.rs");
+    let declarations = [
+        network_contract::NetworkUnit::decl(),
+        network_contract::NetworkConfig::decl(),
+        network_contract::NetworkInterface::decl(),
+        network_contract::NetworkPoint::decl(),
+        network_contract::NetworkQuality::decl(),
+        network_contract::NetworkTestPhase::decl(),
+        network_contract::NetworkSpeedTest::decl(),
+        network_contract::NetworkData::decl(),
+    ];
+    let generated = format!(
+        "// Generated from Rust network_contract.rs by cargo build. Do not edit.\n{}\n",
+        declarations
+            .iter()
+            .map(|d| format!("export {d}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+    let target = std::path::Path::new("../src/services/system/network.generated.ts");
+    if std::fs::read_to_string(target).ok().as_deref() != Some(&generated) {
+        std::fs::write(target, generated).expect("Generate network contract");
+    }
+
     println!("cargo:rerun-if-changed=src/weather_contract.rs");
-    let declarations = [weather_contract::WeatherCity::decl(), weather_contract::TemperatureUnit::decl(), weather_contract::WindUnit::decl(), weather_contract::WeatherConfig::decl(), weather_contract::WeatherHour::decl(), weather_contract::WeatherDay::decl(), weather_contract::WeatherData::decl()];
-    let generated = format!("// Generated from Rust weather_contract.rs by cargo build. Do not edit.\n{}\n", declarations.iter().map(|d| format!("export {d}")).collect::<Vec<_>>().join("\n"));
+    let declarations = [
+        weather_contract::WeatherCity::decl(),
+        weather_contract::TemperatureUnit::decl(),
+        weather_contract::WindUnit::decl(),
+        weather_contract::WeatherConfig::decl(),
+        weather_contract::WeatherHour::decl(),
+        weather_contract::WeatherDay::decl(),
+        weather_contract::WeatherData::decl(),
+    ];
+    let generated = format!(
+        "// Generated from Rust weather_contract.rs by cargo build. Do not edit.\n{}\n",
+        declarations
+            .iter()
+            .map(|d| format!("export {d}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
     let target = std::path::Path::new("../src/services/system/weather.generated.ts");
-    if std::fs::read_to_string(target).ok().as_deref() != Some(&generated) { std::fs::write(target, generated).expect("Generate weather contract"); }
+    if std::fs::read_to_string(target).ok().as_deref() != Some(&generated) {
+        std::fs::write(target, generated).expect("Generate weather contract");
+    }
     println!("cargo:rerun-if-changed=src/agents_contract.rs");
     let declarations = [
         agents_contract::AgentType::decl(),
@@ -169,6 +213,7 @@ fn main() {
         config_contract::AudioConfig::decl(),
         config_contract::WidgetFormat::decl(),
         config_contract::WorkspaceSource::decl(),
+        config_contract::NetworkDirection::decl(),
         config_contract::WidgetConfig::decl(),
         config_contract::BarPosition::decl(),
         config_contract::BarTheme::decl(),
@@ -185,7 +230,7 @@ fn main() {
         config_contract::ConfigSnapshot::decl(),
     ];
     let config_generated = format!(
-        "// Generated from Rust config_contract.rs by cargo build. Do not edit.\nimport type {{ WeatherConfig }} from './weather.generated'\n{}\n",
+        "// Generated from Rust config_contract.rs by cargo build. Do not edit.\nimport type {{ WeatherConfig }} from './weather.generated'\nimport type {{ NetworkConfig }} from './network.generated'\n{}\n",
         config_declarations
             .iter()
             .map(|decl| format!("export {decl}"))

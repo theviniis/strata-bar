@@ -1,3 +1,4 @@
+import { NetworkController } from '@/features/network/widget/network.controller'
 import { WeatherController } from '@/features/weather/widget/weather.controller'
 import { MediaSpectrumController } from '@/features/media-spectrum/widget/media-spectrum.controller'
 import { AgentsController } from '../../features/agents/widget/agents.controller'
@@ -47,7 +48,7 @@ const widgets: Record<
   workspaces: () => <WorkspacesController />,
   // No native collector is wired for these yet; the bar renders an honest
   // placeholder instead of inventing a reading.
-  network: () => <Unsupported label="Rede" />,
+  network: () => <NetworkController />,
   activeWindow: () => <Unsupported label="Janela ativa" />
 }
 

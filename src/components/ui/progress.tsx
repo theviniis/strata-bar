@@ -9,8 +9,10 @@ const MotionProgressIndicator = motion.create(ProgressPrimitive.Indicator)
 
 const Progress = React.forwardRef<
   React.ElementRef<typeof ProgressPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root>
->(({ className, value = 0, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> & {
+    disableAnimation?: boolean
+  }
+>(({ className, value = 0, disableAnimation = false, ...props }, ref) => {
   // Garantimos que o valor fique entre 0 e 100 de forma segura
   const safeValue = Math.min(100, Math.max(0, value || 0))
 
@@ -27,12 +29,15 @@ const Progress = React.forwardRef<
       <MotionProgressIndicator
         className="h-full w-full flex-1 bg-secondary"
         // O Motion anima a propriedade transform de forma fluida baseada no value
-        initial={{ x: '-100%' }}
-        animate={{
-          x: `-${100 - safeValue}%`
-        }}
+        initial={disableAnimation ? false : { x: '-100%' }}
+        style={
+          disableAnimation
+            ? { transform: `translateX(-${100 - safeValue}%)` }
+            : undefined
+        }
+        animate={disableAnimation ? undefined : { x: `-${100 - safeValue}%` }}
         transition={{
-          type: 'spring',
+          ...(disableAnimation ? { duration: 0 } : { type: 'spring' as const }),
           stiffness: 200, // Rigidez moderada para um movimento fluido
           damping: 25 // Amortecimento equilibrado para não balançar excessivamente
         }}

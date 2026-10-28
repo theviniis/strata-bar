@@ -1,4 +1,5 @@
-import { useReducedMotion } from 'motion/react'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
+
 import { POPUP_ENTER_EASE } from '../../popups/motion'
 
 /** A compact capsule reveal using the same deceleration as widget popups. */

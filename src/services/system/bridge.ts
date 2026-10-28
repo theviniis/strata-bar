@@ -1,3 +1,6 @@
+import type { NetworkData } from './network.generated'
+import { parseNetworkEvent } from './network'
+import { networkFixture } from '@/features/network/src/fixtures'
 import type { SettingsMonitor } from './config.generated'
 import type { MediaData, MediaRequest, SpotifyStatus } from './media.generated'
 import { demoMedia, mediaPosition, parseMediaEvent } from './media'
@@ -69,7 +72,7 @@ export interface ChannelData {
   memory: MemoryData
   gpu: GpuData
   disk: DiskData
-  network: number
+  network: NetworkData
   audioOutputs: {
     devices: { id: string; name: string }[]
     defaultDeviceId: string | null
@@ -84,9 +87,9 @@ export interface ChannelData {
 
 /**
  * Illustrative values served by the browser demo adapter. Most are preview scalars
- * only, so they deliberately do not mirror the native payloads above; workspaces and
- * disk are the exceptions because a workspace strip and a row of volume bars cannot
- * be represented by a scalar.
+ * only, so they deliberately do not mirror the native payloads above. Structured
+ * previews such as workspaces, network and disk share their native shape because
+ * their visuals cannot be represented by a scalar.
  */
 export interface DemoChannelData {
   mediaSpectrum: MediaSpectrumData
@@ -96,7 +99,7 @@ export interface DemoChannelData {
   memory: number
   gpu: number
   disk: DiskData
-  network: number
+  network: NetworkData
   audioInputs: null
   microphone: number
   audioOutputs: null
@@ -157,6 +160,8 @@ export interface Subscribable<D extends Record<Channel, unknown>> {
 }
 
 export interface AdapterBase {
+  networkTestStart?(): Promise<void>
+  networkTestCancel?(): Promise<void>
   weatherSearch?(query: string): Promise<WeatherCity[]>
   settingsMonitors?(): Promise<SettingsMonitor[]>
   mediaAction?(request: MediaRequest): Promise<unknown>
@@ -242,7 +247,7 @@ export function demoChannelData(): DemoChannelData {
         }
       ]
     },
-    network: 128,
+    network: networkFixture(),
     microphone: 72,
     audioInputs: null,
     volume: 64,
@@ -374,6 +379,14 @@ export function createMockBridge(): DemoBridge {
 export function createNativeBridge(): NativeBridge {
   return {
     mode: 'native',
+    async networkTestStart() {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke('network_test_start')
+    },
+    async networkTestCancel() {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke('network_test_cancel')
+    },
     async subscribe<C extends Channel>(
       channel: C,
       listener: (event: SystemEvent<ChannelData[C]>) => void,
@@ -413,7 +426,9 @@ export function createNativeBridge(): NativeBridge {
             resourceSequence = parsed.data.sequence
           }
           listener(parsed as SystemEvent<ChannelData[C]>)
-        } else if (channel === 'mediaSpectrum') {
+        } else if (channel === 'network')
+          listener(parseNetworkEvent(event) as SystemEvent<ChannelData[C]>)
+        else if (channel === 'mediaSpectrum') {
           const parsed = spectrumGuard(event)
           if (parsed) listener(parsed as SystemEvent<ChannelData[C]>)
         } else if (channel === 'media')

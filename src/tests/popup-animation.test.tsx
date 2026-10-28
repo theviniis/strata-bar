@@ -1,3 +1,5 @@
+import { useConfig } from '../stores/config'
+import { defaultConfig } from '../services/configuration/config'
 import { act, render } from '@testing-library/react'
 import { useRef } from 'react'
 import { cubicBezier, interpolate } from 'motion'
@@ -25,6 +27,7 @@ beforeEach(() => {
   vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
 })
 afterEach(() => {
+  useConfig.setState({ config: defaultConfig })
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
@@ -177,7 +180,12 @@ it('does not restart opening if closed before the presentation frames', () => {
 })
 
 it('skips travel and completes immediately for reduced motion', () => {
-  vi.stubGlobal('matchMedia', () => ({ matches: true }))
+  useConfig.setState({
+    config: {
+      ...defaultConfig,
+      bar: { ...defaultConfig.bar, reduceMotion: true }
+    }
+  })
   const onExited = vi.fn()
   render(
     <PopupSurface

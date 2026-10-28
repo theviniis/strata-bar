@@ -1,10 +1,12 @@
 'use client'
 
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
+
 import * as React from 'react'
 import { Toggle as TogglePrimitive } from '@base-ui/react/toggle'
 import { ToggleGroup as ToggleGroupPrimitive } from '@base-ui/react/toggle-group'
 import { type VariantProps } from 'class-variance-authority'
-import { motion, useReducedMotion } from 'motion/react'
+import { motion } from 'motion/react'
 import { cn } from '@/lib/utils'
 
 import { toggleVariants } from '@/components/ui/toggle'

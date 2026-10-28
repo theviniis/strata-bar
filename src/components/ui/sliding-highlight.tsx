@@ -1,6 +1,7 @@
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { cn } from '@/lib/utils'
 import { Slot } from '@radix-ui/react-slot'
-import { motion, useReducedMotion, type SpringOptions } from 'motion/react'
+import { motion, type SpringOptions } from 'motion/react'
 import {
   useEffect,
   useRef,

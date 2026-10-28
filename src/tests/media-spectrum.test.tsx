@@ -1,21 +1,27 @@
+import { useConfig } from '@/stores/config'
 import { act, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MediaSpectrum } from '@/features/media-spectrum/widget/media-spectrum.widget'
 import {
   demoSpectrum,
   spectrumEventGuard
 } from '@/services/system/media-spectrum'
-import { widgetSchema } from '@/services/configuration/config'
+import { defaultConfig, widgetSchema } from '@/services/configuration/config'
 import { typeLabels } from '@/settings/layout'
 
-const preferences = vi.hoisted(() => ({ reduced: true }))
-vi.mock('motion/react', async (original) => ({
-  ...(await original<typeof import('motion/react')>()),
-  useReducedMotion: () => preferences.reduced
-}))
-
 describe('media spectrum', () => {
-  afterEach(() => vi.useRealTimers())
+  beforeEach(() => {
+    useConfig.setState({
+      config: {
+        ...defaultConfig,
+        bar: { ...defaultConfig.bar, reduceMotion: true }
+      }
+    })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    useConfig.setState({ config: defaultConfig })
+  })
   it('renders exactly six frequency bars and labels demonstration data', () => {
     const { container } = render(<MediaSpectrum data={demoSpectrum()} demo />)
     expect(

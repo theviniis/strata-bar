@@ -94,13 +94,26 @@ impl Default for WidgetFormat {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-pub enum WorkspaceSource { Komorebi, Windows }
+pub enum WorkspaceSource {
+    Komorebi,
+    Windows,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum NetworkDirection {
+    Both,
+    Download,
+    Upload,
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WidgetConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workspace_source: Option<WorkspaceSource>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub network_direction: Option<NetworkDirection>,
     pub id: String,
     pub r#type: WidgetKind,
     #[serde(default = "default_true")]
@@ -172,6 +185,8 @@ pub struct BarConfig {
     pub theme: BarTheme,
     #[serde(default)]
     pub color_theme: ColorTheme,
+    #[serde(default)]
+    pub reduce_motion: bool,
 }
 /// Partial widget behavior; identity is shared, membership and order are separate.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
@@ -179,6 +194,8 @@ pub struct BarConfig {
 pub struct WidgetOverride {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workspace_source: Option<WorkspaceSource>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub network_direction: Option<NetworkDirection>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -268,6 +285,8 @@ pub struct Config {
     pub audio: AudioConfig,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub weather: Option<crate::weather_contract::WeatherConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub network: Option<crate::network_contract::NetworkConfig>,
     #[serde(default)]
     pub agents: AgentsConfig,
     pub bar: BarConfig,

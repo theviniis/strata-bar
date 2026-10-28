@@ -1,0 +1,10 @@
+{
+  "appBarWindowsCreated": false,
+  "passed": true,
+  "pausedSequence": 6,
+  "realWindowsCollectors": true,
+  "resumeStartsWithoutRate": true,
+  "timestamp": 1793159214068.0,
+  "tokensCheckOwner": true,
+  "twoSubscribersShareSnapshots": true
+}

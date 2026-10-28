@@ -61,6 +61,32 @@
       },
       "additionalProperties": false
     },
+    "network": {
+      "type": "object",
+      "properties": {
+        "unit": {
+          "default": "bytes",
+          "type": "string",
+          "enum": ["bytes", "bits"]
+        },
+        "probesEnabled": { "default": true, "type": "boolean" },
+        "probeTarget": {
+          "default": "1.1.1.1",
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "ipv4",
+              "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
+            },
+            {
+              "type": "string",
+              "format": "ipv6",
+              "pattern": "^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:))$"
+            }
+          ]
+        }
+      }
+    },
     "audio": {
       "default": {
         "output": { "source": "windows", "targetIndex": 0 },
@@ -163,6 +189,7 @@
           "type": "string",
           "enum": ["system", "dark", "light"]
         },
+        "reduceMotion": { "default": false, "type": "boolean" },
         "colorTheme": {
           "default": "current",
           "type": "string",
@@ -217,6 +244,10 @@
                 "type": "string",
                 "enum": ["komorebi", "windows"]
               },
+              "networkDirection": {
+                "type": "string",
+                "enum": ["both", "download", "upload"]
+              },
               "marginX": { "type": "number", "minimum": 0, "maximum": 32 }
             },
             "required": ["id", "type"],
@@ -267,6 +298,10 @@
                 "type": "string",
                 "enum": ["komorebi", "windows"]
               },
+              "networkDirection": {
+                "type": "string",
+                "enum": ["both", "download", "upload"]
+              },
               "marginX": { "type": "number", "minimum": 0, "maximum": 32 }
             },
             "required": ["id", "type"],
@@ -316,6 +351,10 @@
               "workspaceSource": {
                 "type": "string",
                 "enum": ["komorebi", "windows"]
+              },
+              "networkDirection": {
+                "type": "string",
+                "enum": ["both", "download", "upload"]
               },
               "marginX": { "type": "number", "minimum": 0, "maximum": 32 }
             },
@@ -378,6 +417,10 @@
                 "workspaceSource": {
                   "type": "string",
                   "enum": ["komorebi", "windows"]
+                },
+                "networkDirection": {
+                  "type": "string",
+                  "enum": ["both", "download", "upload"]
                 },
                 "marginX": { "type": "number", "minimum": 0, "maximum": 32 }
               },

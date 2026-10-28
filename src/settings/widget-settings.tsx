@@ -1,3 +1,4 @@
+import { NetworkSettings } from '@/features/network/src/network-settings'
 import type { Config, WidgetConfig } from '@/services/configuration/config'
 import { CalendarSettingsController } from '@/features/reminders/src/calendar-settings-controller'
 import { SpotifySettingsController } from '@/features/music/src/spotify-settings-controller'
@@ -37,6 +38,18 @@ export function WidgetSettings({
       )
     case 'agents':
       return <AgentsSettings draft={draft} onChange={onChange} />
+    case 'network':
+      return (
+        <SettingsSection
+          title="Rede e diagnóstico"
+          description="Unidades e sondagens são compartilhadas por todas as barras. Alterações entram em vigor após Aplicar."
+        >
+          <NetworkSettings
+            value={draft.network}
+            onChange={(network) => onChange({ ...draft, network })}
+          />
+        </SettingsSection>
+      )
     case 'weather':
       return (
         <SettingsSection

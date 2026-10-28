@@ -1,56 +1,60 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-mod agents;
-mod bar_region;
 mod agent_alerts;
 mod agent_notifications;
 mod agent_notifications_windows;
+mod agents;
 mod agents_contract;
 mod agents_windows;
 mod antigravity;
 mod antigravity_hooks;
+mod bar_region;
 mod codex;
 mod codex_hooks;
-mod hook_config;
-mod opencode;
-mod reminder_sound;
 mod google_calendar;
-mod weather;
-mod weather_contract;
+mod hook_config;
 mod media;
 mod media_contract;
 mod media_spectrum;
-mod spectrum_capture;
-mod spectrum_fft;
 mod media_windows;
+mod network;
+mod network_contract;
+mod network_speed;
+mod network_windows;
+mod opencode;
+mod reminder_sound;
 mod reminders;
 mod reminders_contract;
+mod spectrum_capture;
+mod spectrum_fft;
 mod spotify;
 mod tray;
+mod weather;
+mod weather_contract;
 
 mod audio_policy;
 mod config;
 mod config_contract;
 mod cpu_contract;
 mod desktop;
-mod monitors;
-#[cfg(debug_assertions)]
-mod monitor_check;
 mod disk_contract;
 mod gpu_contract;
-mod workspaces;
-mod windows_workspaces;
 mod memory_contract;
 mod metrics;
-mod sensors;
+#[cfg(debug_assertions)]
+mod monitor_check;
+mod monitors;
 #[cfg(debug_assertions)]
 mod popup_check;
 mod popup_ids;
+mod sensors;
 mod voicemeeter;
+mod windows_workspaces;
+mod workspaces;
 use serde_json::{json, Value};
 use tauri::Manager;
 #[tauri::command]
 fn capabilities() -> Value {
-    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"mediaSpectrum":true,"weather":true,"appBar":true,"gpu":true,"disk":true,"network":false,"workspaces":true,"voicemeeter":crate::voicemeeter::installed(),"config":true})
+    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"mediaSpectrum":true,"weather":true,"appBar":true,"gpu":true,"disk":true,"network":true,"workspaces":true,"voicemeeter":crate::voicemeeter::installed(),"config":true})
 }
 #[tauri::command]
 fn subscribe(
@@ -62,7 +66,12 @@ fn subscribe(
     workspace_source: Option<config_contract::WorkspaceSource>,
 ) -> Result<Value, String> {
     if channel == "mediaSpectrum" {
-        return window.state::<media_spectrum::MediaSpectrum>().subscribe(window.label());
+        return window
+            .state::<media_spectrum::MediaSpectrum>()
+            .subscribe(window.label());
+    }
+    if channel == "network" {
+        return window.state::<network::Network>().subscribe(window.label());
     }
     if channel == "weather" {
         return window.state::<weather::Weather>().subscribe(window.label());
@@ -72,7 +81,9 @@ fn subscribe(
     }
     if channel == "workspaces" {
         if workspace_source != Some(config_contract::WorkspaceSource::Komorebi) {
-            return window.state::<windows_workspaces::WindowsWorkspaces>().subscribe(window.label());
+            return window
+                .state::<windows_workspaces::WindowsWorkspaces>()
+                .subscribe(window.label());
         }
         return workspaces.subscribe(&window, interval_ms);
     }
@@ -85,14 +96,24 @@ fn unsubscribe(
     workspaces: tauri::State<workspaces::Workspaces>,
     token: String,
 ) {
-    if token.starts_with("spectrum") {
-        window.state::<media_spectrum::MediaSpectrum>().unsubscribe(&token, window.label());
+    if token.starts_with("network") {
+        window
+            .state::<network::Network>()
+            .unsubscribe(&token, window.label());
+    } else if token.starts_with("spectrum") {
+        window
+            .state::<media_spectrum::MediaSpectrum>()
+            .unsubscribe(&token, window.label());
     } else if token.starts_with("vd") {
-        window.state::<windows_workspaces::WindowsWorkspaces>().unsubscribe(&token, window.label());
+        window
+            .state::<windows_workspaces::WindowsWorkspaces>()
+            .unsubscribe(&token, window.label());
     } else if token.starts_with("kw") {
         workspaces.unsubscribe(&token, window.label());
     } else if token.starts_with('w') {
-        window.state::<weather::Weather>().unsubscribe(&token, window.label());
+        window
+            .state::<weather::Weather>()
+            .unsubscribe(&token, window.label());
     } else if token.starts_with('m') {
         window
             .state::<media::Media>()
@@ -112,8 +133,12 @@ fn workspaces_action(
     direction: Option<String>,
 ) -> Result<(), String> {
     if source != Some(config_contract::WorkspaceSource::Komorebi) {
-        if action != "focusWorkspace" { return Err("Unsupported Windows desktops action".into()); }
-        return window.state::<windows_workspaces::WindowsWorkspaces>().focus(workspace.ok_or("Missing workspace")?);
+        if action != "focusWorkspace" {
+            return Err("Unsupported Windows desktops action".into());
+        }
+        return window
+            .state::<windows_workspaces::WindowsWorkspaces>()
+            .focus(workspace.ok_or("Missing workspace")?);
     }
     state.action(&action, monitor, workspace, direction)
 }
@@ -129,9 +154,15 @@ async fn set_volume(
         .map_err(|e| e.to_string())?
 }
 #[tauri::command]
-async fn set_microphone(state: tauri::State<'_, metrics::Metrics>, level: Option<f32>, muted: Option<bool>) -> Result<Value, String> {
+async fn set_microphone(
+    state: tauri::State<'_, metrics::Metrics>,
+    level: Option<f32>,
+    muted: Option<bool>,
+) -> Result<Value, String> {
     let owner = state.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || owner.audio_volume(true, level, muted)).await.map_err(|e|e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || owner.audio_volume(true, level, muted))
+        .await
+        .map_err(|e| e.to_string())?
 }
 #[tauri::command]
 async fn set_channel_source(
@@ -145,9 +176,14 @@ async fn set_channel_source(
         .map_err(|e| e.to_string())?
 }
 #[tauri::command]
-async fn set_audio_input(state: tauri::State<'_, metrics::Metrics>, device_id: String) -> Result<Value, String> {
+async fn set_audio_input(
+    state: tauri::State<'_, metrics::Metrics>,
+    device_id: String,
+) -> Result<Value, String> {
     let owner = state.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || owner.audio_device(true, device_id)).await.map_err(|e|e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || owner.audio_device(true, device_id))
+        .await
+        .map_err(|e| e.to_string())?
 }
 #[tauri::command]
 async fn set_audio_output(
@@ -209,9 +245,31 @@ fn overlay_resize(
     desktop::overlay_resize(&app, &window, &session, &size)
 }
 #[tauri::command]
-async fn weather_search(window: tauri::WebviewWindow, query: String) -> Result<Vec<weather_contract::WeatherCity>, String> {
-    if window.label() != "settings" { return Err("Busca de cidades requer ConfiguraÃ§Ãµes".into()); }
-    tauri::async_runtime::spawn_blocking(move || weather::search(&query)).await.map_err(|e| e.to_string())?
+fn network_test_start(window: tauri::WebviewWindow) -> Result<(), String> {
+    if !network::allowed(window.label()) {
+        return Err("Network command denied".into());
+    }
+    window.state::<network::Network>().start_test()
+}
+#[tauri::command]
+fn network_test_cancel(window: tauri::WebviewWindow) -> Result<(), String> {
+    if !network::allowed(window.label()) {
+        return Err("Network command denied".into());
+    }
+    window.state::<network::Network>().cancel_test();
+    Ok(())
+}
+#[tauri::command]
+async fn weather_search(
+    window: tauri::WebviewWindow,
+    query: String,
+) -> Result<Vec<weather_contract::WeatherCity>, String> {
+    if window.label() != "settings" {
+        return Err("Busca de cidades requer ConfiguraÃ§Ãµes".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || weather::search(&query))
+        .await
+        .map_err(|e| e.to_string())?
 }
 #[tauri::command]
 fn settings_monitors() -> Result<Vec<config_contract::SettingsMonitor>, String> {
@@ -323,15 +381,24 @@ fn cleanup(app: &tauri::AppHandle) {
         scheduler.stop();
     }
     desktop::release_all(app);
-    if let Some(spectrum) = app.try_state::<media_spectrum::MediaSpectrum>() { spectrum.stop(); }
-    if let Some(weather) = app.try_state::<weather::Weather>() { weather.stop(); }
+    if let Some(spectrum) = app.try_state::<media_spectrum::MediaSpectrum>() {
+        spectrum.stop();
+    }
+    if let Some(network) = app.try_state::<network::Network>() {
+        network.stop();
+    }
+    if let Some(weather) = app.try_state::<weather::Weather>() {
+        weather.stop();
+    }
     if let Some(media) = app.try_state::<media::Media>() {
         media.stop();
     }
     if let Some(metrics) = app.try_state::<metrics::Metrics>() {
         metrics.stop();
     }
-    if let Some(desktops) = app.try_state::<windows_workspaces::WindowsWorkspaces>() { desktops.stop(); }
+    if let Some(desktops) = app.try_state::<windows_workspaces::WindowsWorkspaces>() {
+        desktops.stop();
+    }
     if let Some(workspaces) = app.try_state::<workspaces::Workspaces>() {
         workspaces.stop();
     }
@@ -383,11 +450,17 @@ mod instance_tests {
 
 fn main() {
     let arguments: Vec<_> = std::env::args().skip(1).collect();
-    if arguments.first().is_some_and(|argument| argument == "--codex-hook") {
+    if arguments
+        .first()
+        .is_some_and(|argument| argument == "--codex-hook")
+    {
         codex_hooks::run_helper(&arguments[1..]);
         return;
     }
-    if arguments.first().is_some_and(|argument| argument == "--antigravity-hook") {
+    if arguments
+        .first()
+        .is_some_and(|argument| argument == "--antigravity-hook")
+    {
         antigravity_hooks::run_helper(&arguments[1..]);
         return;
     }
@@ -396,6 +469,10 @@ fn main() {
         let text = serde_json::to_string_pretty(&result).unwrap();
         std::fs::write(std::env::temp_dir().join("strata-agents-probe.json"), &text).unwrap();
         println!("{text}");
+        return;
+    }
+    if std::env::args().any(|arg| arg == "--probe-network") {
+        println!("{}", network_windows::probe_snapshot());
         return;
     }
     if std::env::args().any(|arg| arg == "--probe-media") {
@@ -410,7 +487,10 @@ fn main() {
         return;
     }
     if std::env::args().any(|arg| arg == "--probe-vm") {
-        println!("{}", serde_json::to_string(&voicemeeter::probe_vm()).unwrap());
+        println!(
+            "{}",
+            serde_json::to_string(&voicemeeter::probe_vm()).unwrap()
+        );
         return;
     }
     if std::env::args().any(|v| v == "--probe") {
@@ -458,6 +538,8 @@ fn main() {
             google_calendar::calendar_status,
             google_calendar::calendar_connect,
             google_calendar::calendar_disconnect,
+            network_test_start,
+            network_test_cancel,
             weather_search,
             media_action,
             spotify_status,
@@ -489,7 +571,8 @@ fn main() {
         .setup(|app| {
             tray::setup(app.handle())?;
             #[cfg(debug_assertions)]
-            let monitor_check = std::env::args().any(|arg| arg == "--check-monitor-manager" || arg == "--check-bar-geometry");
+            let monitor_check = std::env::args()
+                .any(|arg| arg == "--check-monitor-manager" || arg == "--check-bar-geometry");
             #[cfg(not(debug_assertions))]
             let monitor_check = false;
             let store = if monitor_check {
@@ -507,13 +590,34 @@ fn main() {
             app.manage(reminders::Reminders::open(
                 app.path().app_data_dir()?.join("reminders.json"),
             ));
-            app.manage(weather::Weather::start(app.handle().clone(), app.state::<config::ConfigStore>().snapshot()?.config.weather.unwrap_or_default()));
+            app.manage(network::Network::start(
+                app.handle().clone(),
+                app.state::<config::ConfigStore>()
+                    .snapshot()?
+                    .config
+                    .network
+                    .unwrap_or_default(),
+            ));
+            app.manage(weather::Weather::start(
+                app.handle().clone(),
+                app.state::<config::ConfigStore>()
+                    .snapshot()?
+                    .config
+                    .weather
+                    .unwrap_or_default(),
+            ));
             app.manage(media::Media::start(app.handle().clone()));
             app.manage(agents::Agents::start(app.handle().clone())?);
             app.manage(metrics::Metrics::start(app.handle().clone()));
-            app.manage(media_spectrum::MediaSpectrum::start(app.handle().clone(), app.state::<media::Media>().inner().clone(), app.state::<metrics::Metrics>().inner().clone()));
+            app.manage(media_spectrum::MediaSpectrum::start(
+                app.handle().clone(),
+                app.state::<media::Media>().inner().clone(),
+                app.state::<metrics::Metrics>().inner().clone(),
+            ));
             app.manage(workspaces::Workspaces::start(app.handle().clone()));
-            app.manage(windows_workspaces::WindowsWorkspaces::start(app.handle().clone()));
+            app.manage(windows_workspaces::WindowsWorkspaces::start(
+                app.handle().clone(),
+            ));
             monitors::observe(app.handle())?;
             desktop::reconcile(app.handle())?;
             #[cfg(debug_assertions)]
@@ -535,16 +639,29 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
-                if let Some(spectrum) = window.app_handle().try_state::<media_spectrum::MediaSpectrum>() { spectrum.remove_window(window.label()); }
-                if let Some(weather) = window.app_handle().try_state::<weather::Weather>() { weather.remove_window(window.label()); }
+                if let Some(spectrum) = window
+                    .app_handle()
+                    .try_state::<media_spectrum::MediaSpectrum>()
+                {
+                    spectrum.remove_window(window.label());
+                }
+                if let Some(network) = window.app_handle().try_state::<network::Network>() {
+                    network.remove_window(window.label());
+                }
+                if let Some(weather) = window.app_handle().try_state::<weather::Weather>() {
+                    weather.remove_window(window.label());
+                }
                 if let Some(media) = window.app_handle().try_state::<media::Media>() {
                     media.remove_window(window.label());
                 }
                 if let Some(metrics) = window.app_handle().try_state::<metrics::Metrics>() {
                     metrics.remove_window(window.label());
                 }
-                window.state::<windows_workspaces::WindowsWorkspaces>().remove_window(window.label());
-                if let Some(workspaces) = window.app_handle().try_state::<workspaces::Workspaces>() {
+                window
+                    .state::<windows_workspaces::WindowsWorkspaces>()
+                    .remove_window(window.label());
+                if let Some(workspaces) = window.app_handle().try_state::<workspaces::Workspaces>()
+                {
                     workspaces.remove_window(window.label());
                 }
             }

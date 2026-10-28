@@ -70,6 +70,7 @@ const widget = z.strictObject({
   format: z.enum(['compact', 'label']).default('label'),
   tooltip: z.boolean().default(true),
   workspaceSource: z.enum(['komorebi', 'windows']).optional(),
+  networkDirection: z.enum(['both', 'download', 'upload']).optional(),
   marginX: z.number().min(0).max(32).optional()
 })
 
@@ -93,6 +94,7 @@ const bar = z.object({
   /** Shared by every separator on every monitor; absent means zero. */
   separatorMarginX: z.number().min(0).max(32).optional(),
   theme: z.enum(['system', 'dark', 'light']).default('system'),
+  reduceMotion: z.boolean().default(false),
   colorTheme: colorThemeSchema.default('current')
 })
 
@@ -114,6 +116,7 @@ const widgetOverride = z.strictObject({
   format: widget.shape.format.removeDefault().optional(),
   tooltip: widget.shape.tooltip.removeDefault().optional(),
   workspaceSource: widget.shape.workspaceSource,
+  networkDirection: widget.shape.networkDirection,
   marginX: widget.shape.marginX
 })
 export const widgetLayoutSchema = z.object({
@@ -141,6 +144,12 @@ const agentVisibility = z.object({
   codex: z.boolean().default(true)
 })
 
+// Strip obsolete preferences such as interfaceId; monitoring always follows Windows.
+export const networkConfigSchema = z.object({
+  unit: z.enum(['bytes', 'bits']).default('bytes'),
+  probesEnabled: z.boolean().default(true),
+  probeTarget: z.union([z.ipv4(), z.ipv6()]).default('1.1.1.1')
+})
 export const configSchema = z
   .object({
     /**
@@ -151,6 +160,7 @@ export const configSchema = z
     $schema: z.string().optional(),
     version: z.literal(2),
     weather: weatherConfigSchema.optional(),
+    network: networkConfigSchema.optional(),
     audio: audio.default(() => audio.parse({})),
     agents: z
       .object({
