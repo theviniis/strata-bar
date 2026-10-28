@@ -9,6 +9,8 @@ export interface WidgetView {
   /** `compact` drops the widget's own label and keeps only its reading. */
   workspaceSource?: WidgetConfig['workspaceSource']
   networkDirection?: WidgetConfig['networkDirection']
+  showUsage?: WidgetConfig['showUsage']
+  showTemperature?: WidgetConfig['showTemperature']
   format: WidgetConfig['format']
   /** `false` disables the hover/focus tooltip surface for this widget. */
   tooltip: boolean
@@ -28,6 +30,8 @@ export function viewOf(widget: WidgetConfig): WidgetView {
   return {
     workspaceSource: widget.workspaceSource,
     networkDirection: widget.networkDirection,
+    showUsage: widget.showUsage,
+    showTemperature: widget.showTemperature,
     format: widget.format,
     tooltip: widget.tooltip,
     intervalMs: widget.intervalMs,

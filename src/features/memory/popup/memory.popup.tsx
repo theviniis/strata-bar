@@ -1,10 +1,10 @@
 import { BigNumbers } from '@/components/big-numbers'
 import { mapDataStatus } from '@/components/popup-status'
+import { ResourceGraph } from '@/components/resource-graph'
 import { definePopup } from '@/popups/definition'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { MemoryData } from '@/services/system/memory.generated'
 import { Activity, Gauge } from 'lucide-react'
-import { MemoryGraph } from '../src/memory-graph'
 import { formatMemoryMetric } from '../src/presentation'
 import { MemoryPopupController } from './memory.popup.controller'
 
@@ -76,7 +76,16 @@ export function MemoryPopup({
           </BigNumbers.Output>
         </BigNumbers.Root>
       </div>
-      <MemoryGraph history={data.history} now={now} />
+      <ResourceGraph
+        points={data.history.map((point) => ({
+          ...point,
+          value: point.percent
+        }))}
+        now={now}
+        label="Utilização"
+        description="Utilização da memória"
+        unit="%"
+      />
       <dl className="grid grid-cols-2 gap-3 text-body">
         {fields.map(([label, metric, unit]) => (
           <div key={label}>

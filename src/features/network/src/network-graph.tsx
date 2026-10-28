@@ -44,18 +44,18 @@ export function NetworkGraph({
           <NetworkQuantity formatted={formatRate(maximum, unit)} />
         </span>
       </div>
-      <Card className="shadow-none p-0">
+      <Card className="bg-transparent shadow-none p-0">
         <CardContent className="flex flex-col p-0">
           <ChartContainer
             config={chartConfig}
-            className="aspect-auto h-40 w-full rounded border border-border bg-muted/20"
+            className="glass-surface aspect-auto h-40 w-full rounded border border-border/50 bg-muted/30 shadow-sm shadow-foreground/5"
             role="group"
             aria-label="Download e upload no mesmo gráfico, últimos 2 minutos"
           >
             <LineChart
               accessibilityLayer
               data={networkSeries(points)}
-              margin={{ left: 12, right: 12, top: 4 }}
+              margin={{ left: 0, right: 0, top: 0, bottom: 0 }}
             >
               <CartesianGrid vertical={false} />
               <XAxis

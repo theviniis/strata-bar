@@ -19,7 +19,13 @@ import {
 export type WidgetEdit = Partial<
   Pick<
     WidgetConfig,
-    'intervalMs' | 'format' | 'tooltip' | 'workspaceSource' | 'networkDirection'
+    | 'intervalMs'
+    | 'format'
+    | 'tooltip'
+    | 'workspaceSource'
+    | 'networkDirection'
+    | 'showUsage'
+    | 'showTemperature'
   >
 >
 

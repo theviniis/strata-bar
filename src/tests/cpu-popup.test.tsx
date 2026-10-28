@@ -1,3 +1,4 @@
+import { Cpu } from '@/features/cpu/widget/cpu.widget'
 import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
 import { CpuPopup } from '@/features/cpu/popup/cpu.popup'
@@ -186,4 +187,35 @@ it('exposes the temperature sensor error on the big number', () => {
   )
   expect(screen.getByText('Thermal sensor offline')).toBeVisible()
   expect(screen.getByText('Indisponível')).toBeVisible()
+})
+
+it('makes widget temperature optional and marks stale thermal readings independently', () => {
+  const data = observation()
+  const props = {
+    event: { status: 'ready' as const, data },
+    lastData: undefined,
+    now: at,
+    format: 'compact' as const,
+    describedBy: undefined
+  }
+  const { rerender } = render(<Cpu {...props} />)
+  expect(screen.queryByLabelText('Temperatura da CPU')).not.toBeInTheDocument()
+  rerender(<Cpu {...props} showUsage={false} showTemperature />)
+  expect(screen.queryByLabelText('Uso da CPU')).not.toBeInTheDocument()
+  rerender(<Cpu {...props} showTemperature />)
+  expect(screen.getByLabelText('Temperatura da CPU')).toHaveTextContent(
+    `${data.temperatureCelsius.value?.toFixed(1)} °C`
+  )
+  data.temperatureCelsius.updatedAt = at - 7000
+  rerender(<Cpu {...props} showTemperature />)
+  expect(screen.getByLabelText('Temperatura da CPU')).toHaveTextContent('*')
+  expect(screen.getByLabelText('Uso da CPU')).not.toHaveTextContent('*')
+  data.temperatureCelsius = {
+    status: 'unavailable',
+    value: null,
+    updatedAt: null,
+    error: null
+  }
+  rerender(<Cpu {...props} showTemperature />)
+  expect(screen.getByLabelText('Temperatura da CPU')).toHaveTextContent('—')
 })

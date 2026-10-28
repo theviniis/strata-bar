@@ -123,6 +123,12 @@ pub fn project(config: &Config, monitor: Option<&str>) -> Config {
                 if let Some(direction) = &value.network_direction {
                     widget.network_direction = Some(direction.clone());
                 }
+                if let Some(show_usage) = value.show_usage {
+                    widget.show_usage = Some(show_usage);
+                }
+                if let Some(show_temperature) = value.show_temperature {
+                    widget.show_temperature = Some(show_temperature);
+                }
                 if let Some(enabled) = value.enabled {
                     widget.enabled = enabled;
                 }
@@ -985,6 +991,38 @@ mod tests {
     }
 
     #[test]
+    fn widget_temperature_survives_restart_and_monitor_projection() {
+        let dir = Directory::new();
+        let store = ConfigStore::open(dir.path());
+        let mut value = serde_json::to_value(defaults()).unwrap();
+        value["widgets"] = serde_json::json!({
+            "left": [
+                {"id": "cpu", "type": "cpu", "showTemperature": true},
+                {"id": "gpu", "type": "gpu", "showTemperature": true}
+            ],
+            "center": [], "right": []
+        });
+        value["monitors"] = serde_json::json!({
+            "DISPLAY1": {"widgets": {
+                "cpu": {"showUsage": false, "showTemperature": true},
+                "gpu": {"showUsage": false, "showTemperature": true}
+            }}
+        });
+        let config = parse(&value.to_string()).unwrap();
+        store.save(config).unwrap();
+        let restored = ConfigStore::open(dir.path()).snapshot().unwrap().config;
+        for widget in project(&restored, Some("DISPLAY1")).widgets.left {
+            assert_eq!(widget.show_temperature, Some(true));
+            assert_eq!(widget.show_usage, Some(false));
+        }
+        for widget in project(&restored, Some("DISPLAY2")).widgets.left {
+            assert_eq!(widget.show_temperature, Some(true));
+        }
+        value["widgets"]["left"][0]["showUsage"] = serde_json::json!("true");
+        assert!(parse(&value.to_string()).is_err());
+    }
+
+    #[test]
     fn legacy_audio_migrates_on_read_without_writing_the_file() {
         let dir = Directory::new();
         let mut legacy = serde_json::to_value(defaults()).unwrap();
@@ -1050,6 +1088,8 @@ mod tests {
             margin_x: None,
             workspace_source: None,
             network_direction: None,
+            show_temperature: None,
+            show_usage: None,
         });
         assert!(store.save(invalid).unwrap_err().contains("duplicated"));
     }

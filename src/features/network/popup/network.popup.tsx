@@ -1,3 +1,4 @@
+import { BigNumbers } from '@/components/big-numbers'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -83,31 +84,26 @@ export function NetworkPopup({
           </TabsList>
           <TabsContent value="summary" className="mt-0 flex flex-col gap-1">
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex min-w-0 flex-col items-center rounded py-2 bg-muted/20 p-4">
-                <div className="flex items-center gap-1.5 text-chart-1">
-                  <NetworkRate
-                    icon={ArrowDownCircle}
-                    label="Download"
-                    bytes={fresh ? data.download : null}
-                    unit="bits"
-                    format="label"
-                    appearance="speed-test"
-                  />
-                </div>
-              </div>
-
-              <div className="flex min-w-0 flex-col items-center rounded py-2 bg-muted/20 p-4">
-                <div className="flex items-center gap-1.5 text-chart-2">
-                  <NetworkRate
-                    icon={ArrowUpCircle}
-                    label="Upload"
-                    bytes={fresh ? data.upload : null}
-                    unit="bits"
-                    format="label"
-                    appearance="speed-test"
-                  />
-                </div>
-              </div>
+              <BigNumbers.Root className="text-chart-1">
+                <NetworkRate
+                  icon={ArrowDownCircle}
+                  label="Download"
+                  bytes={fresh ? data.download : null}
+                  unit="bits"
+                  format="label"
+                  appearance="speed-test"
+                />
+              </BigNumbers.Root>
+              <BigNumbers.Root className="text-chart-2">
+                <NetworkRate
+                  icon={ArrowUpCircle}
+                  label="Upload"
+                  bytes={fresh ? data.upload : null}
+                  unit="bits"
+                  format="label"
+                  appearance="speed-test"
+                />
+              </BigNumbers.Root>
             </div>
             <NetworkGraph points={data.history} unit={unit} now={now} />
             {active && (

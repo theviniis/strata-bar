@@ -114,6 +114,10 @@ pub struct WidgetConfig {
     pub workspace_source: Option<WorkspaceSource>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub network_direction: Option<NetworkDirection>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_temperature: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_usage: Option<bool>,
     pub id: String,
     pub r#type: WidgetKind,
     #[serde(default = "default_true")]
@@ -196,6 +200,10 @@ pub struct WidgetOverride {
     pub workspace_source: Option<WorkspaceSource>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub network_direction: Option<NetworkDirection>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_temperature: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_usage: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

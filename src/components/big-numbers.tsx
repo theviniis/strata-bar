@@ -11,7 +11,7 @@ function Root({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       className={cn(
-        'py-2 px-4 bg-muted/20 rounded grid gap-2 spacing-y-2',
+        'glass-surface flex min-w-0 flex-col gap-2 rounded border border-border/50 bg-muted/30 px-4 py-2 shadow-sm shadow-foreground/5',
         className
       )}
       {...props}
@@ -51,12 +51,12 @@ function Output({
   ...props
 }: WidgetItemOutputProps & { error?: string | null }) {
   return (
-    <div className="flex flex-col gap-1 col-span-2">
+    <div className="flex min-w-0 flex-col gap-1">
       <WidgetItemOutput
         {...props}
         title={error ?? undefined}
         className={cn(
-          'text-2xl justify-center col-span-2 font-light leading-none tracking-tight text-foreground tabular-nums',
+          'text-2xl justify-center font-light leading-none tracking-tight text-foreground tabular-nums',
           className
         )}
       >

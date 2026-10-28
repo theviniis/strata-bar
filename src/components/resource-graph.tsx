@@ -67,7 +67,7 @@ export function ResourceGraph({
       <ChartContainer
         config={chartConfig}
         className={cn(
-          'aspect-auto h-28 w-full rounded border border-border bg-muted/20',
+          'glass-surface aspect-auto h-28 w-full rounded border border-border/50 bg-muted/30 shadow-sm shadow-foreground/5',
           className
         )}
         role="group"

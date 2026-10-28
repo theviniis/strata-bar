@@ -15,6 +15,8 @@ export interface CpuProps extends WidgetItemProps {
   event: SystemEvent<ChannelData['cpu']>
   lastData: ChannelData['cpu'] | undefined
   now: number
+  showUsage?: WidgetConfig['showUsage']
+  showTemperature?: WidgetConfig['showTemperature']
   format: WidgetConfig['format']
   describedBy: string | undefined
 }
@@ -24,6 +26,8 @@ export function Cpu({
   lastData,
   now,
   format,
+  showUsage = true,
+  showTemperature = false,
   describedBy,
   ...triggerProps
 }: CpuProps) {
@@ -34,18 +38,51 @@ export function Cpu({
     <WidgetItem aria-label="Detalhes da CPU" {...triggerProps}>
       <WidgetItemIcon icon={Icon} />
       {showLabel(format) && <WidgetItemLabel>CPU</WidgetItemLabel>}
-      <WidgetItemOutput aria-label="Uso da CPU" aria-describedby={describedBy}>
-        {percent?.value != null ? (
-          <>
-            {percent.value.toFixed(1)}
-            {stale && <span aria-label="Leitura desatualizada">*</span>}%
-          </>
-        ) : event.status === 'loading' ? (
-          '...'
-        ) : (
-          '—'
-        )}
-      </WidgetItemOutput>
+      {showUsage && (
+        <WidgetItemOutput
+          aria-label="Uso da CPU"
+          aria-describedby={describedBy}
+        >
+          {percent?.value != null ? (
+            <>
+              {percent.value.toFixed(1)}
+              {stale && <span aria-label="Leitura desatualizada">*</span>}%
+            </>
+          ) : event.status === 'loading' ? (
+            '...'
+          ) : (
+            '—'
+          )}
+        </WidgetItemOutput>
+      )}
+      {showUsage && showTemperature && (
+        <span
+          aria-hidden="true"
+          className="size-0.5 shrink-0 rounded-full bg-muted-foreground"
+        />
+      )}
+      {showTemperature && (
+        <WidgetItemOutput
+          aria-label="Temperatura da CPU"
+          aria-describedby={describedBy}
+        >
+          {data?.temperatureCelsius.value != null ? (
+            <>
+              {data.temperatureCelsius.value.toFixed(1)}
+              {isCpuMetricStale(
+                data.temperatureCelsius,
+                now,
+                event.status === 'ready'
+              ) && <span aria-label="Leitura desatualizada">*</span>}{' '}
+              °C
+            </>
+          ) : event.status === 'loading' ? (
+            '...'
+          ) : (
+            '—'
+          )}
+        </WidgetItemOutput>
+      )}
     </WidgetItem>
   )
 }

@@ -70,6 +70,8 @@ const widget = z.strictObject({
   format: z.enum(['compact', 'label']).default('label'),
   tooltip: z.boolean().default(true),
   workspaceSource: z.enum(['komorebi', 'windows']).optional(),
+  showUsage: z.boolean().optional(),
+  showTemperature: z.boolean().optional(),
   networkDirection: z.enum(['both', 'download', 'upload']).optional(),
   marginX: z.number().min(0).max(32).optional()
 })
@@ -117,6 +119,8 @@ const widgetOverride = z.strictObject({
   tooltip: widget.shape.tooltip.removeDefault().optional(),
   workspaceSource: widget.shape.workspaceSource,
   networkDirection: widget.shape.networkDirection,
+  showUsage: widget.shape.showUsage,
+  showTemperature: widget.shape.showTemperature,
   marginX: widget.shape.marginX
 })
 export const widgetLayoutSchema = z.object({

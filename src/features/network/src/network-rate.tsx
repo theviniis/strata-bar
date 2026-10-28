@@ -1,3 +1,4 @@
+import { BigNumbers } from '@/components/big-numbers'
 import { showLabel } from '@/components/status-bar/presentation'
 import {
   WidgetItemIcon,
@@ -43,26 +44,17 @@ export function NetworkRate({
   const [amount, suffix] = formatted.split(' ')
   if (appearance === 'speed-test') {
     return (
-      <div className="flex min-w-0 flex-col items-center gap-2">
-        <div className="flex items-center justify-center gap-1 text-body">
-          <WidgetItemIcon
-            icon={icon}
-            size={14}
-            className="text-inherit"
-            aria-hidden
-          />
-          <span className="uppercase text-foreground">{label}</span>
-          <span className="text-muted-foreground">{speedUnit}</span>
-        </div>
-        <WidgetItemOutput
-          aria-label={label}
-          aria-description={formatted}
-          className="justify-center font-light leading-none tracking-tight text-foreground tabular-nums text-2xl"
-        >
+      <>
+        <BigNumbers.Header>
+          <BigNumbers.Icon icon={icon} />
+          <BigNumbers.Title>{label}</BigNumbers.Title>
+          <BigNumbers.Description>{speedUnit}</BigNumbers.Description>
+        </BigNumbers.Header>
+        <BigNumbers.Output aria-label={label} aria-description={formatted}>
           {amount}
           <span className="sr-only">{suffix ? ` ${suffix}` : ''}</span>
-        </WidgetItemOutput>
-      </div>
+        </BigNumbers.Output>
+      </>
     )
   }
   return (

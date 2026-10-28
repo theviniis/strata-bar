@@ -244,6 +244,8 @@
                 "type": "string",
                 "enum": ["komorebi", "windows"]
               },
+              "showUsage": { "type": "boolean" },
+              "showTemperature": { "type": "boolean" },
               "networkDirection": {
                 "type": "string",
                 "enum": ["both", "download", "upload"]
@@ -298,6 +300,8 @@
                 "type": "string",
                 "enum": ["komorebi", "windows"]
               },
+              "showUsage": { "type": "boolean" },
+              "showTemperature": { "type": "boolean" },
               "networkDirection": {
                 "type": "string",
                 "enum": ["both", "download", "upload"]
@@ -352,6 +356,8 @@
                 "type": "string",
                 "enum": ["komorebi", "windows"]
               },
+              "showUsage": { "type": "boolean" },
+              "showTemperature": { "type": "boolean" },
               "networkDirection": {
                 "type": "string",
                 "enum": ["both", "download", "upload"]
@@ -422,6 +428,8 @@
                   "type": "string",
                   "enum": ["both", "download", "upload"]
                 },
+                "showUsage": { "type": "boolean" },
+                "showTemperature": { "type": "boolean" },
                 "marginX": { "type": "number", "minimum": 0, "maximum": 32 }
               },
               "additionalProperties": false

@@ -1,3 +1,4 @@
+import { Gpu } from '@/features/gpu/widget/gpu.widget'
 import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
 import { GpuPopup } from '@/features/gpu/popup/gpu.popup'
@@ -156,4 +157,35 @@ it('excludes expired observations from the temperature scale', () => {
   // can neither raise the maximum nor reach the line.
   expect(screen.getByRole('group', { name: /Temperatura.*130/ })).toBeVisible()
   expect(screen.getByText('130 °C')).toBeVisible()
+})
+
+it('makes widget temperature optional and marks stale thermal readings independently', () => {
+  const data = observation()
+  const props = {
+    event: { status: 'ready' as const, data },
+    lastData: undefined,
+    now: at,
+    format: 'compact' as const,
+    describedBy: undefined
+  }
+  const { rerender } = render(<Gpu {...props} />)
+  expect(screen.queryByLabelText('Temperatura da GPU')).not.toBeInTheDocument()
+  rerender(<Gpu {...props} showUsage={false} showTemperature />)
+  expect(screen.queryByLabelText('Uso da GPU')).not.toBeInTheDocument()
+  rerender(<Gpu {...props} showTemperature />)
+  expect(screen.getByLabelText('Temperatura da GPU')).toHaveTextContent(
+    `${data.temperatureCelsius.value?.toFixed(1)} °C`
+  )
+  data.temperatureCelsius.updatedAt = at - 7000
+  rerender(<Gpu {...props} showTemperature />)
+  expect(screen.getByLabelText('Temperatura da GPU')).toHaveTextContent('*')
+  expect(screen.getByLabelText('Uso da GPU')).not.toHaveTextContent('*')
+  data.temperatureCelsius = {
+    status: 'unavailable',
+    value: null,
+    updatedAt: null,
+    error: null
+  }
+  rerender(<Gpu {...props} showTemperature />)
+  expect(screen.getByLabelText('Temperatura da GPU')).toHaveTextContent('—')
 })

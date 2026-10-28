@@ -105,6 +105,39 @@ export function WidgetInspector({
       <FieldSet>
         <FieldLegend>Configurar {widget.id}</FieldLegend>
         <FieldGroup>
+          {(widget.type === 'cpu' || widget.type === 'gpu') && (
+            <Field>
+              <FieldLabel>Exibir</FieldLabel>
+              <ToggleGroup
+                variant="outline"
+                aria-label="Métricas exibidas"
+                value={[
+                  widget.showTemperature
+                    ? widget.showUsage === false
+                      ? 'temperature'
+                      : 'both'
+                    : 'usage'
+                ]}
+                onValueChange={([display]) => {
+                  if (
+                    display === 'usage' ||
+                    display === 'temperature' ||
+                    display === 'both'
+                  )
+                    onChange({
+                      showUsage: display !== 'temperature',
+                      showTemperature: display !== 'usage'
+                    })
+                }}
+              >
+                <ToggleGroupItem value="usage">Uso</ToggleGroupItem>
+                <ToggleGroupItem value="temperature">
+                  Temperatura
+                </ToggleGroupItem>
+                <ToggleGroupItem value="both">Ambos</ToggleGroupItem>
+              </ToggleGroup>
+            </Field>
+          )}
           {widget.type === 'network' && (
             <Field>
               <FieldLabel>Tráfego exibido</FieldLabel>

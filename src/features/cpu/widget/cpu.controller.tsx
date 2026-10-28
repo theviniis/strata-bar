@@ -23,7 +23,11 @@ function CpuPopupTrigger({
   view
 }: Pick<CpuProps, 'event' | 'lastData' | 'now'> & { view: WidgetView }) {
   const data = event.status === 'ready' ? event.data : lastData
-  const stale = isCpuMetricStale(data?.percent, now, event.status === 'ready')
+  const stale =
+    (view.showUsage !== false &&
+      isCpuMetricStale(data?.percent, now, event.status === 'ready')) ||
+    (view.showTemperature === true &&
+      isCpuMetricStale(data?.temperatureCelsius, now, event.status === 'ready'))
   const text =
     event.status === 'error'
       ? event.error
@@ -40,6 +44,8 @@ function CpuPopupTrigger({
             now={now}
             lastData={lastData}
             format={view.format}
+            showUsage={view.showUsage}
+            showTemperature={view.showTemperature}
             describedBy={view.tooltip ? tip.describedBy : undefined}
           />
         </Slot>
