@@ -28,9 +28,7 @@ export function WorkspacesWidget({
       {...props}
     >
       {showLabel(format) && (
-        <WidgetItemLabel className="shrink-0 text-micro">
-          {label}
-        </WidgetItemLabel>
+        <WidgetItemLabel className="shrink-0">{label}</WidgetItemLabel>
       )}
       {event.status === 'loading' ? (
         <output aria-label="Áreas de trabalho">…</output>

@@ -1,5 +1,6 @@
 import {
   WidgetItem,
+  WidgetItemLabel,
   WidgetItemOutput,
   type WidgetItemProps
 } from '@/components/widget-item'
@@ -23,12 +24,10 @@ export function Clock({
       aria-describedby={describedBy}
       {...triggerProps}
     >
-      <time dateTime={time.dateTime}>
-        <WidgetItemOutput>{time.hours}</WidgetItemOutput>
-      </time>
-      {showDate && (
-        <span className="text-micro text-muted-foreground">{time.date}</span>
-      )}
+      <WidgetItemOutput asChild>
+        <time dateTime={time.dateTime}>{time.hours}</time>
+      </WidgetItemOutput>
+      {showDate && <WidgetItemLabel>{time.date}</WidgetItemLabel>}
     </WidgetItem>
   )
 }
