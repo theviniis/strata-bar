@@ -1,12 +1,14 @@
-import { definePopup } from '@/popups/definition'
-import { ResourceGraph } from '@/components/resource-graph'
+import { BigNumbers } from '@/components/big-numbers'
 import { mapDataStatus } from '@/components/popup-status'
+import { ResourceGraph } from '@/components/resource-graph'
 import {
   newestTimestamp,
   projectResourceWindow
 } from '@/components/resource-graph-utils'
+import { definePopup } from '@/popups/definition'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { GpuData } from '@/services/system/gpu.generated'
+import { Thermometer, TrendingUp } from 'lucide-react'
 import {
   formatGpuMemoryPair,
   formatGpuMetric,
@@ -31,8 +33,9 @@ export function GpuPopup({
   const ready = event.status === 'ready'
   const format = (
     metric: GpuData['percent'],
-    unit: Parameters<typeof formatGpuMetric>[1]
-  ) => formatGpuMetric(metric, unit, now, ready)
+    unit: Parameters<typeof formatGpuMetric>[1],
+    includeUnit = true
+  ) => formatGpuMetric(metric, unit, now, ready, includeUnit)
   const temperaturePoints = data.history
     .filter(
       (p) => p.temperatureCelsius !== null || p.temperatureUpdatedAt === null
@@ -53,7 +56,6 @@ export function GpuPopup({
     Math.ceil(Math.max(0, ...observed.map((p) => p.value ?? 0)) / 10) * 10
   )
   const fields = [
-    ['Uso', format(data.percent, 'percent'), data.percent.error],
     [
       'Memória dedicada',
       formatGpuMemoryPair(
@@ -64,11 +66,7 @@ export function GpuPopup({
       ),
       data.memoryUsedBytes.error ?? data.memoryTotalBytes.error
     ],
-    [
-      'Temperatura',
-      format(data.temperatureCelsius, 'temperature'),
-      data.temperatureCelsius.error
-    ],
+
     ['Consumo', format(data.powerWatts, 'watts'), data.powerWatts.error],
     ['Ventoinha', format(data.fanPercent, 'percent'), data.fanPercent.error],
     [
@@ -84,7 +82,7 @@ export function GpuPopup({
   ] as const
   const temperatureStale = isGpuMetricStale(data.temperatureCelsius, now, ready)
   return (
-    <section className="p-4" aria-label="Detalhes da GPU">
+    <section className="p-4 w-90" aria-label="Detalhes da GPU">
       <div>
         {demo && (
           <p className="text-body text-muted-foreground">
@@ -96,6 +94,29 @@ export function GpuPopup({
             {event.error} · última leitura desatualizada
           </p>
         )}
+      </div>
+      <div className="grid grid-cols-2 gap-3 mb-1">
+        <BigNumbers.Root>
+          <BigNumbers.Header className="text-chart-1">
+            <BigNumbers.Icon icon={TrendingUp} />
+            <BigNumbers.Title>Utilização</BigNumbers.Title>
+            <BigNumbers.Description>%</BigNumbers.Description>
+          </BigNumbers.Header>
+          <BigNumbers.Output error={data.percent.error}>
+            {format(data.percent, 'percent', false)}
+          </BigNumbers.Output>
+        </BigNumbers.Root>
+
+        <BigNumbers.Root>
+          <BigNumbers.Header className="text-chart-5">
+            <BigNumbers.Icon icon={Thermometer} />
+            <BigNumbers.Title>Temperatura</BigNumbers.Title>
+            <BigNumbers.Description>°C</BigNumbers.Description>
+          </BigNumbers.Header>
+          <BigNumbers.Output error={data.temperatureCelsius.error}>
+            {format(data.temperatureCelsius, 'temperature', false)}
+          </BigNumbers.Output>
+        </BigNumbers.Root>
       </div>
       <ResourceGraph
         points={data.history.map((p) => ({ ...p, value: p.percent }))}
@@ -131,7 +152,7 @@ export function GpuPopup({
         {data.adapter ? `${data.adapter.name} · ` : ''}
         {data.temperatureSensor && !temperatureStale
           ? `Libre Hardware Monitor · ${data.temperatureSensor.name}`
-          : 'Sensores de temperatura, consumo e ventoinha indispon�veis'}
+          : 'Sensores de temperatura, consumo e ventoinha indisponíveis'}
       </p>
     </section>
   )

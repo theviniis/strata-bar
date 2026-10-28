@@ -1,7 +1,9 @@
-import { definePopup } from '@/popups/definition'
+import { BigNumbers } from '@/components/big-numbers'
 import { mapDataStatus } from '@/components/popup-status'
+import { definePopup } from '@/popups/definition'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { MemoryData } from '@/services/system/memory.generated'
+import { Activity, Gauge } from 'lucide-react'
 import { MemoryGraph } from '../src/memory-graph'
 import { formatMemoryMetric } from '../src/presentation'
 import { MemoryPopupController } from './memory.popup.controller'
@@ -20,15 +22,13 @@ export function MemoryPopup({
   const data = event.status === 'ready' ? event.data : lastData
   if (!data) return mapDataStatus('memória', event.status)
   const fields = [
-    ['Em uso', data.usedBytes, 'bytes'],
     ['Memória total', data.totalBytes, 'bytes'],
     ['Em cache', data.cachedBytes, 'bytes'],
-    ['Disponível', data.availableBytes, 'bytes'],
     ['Arquivo de paginação em uso', data.pagingFileBytes, 'bytes'],
     ['Utilização', data.percent, 'percent']
   ] as const
   return (
-    <section aria-label="Detalhes da memória" className="p-4">
+    <section aria-label="Detalhes da memória" className="p-4 w-90">
       <div>
         {demo && (
           <p className="text-body text-muted-foreground">
@@ -40,6 +40,41 @@ export function MemoryPopup({
             {event.error} · última leitura desatualizada
           </p>
         )}
+      </div>
+      <div className="grid grid-cols-2 gap-3 mb-1">
+        <BigNumbers.Root>
+          <BigNumbers.Header className="text-chart-1">
+            <BigNumbers.Icon icon={Activity} />
+            <BigNumbers.Title>Em uso</BigNumbers.Title>
+            <BigNumbers.Description>GiB</BigNumbers.Description>
+          </BigNumbers.Header>
+          <BigNumbers.Output error={data.usedBytes.error}>
+            {formatMemoryMetric(
+              data.usedBytes,
+              'bytes',
+              now,
+              event.status === 'ready',
+              false
+            )}
+          </BigNumbers.Output>
+        </BigNumbers.Root>
+
+        <BigNumbers.Root>
+          <BigNumbers.Header className="text-chart-5">
+            <BigNumbers.Icon icon={Gauge} />
+            <BigNumbers.Title>Disponível</BigNumbers.Title>
+            <BigNumbers.Description>GiB</BigNumbers.Description>
+          </BigNumbers.Header>
+          <BigNumbers.Output error={data.availableBytes.error}>
+            {formatMemoryMetric(
+              data.availableBytes,
+              'bytes',
+              now,
+              event.status === 'ready',
+              false
+            )}
+          </BigNumbers.Output>
+        </BigNumbers.Root>
       </div>
       <MemoryGraph history={data.history} now={now} />
       <dl className="grid grid-cols-2 gap-3 text-body">

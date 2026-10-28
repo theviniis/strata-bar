@@ -23,8 +23,7 @@ export function NetworkPopup({
   busy = false,
   actionError,
   onStart,
-  onCancel,
-  availableSize
+  onCancel
 }: {
   availableSize?: { width: number; height: number }
   event: SystemEvent<NetworkData>
@@ -44,15 +43,7 @@ export function NetworkPopup({
 
   return (
     <section
-      className="flex w-80 flex-col gap-4 overflow-y-auto p-4"
-      style={
-        availableSize
-          ? {
-              width: Math.min(480, availableSize.width - 32),
-              maxHeight: Math.max(160, availableSize.height - 96)
-            }
-          : undefined
-      }
+      className="flex w-90 flex-col gap-1 overflow-y-auto p-4"
       aria-label="Diagnóstico de rede"
     >
       {demo && (
@@ -81,7 +72,7 @@ export function NetworkPopup({
             : 'Rede indisponível'}
         </p>
       ) : (
-        <Tabs defaultValue="summary" className="gap-4">
+        <Tabs defaultValue="summary">
           <TabsList aria-label="Informações de rede" className="w-full">
             <TabsTrigger value="summary" className="flex-1">
               Resumo
@@ -90,7 +81,7 @@ export function NetworkPopup({
               Teste de velocidade
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="summary" className="mt-0 flex flex-col gap-4">
+          <TabsContent value="summary" className="mt-0 flex flex-col gap-1">
             <div className="grid grid-cols-2 gap-3">
               <div className="flex min-w-0 flex-col items-center rounded py-2 bg-muted/20 p-4">
                 <div className="flex items-center gap-1.5 text-chart-1">

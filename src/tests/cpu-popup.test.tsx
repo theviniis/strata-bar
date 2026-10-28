@@ -46,11 +46,11 @@ it('shows independent CPU indicators and both observed graphs', () => {
       now={at}
     />
   )
-  expect(screen.getByText('25.5%')).toBeVisible()
+  expect(screen.getByText('25.5')).toBeVisible()
   expect(screen.getByText('3.98 GHz')).toBeVisible()
   expect(screen.getByText('2.90 GHz')).toBeVisible()
   expect(screen.getByText('6 / 12')).toBeVisible()
-  expect(screen.getByText('42.5 °C')).toBeVisible()
+  expect(screen.getByText('42.5')).toBeVisible()
   expect(screen.getAllByRole('group')).toHaveLength(2)
   expect(screen.getByRole('group', { name: /Utilização da CPU/ })).toBeVisible()
   expect(
@@ -101,8 +101,8 @@ it('shows loading without zeros and preserves stale readings after transport fai
       now={at + 8000}
     />
   )
-  expect(screen.getByText('25.5% · desatualizada')).toBeVisible()
-  expect(screen.getByText('42.5 °C · desatualizada')).toBeVisible()
+  expect(screen.getByText('25.5 · desatualizada')).toBeVisible()
+  expect(screen.getByText('42.5 · desatualizada')).toBeVisible()
 })
 it('keeps temperature above 100 visible and excludes expired graph observations', () => {
   const data = observation()
@@ -166,4 +166,24 @@ it('scales the temperature graph from its own window, not from the clock', () =>
   // clock-filtered window would drop it for the rest of the second.
   expect(screen.getByRole('group', { name: /Temperatura.*180/ })).toBeVisible()
   expect(screen.getByText('180 °C')).toBeVisible()
+})
+
+it('exposes the temperature sensor error on the big number', () => {
+  const data = observation()
+  data.temperatureCelsius = {
+    status: 'unavailable',
+    value: null,
+    updatedAt: null,
+    error: 'Thermal sensor offline'
+  }
+  render(
+    <CpuPopup
+      lastData={undefined}
+      demo={false}
+      event={{ status: 'ready', data }}
+      now={at}
+    />
+  )
+  expect(screen.getByText('Thermal sensor offline')).toBeVisible()
+  expect(screen.getByText('Indisponível')).toBeVisible()
 })

@@ -18,15 +18,16 @@ export function formatMemoryMetric(
   metric: MemoryMetric,
   unit: 'bytes' | 'percent',
   now: number,
-  transportReady: boolean
+  transportReady: boolean,
+  includeUnit = true
 ) {
   let text = 'Não configurado'
   if (metric.status !== 'notConfigured') {
     if (metric.value === null) return 'Indisponível'
     text =
       unit === 'percent'
-        ? `${metric.value.toFixed(1)}%`
-        : `${(metric.value / 1073741824).toFixed(1)} GiB`
+        ? `${metric.value.toFixed(1)}${includeUnit ? '%' : ''}`
+        : `${(metric.value / 1073741824).toFixed(1)}${includeUnit ? ' GiB' : ''}`
   }
   return isMemoryMetricStale(metric, now, transportReady)
     ? `${text} · desatualizada`

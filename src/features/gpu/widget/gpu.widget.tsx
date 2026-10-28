@@ -8,7 +8,7 @@ import {
 } from '@/components/widget-item'
 import type { WidgetConfig } from '@/services/configuration/config'
 import type { ChannelData, SystemEvent } from '@/services/system/bridge'
-import { CircuitBoard as Icon } from 'lucide-react'
+import { Monitor as Icon } from 'lucide-react'
 import { isGpuMetricStale } from '../src/presentation'
 
 export interface GpuProps extends WidgetItemProps {

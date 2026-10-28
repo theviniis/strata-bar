@@ -1,6 +1,6 @@
-import { definePopup } from '@/popups/definition'
 import { mapDataStatus } from '@/components/popup-status'
 import { Progress } from '@/components/ui/progress'
+import { definePopup } from '@/popups/definition'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { DiskData } from '@/services/system/disk.generated'
 import { HardDrive } from 'lucide-react'
@@ -19,7 +19,7 @@ export function DiskPopup({ event, lastData, now, demo }: DiskPopupProps) {
   if (!data) return mapDataStatus('discos', event.status)
   const volumes = localVolumes(data.volumes)
   return (
-    <section aria-label="Detalhes dos discos" className="p-4">
+    <section aria-label="Detalhes dos discos" className="p-4 w-90">
       <div>
         {demo && (
           <p className="text-body text-muted-foreground">

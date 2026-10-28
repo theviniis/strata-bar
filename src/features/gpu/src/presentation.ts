@@ -28,7 +28,8 @@ export function formatGpuMetric(
   metric: GpuMetric,
   unit: 'percent' | 'temperature' | 'watts',
   now: number,
-  transportReady: boolean
+  transportReady: boolean,
+  includeUnit = true
 ) {
   // A fan stopped by its own zero-RPM curve reports a real `0`, so only a
   // missing value means the sensor itself is unavailable.
@@ -38,7 +39,9 @@ export function formatGpuMetric(
     temperature: (v: number) => `${v.toFixed(1)} °C`,
     watts: (v: number) => `${v.toFixed(1)} W`
   }
-  const text = formatters[unit](metric.value)
+  const text = includeUnit
+    ? formatters[unit](metric.value)
+    : metric.value.toFixed(1)
   return isGpuMetricStale(metric, now, transportReady)
     ? `${text} · desatualizada`
     : text

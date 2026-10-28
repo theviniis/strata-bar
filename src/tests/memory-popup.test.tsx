@@ -43,8 +43,8 @@ it('shows distinct physical memory and paging-file readings in GiB', () => {
     />
   )
   expect(screen.getByText('16.0 GiB')).toBeInTheDocument()
-  expect(screen.getByText('6.0 GiB')).toBeInTheDocument()
-  expect(screen.getByText('9.0 GiB')).toBeInTheDocument()
+  expect(screen.getByText('6.0')).toBeInTheDocument()
+  expect(screen.getByText('9.0')).toBeInTheDocument()
   expect(screen.getByText('4.0 GiB')).toBeInTheDocument()
   expect(screen.getByText('1.0 GiB')).toBeInTheDocument()
   expect(screen.getByText('56.3%')).toBeInTheDocument()
@@ -114,7 +114,33 @@ it('identifies the last successful reading as stale after transport failure', ()
       now={110000}
     />
   )
-  expect(screen.getByRole('status')).toHaveTextContent('IPC offline')
+  expect(screen.getByText(/IPC offline/)).toHaveAttribute('role', 'status')
   expect(screen.getByText('16.0 GiB · desatualizada')).toBeInTheDocument()
   expect(screen.queryByText('0.0 GiB')).not.toBeInTheDocument()
+})
+
+it('labels memory big numbers with their byte unit and exposes errors', () => {
+  render(
+    <MemoryPopup
+      lastData={undefined}
+      demo={false}
+      now={100000}
+      event={{
+        status: 'ready',
+        data: {
+          ...memory,
+          usedBytes: {
+            ...ready(9663676416),
+            status: 'error',
+            error: 'Memory counter offline'
+          }
+        }
+      }}
+    />
+  )
+  expect(screen.getByRole('heading', { name: 'Em uso' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Disponível' })).toBeVisible()
+  expect(screen.getAllByText('GiB')).toHaveLength(2)
+  expect(screen.getByText('Memory counter offline')).toBeVisible()
+  expect(screen.getByText('9.0 · desatualizada')).toBeVisible()
 })

@@ -17,7 +17,8 @@ export function formatCpuMetric(
   metric: CpuMetric,
   unit: 'percent' | 'frequency' | 'cores' | 'temperature',
   now: number,
-  transportReady: boolean
+  transportReady: boolean,
+  includeUnit = true
 ) {
   if (metric.value === null) return 'Indisponível'
   const formatters = {
@@ -26,7 +27,9 @@ export function formatCpuMetric(
     cores: (v: number) => v.toFixed(0),
     temperature: (v: number) => `${v.toFixed(1)} °C`
   }
-  const text = formatters[unit](metric.value)
+  const text = includeUnit
+    ? formatters[unit](metric.value)
+    : metric.value.toFixed(1)
   return isCpuMetricStale(metric, now, transportReady)
     ? `${text} · desatualizada`
     : text

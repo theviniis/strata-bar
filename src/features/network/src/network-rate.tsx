@@ -57,14 +57,7 @@ export function NetworkRate({
         <WidgetItemOutput
           aria-label={label}
           aria-description={formatted}
-          className={cn(
-            'justify-center font-light leading-none tracking-tight text-foreground tabular-nums',
-            amount.length > 7
-              ? 'text-2xl'
-              : amount.length > 6
-                ? 'text-3xl'
-                : 'text-4xl'
-          )}
+          className="justify-center font-light leading-none tracking-tight text-foreground tabular-nums text-2xl"
         >
           {amount}
           <span className="sr-only">{suffix ? ` ${suffix}` : ''}</span>

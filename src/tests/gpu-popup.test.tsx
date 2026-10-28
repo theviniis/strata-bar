@@ -54,14 +54,14 @@ it('shows independent GPU indicators and both observed graphs', () => {
       now={at}
     />
   )
-  expect(screen.getByText('27.3%')).toBeVisible()
+  expect(screen.getByText('27.3')).toBeVisible()
   expect(screen.getByText('1.5 GiB / 8.0 GiB')).toBeVisible()
-  expect(screen.getByText('51.0 °C')).toBeVisible()
+  expect(screen.getByText('51.0')).toBeVisible()
   expect(screen.getByText('20.6 W')).toBeVisible()
   // A stopped fan is a reading: zero, never "Indisponível".
   expect(screen.getByText('0.0%')).toBeVisible()
   expect(screen.getByText('322.0 MiB / 16.0 GiB')).toBeVisible()
-  expect(container.querySelectorAll('dd')).toHaveLength(6)
+  expect(container.querySelectorAll('dd')).toHaveLength(4)
   expect(screen.getAllByRole('group')).toHaveLength(2)
   expect(screen.getByRole('group', { name: /Utilização da GPU/ })).toBeVisible()
   expect(
@@ -90,13 +90,13 @@ it('keeps other readings usable when thermal sensors are unavailable', () => {
       now={at}
     />
   )
-  expect(screen.getByText('27.3%')).toBeVisible()
+  expect(screen.getByText('27.3')).toBeVisible()
   expect(screen.getByText('1.5 GiB / 8.0 GiB')).toBeVisible()
   expect(screen.getByText('322.0 MiB / 16.0 GiB')).toBeVisible()
   expect(screen.getAllByText('Indisponível')).toHaveLength(3)
   expect(
     screen.getByText(
-      /Sensores de temperatura, consumo e ventoinha indispon�veis/
+      /Sensores de temperatura, consumo e ventoinha indisponíveis/
     )
   ).toBeVisible()
   // The unavailable sensor reads as a gap, never as an invented point.
@@ -121,8 +121,8 @@ it('shows loading without zeros and preserves stale readings after transport fai
       now={at + 8000}
     />
   )
-  expect(screen.getByText('27.3% · desatualizada')).toBeVisible()
-  expect(screen.getByText('51.0 °C · desatualizada')).toBeVisible()
+  expect(screen.getByText('27.3 · desatualizada')).toBeVisible()
+  expect(screen.getByText('51.0 · desatualizada')).toBeVisible()
   // The used/limit pair reads as one value, so the marker appears once.
   expect(screen.getByText('1.5 GiB / 8.0 GiB · desatualizada')).toBeVisible()
 })

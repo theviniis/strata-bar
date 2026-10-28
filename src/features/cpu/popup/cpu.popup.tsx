@@ -1,12 +1,14 @@
-import { definePopup } from '@/popups/definition'
-import { ResourceGraph } from '@/components/resource-graph'
+import { BigNumbers } from '@/components/big-numbers'
 import { mapDataStatus } from '@/components/popup-status'
+import { ResourceGraph } from '@/components/resource-graph'
 import {
   newestTimestamp,
   projectResourceWindow
 } from '@/components/resource-graph-utils'
+import { definePopup } from '@/popups/definition'
 import type { SystemEvent } from '@/services/system/bridge'
 import type { CpuData } from '@/services/system/cpu.generated'
+import { Thermometer, TrendingUp } from 'lucide-react'
 import { formatCpuMetric } from '../src/presentation'
 import { CpuPopupController } from './cpu.popup.controller'
 
@@ -28,8 +30,9 @@ export function CpuPopup({
   const ready = event.status === 'ready'
   const format = (
     metric: CpuData['percent'],
-    unit: Parameters<typeof formatCpuMetric>[1]
-  ) => formatCpuMetric(metric, unit, now, ready)
+    unit: Parameters<typeof formatCpuMetric>[1],
+    includeUnit = true
+  ) => formatCpuMetric(metric, unit, now, ready, includeUnit)
   const temperaturePoints = data.history
     .filter(
       (p) => p.temperatureCelsius !== null || p.temperatureUpdatedAt === null
@@ -51,7 +54,6 @@ export function CpuPopup({
     Math.ceil(Math.max(0, ...observed.map((p) => p.value ?? 0)) / 10) * 10
   )
   const fields = [
-    ['Uso', format(data.percent, 'percent'), data.percent.error],
     [
       'Frequência',
       format(data.frequencyHz, 'frequency'),
@@ -66,25 +68,45 @@ export function CpuPopup({
       'Frequência máxima nominal',
       format(data.maxFrequencyHz, 'frequency'),
       data.maxFrequencyHz.error
-    ],
-    [
-      'Temperatura do pacote',
-      format(data.temperatureCelsius, 'temperature'),
-      data.temperatureCelsius.error
     ]
   ] as const
   return (
-    <section className="p-4" aria-label="Detalhes da CPU">
-      {demo && (
-        <p className="text-body text-muted-foreground">
-          Dados de demonstração · ilustrativos
-        </p>
-      )}
-      {event.status === 'error' && (
-        <p role="status" className="text-body text-destructive">
-          {event.error} · última leitura desatualizada
-        </p>
-      )}
+    <section className="p-4 w-90" aria-label="Detalhes da CPU">
+      <div>
+        {demo && (
+          <p className="text-body text-muted-foreground">
+            Dados de demonstração · ilustrativos
+          </p>
+        )}
+        {event.status === 'error' && (
+          <p role="status" className="text-body text-destructive">
+            {event.error} · última leitura desatualizada
+          </p>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-3 mb-1">
+        <BigNumbers.Root>
+          <BigNumbers.Header className="text-chart-1">
+            <BigNumbers.Icon icon={TrendingUp} />
+            <BigNumbers.Title>Utilização</BigNumbers.Title>
+            <BigNumbers.Description>%</BigNumbers.Description>
+          </BigNumbers.Header>
+          <BigNumbers.Output error={data.percent.error}>
+            {format(data.percent, 'percent', false)}
+          </BigNumbers.Output>
+        </BigNumbers.Root>
+
+        <BigNumbers.Root>
+          <BigNumbers.Header className="text-chart-5">
+            <BigNumbers.Icon icon={Thermometer} />
+            <BigNumbers.Title>Temperatura</BigNumbers.Title>
+            <BigNumbers.Description>°C</BigNumbers.Description>
+          </BigNumbers.Header>
+          <BigNumbers.Output error={data.temperatureCelsius.error}>
+            {format(data.temperatureCelsius, 'temperature', false)}
+          </BigNumbers.Output>
+        </BigNumbers.Root>
+      </div>
       <ResourceGraph
         points={data.history.map((p) => ({ ...p, value: p.percent }))}
         now={now}
