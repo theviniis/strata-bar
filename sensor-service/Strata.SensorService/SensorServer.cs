@@ -23,6 +23,7 @@ internal sealed class SensorServer(string pipeName = Protocol.PipeName)
         Task accept = Accept(token);
         Task watchdog = Watchdog(token);
         using var collector = new Collector();
+        var gpuRecovery = new GpuRecovery();
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
         long last = Environment.TickCount64;
         try
@@ -34,10 +35,20 @@ internal sealed class SensorServer(string pipeName = Protocol.PipeName)
                 // Tick gaps catch resume even in console mode. Periodic rediscovery
                 // also handles device changes without opening unrelated hardware.
                 if (Interlocked.Exchange(ref reset, 0) != 0 || Environment.TickCount64 - last > 6000)
+                {
                     collector.Reset();
+                    gpuRecovery.Pause();
+                }
                 last = Environment.TickCount64;
                 string[] channels = clients.Values.SelectMany(x => x).Distinct().ToArray();
-                Volatile.Write(ref latest, channels.Length == 0 ? null : collector.Collect(channels));
+                Snapshot? snapshot = channels.Length == 0 ? null : collector.Collect(channels);
+                Volatile.Write(ref latest, snapshot);
+                // LHM can keep returning valid load/memory while a previously
+                // working thermal session stays broken without throwing. SCM
+                // restarts this service with its existing recovery policy; the
+                // unelevated bar only reconnects to the read-only pipe.
+                if (gpuRecovery.ShouldRestart(snapshot, Environment.TickCount64))
+                    Environment.Exit(1);
                 if (channels.Length > 0) Interlocked.Increment(ref collections);
                 if (channels.Length == 0) collector.Reset();
                 Volatile.Write(ref collectingSince, 0);

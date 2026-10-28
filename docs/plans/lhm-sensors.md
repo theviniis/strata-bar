@@ -121,6 +121,17 @@ Resume notifications and tick gaps also reset the collector.
 A 20-second watchdog exits a blocked service so SCM can restart it; stale metrics
 already become errors after 6 seconds. SCM crash recovery delays are 5/15/30 seconds.
 
+GPU thermal health also survives collector resets within the service process.
+If the selected GPU previously returned a valid core temperature and then returns
+missing temperature for 30 seconds of subscribed collection, the service exits
+with failure and SCM applies that same restart policy. This recovers the driver
+session without elevating the bar, asking the user to restart a service or adding
+control commands to the pipe. A good reading cancels the failure window; idle
+time does not count, and a different GPU starts with no assumed sensor support.
+Never-supported temperatures do not trigger restarts, including after restart,
+so unsupported hardware cannot cause an endless recovery loop. This is recovery
+from observed loss, not detection of a temperature absent since process startup.
+
 The Rust cache validates complete frames before applying them. Repeated sequences
 do not renew timestamps or append history. Fresh equal readings are new
 observations. Missing metrics preserve their previous value/time as `error`;
