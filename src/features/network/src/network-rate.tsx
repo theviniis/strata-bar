@@ -10,6 +10,8 @@ import type { NetworkUnit } from '@/services/system/network.generated'
 import type { ElementType } from 'react'
 import { formatRate } from '../src/presentation'
 
+const barFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 })
+
 const speedFormat = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2
@@ -30,11 +32,13 @@ export function NetworkRate({
   icon: ElementType
   appearance?: 'bar' | 'popup' | 'speed-test'
 }) {
+  const speedUnit = bytes != null && bytes * 8 < 1_000_000 ? 'Kbps' : 'Mbps'
+  const speedDivisor = speedUnit === 'Kbps' ? 1000 : 1_000_000
   const formatted =
-    appearance === 'speed-test'
+    appearance === 'speed-test' || appearance === 'bar'
       ? bytes == null
         ? '—'
-        : `${speedFormat.format((bytes * 8) / 1_000_000)} Mbps`
+        : `${(appearance === 'bar' ? barFormat : speedFormat).format((bytes * 8) / speedDivisor)} ${speedUnit}`
       : formatRate(bytes, unit)
   const [amount, suffix] = formatted.split(' ')
   if (appearance === 'speed-test') {
@@ -48,7 +52,7 @@ export function NetworkRate({
             aria-hidden
           />
           <span className="uppercase text-foreground">{label}</span>
-          <span className="text-muted-foreground">Mbps</span>
+          <span className="text-muted-foreground">{speedUnit}</span>
         </div>
         <WidgetItemOutput
           aria-label={label}

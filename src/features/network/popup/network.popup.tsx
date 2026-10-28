@@ -81,7 +81,7 @@ export function NetworkPopup({
             : 'Rede indisponível'}
         </p>
       ) : (
-        <Tabs defaultValue="summary" size="sm" className="gap-4">
+        <Tabs defaultValue="summary" className="gap-4">
           <TabsList aria-label="Informações de rede" className="w-full">
             <TabsTrigger value="summary" className="flex-1">
               Resumo

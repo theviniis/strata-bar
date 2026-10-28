@@ -103,9 +103,9 @@ it('renders both live directions and hides stale readings', () => {
   const view = render(
     <NetworkWidget event={{ status: 'ready', data }} now={data.sampledAt} />
   )
-  expect(screen.getByLabelText('Download')).toHaveTextContent('12,4')
-  expect(screen.getByLabelText('Upload')).toHaveTextContent('1,2')
-  expect(screen.getAllByText('MB/s')).toHaveLength(2)
+  expect(screen.getByLabelText('Download')).toHaveTextContent('99,2')
+  expect(screen.getByLabelText('Upload')).toHaveTextContent('9,6')
+  expect(screen.getAllByText('Mbps')).toHaveLength(2)
   view.rerender(
     <NetworkWidget
       event={{ status: 'ready', data }}
@@ -220,9 +220,9 @@ it('keeps the readings and hides unit labels in compact format', () => {
       format="compact"
     />
   )
-  expect(screen.getByLabelText('Download')).toHaveTextContent('12,4')
-  expect(screen.getByLabelText('Upload')).toHaveTextContent('1,2')
-  expect(screen.queryByText('MB/s')).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Download')).toHaveTextContent('99,2')
+  expect(screen.getByLabelText('Upload')).toHaveTextContent('9,6')
+  expect(screen.queryByText('Mbps')).not.toBeInTheDocument()
   view.rerender(
     <NetworkWidget
       event={{ status: 'ready', data }}
@@ -230,7 +230,7 @@ it('keeps the readings and hides unit labels in compact format', () => {
       format="label"
     />
   )
-  expect(screen.getAllByText('MB/s')).toHaveLength(2)
+  expect(screen.getAllByText('Mbps')).toHaveLength(2)
 })
 it('offers direction and format controls in the widget inspector', () => {
   const onChange = vi.fn()
@@ -473,4 +473,52 @@ it('uses host stage progress when opening midway through upload', () => {
   expect(
     screen.getByRole('progressbar', { name: 'Progresso de upload' })
   ).toHaveAttribute('aria-valuenow', '65')
+})
+
+it.each([
+  [0, '0,00 Kbps'],
+  [0.512, '512,00 Kbps'],
+  [1, '1,00 Mbps'],
+  [80, '80,00 Mbps']
+])(
+  'automatically scales speed-test units for %s Mbps',
+  (downloadMbps, expected) => {
+    render(
+      <NetworkSpeedTest
+        test={{ ...data.speedTest, phase: 'complete', downloadMbps }}
+        busy={false}
+        onStart={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    const reading = screen.getByLabelText('Download')
+    expect(reading).toHaveTextContent(expected)
+    expect(reading).toHaveAttribute('aria-description', expected)
+    expect(reading.parentElement).toHaveTextContent(expected.split(' ')[1])
+  }
+)
+
+it('automatically scales each bar direction between Kbps and Mbps', () => {
+  const view = render(
+    <NetworkWidget
+      event={{
+        status: 'ready',
+        data: { ...data, download: 64_000, upload: 125_000 }
+      }}
+      now={data.sampledAt}
+    />
+  )
+  expect(screen.getByLabelText('Download')).toHaveTextContent('512 Kbps')
+  expect(screen.getByLabelText('Upload')).toHaveTextContent('1 Mbps')
+  view.rerender(
+    <NetworkWidget
+      event={{
+        status: 'ready',
+        data: { ...data, download: 125_000, upload: 64_000 }
+      }}
+      now={data.sampledAt}
+    />
+  )
+  expect(screen.getByLabelText('Download')).toHaveTextContent('1 Mbps')
+  expect(screen.getByLabelText('Upload')).toHaveTextContent('512 Kbps')
 })
