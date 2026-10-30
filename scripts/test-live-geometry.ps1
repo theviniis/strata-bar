@@ -48,7 +48,14 @@ if($overlay.present){
     $overlayChecks=[pscustomobject]@{present=$true;komorebiEligible=$surface.komorebiEligible;toolWindow=$surface.toolWindow;topmost=$surface.topmost;clickThrough=$surface.clickThrough;visible=$surface.visible;rect=$surface.rect;passed=$true}
 }
 $stamp=Get-Date -Format 'yyyyMMdd-HHmmss-fff'
+$pinnedChecks=@(foreach($surface in $overlay.pinned){
+    if($surface.komorebiEligible){throw 'A pinned popup is eligible for komorebi.'}
+    if($surface.noActivate){throw 'A pinned popup uses WS_EX_NOACTIVATE.'}
+    if(-not $surface.toolWindow -or -not $surface.topmost){throw 'A pinned popup must be a topmost tool window.'}
+    [pscustomobject]@{window=$surface;passed=$true}
+})
 $checks|ConvertTo-Json -Depth 4|Set-Content (Join-Path $EvidenceDirectory "live-geometry-$stamp.json")
 $overlayChecks|ConvertTo-Json -Depth 4|Set-Content (Join-Path $EvidenceDirectory "overlay-geometry-$stamp.json")
+$pinnedChecks|ConvertTo-Json -Depth 5|Set-Content (Join-Path $EvidenceDirectory "pinned-geometry-$stamp.json")
 $checks|ConvertTo-Json -Depth 4
 $overlayChecks|ConvertTo-Json -Depth 4

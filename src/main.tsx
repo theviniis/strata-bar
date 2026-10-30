@@ -32,16 +32,24 @@ if (native) {
   import.meta.hot?.dispose(stopConfig)
 }
 
-const remindersConnection = getRemindersStore()
-  .getState()
-  .connect()
-  .then((dispose) => {
-    const stop = getRemindersStore().getState().startDemoScheduler()
-    return () => {
-      stop()
-      dispose()
-    }
-  })
+async function connectReminders() {
+  if (view === 'settings') return () => {}
+  if (view === 'overlay') {
+    if (!native) return () => {}
+    const { getCurrentWebviewWindow } =
+      await import('@tauri-apps/api/webviewWindow')
+    // The shared alert document stays connected. Idle widget hosts do not.
+    if (getCurrentWebviewWindow().label !== 'overlay') return () => {}
+  }
+  const dispose = await getRemindersStore().getState().connect()
+  const stop = getRemindersStore().getState().startDemoScheduler()
+  return () => {
+    stop()
+    dispose()
+  }
+}
+const remindersConnection = connectReminders()
+
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     void remindersConnection.then((dispose) => dispose())

@@ -89,7 +89,7 @@ pub struct Network {
     emit_to: Arc<dyn Fn(&str, &Value) + Send + Sync>,
 }
 pub fn allowed(label: &str) -> bool {
-    label.starts_with("bar-") || label == "overlay" || label == "settings"
+    crate::desktop::content_window(label) || label == "settings"
 }
 impl Network {
     pub fn start(app: AppHandle, config: NetworkConfig) -> Self {

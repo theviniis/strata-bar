@@ -34,7 +34,7 @@ pub struct Media {
     pub spotify: Spotify,
 }
 pub fn allowed_window(label: &str) -> bool {
-    label.starts_with("bar-") || label == "overlay"
+    crate::desktop::content_window(label)
 }
 /// A track change reaches the worker as a burst of GSMTC notifications. Fold the
 /// queue into the newest pending request, dropping redundant wakes so one burst

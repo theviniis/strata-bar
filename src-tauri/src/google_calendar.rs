@@ -613,7 +613,7 @@ impl GoogleCalendar {
 }
 
 fn authorize_caller(label: &str) -> Result<(), String> {
-    if label.starts_with("bar-") || label == "overlay" || label == "settings" {
+    if crate::desktop::content_window(label) || label == "settings" {
         Ok(())
     } else {
         Err("Calendar requires a bar, overlay or settings window".into())

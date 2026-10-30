@@ -1,4 +1,5 @@
 import { NetworkController } from '@/features/network/widget/network.controller'
+import { WidgetIdentityContext } from '@/popups/widget-identity'
 import { WeatherController } from '@/features/weather/widget/weather.controller'
 import { MediaSpectrumController } from '@/features/media-spectrum/widget/media-spectrum.controller'
 import { AgentsController } from '../../features/agents/widget/agents.controller'
@@ -60,7 +61,9 @@ export function Widget({ widget }: { widget: WidgetConfig }) {
   const view: WidgetView = widget ? viewOf(widget) : defaultView
   return (
     <WidgetViewContext.Provider value={view}>
-      {widgets[widget.type]()}
+      <WidgetIdentityContext.Provider value={widget.id}>
+        {widgets[widget.type]()}
+      </WidgetIdentityContext.Provider>
     </WidgetViewContext.Provider>
   )
 }

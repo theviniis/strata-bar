@@ -11,7 +11,14 @@ export function useResourceChannel<
     channel: C
     event: SystemEvent<ChannelData[C]>
     lastData?: ChannelData[C]
-  }>({ channel, event: { status: 'loading' } })
+  }>(() => {
+    const event = runtime.initial(channel)
+    return {
+      channel,
+      event,
+      lastData: event.status === 'ready' ? event.data : undefined
+    }
+  })
   const [now, setNow] = useState(runtime.now)
   useEffect(() => {
     return runtime.subscribe(

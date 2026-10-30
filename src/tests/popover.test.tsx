@@ -4,6 +4,7 @@ const host = vi.hoisted(() => ({
   show: vi.fn(),
   hide: vi.fn(),
   bounce: vi.fn(),
+  target: undefined as unknown,
   closed: null as
     null | ((event: { payload: { session: string; docked?: boolean } }) => void)
 }))
@@ -11,9 +12,17 @@ vi.mock('../services/system/overlay', () => ({
   overlay: { mode: 'native', show: host.show, hide: host.hide }
 }))
 vi.mock('../popups/motion', () => ({ bouncePopupAnchor: host.bounce }))
+vi.mock('@tauri-apps/api/webviewWindow', () => ({
+  getCurrentWebviewWindow: () => ({ label: 'bar-test' })
+}))
 vi.mock('@tauri-apps/api/event', () => ({
-  listen: async (_name: string, handler: typeof host.closed) => {
+  listen: async (
+    _name: string,
+    handler: typeof host.closed,
+    options: unknown
+  ) => {
     host.closed = handler
+    host.target = options
     return () => {
       host.closed = null
     }
@@ -46,6 +55,7 @@ it('opens a typed popup, closes on a second click and ignores another owner clos
     'getBoundingClientRect'
   ).mockReturnValue(new DOMRect(100, 0, 80, 36))
   await waitFor(() => expect(host.closed).not.toBeNull())
+  expect(host.target).toEqual({ target: 'bar-test' })
   fireEvent.click(screen.getByRole('button'))
   await waitFor(() =>
     expect(screen.getByRole('button')).toHaveAttribute('aria-expanded', 'true')

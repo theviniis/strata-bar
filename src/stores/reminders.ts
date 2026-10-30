@@ -14,6 +14,7 @@ type RemindersState = {
   snapshot: ReminderSnapshot | null
   error: string | null
   connect(): Promise<() => void>
+  refresh(): Promise<void>
   create(request: CreateReminder): Promise<boolean>
   dismiss(id: string): Promise<boolean>
   snooze(id: string, option: SnoozeOption): Promise<boolean>
@@ -75,6 +76,14 @@ export function createRemindersStore(adapter: RemindersAdapter) {
         return () => {
           active = false
           clearInterval(timer)
+        }
+      },
+      async refresh() {
+        try {
+          accept(await adapter.load())
+          set({ error: null })
+        } catch (error) {
+          fail(error)
         }
       },
       async connect() {

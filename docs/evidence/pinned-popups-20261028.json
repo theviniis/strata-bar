@@ -1,0 +1,54 @@
+{
+  "cleanup": true,
+  "failedTransferPreservesOriginal": true,
+  "geometry": {
+    "actualRect": [
+      180,
+      154,
+      500,
+      414
+    ],
+    "crossSessionRejected": true,
+    "fullscreenSignalHidesAndRestoresWithoutFocus": true,
+    "resizePreservesPosition": true
+  },
+  "initial": [
+    {
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "processId": 30984,
+      "rect": [
+        232,
+        339,
+        529,
+        523
+      ],
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "processId": 30984,
+      "rect": [
+        231,
+        339,
+        529,
+        523
+      ],
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    }
+  ],
+  "limits": [
+    "Actual pointer dragging, mixed-DPI movement, monitor unplug and external fullscreen application require a manual acceptance run."
+  ],
+  "multiplePinned": true,
+  "passed": true,
+  "returnReplacesTransient": true,
+  "transientAlongsidePinned": true
+}

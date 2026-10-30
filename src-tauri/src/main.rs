@@ -52,6 +52,28 @@ mod windows_workspaces;
 mod workspaces;
 use serde_json::{json, Value};
 use tauri::Manager;
+pub(crate) fn release_window_subscriptions(app: &tauri::AppHandle, label: &str) {
+    if let Some(spectrum) = app.try_state::<media_spectrum::MediaSpectrum>() {
+        spectrum.remove_window(label);
+    }
+    if let Some(network) = app.try_state::<network::Network>() {
+        network.remove_window(label);
+    }
+    if let Some(weather) = app.try_state::<weather::Weather>() {
+        weather.remove_window(label);
+    }
+    if let Some(media) = app.try_state::<media::Media>() {
+        media.remove_window(label);
+    }
+    if let Some(metrics) = app.try_state::<metrics::Metrics>() {
+        metrics.remove_window(label);
+    }
+    app.state::<windows_workspaces::WindowsWorkspaces>()
+        .remove_window(label);
+    if let Some(workspaces) = app.try_state::<workspaces::Workspaces>() {
+        workspaces.remove_window(label);
+    }
+}
 #[tauri::command]
 fn capabilities() -> Value {
     json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"mediaSpectrum":true,"weather":true,"appBar":true,"gpu":true,"disk":true,"network":true,"workspaces":true,"voicemeeter":crate::voicemeeter::installed(),"config":true})
@@ -65,6 +87,9 @@ fn subscribe(
     interval_ms: u64,
     workspace_source: Option<config_contract::WorkspaceSource>,
 ) -> Result<Value, String> {
+    if window.label().starts_with("popup-") && !desktop::is_active_popup_window(window.label()) {
+        return Err("Channel subscription requires an active popup session".into());
+    }
     if channel == "mediaSpectrum" {
         return window
             .state::<media_spectrum::MediaSpectrum>()
@@ -195,17 +220,73 @@ async fn set_audio_output(
         .await
         .map_err(|e| e.to_string())?
 }
+async fn on_ui<T: Send + 'static>(
+    app: tauri::AppHandle,
+    task: impl FnOnce(tauri::AppHandle) -> T + Send + 'static,
+) -> Result<T, String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let handle = app.clone();
+    app.run_on_main_thread(move || {
+        let _ = tx.send(task(handle));
+    })
+    .map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || rx.recv().map_err(|e| e.to_string()))
+        .await
+        .map_err(|e| e.to_string())?
+}
 #[tauri::command]
-fn overlay_show(
+async fn overlay_pin(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    session: String,
+    pinned: bool,
+) -> Result<(), String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let handle = app.clone();
+    app.run_on_main_thread(move || {
+        let _ = tx.send(desktop::popup_pin(&handle, &window, &session, pinned));
+    })
+    .map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let completion = rx.recv().map_err(|e| e.to_string())??;
+        completion
+            .recv_timeout(std::time::Duration::from_secs(12))
+            .map_err(|_| "A transferência do popup não foi concluída".to_string())?
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+async fn overlay_return(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    session: String,
+    anchor: Option<desktop::OverlayAnchor>,
+    revision: u64,
+) -> Result<(), String> {
+    on_ui(app, move |app| {
+        desktop::popup_return(&app, &window, &session, anchor, revision)
+    })
+    .await?
+}
+#[tauri::command]
+fn overlay_drag(window: tauri::WebviewWindow, session: String) -> Result<(), String> {
+    desktop::popup_drag(&window, &session)
+}
+#[tauri::command]
+async fn overlay_show(
     window: tauri::WebviewWindow,
     app: tauri::AppHandle,
     request: desktop::OverlayRequest,
 ) -> Result<(), String> {
-    let result = desktop::overlay_show(&app, &window, &request);
-    if result.is_err() {
-        desktop::overlay_hide_request(&app, request.session.as_deref());
-    }
-    result
+    on_ui(app, move |app| {
+        let result = desktop::overlay_show(&app, &window, &request);
+        if result.is_err() {
+            desktop::overlay_hide_request(&app, request.session.as_deref());
+        }
+        result
+    })
+    .await?
 }
 
 #[tauri::command]
@@ -217,11 +298,22 @@ fn bar_set_region(
 }
 #[tauri::command]
 fn overlay_hide(app: tauri::AppHandle, window: tauri::WebviewWindow, session: Option<String>) {
-    if window.label() == desktop::OVERLAY {
+    if desktop::is_popup_window(window.label()) {
+        let _ = desktop::popup_dismiss(&app, &window, session.as_deref());
+    } else if desktop::is_overlay(window.label()) {
         desktop::overlay_dismiss(&app, session.as_deref());
-    } else {
+    } else if window.label().starts_with("bar-") {
+        desktop::popup_hide_request(&app, window.label(), session.as_deref());
         desktop::overlay_hide_request(&app, session.as_deref());
     }
+}
+#[tauri::command]
+fn overlay_open_complete(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    session: String,
+) -> Result<(), String> {
+    desktop::popup_open_complete(&app, &window, &session)
 }
 #[tauri::command]
 fn overlay_exit_complete(
@@ -265,7 +357,7 @@ async fn weather_search(
     query: String,
 ) -> Result<Vec<weather_contract::WeatherCity>, String> {
     if window.label() != "settings" {
-        return Err("Busca de cidades requer ConfiguraÃ§Ãµes".into());
+        return Err("Busca de cidades requer Configurações".into());
     }
     tauri::async_runtime::spawn_blocking(move || weather::search(&query))
         .await
@@ -501,12 +593,18 @@ fn main() {
         println!("{}", serde_json::to_string(&result).unwrap());
         return;
     }
+    let pinned_check =
+        cfg!(debug_assertions) && arguments.iter().any(|arg| arg == "--check-pinned");
     // A second launch must not reserve a second strip of desktop workspace.
     let instance = unsafe {
         windows::Win32::System::Threading::CreateMutexW(
             None,
             false,
-            windows::core::w!("Local\\StrataStatusBar"),
+            if pinned_check {
+                windows::core::w!("Local\\StrataPinnedCheck")
+            } else {
+                windows::core::w!("Local\\StrataStatusBar")
+            },
         )
     }
     .expect("Cannot create application instance guard");
@@ -560,22 +658,28 @@ fn main() {
             settings_monitors,
             settings_open,
             overlay_show,
+            overlay_pin,
+            overlay_drag,
+            overlay_return,
             bar_set_region,
             overlay_hide,
             overlay_resize,
+            overlay_open_complete,
             overlay_ready,
             overlay_exit_complete,
             diagnostics,
             quit
         ])
-        .setup(|app| {
-            tray::setup(app.handle())?;
+        .setup(move |app| {
+            if !pinned_check {
+                tray::setup(app.handle())?;
+            }
             #[cfg(debug_assertions)]
             let monitor_check = std::env::args()
                 .any(|arg| arg == "--check-monitor-manager" || arg == "--check-bar-geometry");
             #[cfg(not(debug_assertions))]
             let monitor_check = false;
-            let store = if monitor_check {
+            let store = if monitor_check || pinned_check {
                 config::ConfigStore::open(
                     std::env::temp_dir()
                         .join(format!("strata-monitor-check-{}", std::process::id()))
@@ -587,9 +691,13 @@ fn main() {
             config::watch(app.handle().clone(), &store)?;
             app.manage(store);
             app.manage(google_calendar::GoogleCalendar::start());
-            app.manage(reminders::Reminders::open(
-                app.path().app_data_dir()?.join("reminders.json"),
-            ));
+            let reminders_path = if pinned_check {
+                std::env::temp_dir()
+                    .join(format!("strata-reminder-check-{}.json", std::process::id()))
+            } else {
+                app.path().app_data_dir()?.join("reminders.json")
+            };
+            app.manage(reminders::Reminders::open(reminders_path));
             app.manage(network::Network::start(
                 app.handle().clone(),
                 app.state::<config::ConfigStore>()
@@ -618,8 +726,14 @@ fn main() {
             app.manage(windows_workspaces::WindowsWorkspaces::start(
                 app.handle().clone(),
             ));
-            monitors::observe(app.handle())?;
-            desktop::reconcile(app.handle())?;
+            if !pinned_check {
+                monitors::observe(app.handle())?;
+                desktop::reconcile(app.handle())?;
+            }
+            #[cfg(debug_assertions)]
+            if pinned_check {
+                desktop::pinned_check_source(app.handle())?;
+            }
             #[cfg(debug_assertions)]
             if monitor_check {
                 if std::env::args().any(|arg| arg == "--check-bar-geometry") {
@@ -628,8 +742,13 @@ fn main() {
                     monitor_check::start(app.handle().clone());
                 }
             }
-            // One warm surface for every tooltip and, later, widget popup.
+            // Tooltips/alerts share a surface; widget sessions consume a prepared window.
             desktop::ensure_overlay(app.handle())?;
+            desktop::prepare_popups(app.handle())?;
+            #[cfg(debug_assertions)]
+            if std::env::args().any(|arg| arg == "--check-pinned") {
+                desktop::check_pinned(app.handle().clone());
+            }
             app.manage(reminders::ReminderScheduler::start(app.handle().clone()));
             #[cfg(debug_assertions)]
             if std::env::args().any(|arg| arg == "--check-popups") {
@@ -639,31 +758,8 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
-                if let Some(spectrum) = window
-                    .app_handle()
-                    .try_state::<media_spectrum::MediaSpectrum>()
-                {
-                    spectrum.remove_window(window.label());
-                }
-                if let Some(network) = window.app_handle().try_state::<network::Network>() {
-                    network.remove_window(window.label());
-                }
-                if let Some(weather) = window.app_handle().try_state::<weather::Weather>() {
-                    weather.remove_window(window.label());
-                }
-                if let Some(media) = window.app_handle().try_state::<media::Media>() {
-                    media.remove_window(window.label());
-                }
-                if let Some(metrics) = window.app_handle().try_state::<metrics::Metrics>() {
-                    metrics.remove_window(window.label());
-                }
-                window
-                    .state::<windows_workspaces::WindowsWorkspaces>()
-                    .remove_window(window.label());
-                if let Some(workspaces) = window.app_handle().try_state::<workspaces::Workspaces>()
-                {
-                    workspaces.remove_window(window.label());
-                }
+                desktop::popup_destroyed(window.app_handle(), window.label());
+                release_window_subscriptions(window.app_handle(), window.label());
             }
         })
         .build(tauri::generate_context!())

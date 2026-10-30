@@ -1,0 +1,92 @@
+{
+  "cleanup": true,
+  "failedTransferPreservesOriginal": true,
+  "geometry": {
+    "actualRect": [
+      180,
+      154,
+      500,
+      414
+    ],
+    "crossSessionRejected": true,
+    "fullscreenSignalHidesAndRestoresWithoutFocus": true,
+    "resizePreservesPosition": true
+  },
+  "initial": [
+    {
+      "appWindow": false,
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "owned": true,
+      "processId": 36240,
+      "rect": [
+        265,
+        365,
+        548,
+        549
+      ],
+      "titleLength": 0,
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "appWindow": false,
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "owned": true,
+      "processId": 36240,
+      "rect": [
+        257,
+        365,
+        540,
+        549
+      ],
+      "titleLength": 0,
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    }
+  ],
+  "limits": [
+    "Actual pointer dragging, mixed-DPI movement, monitor unplug and external fullscreen application require a manual acceptance run."
+  ],
+  "multiplePinned": true,
+  "paintSurvivesOtherPopupEvents": true,
+  "painted": {
+    "cpu": {
+      "height": 183.5,
+      "opacity": 1,
+      "text": "CPU\nErro ao obter dados de CPU\nOcorreu um erro ao obter os dados de CPU",
+      "viewport": [
+        283,
+        184
+      ],
+      "width": 282.40625,
+      "x": 0,
+      "y": 0
+    },
+    "gpu": {
+      "height": 183.5,
+      "opacity": 1,
+      "text": "GPU\nErro ao obter dados de GPU\nOcorreu um erro ao obter os dados de GPU",
+      "viewport": [
+        283,
+        184
+      ],
+      "width": 282.34375,
+      "x": 0,
+      "y": 0
+    }
+  },
+  "passed": true,
+  "pinReadyMs": {
+    "cpu": 232,
+    "gpu": 173
+  },
+  "returnReplacesTransient": true,
+  "reusesRenderedWindow": true,
+  "transientAlongsidePinned": true
+}

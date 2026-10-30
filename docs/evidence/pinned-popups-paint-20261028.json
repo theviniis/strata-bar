@@ -1,0 +1,87 @@
+{
+  "cleanup": true,
+  "failedTransferPreservesOriginal": true,
+  "geometry": {
+    "actualRect": [
+      180,
+      154,
+      500,
+      414
+    ],
+    "crossSessionRejected": true,
+    "fullscreenSignalHidesAndRestoresWithoutFocus": true,
+    "resizePreservesPosition": true
+  },
+  "initial": [
+    {
+      "appWindow": false,
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "owned": true,
+      "processId": 8988,
+      "rect": [
+        12,
+        105,
+        372,
+        695
+      ],
+      "titleLength": 0,
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "appWindow": false,
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "owned": true,
+      "processId": 8988,
+      "rect": [
+        12,
+        105,
+        372,
+        679
+      ],
+      "titleLength": 0,
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    }
+  ],
+  "limits": [
+    "Actual pointer dragging, mixed-DPI movement, monitor unplug and external fullscreen application require a manual acceptance run."
+  ],
+  "multiplePinned": true,
+  "paintSurvivesOtherPopupEvents": true,
+  "painted": {
+    "cpu": {
+      "height": 574,
+      "opacity": 1,
+      "text": "CPU\nUTILIZAÇÃO\n\n%\n\n45.5\nTEMPERATURA\n\n°C\n\n46.0\nUtilização · 2 minutos\n100%\n2 min atrás\nAgora · 0%\nTemperatura · 2 minutos\n100 °C\n2 min atrás\nAgora · 0°C\nFrequência\n4.01 GHz\nNúcleos (P / L)\n6 / 12\nFrequência máxima nominal\n2.90 GHz\n\nLibre Hardware Monitor · CPU Package",
+      "viewport": [
+        360,
+        574
+      ],
+      "width": 360,
+      "x": 0,
+      "y": 0
+    },
+    "gpu": {
+      "height": 590,
+      "opacity": 1,
+      "text": "GPU\nUTILIZAÇÃO\n\n%\n\n15.0\nTEMPERATURA\n\n°C\n\n56.0\nUtilização · 2 minutos\n100%\n2 min atrás\nAgora · 0%\nTemperatura · 2 minutos\n100 °C\n2 min atrás\nAgora · 0°C\nMemória dedicada\n1.9 GiB / 8.0 GiB\nConsumo\n28.2 W\nVentoinha\n0.0%\nMemória compartilhada\n163.3 MiB / 16.0 GiB\n\nNVIDIA GeForce RTX 3060 Ti · Libre Hardware Monitor · GPU Core",
+      "viewport": [
+        360,
+        590
+      ],
+      "width": 360,
+      "x": 0,
+      "y": 0
+    }
+  },
+  "passed": true,
+  "returnReplacesTransient": true,
+  "transientAlongsidePinned": true
+}

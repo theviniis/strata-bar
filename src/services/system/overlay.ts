@@ -11,7 +11,7 @@ import type { PopupId } from '../../popups/resolve'
 
 export type OverlayMode = 'demo' | 'native'
 
-/** Interactive widget popups share the tooltip window. */
+/** Widgets use session windows; tooltips and alerts use the shared overlay. */
 export type OverlayKind = 'tooltip' | 'popover'
 
 /** `bottom` puts the surface below the bar; `top` puts it above a bottom bar. */
@@ -38,6 +38,7 @@ export interface OverlayRequest {
   source?: string
   session?: string
   component?: PopupId
+  widget?: string
   params?: unknown
   kind: OverlayKind
   text: string
@@ -48,6 +49,9 @@ export interface OverlayRequest {
 
 /** Event payload the overlay surface renders. */
 export interface OverlayRender {
+  closing?: boolean
+  pinned?: boolean
+  revision?: number
   appearance?: Pick<Config['bar'], 'theme' | 'colorTheme'>
   /** Anchor center relative to the placed window, in CSS px. */
   arrowX?: number
@@ -69,6 +73,9 @@ export interface OverlayAdapter {
   readonly mode: OverlayMode
   show(request: OverlayRequest): Promise<void>
   hide(session?: string): Promise<void>
+  pin?(session: string, pinned: boolean): Promise<void>
+  drag?(session: string): Promise<void>
+  opened?(session: string): Promise<void>
   resize(
     session: string,
     size: OverlaySize
@@ -78,6 +85,18 @@ export interface OverlayAdapter {
 export function createNativeOverlay(): OverlayAdapter {
   return {
     mode: 'native',
+    async opened(session) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('overlay_open_complete', { session })
+    },
+    async pin(session, pinned) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('overlay_pin', { session, pinned })
+    },
+    async drag(session) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('overlay_drag', { session })
+    },
     async show(request) {
       const { invoke } = await import('@tauri-apps/api/core')
       await invoke('overlay_show', { request })
@@ -96,6 +115,7 @@ export function createNativeOverlay(): OverlayAdapter {
 export function createDemoOverlay(): OverlayAdapter {
   return {
     mode: 'demo',
+    async opened() {},
     async show() {},
     async hide() {},
     async resize() {

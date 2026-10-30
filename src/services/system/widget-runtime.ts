@@ -33,17 +33,37 @@ export type WidgetRuntime = {
 
 const noop = () => {}
 
+// Document-local retention; never an alternative source of native data.
+// Open preparation refreshes this from the native subscription snapshot before
+// mounting. Expiry prevents an idle host presenting old values as current.
+const retained = new Map<Channel, { event: SystemEvent<unknown>; at: number }>()
+export function retainChannel<C extends Channel>(
+  channel: C,
+  event: SystemEvent<ChannelData[C]>
+) {
+  // Workspace projections depend on a bar's monitor and configured source.
+  if (channel !== 'workspaces') retained.set(channel, { event, at: Date.now() })
+}
+
 export const liveWidgetRuntime: WidgetRuntime = {
   interactive: true,
   animated: true,
   now: () => Date.now(),
-  initial: () => ({ status: 'loading', data: null }),
+  initial: <C extends Channel>(channel: C): SystemEvent<ChannelData[C]> => {
+    const value = retained.get(channel)
+    return value && Date.now() >= value.at && Date.now() - value.at < 5000
+      ? (value.event as SystemEvent<ChannelData[C]>)
+      : { status: 'loading', data: null }
+  },
   subscribe: (channel, options, listener, onError) =>
     connect<ChannelData, typeof channel>(
       bridge as NativeBridge,
       channel,
       options,
-      listener,
+      (event) => {
+        retainChannel(channel, event)
+        listener(event)
+      },
       onError
     ),
   observeTime(listener, cadence) {

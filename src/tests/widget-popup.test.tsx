@@ -24,6 +24,9 @@ const host = vi.hoisted(() => ({
   nativeOutput: vi.fn()
 }))
 vi.mock('../services/system/overlay', () => ({ overlay: host.overlay }))
+vi.mock('@tauri-apps/api/webviewWindow', () => ({
+  getCurrentWebviewWindow: () => ({ label: 'bar-test' })
+}))
 vi.mock('@tauri-apps/api/event', () => ({
   listen: async (_name: string, handler: Handler) => {
     host.listeners.add(handler)

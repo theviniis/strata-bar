@@ -17,6 +17,7 @@ type AgentsState = {
   decideOpenCode(request: AgentPermissionRequest): Promise<void>
   replyOpenCode(request: AgentReplyRequest): Promise<void>
   connect(): () => void
+  refresh(): Promise<void>
   configureOpenCode(enabled: boolean): Promise<void>
   configureAntigravity(enabled: boolean): Promise<void>
   configureCodex(enabled: boolean): Promise<void>
@@ -37,6 +38,8 @@ export function createAgentsStore(adapter: AgentsAdapter) {
         snapshot.revision > get().snapshot!.revision
       ) {
         set({ snapshot, error: null })
+      } else if (snapshot.revision === get().snapshot?.revision) {
+        set({ error: null })
       }
     }
     let consumers = 0
@@ -101,10 +104,16 @@ export function createAgentsStore(adapter: AgentsAdapter) {
       async configureCodex(enabled) {
         accept(await adapter.setCodex(enabled))
       },
+      async refresh() {
+        try {
+          accept(await adapter.load())
+        } catch (error) {
+          fail(error)
+        }
+      },
       connect() {
         consumers++
         if (consumers === 1) {
-          set({ snapshot: null, error: null })
           let active = true
           let stop: (() => void) | undefined
           stopConnection = () => {

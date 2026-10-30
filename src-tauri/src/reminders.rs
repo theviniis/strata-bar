@@ -278,7 +278,7 @@ impl Reminders {
 }
 
 pub(crate) fn authorize(window: &tauri::WebviewWindow) -> Result<(), String> {
-    if window.label().starts_with("bar-") || window.label() == "overlay" {
+    if crate::desktop::content_window(window.label()) {
         Ok(())
     } else {
         Err("Reminders require a bar or overlay window".into())
@@ -287,7 +287,7 @@ pub(crate) fn authorize(window: &tauri::WebviewWindow) -> Result<(), String> {
 
 fn publish(app: &tauri::AppHandle, snapshot: ReminderSnapshot) -> ReminderSnapshot {
     for (label, window) in app.webview_windows() {
-        if label.starts_with("bar-") || label == "overlay" {
+        if crate::desktop::content_window(&label) {
             if let Err(error) = window.emit(EVENT, &snapshot) {
                 eprintln!("Reminder delivery failed: {error}");
             }
@@ -302,6 +302,7 @@ fn publish(app: &tauri::AppHandle, snapshot: ReminderSnapshot) -> ReminderSnapsh
 enum SchedulerSignal {
     Wake,
     RetryAlert(String, u64),
+    Presented(String, u64),
     Stop,
 }
 
@@ -363,7 +364,7 @@ impl ReminderScheduler {
                     Err(error) => {
                         if last_error.as_ref() != Some(&error) {
                             for (label, window) in app.webview_windows() {
-                                if label.starts_with("bar-") || label == "overlay" {
+                                if crate::desktop::content_window(&label) {
                                     let _ = window.emit("reminders:error", &error);
                                 }
                             }
@@ -415,7 +416,7 @@ impl ReminderScheduler {
                     let notify_at = reminder.notify_at;
                     let dispatched = app.run_on_main_thread(move || {
                         if stopped.load(Ordering::Acquire) {
-                            let _ = reply.send(false);
+                            let _ = reply.send(());
                             return;
                         }
                         // A snooze/dismiss can arrive while the GUI callback is queued.
@@ -430,24 +431,25 @@ impl ReminderScheduler {
                                         && r.status == ReminderStatus::Ringing
                                 })
                             });
-                        let shown = still_ringing
-                            && match crate::desktop::show_reminder_alert(&handle, &id, notify_at) {
-                                Ok(shown) => shown,
-                                Err(error) => {
-                                    eprintln!("Reminder popup failed: {error}");
-                                    for (label, window) in handle.webview_windows() {
-                                        if label.starts_with("bar-") || label == "overlay" {
-                                            let _ = window.emit("reminders:error", &error);
-                                        }
+                        if still_ringing {
+                            if let Err(error) =
+                                crate::desktop::request_reminder_alert(&handle, &id, notify_at)
+                            {
+                                eprintln!("Reminder popup failed: {error}");
+                                for (label, window) in handle.webview_windows() {
+                                    if crate::desktop::content_window(&label) {
+                                        let _ = window.emit("reminders:error", &error);
                                     }
-                                    false
                                 }
-                            };
-                        let _ = reply.send(shown);
+                            }
+                        }
+                        let _ = reply.send(());
                     });
-                    if dispatched.is_ok() && result.recv().unwrap_or(false) {
-                        announced.insert((reminder.id.clone(), reminder.notify_at as u64));
+                    if dispatched.is_ok() {
+                        let _ = result.recv();
                     }
+                    // Dispatch is not delivery. Only the visible renderer (or
+                    // an explicit close) confirms this occurrence below.
                 }
                 let has_unannounced = snapshot.as_ref().is_some_and(|s| {
                     s.reminders.iter().any(|r| {
@@ -492,8 +494,14 @@ impl ReminderScheduler {
                 if matches!(signal, Ok(Some(SchedulerSignal::Stop)) | Err(())) {
                     break;
                 }
-                if let Ok(Some(SchedulerSignal::RetryAlert(id, time))) = signal {
-                    announced.remove(&(id, time));
+                match signal {
+                    Ok(Some(SchedulerSignal::RetryAlert(id, time))) => {
+                        announced.remove(&(id, time));
+                    }
+                    Ok(Some(SchedulerSignal::Presented(id, time))) => {
+                        announced.insert((id, time));
+                    }
+                    _ => {}
                 }
                 // Coalesce bursts from several monitors instead of spinning per event.
                 while let Ok(signal) = rx.try_recv() {
@@ -501,6 +509,9 @@ impl ReminderScheduler {
                         SchedulerSignal::Stop => return,
                         SchedulerSignal::RetryAlert(id, time) => {
                             announced.remove(&(id, time));
+                        }
+                        SchedulerSignal::Presented(id, time) => {
+                            announced.insert((id, time));
                         }
                         SchedulerSignal::Wake => {}
                     }
@@ -517,6 +528,17 @@ impl ReminderScheduler {
         {
             if let Ok(time) = time.parse::<u64>() {
                 let _ = self.tx.send(SchedulerSignal::RetryAlert(id.into(), time));
+            }
+        }
+    }
+
+    pub fn confirm_alert(&self, session: &str) {
+        if let Some((id, time)) = session
+            .strip_prefix("reminder-")
+            .and_then(|s| s.rsplit_once('-'))
+        {
+            if let Ok(time) = time.parse::<u64>() {
+                let _ = self.tx.send(SchedulerSignal::Presented(id.into(), time));
             }
         }
     }

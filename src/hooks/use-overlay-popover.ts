@@ -1,5 +1,12 @@
 import { useWidgetRuntime } from '@/components/status-bar/widget-runtime-context'
-import { useCallback, useEffect, useRef, type RefObject } from 'react'
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  type RefObject
+} from 'react'
+import { WidgetIdentityContext } from '@/popups/widget-identity'
 import { bouncePopupAnchor } from '../popups/motion'
 import { overlay } from '../services/system/overlay'
 import {
@@ -18,6 +25,7 @@ export function useOverlayPopover<K extends PopupId>(
   anchorRef?: RefObject<HTMLElement | null>
 ) {
   const runtime = useWidgetRuntime()
+  const widget = useContext(WidgetIdentityContext)
   const ref = useRef<HTMLElement>(null)
   const bounce = useRef<ReturnType<typeof bouncePopupAnchor>>(undefined)
   const enabled = runtime.interactive && overlay.mode === 'native'
@@ -38,6 +46,7 @@ export function useOverlayPopover<K extends PopupId>(
             v: 1,
             kind: 'popover',
             component,
+            widget,
             params: definition.input,
             session,
             text: metadata.label,
@@ -72,8 +81,44 @@ export function useOverlayPopover<K extends PopupId>(
     let stop: (() => void) | undefined
     void import('@tauri-apps/api/event')
       .then(async ({ listen }) => {
-        const dispose = await listen<PopupClosed>('overlay:closed', (event) =>
-          lifetime.closed(event.payload)
+        const { getCurrentWebviewWindow } =
+          await import('@tauri-apps/api/webviewWindow')
+        const dispose = await listen<PopupClosed>(
+          'overlay:closed',
+          (event) => {
+            if (event.payload.reattach) {
+              if (
+                event.payload.widget !== widget ||
+                event.payload.component !== component
+              )
+                return
+              const anchor = anchorRef?.current ?? ref.current
+              const rect = anchor?.getBoundingClientRect()
+              void import('@tauri-apps/api/core')
+                .then(({ invoke }) =>
+                  invoke('overlay_return', {
+                    session: event.payload.session,
+                    revision: event.payload.revision,
+                    anchor: rect
+                      ? {
+                          x: rect.x,
+                          y: rect.y,
+                          width: rect.width,
+                          height: rect.height
+                        }
+                      : null
+                  })
+                )
+                .catch(console.error)
+            } else if (event.payload.attached) {
+              if (
+                event.payload.widget === widget &&
+                event.payload.component === component
+              )
+                lifetime.attach(event.payload.session)
+            } else lifetime.closed(event.payload)
+          },
+          { target: getCurrentWebviewWindow().label }
         )
         if (cancelled) dispose()
         else stop = dispose
@@ -94,7 +139,7 @@ export function useOverlayPopover<K extends PopupId>(
       window.removeEventListener('pointerdown', outside)
       window.removeEventListener('keydown', escape)
     }
-  }, [close, enabled, lifetime])
+  }, [close, enabled, lifetime, widget, component, anchorRef])
   async function toggle() {
     if (enabled) return lifetime.toggle()
   }

@@ -45,8 +45,14 @@ and its configured presentation. The studio, catalog and theme selector use
 the same examples; a preview never controls the desktop or a player.
 
 **Widget popup**:
-A floating view opened from a widget for details and everyday actions. Opening
-another widget popup replaces the previous one in that bar or interactive demo.
+A floating view opened from a widget for details and everyday actions, whose
+interaction ends when it is closed. Opening another widget popup replaces the
+transient view; pinned widget popups remain open.
+
+**Pinned widget popup**:
+A widget popup kept open for the current run, above ordinary windows and movable
+independently of its widget. Pinning preserves the current interaction; unpinning
+restores transient behavior near the widget.
 
 **Music interaction**:
 The local set of pending player actions owned by one bar or popup for a specific

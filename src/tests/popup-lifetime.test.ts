@@ -4,6 +4,22 @@ import { PopupLifetime, type PopupLifetimeAdapter } from '@/popups/lifetime'
 
 const owners: PopupLifetime[] = []
 
+it('releases detached ownership and attaches a returned session independently', async () => {
+  const first = owner('native')
+  await first.lifetime.setOpen(true)
+  const session = first.show.mock.calls[0][0]
+  first.lifetime.detach()
+  expect(first.adapter.hide).not.toHaveBeenCalled()
+  expect(popupIsActive()).toBe(false)
+  const second = owner('native')
+  await second.lifetime.setOpen(true)
+  first.lifetime.attach(session)
+  expect(second.adapter.hide).toHaveBeenCalledOnce()
+  expect(first.lifetime.getSnapshot()).toMatchObject({ open: true, session })
+  first.lifetime.closed({ session: 'unrelated' })
+  expect(first.lifetime.getSnapshot().open).toBe(true)
+})
+
 function owner(mode: PopupLifetimeAdapter['mode']) {
   const show = vi.fn<(session: string) => void | Promise<unknown>>()
   const adapter = {

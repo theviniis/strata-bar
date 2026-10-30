@@ -1,3 +1,12 @@
+mod sessions;
+pub use sessions::{
+    active_window as is_active_popup_window, destroyed as popup_destroyed,
+    dismiss as popup_dismiss, drag as popup_drag, has_window as is_popup_window,
+    hide_request as popup_hide_request, pin as popup_pin, prepare as prepare_popups,
+    return_to_anchor as popup_return,
+};
+#[cfg(debug_assertions)]
+pub use sessions::{check as check_pinned, check_source as pinned_check_source};
 use std::{
     cell::Cell,
     collections::hash_map::DefaultHasher,
@@ -30,6 +39,48 @@ const BAR_BACKGROUND: tauri::window::Color = tauri::window::Color(0, 0, 0, 0);
 /// Window label and title of the shared floating surface. The title deliberately
 /// does not start with `"Strata ·"`, which `bar_snapshot` uses to find AppBars.
 pub const OVERLAY: &str = "overlay";
+
+pub fn overlay_label() -> String {
+    OVERLAY.into()
+}
+
+pub fn is_overlay(label: &str) -> bool {
+    label == overlay_label()
+}
+
+/// Content privileges follow a registered lease, never the popup label prefix.
+pub fn content_window(label: &str) -> bool {
+    label.starts_with("bar-") || is_overlay(label) || sessions::active_window(label)
+}
+
+pub fn popup_open_complete(
+    app: &AppHandle,
+    caller: &WebviewWindow,
+    session: &str,
+) -> Result<(), String> {
+    if sessions::has_window(caller.label()) {
+        return sessions::opened(app, caller, session);
+    }
+    if is_overlay(caller.label()) {
+        let popup = POPUP
+            .lock()
+            .unwrap()
+            .clone()
+            .filter(|p| p.id == session && p.revealed && !p.closing);
+        let visible = caller
+            .hwnd()
+            .is_ok_and(|h| unsafe { IsWindowVisible(HWND(h.0)).as_bool() });
+        if let Some(popup) = popup.filter(|_| visible) {
+            if popup.component == "reminderAlert" {
+                app.state::<crate::reminders::ReminderScheduler>()
+                    .confirm_alert(&popup.id);
+            }
+            return Ok(());
+        }
+    }
+    Err("Only the owning popup may finish opening".into())
+}
+
 const OVERLAY_TITLE: &str = "Strata overlay";
 /// Window label and title of the single settings window. The label doubles as
 /// the singleton key: `open_settings` focuses the existing window instead of
@@ -58,6 +109,7 @@ struct PopupSession {
     revealed: bool,
     closing: bool,
     restore_focus: bool,
+    widget: Option<String>,
 }
 static POPUP: Mutex<Option<PopupSession>> = Mutex::new(None);
 static REMINDER_ANCHORS: std::sync::LazyLock<
@@ -330,6 +382,7 @@ unsafe fn apply_fullscreen_visibility(hwnd: HWND, fullscreen: bool) {
 
 /// Reconcile visibility per monitor, including borderless apps without a shell notification.
 unsafe fn refresh_fullscreen(hwnd: HWND, state: &Reservation) {
+    sessions::refresh(&state.app);
     let fullscreen = foreground_fullscreen_monitor()
         .is_some_and(|monitor| foreground_covers_monitor(monitor, state.rect));
     if state.fullscreen.replace(fullscreen) != fullscreen {
@@ -735,6 +788,7 @@ fn activate_bar(
 }
 pub fn release_all(app: &AppHandle) {
     RELEASING.store(true, Ordering::Release);
+    sessions::release_all(app);
     overlay_hide(app);
     for (label, w) in app.webview_windows() {
         // Only AppBar windows own a reservation; the overlay must never remove one.
@@ -817,6 +871,8 @@ pub struct OverlayRequest {
     pub session: Option<String>,
     #[serde(default)]
     pub component: Option<String>,
+    #[serde(default)]
+    pub widget: Option<String>,
     #[serde(default, deserialize_with = "deserialize_popup_params")]
     pub params: Option<serde_json::Value>,
     #[serde(default)]
@@ -836,6 +892,9 @@ fn deserialize_popup_params<'de, D: serde::Deserializer<'de>>(
 
 impl OverlayRequest {
     fn validate(&self) -> Result<OverlaySide, String> {
+        if self.widget.as_ref().is_some_and(|w| w.is_empty()) {
+            return Err("Invalid popup widget identity".into());
+        }
         if self.v != 1 {
             return Err(format!(
                 "Overlay contract version {} is unsupported",
@@ -1132,26 +1191,43 @@ pub fn settings_snapshot() -> serde_json::Value {
     serde_json::json!({ "present": !values.is_empty(), "windows": values })
 }
 
+fn surface_builder<'a>(
+    app: &'a AppHandle,
+    label: &str,
+) -> WebviewWindowBuilder<'a, tauri::Wry, AppHandle> {
+    let builder = WebviewWindowBuilder::new(
+        app,
+        label,
+        WebviewUrl::App("index.html?view=overlay".into()),
+    );
+    #[cfg(debug_assertions)]
+    if std::env::args().any(|arg| arg == "--check-pinned") {
+        // Isolate the browser process tree as well as config: WebView2 otherwise
+        // shares a browser owned by an already-running Strata, hiding its cost.
+        return builder.data_directory(
+            std::env::temp_dir().join(format!("strata-popup-check-profile-{}", std::process::id())),
+        );
+    }
+    builder
+}
+
 pub fn ensure_overlay(app: &AppHandle) -> Result<WebviewWindow, Box<dyn std::error::Error>> {
-    if let Some(window) = app.get_webview_window(OVERLAY) {
+    if let Some(window) = app.get_webview_window(&overlay_label()) {
         return Ok(window);
     }
-    let window = WebviewWindowBuilder::new(
-        app,
-        OVERLAY,
-        WebviewUrl::App("index.html?view=overlay".into()),
-    )
-    .title(OVERLAY_TITLE)
-    .decorations(false)
-    .transparent(true)
-    .shadow(false)
-    .resizable(false)
-    .skip_taskbar(true)
-    .always_on_top(true)
-    .focused(false)
-    .visible(false)
-    .inner_size(1., 1.)
-    .build()?;
+    let window = surface_builder(app, &overlay_label())
+        .title(OVERLAY_TITLE)
+        .background_color(BAR_BACKGROUND)
+        .decorations(false)
+        .transparent(true)
+        .shadow(false)
+        .resizable(false)
+        .skip_taskbar(true)
+        .always_on_top(true)
+        .focused(false)
+        .visible(false)
+        .inner_size(1., 1.)
+        .build()?;
     unsafe {
         let hwnd = HWND(window.hwnd()?.0);
         let owner = Box::new(OverlayState { app: app.clone() });
@@ -1189,14 +1265,21 @@ fn finish_overlay_hide(app: &AppHandle, hwnd: HWND, restore_focus: bool, docked:
         }
         OVERLAY_COUNTS[2].fetch_add(1, Ordering::Relaxed);
     }
-    if let Some(window) = app.get_webview_window(OVERLAY) {
+    if let Some(window) = app.get_webview_window(&overlay_label()) {
         let _ = window.set_ignore_cursor_events(true);
         let _ = window.hide();
     }
     // Drop the stale pill so the next show cannot flash the previous tooltip.
     let cleared = OVERLAY_SESSION.fetch_add(1, Ordering::Relaxed) + 1;
-    let _ = app.emit_to(OVERLAY, "overlay:clear", cleared);
+    let _ = app.emit_to(&overlay_label(), "overlay:clear", cleared);
     if let Some(closed) = closed {
+        // Geometry/reconcile hides are not a user's dismissal. Return an
+        // interrupted notification to the scheduler, including after delivery.
+        if closed.component == "reminderAlert" && !closed.closing {
+            if let Some(scheduler) = app.try_state::<crate::reminders::ReminderScheduler>() {
+                scheduler.retry_alert(&closed.id);
+            }
+        }
         let _ = app.emit_to(
             &closed.source,
             "overlay:closed",
@@ -1218,7 +1301,7 @@ fn hide_overlay_window(app: &AppHandle, window: &WebviewWindow) {
 /// Hides the overlay. Safe to call when it does not exist (startup, shutdown)
 /// and when it is already hidden; a lost `pointerleave` cannot strand a ghost.
 pub fn overlay_hide(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window(OVERLAY) {
+    if let Some(window) = app.get_webview_window(&overlay_label()) {
         hide_overlay_window(app, &window);
     }
 }
@@ -1256,7 +1339,12 @@ fn animate_popup_close(app: &AppHandle, restore_focus: bool) -> bool {
         popup.restore_focus = restore_focus;
         popup.clone()
     };
-    let _ = app.emit_to(OVERLAY, "overlay:closing", &popup.id);
+    if popup.component == "reminderAlert" {
+        // A user may close during entry, before the presentation acknowledgment.
+        app.state::<crate::reminders::ReminderScheduler>()
+            .confirm_alert(&popup.id);
+    }
+    let _ = app.emit_to(&overlay_label(), "overlay:closing", &popup.id);
     let app = app.clone();
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(1000));
@@ -1266,7 +1354,7 @@ fn animate_popup_close(app: &AppHandle, restore_focus: bool) -> bool {
             if !current.is_some_and(|p| p.id == popup.id && p.closing) {
                 return;
             }
-            if let Some(window) = handle.get_webview_window(OVERLAY) {
+            if let Some(window) = handle.get_webview_window(&overlay_label()) {
                 if let Ok(hwnd) = window.hwnd() {
                     hide_overlay_hwnd_with_focus(&handle, HWND(hwnd.0), restore_focus);
                 }
@@ -1288,7 +1376,10 @@ pub fn overlay_exit_complete(
     caller: &WebviewWindow,
     session: &str,
 ) -> Result<(), String> {
-    if caller.label() != OVERLAY {
+    if sessions::has_window(caller.label()) {
+        return sessions::complete_exit(app, caller, session);
+    }
+    if !is_overlay(caller.label()) {
         return Err("Only overlay may complete an exit".into());
     }
     let popup = POPUP
@@ -1299,7 +1390,9 @@ pub fn overlay_exit_complete(
     let Some(popup) = popup else {
         return Ok(());
     };
-    let window = app.get_webview_window(OVERLAY).ok_or("No overlay")?;
+    let window = app
+        .get_webview_window(&overlay_label())
+        .ok_or("No overlay")?;
     let hwnd = HWND(window.hwnd().map_err(|e| e.to_string())?.0);
     finish_overlay_hide(app, hwnd, popup.restore_focus, true);
     if popup.restore_focus {
@@ -1322,7 +1415,10 @@ pub fn overlay_dismiss(app: &AppHandle, session: Option<&str>) {
 
 /// Replay after listeners install, so a cold/refreshing overlay cannot lose preparation.
 pub fn overlay_ready(caller: &WebviewWindow) -> Result<serde_json::Value, String> {
-    if caller.label() != OVERLAY {
+    if sessions::has_window(caller.label()) {
+        return sessions::ready(caller);
+    }
+    if !is_overlay(caller.label()) {
         return Err("Only overlay may read prepared content".into());
     }
     Ok(
@@ -1344,7 +1440,10 @@ pub fn overlay_resize(
     session: &str,
     size: &OverlaySize,
 ) -> Result<serde_json::Value, String> {
-    if caller.label() != OVERLAY || !valid_popup_size(size) {
+    if sessions::has_window(caller.label()) {
+        return sessions::resize(app, caller, session, size);
+    }
+    if !is_overlay(caller.label()) || !valid_popup_size(size) {
         return Err("Invalid popup resize request".into());
     }
     let popup = POPUP
@@ -1430,7 +1529,9 @@ pub fn overlay_resize(
 #[cfg(debug_assertions)]
 pub fn check_resize_active(app: &AppHandle) -> Result<(), String> {
     let popup = POPUP.lock().unwrap().clone().ok_or("No active popup")?;
-    let window = app.get_webview_window(OVERLAY).ok_or("No overlay")?;
+    let window = app
+        .get_webview_window(&overlay_label())
+        .ok_or("No overlay")?;
     let mut rect = RECT::default();
     unsafe {
         GetWindowRect(HWND(window.hwnd().map_err(|e| e.to_string())?.0), &mut rect)
@@ -1466,6 +1567,21 @@ pub fn overlay_show(
             caller.label()
         ));
     }
+    if request.kind == "popover" && request.component.as_deref() != Some("reminderAlert") {
+        if POPUP
+            .lock()
+            .unwrap()
+            .as_ref()
+            .is_some_and(|p| popup_requires_explicit_close(&p.component))
+        {
+            return Ok(());
+        }
+        overlay_hide(app);
+        return sessions::open(app, caller, request);
+    }
+    if request.kind == "tooltip" && sessions::transient_id().is_some() {
+        return Ok(());
+    }
     let current = POPUP.lock().unwrap().clone();
     if let Some(current) = current {
         // Expiry alerts require an explicit close from their own controls.
@@ -1483,6 +1599,7 @@ pub fn overlay_show(
         }
     }
     if request.kind == "popover" {
+        sessions::close_transient(app, None);
         overlay_hide(app);
     }
     let config = crate::config::snapshot_for(&app.state::<crate::config::ConfigStore>(), caller)?;
@@ -1543,6 +1660,7 @@ pub fn overlay_show(
             revealed: false,
             closing: false,
             restore_focus: false,
+            widget: request.widget.clone(),
         });
     }
     *OVERLAY_OWNER.lock().unwrap() = request.session.clone();
@@ -1565,7 +1683,7 @@ pub fn overlay_show(
     })
     .map_err(|e| e.to_string())?;
     *LAST_OVERLAY_RENDER.lock().unwrap() = Some(payload.clone());
-    app.emit_to(OVERLAY, "overlay:render", payload)
+    app.emit_to(&overlay_label(), "overlay:render", payload)
         .map_err(|e| e.to_string())?;
     let hwnd = HWND(window.hwnd().map_err(|e| e.to_string())?.0);
     struct Placement;
@@ -1663,13 +1781,13 @@ pub fn reminders_set_anchor(
 
 /// A native-only scheduler entrypoint. Reuses the shared popup surface and
 /// reads the selected AppBar's actual Win32 rectangle for its anchor.
-pub fn show_reminder_alert(app: &AppHandle, id: &str, notify_at: f64) -> Result<bool, String> {
+pub fn request_reminder_alert(app: &AppHandle, id: &str, notify_at: f64) -> Result<(), String> {
     let active = POPUP.lock().unwrap().clone();
     if defer_reminder_alert(
         fullscreen_application_active(),
         active.as_ref().map(|popup| popup.component.as_str()),
     ) {
-        return Ok(false);
+        return Ok(());
     }
     let mut bars: Vec<_> = app
         .webview_windows()
@@ -1688,7 +1806,7 @@ pub fn show_reminder_alert(app: &AppHandle, id: &str, notify_at: f64) -> Result<
         })
     });
     let Some((_, source)) = selected else {
-        return Ok(false);
+        return Ok(());
     };
     // Require a fresh measurement for this occurrence, not an old layout snapshot.
     let occurrence = format!("{id}:{notify_at:.0}");
@@ -1703,7 +1821,7 @@ pub fn show_reminder_alert(app: &AppHandle, id: &str, notify_at: f64) -> Result<
             source
                 .emit("reminders:measure-anchor", &occurrence)
                 .map_err(|e| e.to_string())?;
-            return Ok(false);
+            return Ok(());
         }
     };
     overlay_show(
@@ -1711,6 +1829,7 @@ pub fn show_reminder_alert(app: &AppHandle, id: &str, notify_at: f64) -> Result<
         source,
         &OverlayRequest {
             v: 1,
+            widget: None,
             source: Some(source.label().into()),
             kind: "popover".into(),
             component: Some("reminderAlert".into()),
@@ -1727,7 +1846,7 @@ pub fn show_reminder_alert(app: &AppHandle, id: &str, notify_at: f64) -> Result<
             side: "bottom".into(),
         },
     )?;
-    Ok(true)
+    Ok(())
 }
 
 fn popup_takes_focus(component: &str) -> bool {
@@ -1739,6 +1858,12 @@ fn foreground_covers_monitor(window: RECT, monitor: RECT) -> bool {
         && window.top <= monitor.top
         && window.right >= monitor.right
         && window.bottom >= monitor.bottom
+}
+
+// ABN_FULLSCREENAPP is global and does not identify a monitor. Never use it
+// to classify the foreground window: focus may already be on another display.
+fn fullscreen_monitor_for_window(window: RECT, monitor: RECT) -> Option<RECT> {
+    foreground_covers_monitor(window, monitor).then_some(monitor)
 }
 
 fn foreground_fullscreen_monitor() -> Option<RECT> {
@@ -1759,10 +1884,8 @@ fn foreground_fullscreen_monitor() -> Option<RECT> {
         }
         let monitor = monitor_rect(foreground)?;
         let mut rect = RECT::default();
-        if GetWindowRect(foreground, &mut rect).is_ok()
-            && (foreground_covers_monitor(rect, monitor) || FULLSCREEN_APP.load(Ordering::Relaxed))
-        {
-            Some(monitor)
+        if GetWindowRect(foreground, &mut rect).is_ok() {
+            fullscreen_monitor_for_window(rect, monitor)
         } else {
             None
         }
@@ -1800,7 +1923,7 @@ fn fullscreen_application_active() -> bool {
 
 fn retry_active_reminder(app: &AppHandle) {
     let popup = POPUP.lock().unwrap().clone();
-    if let Some(popup) = popup.filter(|p| p.component == "reminderAlert") {
+    if let Some(popup) = popup.filter(|p| p.component == "reminderAlert" && !p.closing) {
         if let Some(scheduler) = app.try_state::<crate::reminders::ReminderScheduler>() {
             scheduler.retry_alert(&popup.id);
         }
@@ -1896,6 +2019,7 @@ pub fn overlay_snapshot() -> serde_json::Value {
     let present = !values.is_empty();
     serde_json::json!({
         "present": present,
+        "pinned": sessions::snapshot(),
         "window": values.into_iter().next(),
         "counters": {
             "shows": OVERLAY_COUNTS[0].load(Ordering::Relaxed),
@@ -2185,6 +2309,34 @@ mod geometry_tests {
     }
 
     #[test]
+    fn fullscreen_on_secondary_does_not_hide_primary_after_focus_changes() {
+        let primary = RECT {
+            left: 0,
+            top: 0,
+            right: 1920,
+            bottom: 1080,
+        };
+        let secondary = RECT {
+            left: -1920,
+            top: 0,
+            right: 0,
+            bottom: 1080,
+        };
+        let fullscreen = fullscreen_monitor_for_window(secondary, secondary);
+        assert!(fullscreen.is_some_and(|monitor| foreground_covers_monitor(monitor, secondary)));
+        assert!(!fullscreen.is_some_and(|monitor| foreground_covers_monitor(monitor, primary)));
+        // The shell-wide fullscreen notification can remain set when focus moves
+        // to a normal window on the other monitor.
+        let normal = RECT {
+            left: 100,
+            top: 100,
+            right: 900,
+            bottom: 700,
+        };
+        assert!(fullscreen_monitor_for_window(normal, primary).is_none());
+    }
+
+    #[test]
     fn alerts_never_autofocus_and_borderless_fullscreen_is_detected() {
         assert!(!popup_takes_focus("reminderAlert"));
         assert!(popup_takes_focus("reminders"));
@@ -2464,6 +2616,7 @@ mod geometry_tests {
     fn request(kind: &str, side: &str) -> OverlayRequest {
         OverlayRequest {
             v: 1,
+            widget: None,
             session: Some("test".into()),
             component: Some("audioOutputs".into()),
             params: Some(serde_json::json!({})),

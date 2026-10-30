@@ -4,6 +4,11 @@ export type PopupClosed = {
   session: string
   docked?: boolean
   restoreFocus?: boolean
+  attached?: boolean
+  reattach?: boolean
+  revision?: number
+  widget?: string
+  component?: string
 }
 
 export type PopupLifetimeAdapter = {
@@ -59,6 +64,23 @@ export class PopupLifetime {
   }
 
   toggle = () => this.setOpen(!this.active)
+
+  /** Transfer ownership without requesting a close of the detached surface. */
+  detach = () => {
+    if (this.active) releasePopup(this.ownership(this.active))
+    this.active = null
+    this.exiting = null
+    this.update({ open: false, closing: false })
+  }
+
+  attach = (session: string) => {
+    this.active = session
+    this.exiting = null
+    claimPopup(this.ownership(session), () => {
+      void this.setOpen(false).catch(console.error)
+    })
+    this.update({ open: true, closing: false, session })
+  }
 
   setOpen = async (next: boolean): Promise<void> => {
     if (!next) {

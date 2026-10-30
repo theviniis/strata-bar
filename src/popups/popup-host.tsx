@@ -1,5 +1,5 @@
 import { Spinner } from '@/components/ui/spinner'
-import { Component, Suspense, type ReactNode } from 'react'
+import { Component, Suspense, useMemo, type ReactNode } from 'react'
 import type { OverlaySide } from '../services/system/overlay'
 import { PopupContext } from './context'
 import { PopupSurface } from './popup-surface'
@@ -26,6 +26,8 @@ class ContentBoundary extends Component<
 }
 
 export interface PopupHostProps {
+  pinned?: boolean
+  onPinChange?(pinned: boolean): void
   id: unknown
   params?: unknown
   mode: 'native' | 'demo'
@@ -45,38 +47,27 @@ export function PopupHost({
   close,
   ...placement
 }: PopupHostProps) {
-  let resolved: ReturnType<typeof resolvePopup> | undefined
-  let error = ''
-  try {
-    resolved = resolvePopup(id, params)
-  } catch (e) {
-    error = String(e)
-  }
+  const { resolved, error } = useMemo(() => {
+    try {
+      return { resolved: resolvePopup(id, params), error: '' }
+    } catch (e) {
+      return { resolved: undefined, error: String(e) }
+    }
+  }, [id, params])
   const metadata = isPopupId(id) ? popupMetadata(id) : { label: 'Popup' }
   const Content = resolved?.Content
-  return (
-    <PopupSurface
-      {...placement}
-      mode={mode}
-      label={metadata.label}
-      className={'className' in metadata ? metadata.className : undefined}
-      close={close}
-      closeOnEscape={id !== 'reminderAlert'}
-      autoFocus={id !== 'reminderAlert'}
-    >
-      {mode === 'demo' && (
-        <p className="m-4 text-micro text-muted-foreground">
-          Demonstração interativa · sem acesso ao Windows
-        </p>
-      )}
-      {resolved && Content ? (
+  const side = placement.side ?? 'bottom'
+  const closing = placement.closing ?? false
+  const content = useMemo(
+    () =>
+      resolved && Content ? (
         <PopupContext.Provider
           value={{
             id: resolved.id,
             params: resolved.params,
             mode,
-            side: placement.side ?? 'bottom',
-            closing: placement.closing ?? false,
+            side,
+            closing,
             close
           }}
         >
@@ -93,6 +84,27 @@ export function PopupHost({
             </Suspense>
           </ContentBoundary>
         </PopupContext.Provider>
+      ) : null,
+    [resolved, Content, mode, side, closing, close]
+  )
+  return (
+    <PopupSurface
+      {...placement}
+      mode={mode}
+      label={metadata.label}
+      className={'className' in metadata ? metadata.className : undefined}
+      close={close}
+      pinnable={id !== 'reminderAlert'}
+      closeOnEscape={id !== 'reminderAlert'}
+      autoFocus={id !== 'reminderAlert'}
+    >
+      {mode === 'demo' && (
+        <p className="m-4 text-micro text-muted-foreground">
+          Demonstração interativa · sem acesso ao Windows
+        </p>
+      )}
+      {resolved && Content ? (
+        content
       ) : (
         <div role="alert">
           <p>{error}</p>

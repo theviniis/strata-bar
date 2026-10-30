@@ -54,7 +54,7 @@ pub fn observe(
 }
 
 pub fn allowed_window(label: &str) -> bool {
-    label == "overlay" || label.starts_with("bar-")
+    crate::desktop::content_window(label)
 }
 
 pub fn configuration_window(label: &str) -> bool {

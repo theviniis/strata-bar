@@ -1,0 +1,598 @@
+{
+  "cleanup": true,
+  "continuity": {
+    "p95Ms": 9.700000017881392,
+    "sameHwnd": true,
+    "samples": [
+      {
+        "acknowledged": 8.700000017881393,
+        "clickedAt": 1793235697790.3,
+        "commandReceivedAtUtcMs": 1793235697794.3462,
+        "confirmedAt": 1793235697799,
+        "firstFrameAt": 1793235697801.1,
+        "frames": 3,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235697795.5115,
+        "pinned": false,
+        "token": "cycle-0"
+      },
+      {
+        "acknowledged": 8.599999994039536,
+        "clickedAt": 1793235697826.5,
+        "commandReceivedAtUtcMs": 1793235697831.015,
+        "confirmedAt": 1793235697835.1,
+        "firstFrameAt": 1793235697839.6,
+        "frames": 4,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235697831.478,
+        "pinned": true,
+        "token": "cycle-1"
+      },
+      {
+        "acknowledged": 7.199999988079071,
+        "clickedAt": 1793235697862.6,
+        "commandReceivedAtUtcMs": 1793235697866.657,
+        "confirmedAt": 1793235697869.7998,
+        "firstFrameAt": 1793235697874.7,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235697867.1858,
+        "pinned": false,
+        "token": "cycle-2"
+      },
+      {
+        "acknowledged": 8.699999988079071,
+        "clickedAt": 1793235697897,
+        "commandReceivedAtUtcMs": 1793235697902.9995,
+        "confirmedAt": 1793235697905.7,
+        "firstFrameAt": 1793235697909.6,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235697903.3264,
+        "pinned": true,
+        "token": "cycle-3"
+      },
+      {
+        "acknowledged": 6.799999982118607,
+        "clickedAt": 1793235697932.5,
+        "commandReceivedAtUtcMs": 1793235697936.6843,
+        "confirmedAt": 1793235697939.3,
+        "firstFrameAt": 1793235697943.3,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235697937.1963,
+        "pinned": false,
+        "token": "cycle-4"
+      },
+      {
+        "acknowledged": 7.199999988079071,
+        "clickedAt": 1793235697966.7,
+        "commandReceivedAtUtcMs": 1793235697970.8528,
+        "confirmedAt": 1793235697973.9,
+        "firstFrameAt": 1793235697978.9,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235697971.6633,
+        "pinned": true,
+        "token": "cycle-5"
+      },
+      {
+        "acknowledged": 7.5,
+        "clickedAt": 1793235698005.3,
+        "commandReceivedAtUtcMs": 1793235698009.8076,
+        "confirmedAt": 1793235698012.8,
+        "firstFrameAt": 1793235698015,
+        "frames": 3,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698010.2234,
+        "pinned": false,
+        "token": "cycle-6"
+      },
+      {
+        "acknowledged": 7,
+        "clickedAt": 1793235698036.5,
+        "commandReceivedAtUtcMs": 1793235698040.9421,
+        "confirmedAt": 1793235698043.5,
+        "firstFrameAt": 1793235698048.9,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698041.3518,
+        "pinned": true,
+        "token": "cycle-7"
+      },
+      {
+        "acknowledged": 7.5,
+        "clickedAt": 1793235698072.1,
+        "commandReceivedAtUtcMs": 1793235698076.9001,
+        "confirmedAt": 1793235698079.6,
+        "firstFrameAt": 1793235698084.2,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698077.352,
+        "pinned": false,
+        "token": "cycle-8"
+      },
+      {
+        "acknowledged": 7.199999988079071,
+        "clickedAt": 1793235698107,
+        "commandReceivedAtUtcMs": 1793235698111.3677,
+        "confirmedAt": 1793235698114.2,
+        "firstFrameAt": 1793235698119.4,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698111.6958,
+        "pinned": true,
+        "token": "cycle-9"
+      },
+      {
+        "acknowledged": 8.199999988079071,
+        "clickedAt": 1793235698140,
+        "commandReceivedAtUtcMs": 1793235698144.949,
+        "confirmedAt": 1793235698148.2,
+        "firstFrameAt": 1793235698152,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698145.8062,
+        "pinned": false,
+        "token": "cycle-10"
+      },
+      {
+        "acknowledged": 7.5,
+        "clickedAt": 1793235698173.7,
+        "commandReceivedAtUtcMs": 1793235698177.4277,
+        "confirmedAt": 1793235698181.2,
+        "firstFrameAt": 1793235698186.7,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698177.6667,
+        "pinned": true,
+        "token": "cycle-11"
+      },
+      {
+        "acknowledged": 6.5,
+        "clickedAt": 1793235698208.5,
+        "commandReceivedAtUtcMs": 1793235698212.4153,
+        "confirmedAt": 1793235698215,
+        "firstFrameAt": 1793235698221.2,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698212.915,
+        "pinned": false,
+        "token": "cycle-12"
+      },
+      {
+        "acknowledged": 7,
+        "clickedAt": 1793235698245.1,
+        "commandReceivedAtUtcMs": 1793235698249.487,
+        "confirmedAt": 1793235698252.1,
+        "firstFrameAt": 1793235698255.9,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698249.8455,
+        "pinned": true,
+        "token": "cycle-13"
+      },
+      {
+        "acknowledged": 7.599999994039536,
+        "clickedAt": 1793235698278.7,
+        "commandReceivedAtUtcMs": 1793235698282.5347,
+        "confirmedAt": 1793235698286.3,
+        "firstFrameAt": 1793235698290.6,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698283.1406,
+        "pinned": false,
+        "token": "cycle-14"
+      },
+      {
+        "acknowledged": 6.9000000059604645,
+        "clickedAt": 1793235698312.1,
+        "commandReceivedAtUtcMs": 1793235698316.3567,
+        "confirmedAt": 1793235698318.9998,
+        "firstFrameAt": 1793235698321,
+        "frames": 4,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698316.6133,
+        "pinned": true,
+        "token": "cycle-15"
+      },
+      {
+        "acknowledged": 6.5,
+        "clickedAt": 1793235698340.6,
+        "commandReceivedAtUtcMs": 1793235698344.182,
+        "confirmedAt": 1793235698347.1,
+        "firstFrameAt": 1793235698353.8,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698344.5688,
+        "pinned": false,
+        "token": "cycle-16"
+      },
+      {
+        "acknowledged": 6.5,
+        "clickedAt": 1793235698376,
+        "commandReceivedAtUtcMs": 1793235698379.4685,
+        "confirmedAt": 1793235698382.5,
+        "firstFrameAt": 1793235698388.6,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698379.8733,
+        "pinned": true,
+        "token": "cycle-17"
+      },
+      {
+        "acknowledged": 6.700000017881393,
+        "clickedAt": 1793235698410.3,
+        "commandReceivedAtUtcMs": 1793235698413.8884,
+        "confirmedAt": 1793235698417,
+        "firstFrameAt": 1793235698422.7,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698414.387,
+        "pinned": false,
+        "token": "cycle-18"
+      },
+      {
+        "acknowledged": 24.30000001192093,
+        "clickedAt": 1793235698454.4,
+        "commandReceivedAtUtcMs": 1793235698475.9277,
+        "confirmedAt": 1793235698478.7,
+        "firstFrameAt": 1793235698480,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698476.2861,
+        "pinned": true,
+        "token": "cycle-19"
+      },
+      {
+        "acknowledged": 6.9000000059604645,
+        "clickedAt": 1793235698500.6,
+        "commandReceivedAtUtcMs": 1793235698504.4539,
+        "confirmedAt": 1793235698507.4998,
+        "firstFrameAt": 1793235698513,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698505.0764,
+        "pinned": false,
+        "token": "cycle-20"
+      },
+      {
+        "acknowledged": 7.200000017881393,
+        "clickedAt": 1793235698534.9,
+        "commandReceivedAtUtcMs": 1793235698538.8425,
+        "confirmedAt": 1793235698542.1,
+        "firstFrameAt": 1793235698547.4,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698539.1218,
+        "pinned": true,
+        "token": "cycle-21"
+      },
+      {
+        "acknowledged": 8.5,
+        "clickedAt": 1793235698570.4,
+        "commandReceivedAtUtcMs": 1793235698575.1113,
+        "confirmedAt": 1793235698578.9,
+        "firstFrameAt": 1793235698583.1,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698576.0942,
+        "pinned": false,
+        "token": "cycle-22"
+      },
+      {
+        "acknowledged": 9.700000017881392,
+        "clickedAt": 1793235698607.8,
+        "commandReceivedAtUtcMs": 1793235698614.0,
+        "confirmedAt": 1793235698617.5,
+        "firstFrameAt": 1793235698620.4,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698614.3396,
+        "pinned": true,
+        "token": "cycle-23"
+      },
+      {
+        "acknowledged": 8.5,
+        "clickedAt": 1793235698639.8,
+        "commandReceivedAtUtcMs": 1793235698644.3682,
+        "confirmedAt": 1793235698648.3,
+        "firstFrameAt": 1793235698653.3,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698645.5496,
+        "pinned": false,
+        "token": "cycle-24"
+      },
+      {
+        "acknowledged": 8.400000005960464,
+        "clickedAt": 1793235698677.2,
+        "commandReceivedAtUtcMs": 1793235698682.3127,
+        "confirmedAt": 1793235698685.6,
+        "firstFrameAt": 1793235698688.7,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698682.689,
+        "pinned": true,
+        "token": "cycle-25"
+      },
+      {
+        "acknowledged": 6.800000011920929,
+        "clickedAt": 1793235698712.4,
+        "commandReceivedAtUtcMs": 1793235698716.8464,
+        "confirmedAt": 1793235698719.2,
+        "firstFrameAt": 1793235698722.2,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698717.3076,
+        "pinned": false,
+        "token": "cycle-26"
+      },
+      {
+        "acknowledged": 7.400000005960464,
+        "clickedAt": 1793235698744.3,
+        "commandReceivedAtUtcMs": 1793235698748.433,
+        "confirmedAt": 1793235698751.7,
+        "firstFrameAt": 1793235698755.9,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698748.992,
+        "pinned": true,
+        "token": "cycle-27"
+      },
+      {
+        "acknowledged": 8.099999994039536,
+        "clickedAt": 1793235698780,
+        "commandReceivedAtUtcMs": 1793235698784.8706,
+        "confirmedAt": 1793235698788.1,
+        "firstFrameAt": 1793235698791.6,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698785.463,
+        "pinned": false,
+        "token": "cycle-28"
+      },
+      {
+        "acknowledged": 8,
+        "clickedAt": 1793235698815.7,
+        "commandReceivedAtUtcMs": 1793235698820.9983,
+        "confirmedAt": 1793235698823.7,
+        "firstFrameAt": 1793235698826.5,
+        "frames": 5,
+        "minOpacity": 1,
+        "missing": false,
+        "modeCommittedAtUtcMs": 1793235698821.309,
+        "pinned": true,
+        "token": "cycle-29"
+      }
+    ]
+  },
+  "failedTransferPreservesOriginal": true,
+  "geometry": {
+    "actualRect": [
+      180,
+      154,
+      500,
+      414
+    ],
+    "crossSessionRejected": true,
+    "fullscreenSignalHidesAndRestoresWithoutFocus": true,
+    "resizePreservesPosition": true
+  },
+  "initial": [
+    {
+      "appWindow": false,
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "owned": true,
+      "processId": 10212,
+      "rect": [
+        12,
+        131,
+        372,
+        749
+      ],
+      "titleLength": 0,
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "appWindow": false,
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "owned": true,
+      "processId": 10212,
+      "rect": [
+        31,
+        131,
+        391,
+        717
+      ],
+      "titleLength": 0,
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    }
+  ],
+  "limits": [
+    "Actual pointer dragging, mixed-DPI movement, monitor unplug and external fullscreen application require a manual acceptance run."
+  ],
+  "multiplePinned": true,
+  "paintSurvivesOtherPopupEvents": true,
+  "painted": {
+    "cpu": {
+      "height": 183.5,
+      "opacity": 1,
+      "text": "CPU\nErro ao obter dados de CPU\nOcorreu um erro ao obter os dados de CPU",
+      "viewport": [
+        283,
+        196
+      ],
+      "width": 282.40625,
+      "x": 0,
+      "y": 12
+    },
+    "gpu": {
+      "height": 183.5,
+      "opacity": 1,
+      "text": "GPU\nErro ao obter dados de GPU\nOcorreu um erro ao obter os dados de GPU",
+      "viewport": [
+        283,
+        196
+      ],
+      "width": 282.34375,
+      "x": 0,
+      "y": 12
+    }
+  },
+  "passed": true,
+  "pinReadyMs": {
+    "cpu": 124,
+    "gpu": 101
+  },
+  "reserveCost": {
+    "cpuPercentMachineDelta": -0.04106754959821929,
+    "privateMiBDelta": 82.45442708333326,
+    "withReserve": {
+      "durationSeconds": 3.7946465,
+      "executable": "D:\\code\\strata\\src-tauri\\target\\debug\\deps\\strata_bar.exe",
+      "logicalProcessors": 12,
+      "notes": "Strata descendant tree including WebView2; measurement shells excluded. Sensor service inclusion is recorded separately. Working-set sum can double count shared pages. User desktop remained active; short exploratory sample, not a controlled comparison.",
+      "rootProcessId": 10212,
+      "samples": [
+        {
+          "cpuPercentMachine": 0,
+          "cpuSecondsDelta": 0,
+          "elapsedSeconds": 1.6303708,
+          "handleCount": 4673,
+          "privateMiB": 502.8828125,
+          "processCount": 10,
+          "workingSetMiB": 823.5546875
+        },
+        {
+          "cpuPercentMachine": 0,
+          "cpuSecondsDelta": 0,
+          "elapsedSeconds": 2.7172871,
+          "handleCount": 4673,
+          "privateMiB": 497.41796875,
+          "processCount": 10,
+          "workingSetMiB": 823.5703125
+        },
+        {
+          "cpuPercentMachine": 0,
+          "cpuSecondsDelta": 0,
+          "elapsedSeconds": 3.7860607,
+          "handleCount": 4673,
+          "privateMiB": 497.41796875,
+          "processCount": 10,
+          "workingSetMiB": 823.5859375
+        }
+      ],
+      "sensorServiceIncluded": false,
+      "summary": {
+        "maxPrivateMiB": 502.8828125,
+        "meanCpuPercentMachine": 0,
+        "meanPrivateMiB": 499.23958333333326,
+        "meanWorkingSetMiB": 823.5703125
+      },
+      "timestampUtc": "2026-10-29T01:01:33.7978995Z"
+    },
+    "withoutReserve": {
+      "durationSeconds": 3.7190031,
+      "executable": "D:\\code\\strata\\src-tauri\\target\\debug\\deps\\strata_bar.exe",
+      "logicalProcessors": 12,
+      "notes": "Strata descendant tree including WebView2; measurement shells excluded. Sensor service inclusion is recorded separately. Working-set sum can double count shared pages. User desktop remained active; short exploratory sample, not a controlled comparison.",
+      "rootProcessId": 10212,
+      "samples": [
+        {
+          "cpuPercentMachine": 0,
+          "cpuSecondsDelta": 0,
+          "elapsedSeconds": 1.5757727,
+          "handleCount": 4220,
+          "privateMiB": 416.6875,
+          "processCount": 9,
+          "workingSetMiB": 700.15625
+        },
+        {
+          "cpuPercentMachine": 0,
+          "cpuSecondsDelta": 0,
+          "elapsedSeconds": 2.6532421,
+          "handleCount": 4220,
+          "privateMiB": 416.921875,
+          "processCount": 9,
+          "workingSetMiB": 700.41796875
+        },
+        {
+          "cpuPercentMachine": 0.12320264879465788,
+          "cpuSecondsDelta": 0.015625,
+          "elapsedSeconds": 3.7101052,
+          "handleCount": 4220,
+          "privateMiB": 416.74609375,
+          "processCount": 9,
+          "workingSetMiB": 700.2578125
+        }
+      ],
+      "sensorServiceIncluded": false,
+      "summary": {
+        "maxPrivateMiB": 416.921875,
+        "meanCpuPercentMachine": 0.04106754959821929,
+        "meanPrivateMiB": 416.78515625,
+        "meanWorkingSetMiB": 700.27734375
+      },
+      "timestampUtc": "2026-10-29T01:01:26.8219646Z"
+    }
+  },
+  "returnFailure": {
+    "invalidAnchorPreservesPinnedWindow": true,
+    "staleAnchorRejected": true,
+    "wrongWindowRejected": true
+  },
+  "returnReplacesTransient": true,
+  "sameWindowInBothDirections": true,
+  "transientAlongsidePinned": true,
+  "recordedAtUtc": "2026-10-29T01:02:49.920758+00:00",
+  "validation": {
+    "nativeHideMessagesDelta": 0,
+    "cycles": 30,
+    "rustTestsPassed": 245,
+    "rustTestsIgnored": 31,
+    "frontendFocusedTestsPassed": 43,
+    "runningUserHostWasNotReplaced": true,
+    "runningUserHostProcessId": 33016,
+    "fixtureExecutable": "src-tauri/target/debug/deps/strata_bar.exe",
+    "profile": "isolated per-process WebView2 profile",
+    "cpuComparisonNote": "Three-second samples; a negative delta is noise, not evidence of CPU savings."
+  }
+}

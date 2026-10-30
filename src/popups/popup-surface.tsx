@@ -1,6 +1,14 @@
 import { useAnimate } from 'motion/react'
 import { Card } from '@/components/ui/card'
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { Button } from '@/components/ui/button'
+import { Pin, PinOff, X } from 'lucide-react'
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode
+} from 'react'
 import { tooltipArrowClasses } from '../components/ui/tooltip-classes'
 import { cn } from '../lib/utils'
 import { overlay, type OverlaySide } from '../services/system/overlay'
@@ -11,11 +19,15 @@ import {
   POPUP_EXIT_MS,
   popupMotionEnabled,
   popupDockKeyframes,
-  popupOpenKeyframes
+  popupOpenKeyframes,
+  popupTransformKeyframes
 } from './motion'
 
 export interface PopupSurfaceProps {
   label: string
+  pinned?: boolean
+  pinnable?: boolean
+  onPinChange?(pinned: boolean): void
   className?: string
   mode: 'native' | 'demo'
   session?: string
@@ -33,6 +45,9 @@ export interface PopupSurfaceProps {
 /** Owns window mechanics only. Feature content is unrestricted React. */
 export function PopupSurface({
   label,
+  pinned = false,
+  pinnable = true,
+  onPinChange,
   className,
   mode,
   session,
@@ -46,7 +61,25 @@ export function PopupSurface({
   close,
   children
 }: PopupSurfaceProps) {
+  const initialSide = useRef(side)
+  const initialPinned = useRef(pinned)
+  const opened = useRef(false)
+  const openingAcknowledged = useRef(false)
+  const acknowledgeOpening = useCallback(() => {
+    if (mode !== 'native' || !session || openingAcknowledged.current) return
+    openingAcknowledged.current = true
+    void overlay.opened?.(session).catch(console.error)
+  }, [mode, session])
   const root = useRef<HTMLDivElement>(null)
+  const [pinError, setPinError] = useState('')
+  const [transferring, setTransferring] = useState(false)
+  const [offset, setOffset] = useState({ x: 0, y: 0 })
+  const drag = useRef<{
+    x: number
+    y: number
+    left: number
+    top: number
+  } | null>(null)
   const surface = useRef<HTMLDivElement>(null)
   const [visual, animate] = useAnimate<HTMLDivElement>()
   const exitCallback = useRef(onExited)
@@ -54,7 +87,16 @@ export function PopupSurface({
   const targetSize = useRef(anchorSize)
   const openingFrame = useRef<number | undefined>(undefined)
   const motion = useRef<ReturnType<typeof animate> | undefined>(undefined)
-  const [placedArrowX, setPlacedArrowX] = useState(arrowX)
+  const arrowInput = useRef(arrowX)
+  const [measuredArrowX, setPlacedArrowX] = useState({
+    input: arrowX,
+    value: arrowX
+  })
+  const placedArrowX =
+    measuredArrowX.input === arrowX ? measuredArrowX.value : arrowX
+  useLayoutEffect(() => {
+    arrowInput.current = arrowX
+  }, [arrowX])
   useLayoutEffect(() => {
     exitCallback.current = onExited
     closingRef.current = closing
@@ -63,12 +105,11 @@ export function PopupSurface({
   useLayoutEffect(() => {
     const node = surface.current
     let cancelled = false
-    const enabled = popupMotionEnabled()
+    const side = initialSide.current
+    const enabled = popupMotionEnabled() && !initialPinned.current
     const hidden = {
       opacity: 0,
-      y: side === 'bottom' ? -POPUP_GAP : POPUP_GAP,
-      scaleX: 0.18,
-      scaleY: 0.08,
+      transform: `translateY(${side === 'bottom' ? -POPUP_GAP : POPUP_GAP}px) scale(0.18, 0.08)`,
       filter: 'blur(0px)',
       clipPath: 'inset(0px round 160px)'
     }
@@ -77,16 +118,18 @@ export function PopupSurface({
       motion.current.complete()
     }
     const animateOpen = () => {
-      if (!enabled) return
+      if (!enabled || opened.current) return
       openingFrame.current = requestAnimationFrame(() => {
         openingFrame.current = requestAnimationFrame(() => {
-          if (closingRef.current || !visual.current) return
+          if (closingRef.current || opened.current || !visual.current) return
           motion.current = animate(
             visual.current,
-            popupOpenKeyframes(
-              side,
-              node!.getBoundingClientRect(),
-              targetSize.current
+            popupTransformKeyframes(
+              popupOpenKeyframes(
+                side,
+                node!.getBoundingClientRect(),
+                targetSize.current
+              )
             ),
             {
               duration: POPUP_ENTER_MS / 1000,
@@ -95,13 +138,17 @@ export function PopupSurface({
             }
           )
           void motion.current.then(() => {
-            // Restore the resting shadow and arrow after the capsule opens.
-            if (!cancelled && !closingRef.current && visual.current)
+            if (cancelled || closingRef.current || opened.current) return
+            opened.current = true
+            // Release the opening silhouette so the resting arrow and glass
+            // surface are no longer clipped after the capsule expands.
+            if (visual.current)
               animate(
                 visual.current,
                 { clipPath: 'none' },
                 { duration: 0 }
               ).complete()
+            acknowledgeOpening()
           })
         })
       })
@@ -122,6 +169,7 @@ export function PopupSurface({
     let generation = 0
     let focused = false
     const measure = () => {
+      if (closingRef.current) return
       const rect = node.getBoundingClientRect()
       const size = {
         width: Math.ceil(rect.width),
@@ -131,16 +179,21 @@ export function PopupSurface({
       if (size.width <= 0 || size.height <= 0 || key === previous) return
       previous = key
       const current = ++generation
+      const input = arrowInput.current
       void overlay
         .resize(session, size)
         .then((size) => {
-          if (cancelled || generation !== current) return
+          if (cancelled || closingRef.current || generation !== current) return
           targetSize.current = size.anchorSize ?? targetSize.current
-          setPlacedArrowX(size.arrowX)
+          setPlacedArrowX({ input, value: size.arrowX })
           if (!focused) {
             focused = true
-            if (autoFocus) root.current?.focus()
+            if (autoFocus && !opened.current) root.current?.focus()
             animateOpen()
+            if (!enabled) {
+              opened.current = true
+              acknowledgeOpening()
+            }
           }
         })
         .catch((error) => {
@@ -158,7 +211,28 @@ export function PopupSurface({
       stopAnimation()
       observer?.disconnect()
     }
-  }, [mode, session, side, autoFocus, animate, visual])
+  }, [mode, session, autoFocus, animate, visual, acknowledgeOpening])
+  useLayoutEffect(() => {
+    if (!pinned || opened.current || !visual.current) return
+    if (openingFrame.current !== undefined)
+      cancelAnimationFrame(openingFrame.current)
+    motion.current?.stop()
+    opened.current = true
+    animate(
+      visual.current,
+      {
+        opacity: 1,
+        transform: 'translateY(0px) scale(1, 1)',
+        filter: 'blur(0px)',
+        clipPath: 'none'
+      },
+      { duration: 0 }
+    ).complete()
+    // Let the settled pin paint before the host starts preparing another view.
+    openingFrame.current = requestAnimationFrame(() => {
+      openingFrame.current = requestAnimationFrame(acknowledgeOpening)
+    })
+  }, [pinned, animate, visual, acknowledgeOpening])
   useLayoutEffect(() => {
     const node = visual.current
     if (!closing || !node) return
@@ -172,29 +246,39 @@ export function PopupSurface({
     }
     animate(node, { clipPath: 'none' }, { duration: 0 }).complete()
     const rect = surface.current!.getBoundingClientRect()
-    const rounding = root.current
-      ? animate(
-          root.current,
-          { borderRadius: [null, '48px', '96px', '160px'] },
-          {
-            duration: POPUP_EXIT_MS / 1000,
-            times: [0, 0.4, 0.76, 1],
-            ease: 'easeInOut'
-          }
-        )
-      : undefined
+    const rounding =
+      !pinned && root.current
+        ? animate(
+            root.current,
+            { borderRadius: [null, '48px', '96px', '160px'] },
+            {
+              duration: POPUP_EXIT_MS / 1000,
+              times: [0, 0.4, 0.76, 1],
+              ease: 'easeInOut'
+            }
+          )
+        : undefined
     const exit = animate(
       node,
-      popupDockKeyframes(side, rect, targetSize.current),
-      {
-        duration: POPUP_EXIT_MS / 1000,
-        times: [0, 0.4, 0.76, 1],
-        ease: [
-          [0.32, 0, 0.67, 0],
-          [0.2, 0.65, 0.3, 1],
-          [0.4, 0, 1, 1]
-        ]
-      }
+      pinned
+        ? {
+            opacity: [null, 0],
+            transform: [null, 'translateY(0px) scale(0.96, 0.96)']
+          }
+        : popupTransformKeyframes(
+            popupDockKeyframes(side, rect, targetSize.current)
+          ),
+      pinned
+        ? { duration: 0.15, ease: 'easeOut' }
+        : {
+            duration: POPUP_EXIT_MS / 1000,
+            times: [0, 0.4, 0.76, 1],
+            ease: [
+              [0.32, 0, 0.67, 0],
+              [0.2, 0.65, 0.3, 1],
+              [0.4, 0, 1, 1]
+            ]
+          }
     )
     motion.current = exit
     void exit.then(() => {
@@ -205,12 +289,21 @@ export function PopupSurface({
       rounding?.stop()
       exit.stop()
     }
-  }, [closing, side, animate, visual])
+  }, [closing, side, pinned, animate, visual])
   return (
-    <div ref={surface} className="w-max" inert={closing || undefined}>
+    <div
+      ref={surface}
+      className="w-max"
+      style={
+        mode === 'demo' && pinned
+          ? { transform: `translate(${offset.x}px, ${offset.y}px)` }
+          : undefined
+      }
+      inert={closing || undefined}
+    >
       <div
         ref={visual}
-        className="relative"
+        className="relative will-change-[transform,opacity]"
         style={
           side === 'bottom'
             ? {
@@ -266,17 +359,107 @@ export function PopupSurface({
             }
           }}
         >
+          {pinnable && (
+            <div
+              data-popup-drag-handle={pinned || undefined}
+              className={cn(
+                'flex items-center gap-2 px-3 py-1 select-none',
+                pinned && 'cursor-move touch-none'
+              )}
+              onPointerDown={(event) => {
+                if (
+                  !pinned ||
+                  event.button !== 0 ||
+                  (event.target as HTMLElement).closest(
+                    'button, input, a, select, textarea'
+                  )
+                )
+                  return
+                if (mode === 'native' && session) {
+                  void overlay
+                    .drag?.(session)
+                    .catch((error: unknown) => setPinError(String(error)))
+                } else {
+                  drag.current = {
+                    x: event.clientX,
+                    y: event.clientY,
+                    left: offset.x,
+                    top: offset.y
+                  }
+                  event.currentTarget.setPointerCapture(event.pointerId)
+                }
+              }}
+              onPointerMove={(event) => {
+                if (!drag.current) return
+                setOffset({
+                  x: drag.current.left + event.clientX - drag.current.x,
+                  y: drag.current.top + event.clientY - drag.current.y
+                })
+              }}
+              onPointerUp={() => {
+                drag.current = null
+              }}
+              onPointerCancel={() => {
+                drag.current = null
+              }}
+            >
+              <span className="flex-1 truncate text-muted-foreground">
+                {label}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label={pinned ? 'Desafixar popup' : 'Fixar popup'}
+                aria-pressed={pinned}
+                disabled={transferring}
+                onClick={() => {
+                  setPinError('')
+                  if (mode === 'demo') {
+                    onPinChange?.(!pinned)
+                    setOffset({ x: 0, y: 0 })
+                    return
+                  }
+                  if (!session || !overlay.pin) return
+                  setTransferring(true)
+                  void overlay
+                    .pin(session, !pinned)
+                    .catch((error: unknown) => setPinError(String(error)))
+                    .finally(() => setTransferring(false))
+                }}
+              >
+                {pinned ? <PinOff /> : <Pin />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label="Fechar popup"
+                disabled={transferring}
+                onClick={close}
+              >
+                <X />
+              </Button>
+            </div>
+          )}
+          {pinError && (
+            <p role="alert" className="px-3 text-destructive">
+              {pinError}
+            </p>
+          )}
           {children}
         </Card>
-        <span
-          aria-hidden="true"
-          style={{ left: (mode === 'native' ? placedArrowX : arrowX) ?? '50%' }}
-          className={cn(
-            tooltipArrowClasses,
-            'pointer-events-none absolute -translate-x-1/2 bg-popover backdrop-blur-lg',
-            side === 'bottom' ? 'top-1.75' : 'bottom-1.75'
-          )}
-        />
+        {!pinned && (
+          <span
+            aria-hidden="true"
+            style={{
+              left: (mode === 'native' ? placedArrowX : arrowX) ?? '50%'
+            }}
+            className={cn(
+              tooltipArrowClasses,
+              'pointer-events-none absolute -translate-x-1/2 bg-popover backdrop-blur-lg',
+              side === 'bottom' ? 'top-1.75' : 'bottom-1.75'
+            )}
+          />
+        )}
       </div>
     </div>
   )

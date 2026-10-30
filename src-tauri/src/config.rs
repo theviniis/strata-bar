@@ -656,6 +656,7 @@ pub fn snapshot_for(
 /// draft must follow external edits so Apply never silently reverts them.
 fn accepts_config(label: &str) -> bool {
     label.starts_with("bar-")
+        || label.starts_with("popup-")
         || label == crate::desktop::OVERLAY
         || label == crate::desktop::SETTINGS
 }
@@ -1375,7 +1376,8 @@ mod tests {
         assert!(accepts_config("bar-1"));
         assert!(accepts_config(crate::desktop::OVERLAY));
         assert!(!accepts_config("studio"));
-        assert!(!accepts_config("popup-check"));
+        assert!(accepts_config("popup-1"));
+        assert!(!accepts_config("popup"));
     }
     #[test]
     fn separator_margins_validate_project_and_persist() {

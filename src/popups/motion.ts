@@ -11,6 +11,25 @@ export const POPUP_ENTER_MS = 500
 // One continuous deceleration: segmented easings introduce velocity jumps.
 export const POPUP_ENTER_EASE = [0.22, 1, 0.36, 1] as const
 
+/** A single CSS transform lets Motion use WAAPI instead of its JS frame loop. */
+export function popupTransformKeyframes<
+  T extends {
+    scaleX: (number | null)[]
+    scaleY: (number | null)[]
+    y: (number | null)[]
+  }
+>(keyframes: T) {
+  const { scaleX, scaleY, y, ...properties } = keyframes
+  return {
+    ...properties,
+    transform: scaleX.map((x, index) =>
+      x === null
+        ? null
+        : `translateY(${y[index]}px) scale(${x}, ${scaleY[index]})`
+    )
+  }
+}
+
 export function popupOpenKeyframes(
   side: OverlaySide,
   size: OverlaySize,
@@ -27,7 +46,7 @@ export function popupOpenKeyframes(
     scaleY: [height, 1],
     y: [-direction * POPUP_GAP, 0],
     opacity: [0, 1],
-    clipPath: [160, 0].map((radius) => `inset(0px round ${radius}px)`)
+    clipPath: ['inset(0px round 160px)', 'inset(0px round 0px)']
   }
 }
 

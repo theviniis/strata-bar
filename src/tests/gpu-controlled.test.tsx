@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { WidgetPreview } from '@/components/status-bar/widget-preview'
 import { widgetSchema } from '@/services/configuration/config'
 import { Gpu } from '@/features/gpu/widget/gpu.widget'
@@ -12,6 +12,7 @@ import { WidgetViewContext } from '@/components/status-bar/widget-view'
 import { WidgetRuntimeContext } from '@/components/status-bar/widget-runtime-context'
 import {
   liveWidgetRuntime,
+  retainChannel,
   previewWidgetRuntime
 } from '@/services/system/widget-runtime'
 import type { ChannelData, SystemEvent } from '@/services/system/bridge'
@@ -34,6 +35,8 @@ vi.mock('@/services/system/bridge', async (importOriginal) => ({
 vi.mock('@/services/system/overlay', () => ({
   overlay: { mode: 'demo', hide: vi.fn(async () => {}) }
 }))
+beforeEach(() => retainChannel('gpu', { status: 'loading' }))
+
 afterEach(() => {
   runtime.connect.mockClear()
   runtime.dispose.mockClear()

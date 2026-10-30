@@ -4,15 +4,21 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 type Handler = (event: { payload: unknown }) => void
 
 const host = vi.hoisted(() => ({
+  windowLabel: 'overlay',
+  targets: new Map<string, unknown>(),
   listeners: new Map<string, Handler>(),
   ready: vi.fn(),
   warmup: vi.fn(() => vi.fn())
 }))
 vi.mock('@tauri-apps/api/core', () => ({ invoke: host.ready }))
+vi.mock('@tauri-apps/api/webviewWindow', () => ({
+  getCurrentWebviewWindow: () => ({ label: host.windowLabel })
+}))
 vi.mock('../popups/warmup', () => ({ warmPopupContents: host.warmup }))
 
 vi.mock('@tauri-apps/api/event', () => ({
-  listen: async (name: string, handler: Handler) => {
+  listen: async (name: string, handler: Handler, options: unknown) => {
+    host.targets.set(name, options)
     host.listeners.set(name, handler)
     return () => host.listeners.delete(name)
   }
@@ -23,7 +29,9 @@ import { measureTooltip } from '../overlay/measure'
 import { overlayTextClasses } from '../overlay/typography'
 
 beforeEach(() => {
+  host.windowLabel = 'overlay'
   host.listeners.clear()
+  host.targets.clear()
   host.ready.mockClear()
   host.ready.mockResolvedValue(null)
   host.warmup.mockClear()
@@ -38,6 +46,17 @@ async function mountOverlay() {
   render(<Overlay />)
   await waitFor(() => expect(host.listeners.has('overlay:render')).toBe(true))
 }
+
+it.each(['overlay', 'popup-7'])(
+  'scopes render, closing and clear listeners to %s',
+  async (label) => {
+    host.windowLabel = label
+    await mountOverlay()
+    await waitFor(() => expect(host.targets.size).toBe(4))
+    for (const target of host.targets.values())
+      expect(target).toEqual({ target: label })
+  }
+)
 
 it('adopts the host-projected appearance on each monitor and ignores stale sessions', async () => {
   await mountOverlay()

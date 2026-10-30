@@ -56,6 +56,8 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
   )
   const bounce = useRef<ReturnType<typeof bouncePopupAnchor>>(undefined)
   const [theme, setTheme] = useState('dark')
+  const [pinned, setPinned] = useState(false)
+  const pinnedRoot = useRef<HTMLDivElement>(null)
   const {
     lifetime,
     open: previewOpen,
@@ -86,6 +88,10 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
     !native && !preview
   )
   const changePreview = (next: boolean) => {
+    if (pinned) {
+      pinnedRoot.current?.querySelector<HTMLElement>('[role=dialog]')?.focus()
+      return
+    }
     if (!preview) void lifetime.setOpen(next)
   }
   const setAnchor = useCallback((node: HTMLElement | null) => {
@@ -111,7 +117,7 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
       {native || preview ? (
         children
       ) : (
-        <Popover.Root open={previewOpen} onOpenChange={changePreview}>
+        <Popover.Root open={previewOpen || pinned} onOpenChange={changePreview}>
           {children}
           <Popover.Portal>
             <Popover.Content
@@ -122,8 +128,12 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
               sideOffset={0}
               collisionPadding={{ left: POPUP_GAP, right: POPUP_GAP }}
               sticky="always"
+              onInteractOutside={(event) => {
+                if (pinned) event.preventDefault()
+              }}
               onEscapeKeyDown={(event) => {
                 event.preventDefault()
+                if (pinned) return
                 changePreview(false)
                 trigger.current?.focus()
               }}
@@ -133,10 +143,12 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
               }}
             >
               <div
+                ref={pinnedRoot}
                 data-theme={theme}
                 className={`group z-50 ${overlayTextClasses}`}
               >
                 <PreviewContent
+                  pinned={pinned}
                   closing={previewClosing}
                   anchor={anchor}
                   trigger={trigger}
@@ -145,8 +157,14 @@ function Root<K extends PopupId>({ popup, params, children }: RootProps<K>) {
                   }}
                   popup={popup}
                   params={params}
+                  onPinChange={(next) => {
+                    setPinned(next)
+                    if (next) lifetime.detach()
+                    else lifetime.attach(session)
+                  }}
                   close={() => {
-                    changePreview(false)
+                    if (pinned) setPinned(false)
+                    else changePreview(false)
                     trigger.current?.focus()
                   }}
                 />
@@ -167,17 +185,21 @@ function PreviewContent({
   popup,
   params,
   closing,
+  pinned,
   anchor,
   trigger,
   onExited,
+  onPinChange,
   close
 }: {
   popup: PopupId
   params: unknown
   closing: boolean
+  pinned: boolean
   anchor: React.RefObject<HTMLElement | null>
   trigger: React.RefObject<HTMLElement | null>
   onExited(): void
+  onPinChange(pinned: boolean): void
   close(): void
 }) {
   const root = useRef<HTMLDivElement>(null)
@@ -237,6 +259,8 @@ function PreviewContent({
         id={popup}
         params={params}
         mode="demo"
+        pinned={pinned}
+        onPinChange={onPinChange}
         closing={closing}
         onExited={onExited}
         anchorSize={anchorSize}

@@ -278,7 +278,7 @@ pub struct Weather {
     app: AppHandle,
 }
 fn allowed(label: &str) -> bool {
-    label.starts_with("bar-") || label == "overlay"
+    crate::desktop::content_window(label)
 }
 impl Weather {
     pub fn start(app: AppHandle, config: WeatherConfig) -> Self {

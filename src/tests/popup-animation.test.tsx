@@ -5,16 +5,115 @@ import { useRef } from 'react'
 import { cubicBezier, interpolate } from 'motion'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 const motion = vi.hoisted(() => ({ animate: vi.fn() }))
-vi.mock('motion/react', () => ({
+vi.mock('motion/react', async (original) => ({
+  ...(await original<typeof import('motion/react')>()),
   useAnimate: () => [useRef(null), motion.animate]
 }))
 import { PopupSurface } from '../popups/popup-surface'
 import {
   popupDockKeyframes,
   popupOpenKeyframes,
+  popupTransformKeyframes,
   POPUP_ENTER_MS
 } from '../popups/motion'
 import { overlay } from '../services/system/overlay'
+
+it('acknowledges native opening only after the animation finishes', async () => {
+  const opened = vi.spyOn(overlay, 'opened').mockResolvedValue(undefined)
+  vi.spyOn(overlay, 'resize').mockResolvedValue({ arrowX: 100 })
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
+    new DOMRect(0, 0, 320, 200)
+  )
+  render(
+    <PopupSurface
+      mode="native"
+      session="defer-reserve"
+      label="Popup"
+      close={() => {}}
+    >
+      Content
+    </PopupSurface>
+  )
+  await act(async () => {})
+  expect(opened).not.toHaveBeenCalled()
+  const frame = vi.mocked(window.requestAnimationFrame)
+  act(() => frame.mock.calls[0][0](0))
+  act(() => frame.mock.calls[1][0](16))
+  expect(opened).not.toHaveBeenCalled()
+  act(() => motion.animate.mock.results[1].value.then.mock.calls[0][0]())
+  expect(opened).toHaveBeenCalledExactlyOnceWith('defer-reserve')
+})
+
+it('releases preparation after placement when motion is disabled', async () => {
+  useConfig.setState({
+    config: {
+      ...defaultConfig,
+      bar: { ...defaultConfig.bar, reduceMotion: true }
+    }
+  })
+  const opened = vi.spyOn(overlay, 'opened').mockResolvedValue(undefined)
+  vi.spyOn(overlay, 'resize').mockResolvedValue({ arrowX: 100 })
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
+    new DOMRect(0, 0, 320, 200)
+  )
+  render(
+    <PopupSurface
+      mode="native"
+      session="reduced"
+      label="Popup"
+      close={() => {}}
+    >
+      Content
+    </PopupSurface>
+  )
+  await act(async () => {})
+  expect(opened).toHaveBeenCalledExactlyOnceWith('reduced')
+  expect(window.requestAnimationFrame).not.toHaveBeenCalled()
+})
+
+it('morphs the opening capsule into the full popup silhouette', () => {
+  render(
+    <PopupSurface mode="demo" label="Popup" close={() => {}}>
+      Content
+    </PopupSurface>
+  )
+  expect(motion.animate.mock.calls[0][1].clipPath).toBe(
+    'inset(0px round 160px)'
+  )
+  const frame = vi.mocked(window.requestAnimationFrame)
+  act(() => frame.mock.calls[0][0](0))
+  act(() => frame.mock.calls[1][0](16))
+  expect(motion.animate.mock.calls[1][1].clipPath).toEqual([
+    'inset(0px round 160px)',
+    'inset(0px round 0px)'
+  ])
+})
+
+it('fades a pinned popup in place and waits for its exit acknowledgment', () => {
+  const onExited = vi.fn()
+  render(
+    <PopupSurface
+      mode="native"
+      pinned
+      closing
+      session="pin"
+      label="Popup"
+      close={() => {}}
+      onExited={onExited}
+    >
+      Content
+    </PopupSurface>
+  )
+  const exit = motion.animate.mock.lastCall!
+  expect(exit[1]).toEqual({
+    opacity: [null, 0],
+    transform: [null, 'translateY(0px) scale(0.96, 0.96)']
+  })
+  expect(exit[2]).toMatchObject({ duration: 0.15 })
+  expect(onExited).not.toHaveBeenCalled()
+  act(() => motion.animate.mock.results.at(-1)!.value.then.mock.calls[0][0]())
+  expect(onExited).toHaveBeenCalledOnce()
+})
 
 beforeEach(() => {
   motion.animate.mockReset()
@@ -49,13 +148,43 @@ it('keeps expansion velocity continuous through the middle of opening', () => {
       : curves.map((curve: [number, number, number, number]) =>
           cubicBezier(...curve)
         )
-  const values = keyframes.scaleY as number[]
+  expect(keyframes).toHaveProperty('transform')
+  expect(keyframes).not.toHaveProperty('scaleY')
+  const values = popupOpenKeyframes('bottom', {
+    width: 320,
+    height: 200
+  }).scaleY
   const times = options.times ?? values.map((_, i) => i / (values.length - 1))
   const sample = interpolate(times, values, { ease })
   // The previous segmented easing stopped at 40% and accelerated again.
   const before = (sample(0.4) - sample(0.398)) / 0.002
   const after = (sample(0.402) - sample(0.4)) / 0.002
   expect(Math.abs(after - before)).toBeLessThan(0.1)
+})
+
+it('preserves the original trajectory using compositor-compatible transform frames', () => {
+  expect(
+    popupTransformKeyframes(
+      popupOpenKeyframes(
+        'bottom',
+        { width: 320, height: 200 },
+        { width: 80, height: 28 }
+      )
+    )
+  ).toEqual({
+    opacity: [0, 1],
+    clipPath: ['inset(0px round 160px)', 'inset(0px round 0px)'],
+    transform: [
+      'translateY(-12px) scale(0.25, 0.14)',
+      'translateY(0px) scale(1, 1)'
+    ]
+  })
+  const close = popupTransformKeyframes(
+    popupDockKeyframes('top', { width: 320, height: 200 })
+  )
+  expect(close.transform[0]).toBeNull()
+  expect(close).not.toHaveProperty('scaleX')
+  expect(close).not.toHaveProperty('y')
 })
 
 it('prepares a hidden panel and opens only after two presentation frames', () => {
@@ -72,8 +201,10 @@ it('prepares a hidden panel and opens only after two presentation frames', () =>
   act(() => frame.mock.calls[1][0](16))
   expect(motion.animate.mock.calls[1][1]).toMatchObject({
     opacity: [0, 1],
-    scaleX: [expect.any(Number), 1],
-    scaleY: [expect.any(Number), 1]
+    transform: [
+      expect.stringContaining('translateY(-12px) scale('),
+      'translateY(0px) scale(1, 1)'
+    ]
   })
   rerender(
     <PopupSurface mode="demo" label="Popup" close={() => {}}>
@@ -122,7 +253,12 @@ it('waits for native placement before opening and uses the widget dimensions', a
     transformOrigin: '280px 0%'
   })
   expect(motion.animate.mock.lastCall![1]).toMatchObject({
-    scaleX: [null, 0.42, 0.25, 0.215]
+    transform: [
+      null,
+      expect.stringContaining('scale(0.42, 0.42)'),
+      expect.stringContaining('scale(0.25, 0.14)'),
+      expect.stringContaining('scale(0.215, 0.001)')
+    ]
   })
 })
 
@@ -149,7 +285,7 @@ it('keeps content inert during travel and reports docking only after completion'
       Content
     </PopupSurface>
   )
-  expect(container.textContent).toBe('Content')
+  expect(container.textContent).toBe('PopupContent')
   expect(container.querySelector('[inert]')).not.toBeNull()
   expect(onExited).not.toHaveBeenCalled()
   const exit = motion.animate.mock.results.at(-1)!.value
@@ -221,13 +357,16 @@ it('emerges from the widget, travels outward and settles without overshoot', () 
   expect(opening.y.at(-1)).toBe(0)
   expect(Math.max(...opening.scaleX)).toBe(1)
   expect(opening.opacity).toEqual([0, 1])
-  expect(opening.clipPath[0]).toBe('inset(0px round 160px)')
+  expect(opening.clipPath).toEqual([
+    'inset(0px round 160px)',
+    'inset(0px round 0px)'
+  ])
   expect(POPUP_ENTER_MS).toBe(500)
   const mirrored = popupOpenKeyframes('top', size, anchor)
   expect(mirrored.y).toEqual(opening.y.map((y) => (y === 0 ? 0 : -y)))
 })
 
-it('removes the entry clip after settling and never restores it during exit', () => {
+it('releases the capsule clip after opening and ignores stale completion during exit', () => {
   const { rerender } = render(
     <PopupSurface mode="demo" label="Popup" close={() => {}}>
       Content
@@ -247,4 +386,57 @@ it('removes the entry clip after settling and never restores it during exit', ()
   const calls = motion.animate.mock.calls.length
   act(() => finish())
   expect(motion.animate).toHaveBeenCalledTimes(calls)
+})
+
+it('settles the retained surface immediately when pinned during opening', () => {
+  const { rerender } = render(
+    <PopupSurface mode="demo" label="Popup" close={() => {}}>
+      Content
+    </PopupSurface>
+  )
+  rerender(
+    <PopupSurface mode="demo" label="Popup" pinned close={() => {}}>
+      Content
+    </PopupSurface>
+  )
+  expect(motion.animate.mock.lastCall![1]).toMatchObject({
+    opacity: 1,
+    transform: 'translateY(0px) scale(1, 1)',
+    clipPath: 'none'
+  })
+  expect(motion.animate.mock.lastCall![2]).toEqual({ duration: 0 })
+})
+
+it('never schedules another opening when a placement reply arrives after pin', async () => {
+  let placed!: (value: { arrowX: number }) => void
+  vi.spyOn(overlay, 'resize').mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        placed = resolve
+      })
+  )
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
+    new DOMRect(0, 0, 320, 200)
+  )
+  const { rerender } = render(
+    <PopupSurface mode="native" session="one" label="Popup" close={() => {}}>
+      Content
+    </PopupSurface>
+  )
+  rerender(
+    <PopupSurface
+      mode="native"
+      session="one"
+      label="Popup"
+      pinned
+      close={() => {}}
+    >
+      Content
+    </PopupSurface>
+  )
+  const animations = motion.animate.mock.calls.length
+  const frames = vi.mocked(window.requestAnimationFrame).mock.calls.length
+  await act(async () => placed({ arrowX: 40 }))
+  expect(window.requestAnimationFrame).toHaveBeenCalledTimes(frames)
+  expect(motion.animate).toHaveBeenCalledTimes(animations)
 })

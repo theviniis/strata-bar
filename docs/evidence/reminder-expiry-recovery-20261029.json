@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-29",
+  "scenario": "Native scheduler timeout, cold shared overlay, geometry invalidation, explicit close",
+  "command": "src-tauri/target/debug/deps/strata_bar.exe --check-pinned --check-reminder-expiry",
+  "nativeExecutableSha256": "fff81271de5e39e97c46609889ae17aed154fb9fc353e2122deff53cb666df0c",
+  "before": {
+    "passed": false,
+    "initialExpiryVisible": true,
+    "afterDisplayChangeVisible": false,
+    "error": "Expired reminder never became visible during after-display-change"
+  },
+  "after": {
+    "explicitCloseStaysClosed": true,
+    "observed": {
+      "dialog": true,
+      "expiry": true,
+      "message": true,
+      "nativeVisible": true,
+      "opacity": 1,
+      "phase": "after-display-change",
+      "prepared": true,
+      "revealed": true
+    },
+    "passed": true,
+    "realTimeout": true,
+    "restoredAfterGeometryInvalidation": true,
+    "sharedOverlayInitiallyCold": true
+  },
+  "tests": {
+    "frontendFocusedPassed": 61,
+    "rustPassed": 245,
+    "rustIgnored": 31
+  },
+  "otherCheck": {
+    "name": "Full pinned popup native harness",
+    "passed": false,
+    "reason": "Existing opening-motion assertion requires clipPath=none, but current frontend source (modified before this fix) animates an inset rounded clip path."
+  },
+  "notes": [
+    "Reminder storage is isolated in TEMP for this native fixture; user reminder data was not modified by the test.",
+    "WM_DISPLAYCHANGE was sent to the fixture overlay; no physical display configuration was changed.",
+    "Presentation requires native visibility plus the existing renderer opening acknowledgment. Explicit close also acknowledges presentation.",
+    "The exact event that hid the user reported occurrence was not captured; this records the reproduced loss and recovery path."
+  ]
+}

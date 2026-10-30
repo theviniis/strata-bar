@@ -208,6 +208,10 @@ it('forwards the overlay contract to the native commands', async () => {
   expect(state.invoke).toHaveBeenCalledWith('overlay_hide', {
     session: undefined
   })
+  await overlay.opened?.('opening-session')
+  expect(state.invoke).toHaveBeenCalledWith('overlay_open_complete', {
+    session: 'opening-session'
+  })
 })
 
 it('keeps the browser overlay adapter inert', async () => {
@@ -215,6 +219,7 @@ it('keeps the browser overlay adapter inert', async () => {
   const overlay = createDemoOverlay()
   await overlay.show(overlayRequest)
   await overlay.hide()
+  await overlay.opened?.('demo-session')
   expect(state.invoke).not.toHaveBeenCalled()
 })
 
