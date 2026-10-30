@@ -64,6 +64,36 @@ it('keeps format choices for widgets with implemented variants', () => {
   expect(screen.getByText('Compacto')).toBeInTheDocument()
 })
 
+it('offers both formats for the active window widget and patches only the format', () => {
+  const onChange = vi.fn()
+  const widget = widgetSchema.parse({
+    id: 'activeWindow',
+    type: 'activeWindow'
+  })
+  const view = render(<WidgetInspector widget={widget} onChange={onChange} />)
+  const label = screen.getByRole('button', { name: 'Com rótulo' })
+  const compact = screen.getByRole('button', { name: 'Compacto' })
+  expect(label).toHaveAttribute('aria-pressed', 'true')
+  expect(compact).toHaveAttribute('aria-pressed', 'false')
+
+  // The inspector is controlled: apply the emitted patch before asserting the inverse.
+  fireEvent.click(compact)
+  expect(onChange).toHaveBeenLastCalledWith({ format: 'compact' })
+  view.rerender(
+    <WidgetInspector
+      widget={{ ...widget, format: 'compact' }}
+      onChange={onChange}
+    />
+  )
+  expect(screen.getByRole('button', { name: 'Compacto' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Com rótulo' }))
+  expect(onChange).toHaveBeenLastCalledWith({ format: 'label' })
+  expect(onChange).toHaveBeenCalledTimes(2)
+})
+
 it('strips the obsolete topmost setting from old documents and overrides', () => {
   const config = configSchema.parse({
     ...defaultConfig,

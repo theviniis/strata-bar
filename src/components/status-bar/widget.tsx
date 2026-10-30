@@ -1,4 +1,5 @@
 import { NetworkController } from '@/features/network/widget/network.controller'
+import { ActiveWindowController } from '@/features/active-window/widget/active-window.controller'
 import { WidgetIdentityContext } from '@/popups/widget-identity'
 import { WeatherController } from '@/features/weather/widget/weather.controller'
 import { MediaSpectrumController } from '@/features/media-spectrum/widget/media-spectrum.controller'
@@ -17,11 +18,9 @@ import type { ReactElement } from 'react'
 import type { WidgetConfig } from '../../services/configuration/config'
 import { defaultView, viewOf, type WidgetView } from './presentation'
 import { WidgetViewContext } from './widget-view'
-import { Unsupported } from './unsupported'
 import { BarVerticalSeparator } from '../ui/bar-vertical-separator'
 import { useSeparatorMargin } from './separator-margin'
 import { isWidgetAvailable } from '@/services/configuration/widget-flags'
-
 /**
  * One configured widget of the native bar. The composition (presence, order,
  * section) is owned by `NativeBar`; this module owns the widget-to-component
@@ -50,7 +49,7 @@ const widgets: Record<
   // No native collector is wired for these yet; the bar renders an honest
   // placeholder instead of inventing a reading.
   network: () => <NetworkController />,
-  activeWindow: () => <Unsupported label="Janela ativa" />
+  activeWindow: () => <ActiveWindowController />
 }
 
 export function Widget({ widget }: { widget: WidgetConfig }) {

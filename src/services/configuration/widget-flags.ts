@@ -16,7 +16,7 @@ export const widgetFlags: Readonly<Record<WidgetType, boolean>> = {
   mediaSpectrum: true,
   volume: true,
   microphone: true,
-  activeWindow: false,
+  activeWindow: true,
   workspaces: true
 }
 

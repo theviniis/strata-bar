@@ -204,6 +204,7 @@ export function WidgetInspector({
             'gpu',
             'disk',
             'network',
+            'activeWindow',
             'workspaces'
           ].includes(widget.type) && (
             <Field>

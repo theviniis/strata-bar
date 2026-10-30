@@ -9,4 +9,3 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 export const Network: Story = {}
-export const ActiveWindow: Story = { args: { label: 'Janela ativa' } }

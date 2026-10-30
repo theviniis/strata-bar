@@ -7,6 +7,7 @@ mod agents_contract;
 mod agents_windows;
 mod antigravity;
 mod antigravity_hooks;
+mod active_window;
 mod bar_region;
 mod codex;
 mod codex_hooks;
@@ -65,6 +66,9 @@ pub(crate) fn release_window_subscriptions(app: &tauri::AppHandle, label: &str) 
     if let Some(media) = app.try_state::<media::Media>() {
         media.remove_window(label);
     }
+    if let Some(active) = app.try_state::<active_window::ActiveWindow>() {
+        active.remove_window(label);
+    }
     if let Some(metrics) = app.try_state::<metrics::Metrics>() {
         metrics.remove_window(label);
     }
@@ -76,7 +80,7 @@ pub(crate) fn release_window_subscriptions(app: &tauri::AppHandle, label: &str) 
 }
 #[tauri::command]
 fn capabilities() -> Value {
-    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"mediaSpectrum":true,"weather":true,"appBar":true,"gpu":true,"disk":true,"network":true,"workspaces":true,"voicemeeter":crate::voicemeeter::installed(),"config":true})
+    json!({"cpu":true,"memory":true,"volume":true,"audioOutputs":true,"audioInputs":true,"microphone":true,"media":true,"mediaSpectrum":true,"weather":true,"appBar":true,"gpu":true,"disk":true,"network":true,"workspaces":true,"voicemeeter":crate::voicemeeter::installed(),"activeWindow":true,"config":true})
 }
 #[tauri::command]
 fn subscribe(
@@ -103,6 +107,11 @@ fn subscribe(
     }
     if channel == "media" {
         return window.state::<media::Media>().subscribe(window.label());
+    }
+    if channel == "activeWindow" {
+        return window
+            .state::<active_window::ActiveWindow>()
+            .subscribe(window.label());
     }
     if channel == "workspaces" {
         if workspace_source != Some(config_contract::WorkspaceSource::Komorebi) {
@@ -135,6 +144,10 @@ fn unsubscribe(
             .unsubscribe(&token, window.label());
     } else if token.starts_with("kw") {
         workspaces.unsubscribe(&token, window.label());
+    } else if token.starts_with("aw") {
+        window
+            .state::<active_window::ActiveWindow>()
+            .unsubscribe(&token, window.label());
     } else if token.starts_with('w') {
         window
             .state::<weather::Weather>()
@@ -482,6 +495,9 @@ fn cleanup(app: &tauri::AppHandle) {
     if let Some(weather) = app.try_state::<weather::Weather>() {
         weather.stop();
     }
+    if let Some(active) = app.try_state::<active_window::ActiveWindow>() {
+        active.stop();
+    }
     if let Some(media) = app.try_state::<media::Media>() {
         media.stop();
     }
@@ -714,6 +730,7 @@ fn main() {
                     .weather
                     .unwrap_or_default(),
             ));
+            app.manage(active_window::ActiveWindow::start(app.handle().clone()));
             app.manage(media::Media::start(app.handle().clone()));
             app.manage(agents::Agents::start(app.handle().clone())?);
             app.manage(metrics::Metrics::start(app.handle().clone()));
