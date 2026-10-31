@@ -2,11 +2,6 @@
 
 ## Problem Statement
 
-O usuário precisa acompanhar sessões do ChatGPT Desktop, OpenCode e Antigravity
-em janelas diferentes. Perguntas, pedidos de aprovação e conclusões podem passar
-despercebidos. Falta uma visão central na barra para acompanhar e, quando houver
-integração disponível, iniciar sessões e responder sem alternar de janela.
-
 ## Solution
 
 Adicionar um widget com popup que agrupa sessões por ferramenta, mostra estados
@@ -20,78 +15,56 @@ limitações das integrações.
 1. Como usuário do Windows 11, quero abrir o controle de agentes pela barra para
    acompanhar meu trabalho em um único lugar.
 2. Como usuário, quero sessões agrupadas por ferramenta para identificar sua origem.
-3. Como usuário do ChatGPT Desktop, quero detectar o aplicativo aberto para saber
-   que ele está disponível, mesmo quando não houver acesso às conversas.
-4. Como usuário do OpenCode, quero acompanhar sessões conectadas para ver seu estado.
-5. Como usuário do Antigravity, quero acompanhar sessões integradas para ver seu estado.
-6. Como usuário, quero descobrir sessões abertas fora do Strata para manter minha
+3. Como usuário do OpenCode, quero acompanhar sessões conectadas para ver seu estado.
+4. Como usuário, quero descobrir sessões abertas fora do Strata para manter minha
    rotina atual de trabalho.
-7. Como usuário, quero distinguir aplicativo aberto de sessão detectada para não
+5. Como usuário, quero distinguir aplicativo aberto de sessão detectada para não
    interpretar presença de processo como atividade de uma conversa.
-8. Como usuário, quero ver quais integrações estão conectadas para entender a cobertura.
-9. Como usuário, quero configurar conectores locais e hooks para habilitar capacidades.
-10. Como usuário, quero identificar capacidades indisponíveis para entender limitações.
-11. Como usuário, quero ver sessões processando para acompanhar execuções em andamento.
-12. Como usuário, quero ver perguntas pendentes para saber onde preciso responder.
-13. Como usuário, quero distinguir erro de conclusão para decidir o próximo passo.
-14. Como usuário, quero ver estado desconhecido ou desconectado para não confiar em
+6. Como usuário, quero ver quais integrações estão conectadas para entender a cobertura.
+7. Como usuário, quero configurar conectores locais e hooks para habilitar capacidades.
+8. Como usuário, quero identificar capacidades indisponíveis para entender limitações.
+9. Como usuário, quero ver sessões processando para acompanhar execuções em andamento.
+10. Como usuário, quero ver perguntas pendentes para saber onde preciso responder.
+11. Como usuário, quero distinguir erro de conclusão para decidir o próximo passo.
+12. Como usuário, quero ver estado desconhecido ou desconectado para não confiar em
     informações que deixaram de ser atuais.
-15. Como usuário, quero iniciar uma sessão pelo popup quando suportado para começar
+13. Como usuário, quero iniciar uma sessão pelo popup quando suportado para começar
     trabalho sem procurar outra janela.
-16. Como usuário, quero informar projeto/pasta e prompt conforme a ferramenta exigir
+14. Como usuário, quero informar projeto/pasta e prompt conforme a ferramenta exigir
     para iniciar a sessão no contexto correto.
-17. Como usuário, quero responder perguntas textuais no card da sessão para continuar
+15. Como usuário, quero responder perguntas textuais no card da sessão para continuar
     o trabalho sem alternar de janela.
-18. Como usuário, quero ver a operação solicitada antes de aprovar uma ferramenta
+16. Como usuário, quero ver a operação solicitada antes de aprovar uma ferramenta
     para decidir conscientemente sobre sua execução.
-19. Como usuário, quero controles distintos de aprovar e recusar para não confundir
+17. Como usuário, quero controles distintos de aprovar e recusar para não confundir
     permissões com respostas textuais.
-20. Como usuário, quero respostas vinculadas à pergunta correta para evitar enviar
+18. Como usuário, quero respostas vinculadas à pergunta correta para evitar enviar
     conteúdo a outra sessão ou a um pedido que já foi resolvido.
-21. Como usuário, quero respostas bloqueadas durante desconexão para evitar envios
+19. Como usuário, quero respostas bloqueadas durante desconexão para evitar envios
     com estado desatualizado.
-22. Como usuário, quero reconciliar sessões ao reconectar sem reenvio automático
+20. Como usuário, quero reconciliar sessões ao reconectar sem reenvio automático
     para evitar ações duplicadas.
-23. Como usuário, quero alertas de atenção com o popup fechado para não perder perguntas.
-24. Como usuário, quero alertas de conclusão bem-sucedida de um turno para saber
+21. Como usuário, quero alertas de atenção com o popup fechado para não perder perguntas.
+22. Como usuário, quero alertas de conclusão bem-sucedida de um turno para saber
     quando posso revisar o resultado, mesmo com a conversa ainda aberta.
-25. Como usuário, quero cada evento notificado uma única vez para evitar alertas repetidos.
-26. Como usuário, quero iniciar o Strata sem alertas retroativos para não confundir
+23. Como usuário, quero cada evento notificado uma única vez para evitar alertas repetidos.
+24. Como usuário, quero iniciar o Strata sem alertas retroativos para não confundir
     eventos antigos com novidades.
-27. Como usuário, quero que uma falha de integração preserve as outras ferramentas
+25. Como usuário, quero que uma falha de integração preserve as outras ferramentas
     para continuar acompanhando as sessões disponíveis.
-28. Como usuário, quero que o Strata mantenha apenas metadados e perguntas necessários
+26. Como usuário, quero que o Strata mantenha apenas metadados e perguntas necessários
     em memória para não criar outra cópia persistente do histórico de conversas.
-29. Como usuário com vários monitores, quero uma visão coerente das sessões para
+27. Como usuário com vários monitores, quero uma visão coerente das sessões para
     acompanhar o mesmo trabalho por qualquer barra.
-30. Como usuário de teclado, quero reutilizar foco e fechamento do popup existente
+28. Como usuário de teclado, quero reutilizar foco e fechamento do popup existente
     para operar inputs e ações de forma previsível.
-31. Como usuário do studio, quero dados demonstrativos identificados para distingui-los
+29. Como usuário do studio, quero dados demonstrativos identificados para distingui-los
     das sessões reais do Windows.
 
 ## Implementation Decisions
 
-- Flags agents.visible.chatgpt/opencode/antigravity/codex escolhem as abas e
-  alertas visuais exibidos. Todos começam visíveis para preservar configurações
-  anteriores. O popup permite selecionar agentes e persistir na configuração
-  existente. Ocultar não desativa conexões, hooks ou notificações nativas.
-  Seleção vazia mantém o acesso às opções; ocultar a aba ativa seleciona outra
-  disponível. As superfícies nativas carregam e acompanham as configurações.
-
-- Correção posterior do usuário: o objetivo é usar ChatGPT Desktop através do
-  Strata, sem fluxo dependente da CLI do Codex. O conector Codex registrado abaixo
-  não atende nem substitui esse objetivo; sua implementação é trabalho separado.
-  É necessário comprovar acesso às conversas reais do aplicativo antes de
-  declarar a integração ChatGPT disponível.
-
-- Alvos confirmados: ChatGPT Desktop, OpenCode e Antigravity. Em 19/10/2026,
-  o usuário ampliou o escopo para monitorar Codex local, como esta conversa,
-  em seção própria no mesmo popup com abas. Criar/responder no Codex depende de
-  validação posterior da capacidade; monitorar não autoriza decisões automáticas.
 - Reutilizar o framework de WidgetPopup, seu host compartilhado, foco, geometria
   e ciclo de vida; a feature fornece conteúdo, dados e ações.
-- Usar um único popup com o componente Tabs por ferramenta. ChatGPT Desktop é a
-  aba inicial; uma seção fica visível por vez e mostra a detecção do aplicativo.
 - Codex local usa hooks oficiais, somente metadados, ativação explícita e revisão
   de confiança no próprio Codex. Não editar trust hashes ou políticas. Hooks
   desconhecidos são preservados; desativar remove apenas definições idênticas
@@ -115,8 +88,6 @@ limitações das integrações.
 - Separar capacidades de detectar aplicativo, listar sessões, observar estados e
   perguntas, criar sessão, responder e aprovar/recusar. Uma capacidade não implica outra.
 - Presença de processo não comprova sessão, processamento, pergunta ou conclusão.
-- Validar APIs/eventos locais do OpenCode e hooks do Antigravity como fontes
-  candidatas. Não há fonte de sessões do ChatGPT Desktop comprovada no levantamento.
 - O primeiro conector usa a API v2 publicada pelo OpenCode Desktop instalado,
   acessada pelo comando público do cliente com leituras fixas. A conexão é
   explícita e usa a autenticação já administrada pelo OpenCode, sem copiar
@@ -188,11 +159,6 @@ limitações das integrações.
   na barra e lista no popup; não toca som nem abre janelas. Notificações nativas
   do Windows permanecem separadas. A linha de base inicial de cada conexão não
   anuncia pendências ou conclusões antigas, inclusive após reconexão.
-- Atenção usa IDs/versões das perguntas e permissões do OpenCode; nos hooks do
-  Antigravity, usa a transição observada para atenção. Conclusão requer sucesso
-  explícito depois de processamento/atenção observados. Não anunciar como nova
-  execução um estado terminal recém-descoberto ou uma mudança apenas no título.
-  Execuções inteiras entre consultas podem passar sem alerta.
 - No OpenCode, correlacionar sucesso com a marca time.idle da API, exigindo que
   ela seja posterior à atividade observada. Outcome antigo sem nova marca não
   confirma término do turno em execução. Não emitir conclusão se a marca faltar.
@@ -203,10 +169,6 @@ limitações das integrações.
   após dispensa.
 - Coletar somente metadados e conteúdo de perguntas pendentes necessários ao popup,
   mantidos em memória; não persistir histórico pelo Strata.
-- No Antigravity App, observar os hooks públicos após ativação explícita no
-  painel de abas. Não enumerar conversas anteriores por logs ou protocolos privados.
-  Instalar somente a entrada do Strata na configuração global, preservando os
-  demais hooks e removendo a entrada própria ao desativar ou encerrar normalmente.
 - Transportar somente identificador, primeiro workspace e sinais de ciclo de
   execução por receptor local autenticado por conexão. Não ler transcriptPath,
   argumentos de ferramentas, mensagens, artefatos ou arquivos de credenciais.
@@ -264,3 +226,23 @@ execução existente continua sendo o acompanhamento das entregas.
 Publicação pendente: não foi encontrada configuração do issue tracker e do
 vocabulário de triagem. Executar `/setup-matt-pocock-skills`; depois de configurar
 o destino e confirmar o seam de testes proposto, publicar com `ready-for-agent`.
+
+## Contrato atual — STR-6 e STR-7
+
+O widget está habilitado no catálogo e no layout inicial. Codex e OpenCode
+continuam independentes e são os únicos provedores do contrato.
+
+O contrato de snapshots é versão 10, definido em Rust e exportado pelo build
+para TypeScript. A configuração mantém versão 2 e ignora preferências antigas
+dos provedores removidos, preservando as preferências dos provedores restantes.
+
+A barra conta somente sessões atuais em `attention` de fontes conectadas e
+visíveis. Alertas históricos de conclusão e a pausa da fila não tornam o widget
+destrutivo. Zero sessões em atenção restaura a apresentação normal.
+
+O popup `agentsAlert` usa o overlay compartilhado e a política de foco,
+fullscreen e fechamento explícito dos alertas de lembretes. O backend agenda
+a abertura apenas quando o widget está configurado na barra principal e há
+atenção nova; a resolução da atenção fecha o popup sincronizado. O browser
+continua restrito ao adapter demo. Evidências anteriores permanecem imutáveis
+em `docs/evidence/`; validação nova deve registrar suas próprias limitações.

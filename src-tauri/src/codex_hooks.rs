@@ -1,7 +1,6 @@
 //! Local metadata transport; hook definitions stay stable across restarts so
 //! Codex can retain the user's review of the exact command definition.
 use crate::{
-    antigravity_hooks::now,
     codex,
     hook_config::{read_config, write_config},
 };
@@ -13,7 +12,7 @@ use std::{
     io::{Read, Write},
     net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream},
     path::{Path, PathBuf},
-    time::Duration,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 fn configuration_lock(endpoint: &Path) -> Result<fs::File, String> {
@@ -109,6 +108,15 @@ pub struct Bridge {
     entry: Value,
 }
 impl Bridge {
+    #[cfg(debug_assertions)]
+    pub(crate) fn open_check(root: &Path) -> Result<Self, String> {
+        Self::open(
+            root.join("hooks.json"),
+            root.join("endpoint.json"),
+            &std::env::current_exe().map_err(|_| "Executável indisponível")?,
+        )
+    }
+
     pub fn install() -> Result<Self, String> {
         let home = std::env::var_os("CODEX_HOME")
             .map(PathBuf::from)
@@ -427,4 +435,11 @@ mod tests {
         fs::remove_file(root.join(".codex-hooks.lock")).unwrap();
         fs::remove_dir(root).unwrap();
     }
+}
+
+fn now() -> f64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as f64
 }

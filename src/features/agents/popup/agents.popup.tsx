@@ -1,5 +1,4 @@
 import { definePopup } from '@/popups/definition'
-import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type {
   AgentType,
@@ -9,9 +8,7 @@ import { type ReactNode } from 'react'
 import { AgentsPopupController } from './agents.popup.controller'
 
 const labels = {
-  chatgpt: 'ChatGPT Desktop',
   opencode: 'OpenCode',
-  antigravity: 'Antigravity',
   codex: 'Codex local'
 } as const
 
@@ -89,27 +86,7 @@ export function AgentsPopup({
                       ? 'Processo detectado'
                       : 'Processo não detectado'}
                 </p>
-                {application.agent !== 'chatgpt' ? (
-                  sessions[application.agent]
-                ) : (
-                  <>
-                    <p className="text-body">Sessões indisponíveis</p>
-                    <p className="text-body text-muted-foreground">
-                      Controle de sessões ainda não integrado. Um processo
-                      aberto não informa o estado das conversas. Para sessões
-                      locais como as do Codex, abra a seção Codex local neste
-                      painel. Ative os hooks em Configurações → Agentes.
-                    </p>
-                    <div className="flex gap-2">
-                      <Button size="sm" disabled>
-                        Nova sessão
-                      </Button>
-                      <Button size="sm" variant="outline" disabled>
-                        Responder
-                      </Button>
-                    </div>
-                  </>
-                )}
+                {sessions[application.agent]}
               </TabsContent>
             ))}
         </Tabs>

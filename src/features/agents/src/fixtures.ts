@@ -39,14 +39,12 @@ export function agentPermissionFixture(): AgentPermission {
 }
 export function agentsFixture(): AgentsSnapshot {
   return {
-    version: 9,
+    version: 10,
     revision: 0,
     observedAt: AGENTS_FIXTURE_TIME,
     error: null,
     applications: [
-      { agent: 'chatgpt', running: true },
       { agent: 'opencode', running: true },
-      { agent: 'antigravity', running: false },
       { agent: 'codex', running: true }
     ],
     notifications: { status: 'demo', skipped: 0 },
@@ -83,7 +81,6 @@ export function agentsFixture(): AgentsSnapshot {
       hasMore: false,
       completedTurns: {}
     },
-    antigravity: { status: 'disabled', sessions: [], error: null },
     codex: { status: 'connecting', sessions: [], error: null }
   }
 }

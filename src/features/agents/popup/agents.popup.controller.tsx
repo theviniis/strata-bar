@@ -11,7 +11,6 @@ import { usePopupContext } from '@/popups/context'
 import { createDemoAgentsAdapter } from '@/services/system/agents'
 import { createAgentsStore, getAgentsStore } from '@/stores/agents'
 import { AgentAlertsController } from '../src/agent-alerts-controller'
-import { AntigravitySessions } from '../src/antigravity-sessions'
 import { OpenCodeSessionsController } from '../src/open-code-sessions-controller'
 import { CodexSessions } from '../src/codex-sessions'
 import { AgentsPopup } from './agents.popup'
@@ -68,7 +67,7 @@ export function AgentsPopupStateController({
   onDismissAlerts?: (ids: string[]) => Promise<void>
 }) {
   const visible = useConfig((state) => state.config.agents.visible)
-  const [selectedAgent, setSelectedAgent] = useState<AgentType>('chatgpt')
+  const [selectedAgent, setSelectedAgent] = useState<AgentType>('codex')
   const applications =
     snapshot?.applications.filter((app) => visible[app.agent]) ?? []
   const activeAgent =
@@ -110,12 +109,6 @@ export function AgentsPopupStateController({
                   onCreate={onCreateOpenCode}
                   onReply={onReplyOpenCode}
                   onDecision={onDecideOpenCode}
-                />
-              ),
-              antigravity: (
-                <AntigravitySessions
-                  connection={snapshot.antigravity}
-                  stale={!!error}
                 />
               ),
               codex: (

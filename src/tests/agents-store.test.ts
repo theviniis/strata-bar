@@ -7,17 +7,14 @@ import {
 import type { AgentsSnapshot } from '@/services/system/agents.generated'
 
 const snapshot = (revision: number): AgentsSnapshot => ({
-  version: 9,
+  version: 10,
   notifications: { status: 'demo', skipped: 0 },
   alerts: { items: [], overflowCount: 0, paused: false },
-  antigravity: { status: 'disabled', sessions: [], error: null },
   codex: { status: 'disabled', sessions: [], error: null },
   revision,
   observedAt: revision * 1000,
   applications: [
-    { agent: 'chatgpt', running: true },
     { agent: 'opencode', running: false },
-    { agent: 'antigravity', running: false },
     { agent: 'codex', running: false }
   ],
   error: null,
@@ -41,7 +38,6 @@ it('releases a listener that finishes connecting after its consumer closes', asy
     dismissAlerts: async () => snapshot(3),
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
-    setAntigravity: async () => snapshot(3),
     setCodex: async () => snapshot(3),
     createOpenCode: async () => ({
       sessionId: 'ses_created',
@@ -69,7 +65,6 @@ it('reports a native connection failure without populating demo applications', a
     dismissAlerts: async () => snapshot(3),
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
-    setAntigravity: async () => snapshot(3),
     setCodex: async () => snapshot(3),
     createOpenCode: async () => ({
       sessionId: 'ses_created',
@@ -103,7 +98,6 @@ it('keeps a process enumeration failure separate from the session transport', as
     dismissAlerts: async () => snapshot(3),
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
-    setAntigravity: async () => snapshot(3),
     setCodex: async () => snapshot(3),
     createOpenCode: async () => ({
       sessionId: 'ses_created',
@@ -123,31 +117,29 @@ it('keeps a process enumeration failure separate from the session transport', as
 
 it('rejects snapshots that omit a tool or duplicate its application entry', () => {
   const value = snapshot(1)
-  value.applications[1] = { agent: 'chatgpt', running: false }
+  value.applications[1] = { agent: 'opencode', running: false }
   expect(() => parseAgentsSnapshot(value)).toThrow()
 })
 
-it('accepts Antigravity UUID sessions but rejects sessions assigned to the wrong connector', () => {
+it('accepts Codex UUID sessions and rejects sessions assigned to the wrong connector', () => {
   const value = snapshot(1)
-  value.antigravity = {
+  value.codex = {
     status: 'connected',
     error: null,
     sessions: [
       {
         id: 'ec33ebf9-0cba-4100-8142-c61503f6c587',
-        agent: 'antigravity',
-        connectionId: 'antigravity-hooks',
-        title: 'Sessão ec33ebf9',
+        agent: 'codex',
+        connectionId: 'codex-hooks',
+        title: 'Sessão de Codex',
         directory: 'D:\\project',
         status: 'attention',
         updatedAt: 1000
       }
     ]
   }
-  expect(parseAgentsSnapshot(value).antigravity.sessions[0].status).toBe(
-    'attention'
-  )
-  value.antigravity.sessions[0].agent = 'opencode'
+  expect(parseAgentsSnapshot(value).codex.sessions[0].status).toBe('attention')
+  value.codex.sessions[0].agent = 'opencode'
   expect(() => parseAgentsSnapshot(value)).toThrow()
 })
 
@@ -158,7 +150,6 @@ it('rechecks discovery when reopening instead of retaining a previous transport 
     dismissAlerts: async () => snapshot(3),
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
-    setAntigravity: async () => snapshot(3),
     setCodex: async () => snapshot(3),
     createOpenCode: async () => ({
       sessionId: 'ses_created',
@@ -190,7 +181,6 @@ it('keeps a live observation when the initial snapshot arrives late', async () =
     dismissAlerts: async () => snapshot(3),
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
-    setAntigravity: async () => snapshot(3),
     setCodex: async () => snapshot(3),
     createOpenCode: async () => ({
       sessionId: 'ses_created',
@@ -224,7 +214,6 @@ it('keeps live discovery working when the initial snapshot request fails', async
     dismissAlerts: async () => snapshot(3),
     decideOpenCode: async () => {},
     replyOpenCode: async () => {},
-    setAntigravity: async () => snapshot(3),
     setCodex: async () => snapshot(3),
     createOpenCode: async () => ({
       sessionId: 'ses_created',

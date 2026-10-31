@@ -15,9 +15,7 @@ beforeEach(() =>
       ...defaultConfig,
       agents: {
         visible: {
-          chatgpt: true,
           opencode: true,
-          antigravity: true,
           codex: true
         }
       }
@@ -63,6 +61,6 @@ it('renders only Codex metadata and rejects provider mismatches', async () => {
       'Sessão 01a1543f'
     )
   ).toBeInTheDocument()
-  snapshot.codex.sessions[0].connectionId = 'antigravity-hooks'
+  snapshot.codex.sessions[0].connectionId = 'opencode-local'
   expect(() => parseAgentsSnapshot(snapshot)).toThrow()
 })

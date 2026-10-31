@@ -12,7 +12,7 @@ export interface AgentsProps extends WidgetItemProps {
 }
 export function Agents({
   count,
-  paused,
+  paused: _paused,
   describedBy,
   ...triggerProps
 }: AgentsProps) {
@@ -30,7 +30,7 @@ export function Agents({
       <WidgetItemIcon
         icon={Bot}
         aria-hidden="true"
-        className={count > 0 || paused ? 'text-destructive' : undefined}
+        className={count > 0 ? 'text-destructive' : undefined}
       />
       <AgentAlertCount count={count} />
     </WidgetItem>

@@ -252,11 +252,7 @@ pub struct WidgetSections {
 #[serde(rename_all = "camelCase")]
 pub struct AgentVisibility {
     #[serde(default = "default_true")]
-    pub chatgpt: bool,
-    #[serde(default = "default_true")]
     pub opencode: bool,
-    #[serde(default = "default_true")]
-    pub antigravity: bool,
     #[serde(default = "default_true")]
     pub codex: bool,
 }
@@ -264,9 +260,7 @@ pub struct AgentVisibility {
 impl Default for AgentVisibility {
     fn default() -> Self {
         Self {
-            chatgpt: true,
             opencode: true,
-            antigravity: true,
             codex: true,
         }
     }

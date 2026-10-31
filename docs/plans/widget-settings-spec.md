@@ -22,7 +22,7 @@ configuração, e orientam por texto quando uma integração precisa ser configu
 1. Como usuário do Strata, quero configurar qualquer widget em Configurações, para ter um único lugar para suas preferências.
 2. Como usuário do Strata, quero uma seção Agentes, para selecionar agentes visíveis e configurar suas integrações.
 3. Como usuário do Strata, quero conectar ou desconectar OpenCode em Agentes, para administrar a integração no lugar esperado.
-4. Como usuário do Strata, quero ativar ou desativar hooks de Codex e Antigravity em Agentes, para controlar essas integrações.
+4. Como usuário do Strata, quero ativar ou desativar hooks de Codex em Agentes, para controlar essas integrações.
 5. Como usuário do Strata, quero continuar consultando sessões e respondendo aos agentes no widget, para trabalhar sem abrir Configurações.
 6. Como usuário do Strata, quero continuar atendendo permissões e alertas no widget de agentes, para preservar meu fluxo diário.
 7. Como usuário do Strata, quero uma seção Lembretes, para configurar a integração com Google Calendar.

@@ -27,9 +27,7 @@ beforeEach(() =>
       ...defaultConfig,
       agents: {
         visible: {
-          chatgpt: true,
           opencode: true,
-          antigravity: true,
           codex: true
         }
       }
@@ -108,7 +106,7 @@ it('shows attention and completion alerts and dismisses only the IDs currently d
           },
           {
             id: 'agent-alert-2',
-            agent: 'antigravity',
+            agent: 'codex',
             sessionId: '11111111-1111-1111-1111-111111111111',
             sessionTitle: 'Projeto B',
             kind: 'completed',
@@ -122,7 +120,7 @@ it('shows attention and completion alerts and dismisses only the IDs currently d
     />
   )
   expect(screen.getByText('OpenCode · Atenção necessária')).toBeInTheDocument()
-  expect(screen.getByText('Antigravity · Turno concluído')).toBeInTheDocument()
+  expect(screen.getByText('Codex local · Turno concluído')).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Dispensar exibidos' }))
   await vi.waitFor(() =>
     expect(onDismiss).toHaveBeenCalledExactlyOnceWith([
@@ -379,10 +377,9 @@ it('distinguishes detected applications from unavailable session control', () =>
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 9,
+        version: 10,
         notifications: { status: 'demo', skipped: 0 },
         alerts: { items: [], overflowCount: 0, paused: false },
-        antigravity: { status: 'disabled', sessions: [], error: null },
         codex: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
@@ -397,34 +394,25 @@ it('distinguishes detected applications from unavailable session control', () =>
         observedAt: 1000,
         error: null,
         applications: [
-          { agent: 'chatgpt', running: true },
           { agent: 'opencode', running: false },
-          { agent: 'antigravity', running: true },
           { agent: 'codex', running: true }
         ]
       }}
       error={null}
     />
   )
-  const trigger = screen.getByRole('tab', { name: /^ChatGPT Desktop/ })
-  expect(trigger).toHaveAttribute('aria-selected', 'true')
-  expect(screen.getByRole('tabpanel')).toHaveTextContent('Processo detectado')
-  fireEvent.click(trigger)
-  expect(trigger).toHaveAttribute('aria-selected', 'true')
-  const chatgpt = within(
-    screen.getByRole('tabpanel', { name: /^ChatGPT Desktop/ })
+  expect(screen.getByRole('tab', { name: /^Codex local/ })).toHaveAttribute(
+    'aria-selected',
+    'true'
   )
-  expect(chatgpt.getByText('Sessões indisponíveis')).toBeInTheDocument()
-  expect(chatgpt.getByRole('button', { name: 'Nova sessão' })).toBeDisabled()
   fireEvent.click(screen.getByRole('tab', { name: /^OpenCode/ }))
-  expect(trigger).toHaveAttribute('aria-selected', 'false')
   expect(screen.getByRole('tabpanel', { name: /^OpenCode/ })).toHaveTextContent(
     'Processo não detectado'
   )
   expect(screen.queryByText('Concluído')).not.toBeInTheDocument()
 })
 
-it('labels the studio preview and lists each tool without claiming live sessions', async () => {
+it('labels the studio preview and lists supported tools without claiming live sessions', async () => {
   render(
     <PopupContext.Provider
       value={{
@@ -441,37 +429,18 @@ it('labels the studio preview and lists each tool without claiming live sessions
   expect(
     await screen.findByText('Demo · sem acesso ao sistema')
   ).toBeInTheDocument()
-  const antigravity = await screen.findByRole('tab', {
-    name: /^Antigravity/
-  })
-  expect(antigravity).toHaveAttribute('aria-selected', 'false')
-  expect(screen.getByText('Sessões indisponíveis')).toBeInTheDocument()
-  fireEvent.click(antigravity)
-  expect(
-    screen.getByText(/Configure esta integração em Configurações → Agentes/)
-  ).toBeInTheDocument()
-})
-
-it('guides Antigravity setup through Settings without a popup action', async () => {
-  const snapshot = await createDemoAgentsAdapter().load()
-  render(<AgentsPopupContent snapshot={snapshot} error={null} />)
-  fireEvent.click(screen.getByRole('tab', { name: /^Antigravity/ }))
-  expect(
-    screen.getByText(/Configure esta integração em Configurações → Agentes/)
-  ).toBeInTheDocument()
-  expect(
-    screen.queryByRole('button', { name: /hooks/ })
-  ).not.toBeInTheDocument()
+  expect(await screen.findByRole('tab', { name: /^Codex local/ })).toBeVisible()
+  expect(screen.getByRole('tab', { name: /^OpenCode/ })).toBeVisible()
+  expect(screen.getAllByRole('tab')).toHaveLength(2)
 })
 
 it('does not show stale process presence after discovery fails', () => {
   render(
     <AgentsPopupContent
       snapshot={{
-        version: 9,
+        version: 10,
         notifications: { status: 'demo', skipped: 0 },
         alerts: { items: [], overflowCount: 0, paused: false },
-        antigravity: { status: 'disabled', sessions: [], error: null },
         codex: { status: 'disabled', sessions: [], error: null },
         opencode: {
           status: 'disabled',
@@ -486,9 +455,7 @@ it('does not show stale process presence after discovery fails', () => {
         observedAt: 1000,
         error: null,
         applications: [
-          { agent: 'chatgpt', running: true },
           { agent: 'opencode', running: true },
-          { agent: 'antigravity', running: true },
           { agent: 'codex', running: true }
         ]
       }}
@@ -505,7 +472,9 @@ it('guides OpenCode setup through Settings without connection controls', async (
   render(<AgentsPopupContent snapshot={snapshot} error={null} />)
   fireEvent.click(screen.getByRole('tab', { name: /^OpenCode/ }))
   expect(
-    screen.getByText(/Configure esta integração em Configurações → Agentes/)
+    within(screen.getByRole('tabpanel', { name: /^OpenCode/ })).getByText(
+      /Configure esta integração em Configurações → Agentes/
+    )
   ).toBeInTheDocument()
   expect(
     screen.queryByRole('button', { name: /Conectar OpenCode/ })

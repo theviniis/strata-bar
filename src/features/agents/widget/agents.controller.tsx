@@ -8,6 +8,7 @@ import { useConfig } from '@/stores/config'
 import { useEffect, useState } from 'react'
 import { Slot } from '@radix-ui/react-slot'
 import { Agents } from './agents.widget'
+import { countAgentAttention } from '../src/attention'
 
 export function AgentsController() {
   const runtime = useWidgetRuntime()
@@ -16,8 +17,7 @@ export function AgentsController() {
   const visible = useConfig((state) => state.config.agents.visible)
   const count = useStore((state) =>
     runtime.interactive
-      ? (state.snapshot?.alerts.items.filter((alert) => visible[alert.agent])
-          .length ?? 0)
+      ? countAgentAttention(state.snapshot, visible, state.error)
       : 0
   )
   const paused = useStore(

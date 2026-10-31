@@ -134,28 +134,14 @@
       "additionalProperties": false
     },
     "agents": {
-      "default": {
-        "visible": {
-          "chatgpt": true,
-          "opencode": true,
-          "antigravity": true,
-          "codex": true
-        }
-      },
+      "default": { "visible": { "opencode": true, "codex": true } },
       "type": "object",
       "properties": {
         "visible": {
-          "default": {
-            "chatgpt": true,
-            "opencode": true,
-            "antigravity": true,
-            "codex": true
-          },
+          "default": { "opencode": true, "codex": true },
           "type": "object",
           "properties": {
-            "chatgpt": { "default": true, "type": "boolean" },
             "opencode": { "default": true, "type": "boolean" },
-            "antigravity": { "default": true, "type": "boolean" },
             "codex": { "default": true, "type": "boolean" }
           }
         }

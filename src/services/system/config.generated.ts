@@ -18,7 +18,7 @@ export type BarOverride = { enabled?: boolean | null, layout?: WidgetLayout | nu
 export type WidgetSections = { left: Array<WidgetConfig>, center: Array<WidgetConfig>, right: Array<WidgetConfig>, };
 export type WidgetLayout = { left: Array<string>, center: Array<string>, right: Array<string>, };
 export type SettingsMonitor = { id: string, deviceName: string, name: string, width: number, height: number, primary: boolean, };
-export type AgentVisibility = { chatgpt: boolean, opencode: boolean, antigravity: boolean, codex: boolean, };
+export type AgentVisibility = { opencode: boolean, codex: boolean, };
 export type AgentsConfig = { visible: AgentVisibility, };
 export type Config = { 
 /**

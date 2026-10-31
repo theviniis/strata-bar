@@ -23,9 +23,7 @@ interface AgentsSettingsProps {
 }
 
 const agents: { key: AgentType; label: string }[] = [
-  { key: 'chatgpt', label: 'ChatGPT' },
   { key: 'opencode', label: 'OpenCode' },
-  { key: 'antigravity', label: 'Antigravity' },
   { key: 'codex', label: 'Codex' }
 ]
 
@@ -45,15 +43,6 @@ export function AgentsSettings(props: AgentsSettingsProps) {
       configure: useStore.getState().configureOpenCode,
       description:
         'Usa o servidor e a autenticação do OpenCode Desktop v2 instalado. A conexão fica ativa enquanto o Strata estiver aberto.'
-    },
-    {
-      key: 'antigravity',
-      label: 'Antigravity',
-      enable: 'Ativar hooks do Antigravity',
-      disable: 'Desativar hooks do Antigravity',
-      configure: useStore.getState().configureAntigravity,
-      description:
-        'Ativar adiciona os hooks do Strata à configuração global do Antigravity App 2, preservando os demais. Reabra o Antigravity para carregá-los.'
     },
     {
       key: 'codex',

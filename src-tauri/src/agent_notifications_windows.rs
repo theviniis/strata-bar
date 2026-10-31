@@ -77,8 +77,6 @@ use std::os::windows::ffi::OsStrExt;
 fn payload(alert: &AgentAlert) -> String {
     let agent = match alert.agent {
         AgentType::Opencode => "OpenCode",
-        AgentType::Antigravity => "Antigravity",
-        AgentType::Chatgpt => "ChatGPT Desktop",
         AgentType::Codex => "Codex local",
     };
     let event = match alert.kind {

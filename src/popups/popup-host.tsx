@@ -94,9 +94,9 @@ export function PopupHost({
       label={metadata.label}
       className={'className' in metadata ? metadata.className : undefined}
       close={close}
-      pinnable={id !== 'reminderAlert'}
-      closeOnEscape={id !== 'reminderAlert'}
-      autoFocus={id !== 'reminderAlert'}
+      pinnable={id !== 'reminderAlert' && id !== 'agentsAlert'}
+      closeOnEscape={id !== 'reminderAlert' && id !== 'agentsAlert'}
+      autoFocus={id !== 'reminderAlert' && id !== 'agentsAlert'}
     >
       {mode === 'demo' && (
         <p className="m-4 text-micro text-muted-foreground">

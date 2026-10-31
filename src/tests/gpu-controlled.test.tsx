@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { WidgetPreview } from '@/components/status-bar/widget-preview'
 import { widgetSchema } from '@/services/configuration/config'
@@ -191,7 +191,11 @@ it('renders the demo popup without connecting a native resource channel', () => 
     </PopupContext>
   )
   expect(screen.getByText(/Dados de demonstração/)).toBeVisible()
-  expect(screen.getByText('27.3%')).toBeVisible()
+  const utilization = screen.getByRole('heading', { name: 'Utilização' })
+    .parentElement?.parentElement
+  expect(utilization).not.toBeNull()
+  expect(within(utilization!).getByText('27.3', { exact: true })).toBeVisible()
+  expect(within(utilization!).getByText('%', { exact: true })).toBeVisible()
   expect(runtime.connect).not.toHaveBeenCalled()
   expect(observeTime).not.toHaveBeenCalled()
   view.unmount()

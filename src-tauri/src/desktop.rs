@@ -634,7 +634,7 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             configure_geometry(app, window, geometry)?;
             continue;
         }
-        let window = WebviewWindowBuilder::new(
+        let builder = WebviewWindowBuilder::new(
             app,
             &label,
             WebviewUrl::App(
@@ -645,29 +645,39 @@ pub fn reconcile(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 }
                 .into(),
             ),
-        )
-        .title(format!(
-            "Strata · {}",
-            m.name().map(String::as_str).unwrap_or("Monitor")
-        ))
-        .decorations(false)
-        .resizable(false)
-        .skip_taskbar(true)
-        .always_on_top(true)
-        .shadow(false)
-        .visible(false)
-        .focused(false)
-        .transparent(true)
-        .background_color(BAR_BACKGROUND)
-        .inner_size(
-            m.size().width as f64 / m.scale_factor(),
-            (geometry.height + geometry.radius) as f64 / m.scale_factor(),
-        )
-        .position(
-            m.position().x as f64 / m.scale_factor(),
-            m.position().y as f64 / m.scale_factor(),
-        )
-        .build()?;
+        );
+        #[cfg(debug_assertions)]
+        let builder = if std::env::args().any(|arg| arg == "--check-agents") {
+            builder.data_directory(
+                std::env::temp_dir()
+                    .join(format!("strata-popup-check-profile-{}", std::process::id())),
+            )
+        } else {
+            builder
+        };
+        let window = builder
+            .title(format!(
+                "Strata · {}",
+                m.name().map(String::as_str).unwrap_or("Monitor")
+            ))
+            .decorations(false)
+            .resizable(false)
+            .skip_taskbar(true)
+            .always_on_top(true)
+            .shadow(false)
+            .visible(false)
+            .focused(false)
+            .transparent(true)
+            .background_color(BAR_BACKGROUND)
+            .inner_size(
+                m.size().width as f64 / m.scale_factor(),
+                (geometry.height + geometry.radius) as f64 / m.scale_factor(),
+            )
+            .position(
+                m.position().x as f64 / m.scale_factor(),
+                m.position().y as f64 / m.scale_factor(),
+            )
+            .build()?;
         activate_bar(app, window, m, geometry)?;
     }
     for (label, w) in app.webview_windows() {
@@ -1201,7 +1211,7 @@ fn surface_builder<'a>(
         WebviewUrl::App("index.html?view=overlay".into()),
     );
     #[cfg(debug_assertions)]
-    if std::env::args().any(|arg| arg == "--check-pinned") {
+    if std::env::args().any(|arg| arg == "--check-pinned" || arg == "--check-agents") {
         // Isolate the browser process tree as well as config: WebView2 otherwise
         // shares a browser owned by an already-running Strata, hiding its cost.
         return builder.data_directory(
@@ -1275,6 +1285,9 @@ fn finish_overlay_hide(app: &AppHandle, hwnd: HWND, restore_focus: bool, docked:
     if let Some(closed) = closed {
         // Geometry/reconcile hides are not a user's dismissal. Return an
         // interrupted notification to the scheduler, including after delivery.
+        if closed.component == "agentsAlert" && !closed.closing {
+            AGENT_ALERT_DELIVERED.lock().unwrap().clear();
+        }
         if closed.component == "reminderAlert" && !closed.closing {
             if let Some(scheduler) = app.try_state::<crate::reminders::ReminderScheduler>() {
                 scheduler.retry_alert(&closed.id);
@@ -1452,7 +1465,7 @@ pub fn overlay_resize(
         .clone()
         .filter(|p| p.id == session && !p.closing)
         .ok_or("Popup session is no longer active")?;
-    if popup.component == "reminderAlert" && fullscreen_application_active() {
+    if is_attention_popup(&popup.component) && fullscreen_application_active() {
         retry_active_reminder(app);
         overlay_hide(app);
         return Err("Reminder alert deferred during fullscreen".into());
@@ -1567,7 +1580,7 @@ pub fn overlay_show(
             caller.label()
         ));
     }
-    if request.kind == "popover" && request.component.as_deref() != Some("reminderAlert") {
+    if request.kind == "popover" && !request.component.as_deref().is_some_and(is_attention_popup) {
         if POPUP
             .lock()
             .unwrap()
@@ -1850,7 +1863,7 @@ pub fn request_reminder_alert(app: &AppHandle, id: &str, notify_at: f64) -> Resu
 }
 
 fn popup_takes_focus(component: &str) -> bool {
-    component != "reminderAlert"
+    !is_attention_popup(component)
 }
 
 fn foreground_covers_monitor(window: RECT, monitor: RECT) -> bool {
@@ -1931,12 +1944,12 @@ fn retry_active_reminder(app: &AppHandle) {
 }
 
 fn popup_requires_explicit_close(component: &str) -> bool {
-    component == "reminderAlert"
+    is_attention_popup(component)
 }
 
 /// Expiry alerts may replace an ordinary widget popup, but never another alert.
 fn defer_reminder_alert(fullscreen: bool, active_component: Option<&str>) -> bool {
-    fullscreen || active_component == Some("reminderAlert")
+    fullscreen || active_component.is_some_and(is_attention_popup)
 }
 
 /// Independent of overlay availability and Windows' configurable system sounds.
@@ -2846,4 +2859,142 @@ mod geometry_tests {
         assert_eq!(x, -2530); // -2363 - 335/2
         assert_eq!(y, 45);
     }
+}
+
+static AGENT_ALERT_DELIVERED: std::sync::LazyLock<
+    std::sync::Mutex<std::collections::HashSet<String>>,
+> = std::sync::LazyLock::new(Default::default);
+
+fn is_attention_popup(component: &str) -> bool {
+    matches!(component, "reminderAlert" | "agentsAlert")
+}
+
+/// Native attention delivery shares the reminder overlay and its focus/fullscreen policy.
+pub fn request_agents_alert(
+    app: &AppHandle,
+    snapshot: &crate::agents_contract::AgentsSnapshot,
+) -> Result<(), String> {
+    use crate::agents_contract::{AgentConnectionStatus, AgentType, SessionStatus};
+    let mut bars: Vec<_> = app
+        .webview_windows()
+        .into_iter()
+        .filter(|(name, _)| name.starts_with("bar-"))
+        .collect();
+    bars.sort_by(|a, b| a.0.cmp(&b.0));
+    let mut configured_bars = Vec::new();
+    for (_, window) in &bars {
+        let config =
+            crate::config::snapshot_for(&app.state::<crate::config::ConfigStore>(), window)?;
+        if config
+            .config
+            .widgets
+            .left
+            .iter()
+            .chain(&config.config.widgets.center)
+            .chain(&config.config.widgets.right)
+            .any(|widget| {
+                widget.enabled && widget.r#type == crate::config_contract::WidgetKind::Agents
+            })
+        {
+            configured_bars.push(window);
+        }
+    }
+    let selected = configured_bars
+        .iter()
+        .find(|window| {
+            window.hwnd().ok().is_some_and(|hwnd| unsafe {
+                let monitor = MonitorFromWindow(HWND(hwnd.0), MONITOR_DEFAULTTONEAREST);
+                let mut info = MONITORINFO {
+                    cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+                    ..Default::default()
+                };
+                GetMonitorInfoW(monitor, &mut info).as_bool() && monitor_is_primary(info.dwFlags)
+            })
+        })
+        .or_else(|| configured_bars.first());
+    let Some(source) = selected else {
+        AGENT_ALERT_DELIVERED.lock().unwrap().clear();
+        return Ok(());
+    };
+    let config = crate::config::snapshot_for(&app.state::<crate::config::ConfigStore>(), source)?;
+    let visible = &config.config.agents.visible;
+    let mut current = std::collections::HashSet::new();
+    for (agent, status, sessions) in [
+        (
+            AgentType::Codex,
+            &snapshot.codex.status,
+            &snapshot.codex.sessions,
+        ),
+        (
+            AgentType::Opencode,
+            &snapshot.opencode.status,
+            &snapshot.opencode.sessions,
+        ),
+    ] {
+        let enabled = match agent {
+            AgentType::Codex => visible.codex,
+            AgentType::Opencode => visible.opencode,
+        };
+        if enabled && *status == AgentConnectionStatus::Connected {
+            for session in sessions
+                .iter()
+                .filter(|session| session.status == SessionStatus::Attention)
+            {
+                current.insert(format!("{agent:?}:{}", session.id));
+            }
+        }
+    }
+    let mut delivered = AGENT_ALERT_DELIVERED.lock().unwrap();
+    delivered.retain(|key| current.contains(key));
+    if current.is_subset(&delivered) {
+        return Ok(());
+    }
+    let active = POPUP.lock().unwrap().clone();
+    // The live controller already presents newly arriving attention sessions.
+    // Acknowledging them avoids reopening after an explicit close.
+    if active
+        .as_ref()
+        .is_some_and(|popup| popup.component == "agentsAlert" && !popup.closing && popup.revealed)
+    {
+        delivered.extend(current);
+        return Ok(());
+    }
+    if defer_reminder_alert(
+        fullscreen_application_active(),
+        active.as_ref().map(|popup| popup.component.as_str()),
+    ) {
+        return Ok(());
+    }
+    let scale = source.scale_factor().map_err(|error| error.to_string())?;
+    let rect = unsafe {
+        bar_content_rect(HWND(source.hwnd().map_err(|error| error.to_string())?.0))
+            .map_err(|error| error.to_string())?
+    };
+    overlay_show(
+        app,
+        source,
+        &OverlayRequest {
+            v: 1,
+            source: Some(source.label().into()),
+            widget: None,
+            kind: "popover".into(),
+            component: Some("agentsAlert".into()),
+            params: Some(serde_json::json!({"revision": snapshot.revision})),
+            session: Some(format!("agents-attention-{}", snapshot.revision)),
+            text: "Agentes aguardando atenção".into(),
+            anchor: OverlayAnchor {
+                x: f64::from(rect.right - rect.left) / scale / 2.0,
+                y: 0.0,
+                width: 1.0,
+                height: f64::from(rect.bottom - rect.top) / scale,
+            },
+            size: OverlaySize {
+                width: 1.0,
+                height: 1.0,
+            },
+            side: "bottom".into(),
+        },
+    )?;
+    delivered.extend(current);
+    Ok(())
 }

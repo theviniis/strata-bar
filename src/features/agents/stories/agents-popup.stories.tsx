@@ -5,7 +5,6 @@ import { useState } from 'react'
 import { fn } from 'storybook/test'
 import { AgentsPopup } from '../popup/agents.popup'
 import { AgentSessionList } from '../src/agent-session-list'
-import { AntigravitySessions } from '../src/antigravity-sessions'
 import { CodexSessions } from '../src/codex-sessions'
 import { agentsFixture } from '../src/fixtures'
 const fixture = agentsFixture()
@@ -36,10 +35,7 @@ const meta = {
           renderActions={undefined}
         />
       ),
-      codex: <CodexSessions connection={fixture.codex} stale={false} />,
-      antigravity: (
-        <AntigravitySessions connection={fixture.antigravity} stale={false} />
-      )
+      codex: <CodexSessions connection={fixture.codex} stale={false} />
     },
     onAgentChange: fn()
   }

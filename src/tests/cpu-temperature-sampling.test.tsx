@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { expect, it } from 'vitest'
 import { CpuPopup } from '@/features/cpu/popup/cpu.popup'
 import type { CpuData } from '@/services/system/cpu.generated'
@@ -60,7 +60,11 @@ it('does not label a still-valid repeated temperature as a failed reading', () =
     />
   )
   expect(screen.queryByText(/leitura.*indisponíve/)).not.toBeInTheDocument()
-  expect(screen.getByText('42.0 °C')).toBeVisible()
+  const temperature = screen.getByRole('heading', { name: 'Temperatura' })
+    .parentElement?.parentElement
+  expect(temperature).not.toBeNull()
+  expect(within(temperature!).getByText('42.0', { exact: true })).toBeVisible()
+  expect(within(temperature!).getByText('°C', { exact: true })).toBeVisible()
 })
 it('continues to identify actual source failures while ignoring unchanged readings', () => {
   const data = observation()

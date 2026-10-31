@@ -1,0 +1,39 @@
+{
+  "version": 10,
+  "revision": 0,
+  "observedAt": 1793392064084.0,
+  "applications": [
+    {
+      "agent": "opencode",
+      "running": true
+    },
+    {
+      "agent": "codex",
+      "running": true
+    }
+  ],
+  "error": null,
+  "opencode": {
+    "status": "disabled",
+    "sessions": [],
+    "hasMore": false,
+    "questions": [],
+    "permissions": [],
+    "completedTurns": {},
+    "error": null
+  },
+  "codex": {
+    "status": "disabled",
+    "sessions": [],
+    "error": null
+  },
+  "alerts": {
+    "items": [],
+    "overflowCount": 0,
+    "paused": false
+  },
+  "notifications": {
+    "status": "checking",
+    "skipped": 0
+  }
+}

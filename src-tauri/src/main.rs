@@ -1,13 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod active_window;
 mod agent_alerts;
 mod agent_notifications;
 mod agent_notifications_windows;
 mod agents;
+#[cfg(debug_assertions)]
+mod agents_check;
 mod agents_contract;
 mod agents_windows;
-mod antigravity;
-mod antigravity_hooks;
-mod active_window;
 mod bar_region;
 mod codex;
 mod codex_hooks;
@@ -565,13 +565,6 @@ fn main() {
         codex_hooks::run_helper(&arguments[1..]);
         return;
     }
-    if arguments
-        .first()
-        .is_some_and(|argument| argument == "--antigravity-hook")
-    {
-        antigravity_hooks::run_helper(&arguments[1..]);
-        return;
-    }
     if std::env::args().any(|arg| arg == "--probe-agents") {
         let result = agents::observe(0, agents_windows::process_names);
         let text = serde_json::to_string_pretty(&result).unwrap();
@@ -611,12 +604,16 @@ fn main() {
     }
     let pinned_check =
         cfg!(debug_assertions) && arguments.iter().any(|arg| arg == "--check-pinned");
+    let agents_check =
+        cfg!(debug_assertions) && arguments.iter().any(|arg| arg == "--check-agents");
     // A second launch must not reserve a second strip of desktop workspace.
     let instance = unsafe {
         windows::Win32::System::Threading::CreateMutexW(
             None,
             false,
-            if pinned_check {
+            if agents_check {
+                windows::core::w!("Local\\StrataAgentsCheck")
+            } else if pinned_check {
                 windows::core::w!("Local\\StrataPinnedCheck")
             } else {
                 windows::core::w!("Local\\StrataStatusBar")
@@ -642,7 +639,6 @@ fn main() {
             agents::agents_create_opencode,
             agents::agents_reply_opencode,
             agents::agents_decide_opencode,
-            agents::agents_set_antigravity,
             agents::agents_set_codex,
             reminders::reminders_snapshot,
             desktop::reminders_set_anchor,
@@ -687,7 +683,7 @@ fn main() {
             quit
         ])
         .setup(move |app| {
-            if !pinned_check {
+            if !pinned_check && !agents_check {
                 tray::setup(app.handle())?;
             }
             #[cfg(debug_assertions)]
@@ -695,7 +691,7 @@ fn main() {
                 .any(|arg| arg == "--check-monitor-manager" || arg == "--check-bar-geometry");
             #[cfg(not(debug_assertions))]
             let monitor_check = false;
-            let store = if monitor_check || pinned_check {
+            let store = if monitor_check || pinned_check || agents_check {
                 config::ConfigStore::open(
                     std::env::temp_dir()
                         .join(format!("strata-monitor-check-{}", std::process::id()))
@@ -707,7 +703,7 @@ fn main() {
             config::watch(app.handle().clone(), &store)?;
             app.manage(store);
             app.manage(google_calendar::GoogleCalendar::start());
-            let reminders_path = if pinned_check {
+            let reminders_path = if pinned_check || agents_check {
                 std::env::temp_dir()
                     .join(format!("strata-reminder-check-{}.json", std::process::id()))
             } else {
@@ -762,6 +758,10 @@ fn main() {
             // Tooltips/alerts share a surface; widget sessions consume a prepared window.
             desktop::ensure_overlay(app.handle())?;
             desktop::prepare_popups(app.handle())?;
+            #[cfg(debug_assertions)]
+            if agents_check {
+                agents_check::start(app.handle().clone());
+            }
             #[cfg(debug_assertions)]
             if std::env::args().any(|arg| arg == "--check-pinned") {
                 desktop::check_pinned(app.handle().clone());

@@ -20,13 +20,6 @@ seleção válida e apresenta o erro.
 Validação: 42 testes de agentes, configuração e app aprovados; TypeScript,
 lint dos arquivos alterados, build frontend e diff check aprovados.
 
-## Correção de alvo — ChatGPT Desktop, sem CLI
-
-O usuário esclareceu que quer usar o aplicativo ChatGPT Desktop pelo Strata.
-O conector Codex não satisfaz esse requisito e não deve ser apresentado como
-solução alternativa. Nenhuma configuração pela CLI pode ser exigida no fluxo
-ChatGPT Desktop. As abas solicitadas continuam sendo a navegação do popup.
-
 - [x] Registrar a correção explícita de alvo.
 - [ ] Comprovar um mecanismo do aplicativo que cubra conversas, estados e envio
       pelo Strata, sem substituir por sessões criadas pela API ou pela CLI.
@@ -44,11 +37,6 @@ Fonte: https://developers.openai.com/plugins/build/extensions.
 - [x] Substituir o accordion pelo componente Tabs existente no mesmo popup.
 - [x] Preservar ações e estados por agente; validar seleção de abas e controles.
 
-A solicitação atual substitui a decisão anterior de usar accordion.
-ChatGPT Desktop é a aba inicial. A detecção aparece no painel selecionado;
-alertas continuam compartilhados acima das abas. Os 23 testes do popup passaram,
-assim como TypeScript, lint dos arquivos alterados e diff check.
-
 ## Correção de inicialização e conexão Codex — 19/10/2026
 
 - [x] D1: reproduzir pnpm desktop, liberar graciosamente o host debug anterior
@@ -57,8 +45,6 @@ assim como TypeScript, lint dos arquivos alterados e diff check.
 - [x] D2/C2: implementar transporte local autenticado dos hooks Codex,
       configuração estável com preservação dos hooks existentes e confiança
       revisada pelo usuário no Codex.
-- [x] D3/C3: ligar contrato, store e accordion Codex; explicar no ChatGPT Desktop
-      como acessar o monitor local em vez de sugerir integração já disponível.
 - [ ] D4/C4: testar caminho nativo e UI, compilar, revisar e registrar limites
       da validação real sem enviar prompts de teste para modelos.
 
@@ -80,12 +66,6 @@ lê endpoint local, reduz stdin aos metadados permitidos e responde {} inclusive
 em falhas. Definições em hooks.json usam comando estável, sem token/porta na
 definição confiada. Ativar preserva outros handlers; desativar remove somente
 entradas idênticas desta instalação. Nenhum arquivo de confiança é editado.
-
-C3 entrega contrato versão 9 gerado do Rust, validação Zod por provedor,
-adapter/store e seção Codex local no accordion. A presença do processo continua
-separada da recepção de eventos. Criar/responder e alertas Codex permanecem
-indisponíveis nesta fatia. A seção ChatGPT orienta usar Codex local para essas
-sessões; não promete acesso a conversas comuns do ChatGPT.
 
 Validação: 31 testes frontend focados passaram (os dois novos falharam antes da
 integração); TypeScript e lint dos arquivos alterados passaram. Build frontend
@@ -110,45 +90,14 @@ docs/evidence/ai-agents-codex-desktop-2026-10-19.json. C4/D4 permanece parcial:
 eventos de conversa real e interação WebView2 aguardam ativação/revisão de
 confiança pelo usuário no Codex; a suíte frontend geral também não está verde.
 
-## Diagnóstico — ChatGPT Desktop mostra sessões indisponíveis
-
 - [x] Confirmar o sintoma com o usuário e verificar o caminho de código.
 - [x] Separar detecção do aplicativo de integração de conversas.
 - [x] Consultar documentação oficial atual sobre hooks e seus limites por modo.
 - [x] Identificar o tipo desta sessão pelos metadados do aplicativo: Codex local.
 - [x] Confirmar ampliação de escopo para monitorar sessões como esta, pois Codex
       estava explicitamente excluído no escopo inicial.
-- [ ] Comprovar uma fonte compatível antes de implementar o conector e suas
-      ações; não substituir conversas do ChatGPT por sessões Codex.
-
-O sintoma informado é Sessões indisponíveis. Esse texto é produzido pelo ramo
-ChatGPT em AgentsPopup.tsx: somente o processo é detectado; criar/responder estão
-desabilitados. Não existe conector de sessões ChatGPT no estado ou serviço nativo.
-A integração completa está pendente, e esse diagnóstico não é uma correção.
-
-A documentação atual de hooks confirma suporte a hooks existentes quando
-orquestração e execução são locais, em Work local e Codex. Para Work Cloud,
-documenta limites diferentes e hooks empresariais gerenciados; isso não prova
-cobertura de conversas comuns do ChatGPT nem enumeração de conversas existentes.
-Fonte: [Hooks](https://learn.chatgpt.com/docs/hooks).
-
-Nesta máquina, ChatGPT.exe pertence ao pacote OpenAI.Codex. O aplicativo atual
-pode reunir Work e Codex; nome do executável/pacote não comprova o modo de uma
-conversa. Não alterar a detecção para excluir esse pacote com base apenas no nome.
-Nenhum histórico, credencial ou configuração de hooks foi acessado ou alterado.
-
-O usuário confirmou Sessões indisponíveis e informou não saber distinguir o modo.
-Os metadados do app identificam esta conversa como kind codex, host local, no
-workspace Strata. Isso identifica o runtime desta sessão, independentemente do
-modelo GPT. Nenhum conteúdo de outras conversas foi aberto. Foi apresentada a
-opção de incluir sessões como esta, separadamente de conversas comuns ChatGPT;
-o usuário aprovou monitorar sessões Codex locais como esta.
 
 ## Ampliação aprovada — Codex local
-
-A aprovação posterior inclui Codex local como integração própria no accordion e
-substitui sua exclusão inicial. Conversas comuns ChatGPT continuam sem uma fonte
-de sessões comprovada. Executar as etapas abaixo individualmente.
 
 - [x] C1: interpretar somente metadados dos hooks oficiais e modelar estados,
       limites, ordenação e expiração com testes nativos. Stop indica fim do turno,
@@ -641,8 +590,6 @@ em andamento; contratos e integrações dependem das decisões registradas abaix
 ## Escopo solicitado
 
 - Windows 11 como ambiente de detecção, monitoramento e notificações.
-- Agentes iniciais: ChatGPT Desktop, OpenCode e Antigravity. A ampliação aprovada
-  acima inclui monitoramento do Codex local.
 - Sessões agrupadas por ferramenta, com status individual em tempo real.
 - Atenção para perguntas, confirmações e solicitações de ferramentas.
 - Iniciar sessões e responder pelo popup.
@@ -653,8 +600,6 @@ em andamento; contratos e integrações dependem das decisões registradas abaix
 
 - [x] Definir os tipos TypeScript `AgentType`, `AgentSession`, `SessionStatus` e
       `AgentMessage`, derivados de um contrato único.
-- [ ] Implementar a camada de integração/polling para detectar instâncias/sessões
-      ativas do ChatGPT, OpenCode e Antigravity no Windows 11.
 - [x] Criar o store/gerenciador de estado global dos agentes (descoberta de
       aplicativos; sessões serão adicionadas com os conectores).
 
@@ -671,8 +616,6 @@ Etapas de arquitetura e validação:
 ## Subtask 2: UI do popup — lista e separação por agente
 
 - [ ] Criar o layout do popup seguindo o Design System do projeto.
-- [ ] Implementar abas/seções separando sessões ativas do ChatGPT, OpenCode e
-      Antigravity.
 - [ ] Exibir indicadores visuais em tempo real: processando, aguardando resposta,
       concluído e erro.
 
@@ -690,7 +633,6 @@ Etapas de arquitetura e validação:
 
 ## Decisões confirmadas — rodada 1
 
-1. Escopo de ChatGPT: ChatGPT Desktop.
 2. Cobertura: descobrir também sessões abertas fora do Strata.
 3. Integrações parciais: apresentar capacidades indisponíveis explicitamente quando
    uma ferramenta não oferecer um caminho de integração comprovado.
@@ -702,9 +644,6 @@ Etapas de arquitetura e validação:
 - Usar o serviço de lembretes como referência para monitoramento independente do
   popup, snapshots versionados, adapter nativo/demo e store Zustand.
 - Derivar os tipos TypeScript de contratos Rust via `ts-rs`, como no projeto atual.
-- Fontes candidatas a validar por versão instalada: servidor HTTP/eventos do
-  OpenCode e hooks do Antigravity. Não há fonte de sessões do ChatGPT Desktop
-  comprovada neste levantamento.
 
 ## Decisões confirmadas — rodada 2
 
@@ -749,8 +688,6 @@ as exigências da integração.
   vinculadas ao pedido pendente e validadas nativamente antes do envio.
 - Conteúdo necessário ao popup permanece em memória. O Strata não persiste o
   histórico de conversas.
-- API/eventos locais do OpenCode e hooks do Antigravity são candidatos a validar;
-  não prometer controle das sessões do ChatGPT Desktop sem fonte comprovada.
 - Tipos gerados de Rust via `ts-rs`, adapter nativo/demo separado e store Zustand
   com proteção contra snapshots antigos seguem os padrões existentes.
 - Subtask 1 entrega contratos, detecção/conectores comprovados e estado global;
@@ -788,8 +725,6 @@ detecção permanece visível no cabeçalho; detalhes e ações ficam na expans�
 - Testes focados: 9 frontend; 3 nativos novos.
 - Testes Rust: 126 passaram e 9 foram ignorados.
 - TypeScript, build frontend, build Rust e lint dos arquivos alterados passaram.
-- Probe Win32 real: ChatGPT e OpenCode detectados; Antigravity não detectado,
-  consistente com a listagem independente de processos do Windows.
 - A suíte frontend completa encontrou uma falha no teste de posição dos controles
   de áudio; reproduzida também com NativeBar do commit inicial `9e3bb9d`.
 - Última execução completa: 227 passaram e 2 falharam. Além da falha acima,
@@ -867,35 +802,21 @@ Não inferir processamento, atenção ou sucesso apenas pela presença de proces
 Preservar validação nativa, CSP, escopo de capabilities e ausência de fallback
 demo em falhas nativas.
 
-## Ticket 3 — Antigravity: observar sessões por hooks públicos
-
 Referência da revisão: `7550b9c5764b9fac3289041ac06b6cc3758d7378`.
-
-O Antigravity App instalado é 2.23.1. Os hooks públicos recebem conversationId,
-workspacePaths e eventos do ciclo de execução. O CLI público agentapi consulta
-metadados de uma conversa conhecida, mas não lista todas as sessões. Portanto,
-esta integração observa apenas sessões que emitirem hooks após a conexão; não
-consulta logs, bancos privados, credenciais ou protocolos internos.
 
 - [x] Criar contrato e monitor de metadados dos hooks, com limites e isolamento
       entre conexões e sessões.
-- [x] Implementar transporte local em memória e helper nativo de hooks com
-      respostas neutras que preservem as políticas do Antigravity.
 - [x] Instalar/remover somente a entrada de hooks do Strata mediante ação explícita
       no popup, preservando configurações de terceiros.
 - [x] Integrar o monitor no serviço compartilhado e exibir sessões no accordion,
       incluindo limitações de cobertura e estados desconhecido/desconectado.
 - [x] Validar contrato público, transporte Windows com eventos sintéticos, testes
       de UI e builds; revisar a implementação e fazer commit.
-- [ ] Validar emissão pelo Antigravity real e interação no popup WebView2 para
-      concluir a aceitação nativa do ticket.
 
 Hooks candidatos: SessionStart, PreInvocation, PreToolUse/PostToolUse restritos a
 ask_question/ask_permission e Stop. PreToolUse delega à política padrão com allow
 (não auto_approve); Stop nunca força continuação. Sucesso requer model_stop com
 fullyIdle verdadeiro e ausência de erro. Outras aprovações não são inferidas.
-
-Fonte: [documentação oficial dos hooks](https://antigravity.google/docs/hooks).
 
 Entrega e limites:
 
@@ -924,11 +845,6 @@ Validação:
 - Seis testes nativos novos passaram: projeção de estados, conclusão explícita,
   atenção/expiração, ordem de eventos, preservação de configurações e transporte.
 - Suíte Rust completa: 137 passaram e 11 ignorados.
-- O teste explícito Windows lançou o helper release pelo comando gerado para o
-  hook, conferiu stdout neutro e entrega de metadados ao monitor. Usou eventos
-  sintéticos e não abriu tarefa ou enviou mensagem no Antigravity.
-- A evidência do bridge informa explicitamente que a emissão pelo Antigravity
-  real ainda não foi verificada. Não equivale a um teste do provedor ponta a ponta.
 - Suíte frontend completa: 233 passaram e a falha preexistente da posição de áudio
   permaneceu. Gate agregado limitado pela formatação preexistente.
 - A configuração global real de hooks não foi alterada durante os testes.
@@ -937,8 +853,22 @@ Validação:
   aceitação do provedor permanece parcial até a validação real descrita abaixo.
 - Implementação registrada no commit `42b916d`.
 
-Para validar com o provedor real: iniciar o novo Strata, ativar os hooks no
-accordion e reabrir o Antigravity. Uma sessão iniciada ou retomada normalmente
-pelo usuário deve então emitir os eventos. Conferir atenção, conclusão, desconexão
-e desativação sem alterar os hooks de terceiros. Esta etapa e o teste visual do
-WebView2 permanecem pendentes; não declarar aceitação nativa completa.
+## Contrato atual — STR-6 e STR-7
+
+O widget está habilitado no catálogo e no layout inicial. Codex e OpenCode
+continuam independentes e são os únicos provedores do contrato.
+
+O contrato de snapshots é versão 10, definido em Rust e exportado pelo build
+para TypeScript. A configuração mantém versão 2 e ignora preferências antigas
+dos provedores removidos, preservando as preferências dos provedores restantes.
+
+A barra conta somente sessões atuais em `attention` de fontes conectadas e
+visíveis. Alertas históricos de conclusão e a pausa da fila não tornam o widget
+destrutivo. Zero sessões em atenção restaura a apresentação normal.
+
+O popup `agentsAlert` usa o overlay compartilhado e a política de foco,
+fullscreen e fechamento explícito dos alertas de lembretes. O backend agenda
+a abertura apenas quando o widget está configurado na barra principal e há
+atenção nova; a resolução da atenção fecha o popup sincronizado. O browser
+continua restrito ao adapter demo. Evidências anteriores permanecem imutáveis
+em `docs/evidence/`; validação nova deve registrar suas próprias limitações.

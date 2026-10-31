@@ -142,9 +142,7 @@ const monitorOverride = z.object({
 })
 
 const agentVisibility = z.object({
-  chatgpt: z.boolean().default(true),
   opencode: z.boolean().default(true),
-  antigravity: z.boolean().default(true),
   codex: z.boolean().default(true)
 })
 

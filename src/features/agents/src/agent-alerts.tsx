@@ -7,8 +7,6 @@ import { Trash } from 'lucide-react'
 
 const labels = {
   opencode: 'OpenCode',
-  antigravity: 'Antigravity',
-  chatgpt: 'ChatGPT Desktop',
   codex: 'Codex local'
 } as const
 

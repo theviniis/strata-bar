@@ -18,25 +18,15 @@ import { createDemoAgentsAdapter } from '@/services/system/agents'
 import { SettingsView } from '../settings/settings-view'
 import { rememberNavigation } from '../settings/navigation'
 
-vi.mock('@/services/configuration/widget-flags', async (importOriginal) => {
-  const original =
-    await importOriginal<
-      typeof import('@/services/configuration/widget-flags')
-    >()
-  return {
-    ...original,
-    isWidgetAvailable: (
-      type: Parameters<typeof original.isWidgetAvailable>[0]
-    ) => type === 'agents' || original.isWidgetAvailable(type)
-  }
-})
-
 function agentConfig() {
   const config = structuredClone(defaultConfig)
+  for (const section of ['left', 'center', 'right'] as const) {
+    config.widgets[section] = config.widgets[section].filter(
+      (widget) => widget.id !== 'agents'
+    )
+  }
   config.agents.visible = {
-    chatgpt: true,
     opencode: true,
-    antigravity: true,
     codex: true
   }
   config.widgets.left.push(widgetSchema.parse({ id: 'agents', type: 'agents' }))
@@ -1014,9 +1004,7 @@ it('applies per-agent visibility checkboxes through the normal save', async () =
       expect.objectContaining({
         agents: {
           visible: {
-            chatgpt: true,
             opencode: true,
-            antigravity: true,
             codex: false
           }
         }
@@ -1322,7 +1310,6 @@ it('edits agent visibility only in the shared draft and reverts without saving',
 it('runs integration actions immediately and keeps them independent of Apply and Revert', async () => {
   const openCode = vi.spyOn(agentAdapter, 'setOpenCode')
   const codex = vi.spyOn(agentAdapter, 'setCodex')
-  const antigravity = vi.spyOn(agentAdapter, 'setAntigravity')
   await openAgentEditor()
   await openWidgetSettings('Agentes')
   expect(
@@ -1337,11 +1324,6 @@ it('runs integration actions immediately and keeps them independent of Apply and
   await screen.findByRole('button', { name: 'Desativar hooks do Codex' })
   expect(codex).toHaveBeenCalledExactlyOnceWith(true)
   fireEvent.click(
-    screen.getByRole('button', { name: 'Ativar hooks do Antigravity' })
-  )
-  await screen.findByRole('button', { name: 'Desativar hooks do Antigravity' })
-  expect(antigravity).toHaveBeenCalledExactlyOnceWith(true)
-  fireEvent.click(
     screen.getByRole('checkbox', { name: 'Mostrar Codex na barra' })
   )
   fireEvent.click(screen.getByRole('button', { name: 'Reverter' }))
@@ -1352,13 +1334,8 @@ it('runs integration actions immediately and keeps them independent of Apply and
   )
   expect(openCode).toHaveBeenCalledTimes(1)
   expect(codex).toHaveBeenCalledTimes(1)
-  expect(antigravity).toHaveBeenCalledTimes(1)
   expect(bridge.configSave).not.toHaveBeenCalled()
-  for (const name of [
-    'Desconectar OpenCode',
-    'Desativar hooks do Codex',
-    'Desativar hooks do Antigravity'
-  ]) {
+  for (const name of ['Desconectar OpenCode', 'Desativar hooks do Codex']) {
     fireEvent.click(screen.getByRole('button', { name }))
     await waitFor(() =>
       expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
@@ -1366,7 +1343,6 @@ it('runs integration actions immediately and keeps them independent of Apply and
   }
   expect(openCode).toHaveBeenLastCalledWith(false)
   expect(codex).toHaveBeenLastCalledWith(false)
-  expect(antigravity).toHaveBeenLastCalledWith(false)
 })
 
 it('shows native integration failures without changing the draft or claiming a connection', async () => {

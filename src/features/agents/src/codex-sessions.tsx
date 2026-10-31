@@ -48,8 +48,8 @@ export function CodexSessions({
       <p className="text-body text-muted-foreground">
         Pedidos de aprovação aparecem como atenção. Turnos encerrados ficam
         ociosos: o hook não comprova sucesso. Sem eventos por dois minutos,
-        processamento e atenção ficam desconhecidos. Criar sessões, responder e
-        notificações do Codex ainda não estão disponíveis.
+        processamento e atenção ficam desconhecidos. Criar sessões e responder
+        pelo Strata ainda não estão disponíveis.
       </p>
     </div>
   )

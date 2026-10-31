@@ -3,7 +3,6 @@ import type {
   AgentsSnapshot,
   AgentSession,
   OpenCodeSnapshot,
-  AntigravitySnapshot,
   CreateAgentSessionResult,
   AgentMessage,
   AgentReplyRequest,
@@ -18,7 +17,6 @@ export type {
   SessionStatus,
   AgentsSnapshot,
   OpenCodeSnapshot,
-  AntigravitySnapshot,
   CreateAgentSessionResult,
   AgentMessage,
   AgentReplyRequest,
@@ -33,12 +31,8 @@ export type {
 const session: z.ZodType<AgentSession> = z
   .object({
     id: z.string().min(1).max(128),
-    agent: z.enum(['opencode', 'antigravity', 'codex']),
-    connectionId: z.enum([
-      'opencode-local',
-      'antigravity-hooks',
-      'codex-hooks'
-    ]),
+    agent: z.enum(['opencode', 'codex']),
+    connectionId: z.enum(['opencode-local', 'codex-hooks']),
     title: z.string().min(1).max(1024),
     directory: z.string().min(1).max(4096),
     status: z.enum([
@@ -57,8 +51,7 @@ const session: z.ZodType<AgentSession> = z
     value.agent === 'opencode'
       ? value.connectionId === 'opencode-local' &&
         /^ses[A-Za-z0-9_-]*$/.test(value.id)
-      : value.connectionId ===
-          (value.agent === 'codex' ? 'codex-hooks' : 'antigravity-hooks') &&
+      : value.connectionId === 'codex-hooks' &&
         /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
           value.id
         )
@@ -151,20 +144,6 @@ const opencode: z.ZodType<OpenCodeSnapshot> = z
       )
   )
 
-const antigravity: z.ZodType<AntigravitySnapshot> = z
-  .object({
-    status: z.enum(['disabled', 'connecting', 'connected', 'disconnected']),
-    sessions: z.array(session).max(128),
-    error: z.string().nullable()
-  })
-  .strict()
-  .refine(
-    (value) =>
-      value.sessions.every((session) => session.agent === 'antigravity') &&
-      new Set(value.sessions.map((session) => session.id)).size ===
-        value.sessions.length
-  )
-
 const alerts: z.ZodType<AgentAlertsSnapshot> = z
   .object({
     items: z
@@ -172,7 +151,7 @@ const alerts: z.ZodType<AgentAlertsSnapshot> = z
         z
           .object({
             id: z.string().regex(/^agent-alert-[1-9][0-9]{0,9}$/),
-            agent: z.enum(['opencode', 'antigravity']),
+            agent: z.enum(['opencode', 'codex']),
             sessionId: z.string().min(1).max(128),
             sessionTitle: z.string().max(1024),
             kind: z.enum(['attention', 'completed']),
@@ -192,7 +171,7 @@ const alerts: z.ZodType<AgentAlertsSnapshot> = z
 
 const schema: z.ZodType<AgentsSnapshot> = z
   .object({
-    version: z.literal(9),
+    version: z.literal(10),
     notifications: z
       .object({
         status: z.enum([
@@ -213,15 +192,14 @@ const schema: z.ZodType<AgentsSnapshot> = z
       .array(
         z
           .object({
-            agent: z.enum(['chatgpt', 'opencode', 'antigravity', 'codex']),
+            agent: z.enum(['opencode', 'codex']),
             running: z.boolean().nullable()
           })
           .strict()
       )
-      .length(4),
+      .length(2),
     error: z.string().nullable(),
     opencode,
-    antigravity,
     codex: z
       .object({
         status: z.enum(['disabled', 'connecting', 'connected', 'disconnected']),
@@ -238,7 +216,7 @@ const schema: z.ZodType<AgentsSnapshot> = z
   })
   .strict()
   .refine(
-    (value) => new Set(value.applications.map((app) => app.agent)).size === 4
+    (value) => new Set(value.applications.map((app) => app.agent)).size === 2
   )
 
 export function parseAgentsSnapshot(value: unknown): AgentsSnapshot {
@@ -263,7 +241,6 @@ export interface AgentsAdapter {
   replyOpenCode(request: AgentReplyRequest): Promise<void>
   load(): Promise<AgentsSnapshot>
   setOpenCode(enabled: boolean): Promise<AgentsSnapshot>
-  setAntigravity(enabled: boolean): Promise<AgentsSnapshot>
   setCodex(enabled: boolean): Promise<AgentsSnapshot>
   createOpenCode(
     directory?: string,
@@ -309,12 +286,6 @@ export function createNativeAgentsAdapter(): AgentsAdapter {
         await invoke('agents_set_opencode', { enabled })
       )
     },
-    async setAntigravity(enabled) {
-      const { invoke } = await import('@tauri-apps/api/core')
-      return parseAgentsSnapshot(
-        await invoke('agents_set_antigravity', { enabled })
-      )
-    },
     async setCodex(enabled) {
       const { invoke } = await import('@tauri-apps/api/core')
       return parseAgentsSnapshot(await invoke('agents_set_codex', { enabled }))
@@ -335,16 +306,14 @@ export function createNativeAgentsAdapter(): AgentsAdapter {
 export function createDemoAgentsAdapter(): AgentsAdapter {
   const listeners = new Set<(snapshot: AgentsSnapshot) => void>()
   let snapshot: AgentsSnapshot = {
-    version: 9,
+    version: 10,
     notifications: { status: 'demo', skipped: 0 },
     alerts: { items: [], overflowCount: 0, paused: false },
     revision: 0,
     observedAt: Date.now(),
     error: null,
     applications: [
-      { agent: 'chatgpt', running: true },
       { agent: 'opencode', running: true },
-      { agent: 'antigravity', running: true },
       { agent: 'codex', running: true }
     ],
     opencode: {
@@ -356,7 +325,6 @@ export function createDemoAgentsAdapter(): AgentsAdapter {
       hasMore: false,
       error: null
     },
-    antigravity: { status: 'disabled', sessions: [], error: null },
     codex: { status: 'disabled', sessions: [], error: null }
   }
   return {
@@ -510,19 +478,6 @@ export function createDemoAgentsAdapter(): AgentsAdapter {
               hasMore: false,
               error: null
             }
-      }
-      for (const listener of listeners) listener(structuredClone(snapshot))
-      return structuredClone(snapshot)
-    },
-    async setAntigravity(enabled) {
-      snapshot = {
-        ...snapshot,
-        revision: snapshot.revision + 1,
-        antigravity: {
-          status: enabled ? 'connecting' : 'disabled',
-          sessions: [],
-          error: null
-        }
       }
       for (const listener of listeners) listener(structuredClone(snapshot))
       return structuredClone(snapshot)

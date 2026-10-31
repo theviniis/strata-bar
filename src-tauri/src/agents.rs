@@ -12,32 +12,27 @@ pub fn observe(
     source: impl FnOnce() -> Result<Vec<String>, String>,
 ) -> AgentsSnapshot {
     let result = source();
-    let applications = [
-        AgentType::Chatgpt,
-        AgentType::Opencode,
-        AgentType::Antigravity,
-        AgentType::Codex,
-    ]
-    .into_iter()
-    .map(|agent| {
-        let names: &[&str] = match agent {
-            AgentType::Chatgpt => &["chatgpt.exe"],
-            AgentType::Opencode => &["opencode.exe", "opencode-desktop.exe", "opencode-cli.exe"],
-            AgentType::Antigravity => &["antigravity.exe"],
-            AgentType::Codex => &["codex.exe"],
-        };
-        AgentApplication {
-            agent,
-            running: result.as_ref().ok().map(|processes| {
-                processes
-                    .iter()
-                    .any(|process| names.iter().any(|name| process.eq_ignore_ascii_case(name)))
-            }),
-        }
-    })
-    .collect();
+    let applications = [AgentType::Opencode, AgentType::Codex]
+        .into_iter()
+        .map(|agent| {
+            let names: &[&str] = match agent {
+                AgentType::Opencode => {
+                    &["opencode.exe", "opencode-desktop.exe", "opencode-cli.exe"]
+                }
+                AgentType::Codex => &["codex.exe"],
+            };
+            AgentApplication {
+                agent,
+                running: result.as_ref().ok().map(|processes| {
+                    processes
+                        .iter()
+                        .any(|process| names.iter().any(|name| process.eq_ignore_ascii_case(name)))
+                }),
+            }
+        })
+        .collect();
     AgentsSnapshot {
-        version: 9,
+        version: 10,
         revision,
         observed_at: SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -46,7 +41,6 @@ pub fn observe(
         applications,
         error: result.err(),
         opencode: Default::default(),
-        antigravity: Default::default(),
         codex: Default::default(),
         alerts: Default::default(),
         notifications: Default::default(),
@@ -102,8 +96,6 @@ enum Wake {
 struct Shared {
     snapshot: AgentsSnapshot,
     connection: crate::opencode::Connection,
-    antigravity: crate::antigravity::Monitor,
-    hook_bridge: Option<crate::antigravity_hooks::Bridge>,
     codex: crate::codex::Monitor,
     codex_bridge: Option<crate::codex_hooks::Bridge>,
     codex_error: Option<String>,
@@ -115,7 +107,6 @@ impl Shared {
     fn updated(&mut self) -> AgentsSnapshot {
         self.snapshot.revision = self.snapshot.revision.saturating_add(1);
         self.snapshot.opencode = self.connection.snapshot();
-        self.snapshot.antigravity = self.antigravity.snapshot();
         self.codex.expire(now());
         self.snapshot.codex = crate::agents_contract::CodexSnapshot {
             status: if self.codex_bridge.is_none() {
@@ -143,9 +134,9 @@ impl Shared {
                 .collect(),
             error: self.codex_error.clone(),
         };
-        let emitted =
-            self.alerts
-                .observe(&self.snapshot.opencode, &self.snapshot.antigravity, now());
+        let emitted = self
+            .alerts
+            .observe(&self.snapshot.opencode, &self.snapshot.codex, now());
         self.notifications.enqueue(emitted);
         self.snapshot.alerts = self.alerts.snapshot();
         self.snapshot.notifications = self.notifications.snapshot();
@@ -161,6 +152,11 @@ fn now() -> f64 {
 }
 
 fn publish(app: &tauri::AppHandle, snapshot: &AgentsSnapshot) {
+    let application = app.clone();
+    let next = snapshot.clone();
+    let _ = app.run_on_main_thread(move || {
+        let _ = crate::desktop::request_agents_alert(&application, &next);
+    });
     for (label, window) in app.webview_windows() {
         if snapshot_window(&label) {
             let _ = window.emit("agents:snapshot", snapshot);
@@ -177,13 +173,19 @@ pub struct Agents {
 }
 
 impl Agents {
+    #[cfg(debug_assertions)]
+    pub(crate) fn connect_check(&self, root: &std::path::Path) -> Result<(), String> {
+        let mut current = self.shared.lock().map_err(|_| "Agentes indisponíveis")?;
+        current.codex_bridge = Some(crate::codex_hooks::Bridge::open_check(root)?);
+        current.codex_error = None;
+        Ok(())
+    }
+
     pub fn start(app: tauri::AppHandle) -> std::io::Result<Self> {
         let notifications = crate::agent_notifications::Notifications::start()?;
         let shared = Arc::new(Mutex::new(Shared {
             snapshot: observe(0, crate::agents_windows::process_names),
             connection: Default::default(),
-            antigravity: Default::default(),
-            hook_bridge: None,
             codex: Default::default(),
             codex_bridge: None,
             codex_error: None,
@@ -201,8 +203,6 @@ impl Agents {
         };
         let application = app.clone();
         let codex_app = app.clone();
-        let hook_app = app.clone();
-        let hook_state = shared.clone();
         let process_state = shared.clone();
         let worker = std::thread::Builder::new()
             .name("strata-agents".into())
@@ -216,12 +216,6 @@ impl Agents {
                         break;
                     };
                     next.revision = current.snapshot.revision;
-                    let running = next
-                        .applications
-                        .iter()
-                        .find(|app| app.agent == AgentType::Antigravity)
-                        .and_then(|app| app.running);
-                    current.antigravity.refresh(next.observed_at, running);
                     current.snapshot = next;
                     let next = current.updated();
                     drop(current);
@@ -263,47 +257,6 @@ impl Agents {
             .lock()
             .unwrap()
             .push((agents.opencode_wake.clone(), worker));
-        let (stop, receiver) = mpsc::channel();
-        let worker = std::thread::Builder::new()
-            .name("strata-antigravity".into())
-            .spawn(move || loop {
-                match receiver.recv_timeout(Duration::from_millis(100)) {
-                    Ok(Wake::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                    _ => {}
-                }
-                let receiver = hook_state.lock().ok().and_then(|current| {
-                    current
-                        .hook_bridge
-                        .as_ref()
-                        .and_then(|bridge| bridge.receiver.duplicate().ok())
-                });
-                let Some(receiver) = receiver else { continue };
-                let result = receiver.poll();
-                let Ok(mut current) = hook_state.lock() else {
-                    break;
-                };
-                if !current
-                    .hook_bridge
-                    .as_ref()
-                    .is_some_and(|bridge| bridge.receiver.token == receiver.token)
-                {
-                    continue;
-                }
-                let changed = match result {
-                    Ok(Some(message)) => current.antigravity.receive(message).unwrap_or(false),
-                    Ok(None) => false,
-                    Err(error) => {
-                        current.antigravity.fail(error);
-                        true
-                    }
-                };
-                if changed {
-                    let snapshot = current.updated();
-                    drop(current);
-                    publish(&hook_app, &snapshot);
-                }
-            })?;
-        agents.workers.lock().unwrap().push((stop, worker));
         let codex_state = agents.shared.clone();
         let (stop, receiver) = mpsc::channel();
         let worker = std::thread::Builder::new()
@@ -354,8 +307,6 @@ impl Agents {
     pub fn stop(&self) {
         if let Ok(mut current) = self.shared.lock() {
             current.connection.configure(false);
-            current.antigravity.configure(false);
-            current.hook_bridge.take();
             current.codex_bridge.take();
             current.codex = Default::default();
         }
@@ -382,27 +333,6 @@ impl Agents {
             .send(Wake::Refresh)
             .map_err(|_| "OpenCode worker unavailable")?;
         Ok(snapshot)
-    }
-    fn configure_antigravity(&self, enabled: bool) -> Result<AgentsSnapshot, String> {
-        let mut current = self
-            .shared
-            .lock()
-            .map_err(|_| "Agent discovery unavailable")?;
-        if enabled {
-            if current.hook_bridge.is_none() {
-                let bridge = crate::antigravity_hooks::Bridge::install()?;
-                current.hook_bridge = Some(bridge);
-                current.antigravity.configure(true);
-            }
-        } else {
-            current.antigravity.configure(false);
-            if let Some(bridge) = current.hook_bridge.take() {
-                if let Err(error) = bridge.remove() {
-                    current.antigravity.cleanup_failed(error);
-                }
-            }
-        }
-        Ok(current.updated())
     }
 }
 
@@ -638,21 +568,6 @@ pub async fn agents_decide_opencode(
     })?
 }
 
-#[tauri::command]
-pub fn agents_set_antigravity(
-    window: tauri::WebviewWindow,
-    app: tauri::AppHandle,
-    state: tauri::State<Agents>,
-    enabled: bool,
-) -> Result<AgentsSnapshot, String> {
-    if !configuration_window(window.label()) {
-        return Err("Antigravity connection requires Settings".into());
-    }
-    let snapshot = state.configure_antigravity(enabled)?;
-    publish(&app, &snapshot);
-    Ok(snapshot)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -670,21 +585,19 @@ mod tests {
     }
 
     #[test]
-    fn discovery_groups_processes_without_creating_sessions() {
+    fn discovery_groups_supported_processes_without_creating_sessions() {
         let snapshot = observe(1, || {
             Ok(vec![
-                "ChatGPT.exe".into(),
-                "CHATGPT.EXE".into(),
-                "Antigravity.exe".into(),
+                "opencode.exe".into(),
                 "codex.exe".into(),
                 "not-opencode.exe".into(),
             ])
         });
-        assert_eq!(snapshot.applications.len(), 4);
-        assert_eq!(snapshot.applications[3].running, Some(true));
+        assert_eq!(snapshot.applications.len(), 2);
+        assert_eq!(snapshot.applications[0].agent, AgentType::Opencode);
         assert_eq!(snapshot.applications[0].running, Some(true));
-        assert_eq!(snapshot.applications[1].running, Some(false));
-        assert_eq!(snapshot.applications[2].running, Some(true));
+        assert_eq!(snapshot.applications[1].agent, AgentType::Codex);
+        assert_eq!(snapshot.applications[1].running, Some(true));
         assert!(snapshot.error.is_none());
     }
 
@@ -694,7 +607,7 @@ mod tests {
         assert!(failed.applications.iter().all(|app| app.running.is_none()));
         assert_eq!(failed.error.as_deref(), Some("Access denied"));
         let recovered = observe(2, || Ok(vec!["opencode-cli.exe".into()]));
-        assert_eq!(recovered.applications[1].running, Some(true));
+        assert_eq!(recovered.applications[0].running, Some(true));
         assert!(recovered.error.is_none());
     }
 

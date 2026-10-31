@@ -1,0 +1,48 @@
+{
+  "version": 10,
+  "revision": 0,
+  "observedAt": 1793387828487.0,
+  "applications": [
+    {
+      "agent": "opencode",
+      "running": true
+    },
+    {
+      "agent": "openbot",
+      "running": null
+    },
+    {
+      "agent": "codex",
+      "running": true
+    }
+  ],
+  "error": null,
+  "opencode": {
+    "status": "disabled",
+    "sessions": [],
+    "hasMore": false,
+    "questions": [],
+    "permissions": [],
+    "completedTurns": {},
+    "error": null
+  },
+  "openbot": {
+    "status": "disabled",
+    "sessions": [],
+    "error": "Integração OpenBot indisponível; monitor ainda não definido"
+  },
+  "codex": {
+    "status": "disabled",
+    "sessions": [],
+    "error": null
+  },
+  "alerts": {
+    "items": [],
+    "overflowCount": 0,
+    "paused": false
+  },
+  "notifications": {
+    "status": "checking",
+    "skipped": 0
+  }
+}

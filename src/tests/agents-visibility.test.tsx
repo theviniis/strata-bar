@@ -9,10 +9,8 @@ function reset() {
   localStorage.clear()
   const config = structuredClone(defaultConfig)
   config.agents.visible = {
-    chatgpt: true,
     opencode: true,
-    codex: true,
-    antigravity: true
+    codex: true
   }
   useConfig.setState({ config, error: null })
 }
@@ -25,11 +23,26 @@ afterEach(() => {
 it('defaults legacy configurations to the existing agent visibility', () => {
   const { agents: _agents, ...legacy } = defaultConfig
   expect(parseConfig(JSON.stringify(legacy)).agents.visible).toEqual({
-    chatgpt: true,
     opencode: true,
-    codex: true,
-    antigravity: true
+    codex: true
   })
+})
+
+it('drops the obsolete OpenBot visibility while retaining provider settings and layout', () => {
+  const previousConfig = {
+    ...defaultConfig,
+    agents: {
+      visible: {
+        ...defaultConfig.agents.visible,
+        codex: false,
+        openbot: true
+      }
+    }
+  }
+  const parsed = parseConfig(JSON.stringify(previousConfig))
+
+  expect(parsed.agents.visible).toEqual({ opencode: true, codex: false })
+  expect(parsed.widgets).toEqual(defaultConfig.widgets)
 })
 
 it('consumes saved visibility changes without offering popup preferences', async () => {
@@ -40,10 +53,10 @@ it('consumes saved visibility changes without offering popup preferences', async
     screen.queryByRole('button', { name: 'Selecionar agentes' })
   ).not.toBeInTheDocument()
   const config = structuredClone(useConfig.getState().config)
-  config.agents.visible.chatgpt = false
+  config.agents.visible.codex = false
   act(() => useConfig.setState({ config }))
   expect(
-    screen.queryByRole('tab', { name: 'ChatGPT Desktop' })
+    screen.queryByRole('tab', { name: 'Codex local' })
   ).not.toBeInTheDocument()
   expect(screen.getByRole('tab', { name: 'OpenCode' })).toHaveAttribute(
     'aria-selected',
@@ -55,10 +68,8 @@ it('consumes saved visibility changes without offering popup preferences', async
         ...config,
         agents: {
           visible: {
-            chatgpt: false,
             opencode: false,
-            codex: false,
-            antigravity: false
+            codex: false
           }
         }
       }

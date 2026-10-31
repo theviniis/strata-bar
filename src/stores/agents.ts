@@ -19,7 +19,6 @@ type AgentsState = {
   connect(): () => void
   refresh(): Promise<void>
   configureOpenCode(enabled: boolean): Promise<void>
-  configureAntigravity(enabled: boolean): Promise<void>
   configureCodex(enabled: boolean): Promise<void>
   createOpenCode(
     directory?: string,
@@ -97,9 +96,6 @@ export function createAgentsStore(adapter: AgentsAdapter) {
       },
       async configureOpenCode(enabled) {
         accept(await adapter.setOpenCode(enabled))
-      },
-      async configureAntigravity(enabled) {
-        accept(await adapter.setAntigravity(enabled))
       },
       async configureCodex(enabled) {
         accept(await adapter.setCodex(enabled))

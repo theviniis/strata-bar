@@ -189,6 +189,7 @@ it('ships the installation layout without machine-specific routing or monitors',
   expect(ids('left')).toEqual(['workspaces'])
   expect(ids('center')).toEqual(['cpu', 'gpu', 'memory', 'disk'])
   expect(ids('right')).toEqual([
+    'agents',
     'music',
     'separator-4',
     'volume',

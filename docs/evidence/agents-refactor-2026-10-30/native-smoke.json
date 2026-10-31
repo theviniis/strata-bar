@@ -1,0 +1,186 @@
+{
+  "alert": {
+    "count": 1,
+    "dialog": true
+  },
+  "attention": {
+    "attention": true,
+    "label": "Abrir agentes de IA, 1 alertas",
+    "native": true,
+    "visible": true
+  },
+  "bars": [
+    {
+      "client": [
+        1920,
+        49
+      ],
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "rect": [
+        756,
+        -1046,
+        2676,
+        -997
+      ],
+      "reservationRect": [
+        756,
+        -1046,
+        2676,
+        -1013
+      ],
+      "title": "Strata · \\\\.\\DISPLAY24",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "client": [
+        3440,
+        49
+      ],
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "rect": [
+        0,
+        34,
+        3440,
+        83
+      ],
+      "reservationRect": [
+        0,
+        34,
+        3440,
+        67
+      ],
+      "title": "Strata · \\\\.\\DISPLAY23",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "client": [
+        1920,
+        51
+      ],
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "rect": [
+        756,
+        -1080,
+        2676,
+        -1029
+      ],
+      "reservationRect": [
+        756,
+        -1080,
+        2676,
+        -1046
+      ],
+      "title": "Strata · \\\\.\\DISPLAY24",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "client": [
+        3440,
+        51
+      ],
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "rect": [
+        0,
+        0,
+        3440,
+        51
+      ],
+      "reservationRect": [
+        0,
+        0,
+        3440,
+        34
+      ],
+      "title": "Strata · \\\\.\\DISPLAY23",
+      "toolWindow": true,
+      "topmost": false,
+      "visible": true
+    }
+  ],
+  "explicitCloseStaysClosedWithSecondSession": true,
+  "focusPreserved": true,
+  "monitors": [
+    {
+      "monitor": [
+        0,
+        0,
+        3440,
+        1440
+      ],
+      "workArea": [
+        0,
+        67,
+        3440,
+        1440
+      ]
+    },
+    {
+      "monitor": [
+        756,
+        -1080,
+        2676,
+        0
+      ],
+      "workArea": [
+        756,
+        -1013,
+        2676,
+        0
+      ]
+    }
+  ],
+  "newEpisodeReopens": true,
+  "normal": {
+    "attention": false,
+    "label": "Abrir agentes de IA",
+    "native": true,
+    "visible": true
+  },
+  "overlay": {
+    "counters": {
+      "hides": 0,
+      "positions": 2,
+      "shows": 1
+    },
+    "pinned": [],
+    "present": true,
+    "window": {
+      "clickThrough": false,
+      "komorebiEligible": false,
+      "rect": [
+        1541,
+        67,
+        1901,
+        219
+      ],
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    }
+  },
+  "passed": true,
+  "resolved": {
+    "attention": false,
+    "label": "Abrir agentes de IA",
+    "native": true,
+    "visible": true
+  },
+  "resolvedClosesOverlay": true,
+  "snapshotVersion": 10,
+  "syntheticMetadata": true,
+  "transport": "real Codex helper/TCP/native worker/Tauri IPC/WebView2/Win32"
+}

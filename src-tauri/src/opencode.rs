@@ -906,7 +906,7 @@ mod tests {
     fn live_opencode_real_turn_generates_one_completion_alert() {
         use crate::{
             agent_alerts::Alerts,
-            agents_contract::{AgentAlertKind, AntigravitySnapshot},
+            agents_contract::{AgentAlertKind, CodexSnapshot},
         };
         let path = installed_cli().unwrap();
         let selected_model = std::env::var("STRATA_TEST_OPENCODE_MODEL")
@@ -983,7 +983,7 @@ mod tests {
                 Ok(snapshot)
             };
             let mut alerts = Alerts::default();
-            let absent = AntigravitySnapshot::default();
+            let absent = CodexSnapshot::default();
             let now = || {
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)

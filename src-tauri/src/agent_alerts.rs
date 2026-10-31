@@ -1,6 +1,6 @@
 use crate::agents_contract::{
     AgentAlert, AgentAlertKind, AgentAlertsSnapshot, AgentConnectionStatus, AgentSession,
-    AntigravitySnapshot, OpenCodeSnapshot, SessionStatus,
+    CodexSnapshot, OpenCodeSnapshot, SessionStatus,
 };
 use std::collections::{BTreeMap, HashSet};
 
@@ -127,7 +127,7 @@ impl Source {
 #[derive(Default)]
 pub struct Alerts {
     opencode: Source,
-    antigravity: Source,
+    codex: Source,
     seen: HashSet<String>,
     snapshot: AgentAlertsSnapshot,
     next_id: u32,
@@ -141,7 +141,7 @@ impl Alerts {
     pub fn observe(
         &mut self,
         opencode: &OpenCodeSnapshot,
-        antigravity: &AntigravitySnapshot,
+        codex: &CodexSnapshot,
         at: f64,
     ) -> Vec<AgentAlert> {
         if !at.is_finite() || !(0.0..=8_640_000_000_000_000.0).contains(&at) {
@@ -177,9 +177,9 @@ impl Alerts {
                 false,
             )
             .into_iter()
-            .chain(self.antigravity.observe(
-                &antigravity.status,
-                &antigravity.sessions,
+            .chain(self.codex.observe(
+                &codex.status,
+                &codex.sessions,
                 &BTreeMap::new(),
                 &BTreeMap::new(),
                 true,
@@ -265,10 +265,34 @@ mod tests {
         }
     }
 
+    fn codex_snapshot(monitor: &crate::codex::Monitor, connected: bool) -> CodexSnapshot {
+        CodexSnapshot {
+            status: if connected {
+                AgentConnectionStatus::Connected
+            } else {
+                AgentConnectionStatus::Disconnected
+            },
+            sessions: monitor
+                .sessions()
+                .iter()
+                .map(|value| AgentSession {
+                    id: value.id.clone(),
+                    agent: AgentType::Codex,
+                    connection_id: "codex-hooks".into(),
+                    title: "Codex session".into(),
+                    directory: value.directory.clone(),
+                    status: value.status.clone(),
+                    updated_at: value.updated_at,
+                })
+                .collect(),
+            error: None,
+        }
+    }
+
     #[test]
     fn only_new_alerts_are_forwarded_to_the_native_notification_transport() {
         let mut alerts = Alerts::default();
-        let absent = AntigravitySnapshot::default();
+        let absent = CodexSnapshot::default();
         let baseline = alerts.observe(&source(SessionStatus::Processing, 1000.0), &absent, 1000.0);
         assert!(baseline.is_empty());
         let next = alerts.observe(&source(SessionStatus::Completed, 2000.0), &absent, 2000.0);
@@ -281,7 +305,7 @@ mod tests {
     #[test]
     fn uncertainty_does_not_disarm_an_observed_run() {
         let mut alerts = Alerts::default();
-        let absent = AntigravitySnapshot::default();
+        let absent = CodexSnapshot::default();
         alerts.observe(&source(SessionStatus::Processing, 1000.0), &absent, 1000.0);
         alerts.observe(&source(SessionStatus::Unknown, 130000.0), &absent, 130000.0);
         assert!(alerts.snapshot().items.is_empty());
@@ -296,7 +320,7 @@ mod tests {
     #[test]
     fn an_old_success_outcome_cannot_complete_a_new_observed_run() {
         let mut alerts = Alerts::default();
-        let absent = AntigravitySnapshot::default();
+        let absent = CodexSnapshot::default();
         alerts.observe(&source(SessionStatus::Processing, 2000.0), &absent, 2000.0);
         let mut stale = source(SessionStatus::Completed, 2500.0);
         stale.completed_turns.insert("ses_test".into(), 1000.0);
@@ -308,43 +332,49 @@ mod tests {
 
     #[test]
     fn hook_attention_is_deduplicated_and_reconnection_does_not_announce_offline_completion() {
-        use crate::antigravity::{HookEvent, Monitor};
+        use crate::codex::Monitor;
         let mut alerts = Alerts::default();
         let mut monitor = Monitor::default();
-        monitor.configure(true);
-        let raw = serde_json::json!({"conversationId":"11111111-1111-1111-1111-111111111111","workspacePaths":[],"toolCall":{"name":"ask_question"},"terminationReason":"model_stop","fullyIdle":true}).to_string();
-        for (event, at) in [
-            (HookEvent::SessionStart, 1000.0),
-            (HookEvent::PreInvocation, 2000.0),
-            (HookEvent::PreToolUse, 3000.0),
-            (HookEvent::PreToolUse, 4000.0),
-        ] {
-            monitor.observe(event, &raw, at).unwrap();
-            alerts.observe(&OpenCodeSnapshot::default(), &monitor.snapshot(), at);
-        }
+        let raw = |event: &str, turn: Option<&str>| {
+            serde_json::json!({
+                "session_id":"11111111-1111-1111-1111-111111111111",
+                "cwd":"D:\\project",
+                "hook_event_name":event,
+                "turn_id":turn
+            })
+            .to_string()
+        };
+        monitor.observe(&raw("SessionStart", None), 1000.0).unwrap();
+        monitor
+            .observe(&raw("UserPromptSubmit", Some("turn-1")), 2000.0)
+            .unwrap();
+        alerts.observe(
+            &OpenCodeSnapshot::default(),
+            &codex_snapshot(&monitor, true),
+            2000.0,
+        );
+        monitor
+            .observe(&raw("PermissionRequest", Some("turn-1")), 3000.0)
+            .unwrap();
+        let snapshot = codex_snapshot(&monitor, true);
+        alerts.observe(&OpenCodeSnapshot::default(), &snapshot, 3000.0);
+        alerts.observe(&OpenCodeSnapshot::default(), &snapshot, 4000.0);
         assert_eq!(alerts.snapshot().items.len(), 1);
-        monitor.refresh(4500.0, Some(false));
-        alerts.observe(&OpenCodeSnapshot::default(), &monitor.snapshot(), 4500.0);
-        monitor.observe(HookEvent::Stop, &raw, 5000.0).unwrap();
-        alerts.observe(&OpenCodeSnapshot::default(), &monitor.snapshot(), 5000.0);
+        monitor
+            .observe(&raw("Stop", Some("turn-1")), 5000.0)
+            .unwrap();
+        alerts.observe(
+            &OpenCodeSnapshot::default(),
+            &codex_snapshot(&monitor, true),
+            5000.0,
+        );
         assert_eq!(alerts.snapshot().items.len(), 1);
-        for (event, at) in [
-            (HookEvent::PreInvocation, 6000.0),
-            (HookEvent::PreToolUse, 7000.0),
-            (HookEvent::Stop, 8000.0),
-            (HookEvent::Stop, 9000.0),
-        ] {
-            monitor.observe(event, &raw, at).unwrap();
-            alerts.observe(&OpenCodeSnapshot::default(), &monitor.snapshot(), at);
-        }
-        assert_eq!(alerts.snapshot().items.len(), 3);
-        assert_eq!(alerts.snapshot().items[2].kind, AgentAlertKind::Completed);
     }
 
     #[test]
     fn the_queue_is_bounded_and_dismissing_does_not_reset_the_deduplication_budget() {
         let mut alerts = Alerts::default();
-        let absent = AntigravitySnapshot::default();
+        let absent = CodexSnapshot::default();
         alerts.observe(&source(SessionStatus::Idle, 0.0), &absent, 0.0);
         for index in 1..=4097 {
             let at = f64::from(index * 2);
@@ -375,75 +405,9 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Requires the release helper on Windows; synthetic hooks only, no provider task or UI is started"]
-    fn live_windows_helper_generates_alerts_without_ui_consumers() {
-        use crate::antigravity::{HookEvent, Monitor};
-        use crate::antigravity_hooks::Receiver;
-        use std::{
-            io::Write,
-            os::windows::process::CommandExt,
-            process::{Command, Stdio},
-        };
-        let receiver = Receiver::bind().unwrap();
-        let executable =
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("target/release/strata-bar.exe");
-        assert!(executable.is_file());
-        let mut monitor = Monitor::default();
-        monitor.configure(true);
-        let mut alerts = Alerts::default();
-        let raw = serde_json::json!({"conversationId":"11111111-1111-1111-1111-111111111111","workspacePaths":[],"toolCall":{"name":"ask_question"},"terminationReason":"model_stop","fullyIdle":true}).to_string();
-        for event in [
-            HookEvent::SessionStart,
-            HookEvent::PreInvocation,
-            HookEvent::PreToolUse,
-            HookEvent::PreToolUse,
-            HookEvent::Stop,
-            HookEvent::Stop,
-        ] {
-            let mut child = Command::new(&executable)
-                .args([
-                    "--antigravity-hook",
-                    &receiver.port().unwrap().to_string(),
-                    &receiver.token,
-                    event.name(),
-                ])
-                .creation_flags(0x08000000)
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::null())
-                .spawn()
-                .unwrap();
-            child
-                .stdin
-                .take()
-                .unwrap()
-                .write_all(raw.as_bytes())
-                .unwrap();
-            let output = child.wait_with_output().unwrap();
-            assert!(output.status.success());
-            assert_eq!(
-                String::from_utf8(output.stdout).unwrap().trim(),
-                event.response()
-            );
-            let message = receiver
-                .poll()
-                .unwrap()
-                .expect("No helper metadata received");
-            let at = message.observed_at;
-            monitor.receive(message).unwrap();
-            alerts.observe(&OpenCodeSnapshot::default(), &monitor.snapshot(), at);
-        }
-        let snapshot = alerts.snapshot();
-        assert_eq!(snapshot.items.len(), 2);
-        assert_eq!(snapshot.items[0].kind, AgentAlertKind::Attention);
-        assert_eq!(snapshot.items[1].kind, AgentAlertKind::Completed);
-        println!("AGENT_ALERTS {{\"helperTransportVerified\":true,\"syntheticHookEvents\":true,\"attentionAndCompletionGenerated\":true,\"duplicateAlertsSuppressed\":true,\"uiConsumersPresent\":false,\"providerEventsVerified\":false,\"webviewInteractionVerified\":false,\"windowsToastUsed\":false,\"conversationContentRecorded\":false}}");
-    }
-
-    #[test]
     fn new_questions_alert_once_and_acknowledging_an_old_list_preserves_new_alerts() {
         let mut alerts = Alerts::default();
-        let absent = AntigravitySnapshot::default();
+        let absent = CodexSnapshot::default();
         let mut snapshot = source(SessionStatus::Attention, 1000.0);
         let question = |id: &str| AgentMessage {
             id: id.into(),
@@ -474,7 +438,7 @@ mod tests {
     #[test]
     fn successful_observed_runs_alert_once_without_consumers_and_not_on_startup_or_reconnect() {
         let mut alerts = Alerts::default();
-        let absent = AntigravitySnapshot::default();
+        let absent = CodexSnapshot::default();
         alerts.observe(&source(SessionStatus::Completed, 1000.0), &absent, 1000.0);
         assert!(alerts.snapshot().items.is_empty());
         alerts.observe(&source(SessionStatus::Processing, 2000.0), &absent, 2000.0);

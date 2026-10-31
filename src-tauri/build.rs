@@ -101,7 +101,6 @@ fn main() {
         agents_contract::AgentSession::decl(),
         agents_contract::AgentConnectionStatus::decl(),
         agents_contract::OpenCodeSnapshot::decl(),
-        agents_contract::AntigravitySnapshot::decl(),
         agents_contract::CodexSnapshot::decl(),
         agents_contract::AgentsSnapshot::decl(),
     ];

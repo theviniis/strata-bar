@@ -1,0 +1,107 @@
+{
+  "capturedAt": "2026-10-30T16:09:10.3049778-03:00",
+  "monitors": [
+    {
+      "monitor": [
+        0,
+        0,
+        3440,
+        1440
+      ],
+      "workArea": [
+        0,
+        34,
+        3440,
+        1440
+      ]
+    },
+    {
+      "monitor": [
+        756,
+        -1080,
+        2676,
+        0
+      ],
+      "workArea": [
+        756,
+        -1046,
+        2676,
+        0
+      ]
+    }
+  ],
+  "bars": [
+    {
+      "client": [
+        1920,
+        51
+      ],
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "rect": [
+        756,
+        -1080,
+        2676,
+        -1029
+      ],
+      "reservationRect": [
+        756,
+        -1080,
+        2676,
+        -1046
+      ],
+      "title": "Strata · \\\\.\\DISPLAY24",
+      "toolWindow": true,
+      "topmost": true,
+      "visible": true
+    },
+    {
+      "client": [
+        3440,
+        51
+      ],
+      "dpi": 96,
+      "komorebiEligible": false,
+      "noActivate": false,
+      "rect": [
+        0,
+        0,
+        3440,
+        51
+      ],
+      "reservationRect": [
+        0,
+        0,
+        3440,
+        34
+      ],
+      "title": "Strata · \\\\.\\DISPLAY23",
+      "toolWindow": true,
+      "topmost": false,
+      "visible": true
+    }
+  ],
+  "overlay": {
+    "counters": {
+      "hides": 0,
+      "positions": 0,
+      "shows": 0
+    },
+    "pinned": [],
+    "present": true,
+    "window": {
+      "clickThrough": true,
+      "komorebiEligible": false,
+      "rect": [
+        130,
+        164,
+        266,
+        203
+      ],
+      "toolWindow": true,
+      "topmost": true,
+      "visible": false
+    }
+  }
+}

@@ -3,10 +3,8 @@
   "version": 2,
   "agents": {
     "visible": {
-      "chatgpt": false,
-      "opencode": false,
-      "antigravity": false,
-      "codex": false
+      "opencode": true,
+      "codex": true
     }
   },
   "bar": {
@@ -64,6 +62,14 @@
       }
     ],
     "right": [
+      {
+        "id": "agents",
+        "type": "agents",
+        "enabled": true,
+        "intervalMs": 2000,
+        "format": "label",
+        "tooltip": true
+      },
       {
         "id": "music",
         "type": "music",

@@ -100,7 +100,7 @@ mod tests {
         .unwrap();
         let alert = AgentAlert {
             id: "agent-alert-1".into(),
-            agent: AgentType::Antigravity,
+            agent: AgentType::Opencode,
             session_id: "session".into(),
             session_title: "Title".into(),
             kind: AgentAlertKind::Completed,

@@ -49,12 +49,14 @@ it('renders agent count and forwards trigger attributes, refs and callbacks only
   const button = screen.getByRole('button', {
     name: 'Abrir agentes de IA, 3 alertas'
   })
+  expect(button.querySelector('svg')).toHaveClass('text-destructive')
   expect(ref).toHaveBeenCalledWith(button)
   expect(button).toHaveAttribute('aria-describedby', 'tip')
   fireEvent.click(button)
   expect(click).toHaveBeenCalledOnce()
   view.rerender(<Agents count={0} paused describedBy={undefined} />)
   expect(screen.queryByLabelText('Alertas de agentes')).not.toBeInTheDocument()
+  expect(button.querySelector('svg')).not.toHaveClass('text-destructive')
   expect(runtime.connect).not.toHaveBeenCalled()
 })
 it('renders question values, pending and errors from the controller props', () => {
@@ -151,7 +153,7 @@ it('keeps the agent tab controlled by props', async () => {
     error: null,
     demo: false,
     applications: snapshot.applications,
-    activeAgent: 'chatgpt' as const,
+    activeAgent: 'codex' as const,
     alerts: null,
     sessions: { opencode: <p>Conteúdo OpenCode</p> },
     onAgentChange: select
@@ -159,7 +161,7 @@ it('keeps the agent tab controlled by props', async () => {
   const view = render(<AgentsPopup {...props} />)
   fireEvent.click(screen.getByRole('tab', { name: 'OpenCode' }))
   expect(select).toHaveBeenCalledWith('opencode')
-  expect(screen.getByRole('tab', { name: 'ChatGPT Desktop' })).toHaveAttribute(
+  expect(screen.getByRole('tab', { name: 'Codex local' })).toHaveAttribute(
     'aria-selected',
     'true'
   )
