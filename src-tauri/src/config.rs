@@ -117,9 +117,8 @@ pub fn project(config: &Config, monitor: Option<&str>) -> Config {
             .chain(&mut projected.widgets.right)
         {
             if let Some(value) = overrides.get(&widget.id) {
-                if let Some(source) = &value.workspace_source {
-                    widget.workspace_source = Some(source.clone());
-                }
+                // The workspace backend belongs to the shared definition.
+                // Legacy per-monitor values remain readable but do not override it.
                 if let Some(direction) = &value.network_direction {
                     widget.network_direction = Some(direction.clone());
                 }
@@ -1293,6 +1292,46 @@ mod tests {
         assert_eq!(normalize_monitor(r"\\.\DISPLAY2"), "DISPLAY2");
         assert_eq!(normalize_monitor("display2"), "DISPLAY2");
         assert_eq!(normalize_monitor("  DISPLAY2  "), "DISPLAY2");
+    }
+
+    #[test]
+    fn workspace_source_is_shared_despite_legacy_monitor_overrides() {
+        let mut config = defaults();
+        config.monitors.insert(
+            "DISPLAY2".into(),
+            BarOverride {
+                widgets: Some(BTreeMap::from([(
+                    "workspaces".into(),
+                    WidgetOverride {
+                        workspace_source: Some(WorkspaceSource::Komorebi),
+                        tooltip: Some(false),
+                        ..Default::default()
+                    },
+                )])),
+                ..Default::default()
+            },
+        );
+        for source in [WorkspaceSource::Windows, WorkspaceSource::Komorebi] {
+            config
+                .widgets
+                .left
+                .iter_mut()
+                .find(|w| w.id == "workspaces")
+                .unwrap()
+                .workspace_source = Some(source.clone());
+            let saved = parse(&serde_json::to_string(&config).unwrap()).unwrap();
+            for monitor in ["DISPLAY1", "DISPLAY2", "DISPLAY3"] {
+                let projected = project(&saved, Some(monitor));
+                let widget = projected
+                    .widgets
+                    .left
+                    .iter()
+                    .find(|w| w.id == "workspaces")
+                    .unwrap();
+                assert_eq!(widget.workspace_source, Some(source.clone()));
+                assert_eq!(widget.tooltip, monitor != "DISPLAY2");
+            }
+        }
     }
 
     #[test]

@@ -175,6 +175,9 @@ export function WidgetInspector({
                 </ToggleGroupItem>
                 <ToggleGroupItem value="komorebi">Komorebi</ToggleGroupItem>
               </ToggleGroup>
+              <FieldDescription>
+                Esta preferência é global e se aplica a todos os monitores.
+              </FieldDescription>
             </Field>
           )}
           <Field>

@@ -47,7 +47,9 @@ function project(config: Config, layout: WidgetLayout, key?: string): Config {
   for (const section of sections)
     widgets[section] = layout[section].map((id) => ({
       ...definitions.get(id)!,
-      ...(key ? config.monitors[key]?.widgets?.[id] : undefined)
+      ...(key ? config.monitors[key]?.widgets?.[id] : undefined),
+      // The workspace backend is shared, including for legacy monitor overrides.
+      workspaceSource: definitions.get(id)!.workspaceSource
     }))
   return { ...config, widgets }
 }
@@ -131,9 +133,21 @@ export function editMonitorDraft(config: Config, monitorId: string) {
     },
     updateWidget(id: string, patch: WidgetEdit): Config {
       const next = structuredClone(config)
+      const { workspaceSource, ...localPatch } = patch
+      if (workspaceSource !== undefined) {
+        const definition = allWidgets(next).find((widget) => widget.id === id)
+        if (definition?.type === 'workspaces') {
+          definition.workspaceSource = workspaceSource
+          for (const override of Object.values(next.monitors)) {
+            const widget = override.widgets?.[id]
+            if (widget) delete widget.workspaceSource
+          }
+        }
+      }
+      if (Object.keys(localPatch).length === 0) return next
       const monitor = (next.monitors[key] ??= {})
       monitor.widgets ??= {}
-      monitor.widgets[id] = { ...monitor.widgets[id], ...patch }
+      monitor.widgets[id] = { ...monitor.widgets[id], ...localPatch }
       return next
     }
   }

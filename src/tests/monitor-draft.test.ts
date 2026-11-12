@@ -2,6 +2,51 @@ import { expect, it } from 'vitest'
 import { configSchema } from '@/services/configuration/config'
 import { editMonitorDraft } from '@/settings/monitor-layout'
 
+it('shares the workspace source across existing and future monitors after saving', () => {
+  const original = configSchema.parse({
+    version: 2,
+    bar: {},
+    widgets: {
+      left: [
+        { id: 'workspaces', type: 'workspaces', workspaceSource: 'windows' }
+      ],
+      center: [],
+      right: []
+    },
+    monitors: {
+      DISPLAY2: {
+        widgets: { workspaces: { workspaceSource: 'komorebi', tooltip: false } }
+      }
+    }
+  })
+  expect(
+    editMonitorDraft(original, 'DISPLAY2').view.widgets.left[0].workspaceSource
+  ).toBe('windows')
+  const updated = editMonitorDraft(original, 'DISPLAY1').updateWidget(
+    'workspaces',
+    {
+      workspaceSource: 'komorebi',
+      format: 'compact'
+    }
+  )
+  const saved = configSchema.parse(JSON.parse(JSON.stringify(updated)))
+  for (const monitor of ['DISPLAY1', 'DISPLAY2', 'future-monitor']) {
+    expect(
+      editMonitorDraft(saved, monitor).view.widgets.left[0].workspaceSource
+    ).toBe('komorebi')
+  }
+  expect(saved.monitors.DISPLAY2.widgets?.workspaces).toEqual({
+    tooltip: false
+  })
+  expect(editMonitorDraft(saved, 'DISPLAY1').view.widgets.left[0].format).toBe(
+    'compact'
+  )
+  expect(editMonitorDraft(saved, 'DISPLAY2').view.widgets.left[0].format).toBe(
+    'label'
+  )
+  expect(original.widgets.left[0].workspaceSource).toBe('windows')
+})
+
 function initialDraft() {
   return configSchema.parse({
     version: 2,
