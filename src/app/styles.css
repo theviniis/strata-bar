@@ -7,6 +7,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@keyframes strata-track-title {
+  0%,
+  12%,
+  100% {
+    transform: translateX(0);
+  }
+
+  50%,
+  62% {
+    transform: translateX(var(--track-title-offset));
+  }
+}
+
 @utility glass-surface {
   @apply backdrop-blur-lg backdrop-saturate-125 inset-shadow-[0_1px_0] inset-shadow-background/60;
 }

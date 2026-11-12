@@ -1,0 +1,89 @@
+{
+  "timestampUtc": "2026-11-10T05:50:16.4342501Z",
+  "executable": "C:\\Program Files\\Strata\\strata-bar.exe",
+  "rootProcessId": 25728,
+  "logicalProcessors": 12,
+  "durationSeconds": 9.9274011,
+  "sensorServiceIncluded": false,
+  "notes": "Strata descendant tree including WebView2; measurement shells excluded. Sensor service inclusion is recorded separately. Working-set sum can double count shared pages. User desktop remained active; short exploratory sample, not a controlled comparison.",
+  "summary": {
+    "meanCpuPercentMachine": 6.093852126147138,
+    "meanPrivateMiB": 499.64990234375,
+    "meanWorkingSetMiB": 900.5029296875,
+    "maxPrivateMiB": 502.2265625
+  },
+  "samples": [
+    {
+      "elapsedSeconds": 1.8316015,
+      "cpuSecondsDelta": 0.875,
+      "cpuPercentMachine": 6.753781337969931,
+      "privateMiB": 500.84765625,
+      "workingSetMiB": 902.796875,
+      "processCount": 10,
+      "handleCount": 5247
+    },
+    {
+      "elapsedSeconds": 2.9002786,
+      "cpuSecondsDelta": 0.78125,
+      "cpuPercentMachine": 6.092033474532829,
+      "privateMiB": 500.63671875,
+      "workingSetMiB": 902.16796875,
+      "processCount": 10,
+      "handleCount": 5247
+    },
+    {
+      "elapsedSeconds": 3.9604843,
+      "cpuSecondsDelta": 0.6875,
+      "cpuPercentMachine": 5.403825565799794,
+      "privateMiB": 497.04296875,
+      "workingSetMiB": 899.10546875,
+      "processCount": 10,
+      "handleCount": 5244
+    },
+    {
+      "elapsedSeconds": 5.0208698,
+      "cpuSecondsDelta": 0.734375,
+      "cpuPercentMachine": 5.771289466582359,
+      "privateMiB": 497.76171875,
+      "workingSetMiB": 899.89453125,
+      "processCount": 10,
+      "handleCount": 5246
+    },
+    {
+      "elapsedSeconds": 6.7373758,
+      "cpuSecondsDelta": 1.65625,
+      "cpuPercentMachine": 8.040801100219477,
+      "privateMiB": 500.7109375,
+      "workingSetMiB": 900.45703125,
+      "processCount": 10,
+      "handleCount": 5246
+    },
+    {
+      "elapsedSeconds": 7.7953619,
+      "cpuSecondsDelta": 0.6875,
+      "cpuPercentMachine": 5.415162511744405,
+      "privateMiB": 498.4140625,
+      "workingSetMiB": 898.37109375,
+      "processCount": 10,
+      "handleCount": 5246
+    },
+    {
+      "elapsedSeconds": 8.861232,
+      "cpuSecondsDelta": 0.6875,
+      "cpuPercentMachine": 5.375107779706616,
+      "privateMiB": 499.55859375,
+      "workingSetMiB": 899.359375,
+      "processCount": 10,
+      "handleCount": 5246
+    },
+    {
+      "elapsedSeconds": 9.9207667,
+      "cpuSecondsDelta": 0.75,
+      "cpuPercentMachine": 5.898815772621697,
+      "privateMiB": 502.2265625,
+      "workingSetMiB": 901.87109375,
+      "processCount": 10,
+      "handleCount": 5246
+    }
+  ]
+}

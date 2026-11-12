@@ -1,5 +1,12 @@
 import { MusicPopupContent } from '@/features/music/popup/music.popup.controller'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within
+} from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { MusicContent } from '@/features/music/widget/music.controller'
 import {
@@ -173,44 +180,41 @@ it('demo media actions update only demo subscribers and dispose cleanly', async 
   expect(receive).toHaveBeenCalledTimes(calls)
 })
 
-it('limits width and scrolls overflowing metadata back and forth, cancelling on unmount', () => {
-  const cancel = vi.fn()
-  const animate = vi.fn(() => ({ cancel }))
-  vi.stubGlobal(
-    'ResizeObserver',
-    class {
-      observe() {}
-      disconnect() {}
-    }
-  )
+it('loops overflowing titles without restarting on hover, focus or metadata refresh', () => {
   const width = vi
     .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
     .mockReturnValue(100)
   const scroll = vi
     .spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
     .mockReturnValue(220)
-  const original = HTMLElement.prototype.animate
-  HTMLElement.prototype.animate = animate as unknown as typeof original
   try {
-    const { unmount } = render(
+    const data = demoMedia()
+    const onAction = vi.fn()
+    const content = (trackId: string) => (
       <MusicContent
-        event={{ status: 'ready', data: demoMedia() }}
-        onAction={vi.fn()}
+        event={{ status: 'ready', data: { ...data, trackId } }}
+        onAction={onAction}
       />
     )
-    act(() => vi.advanceTimersByTime(20))
+    const { rerender } = render(content(data.trackId))
     expect(screen.getByLabelText('Música')).toHaveClass('max-w-45')
-    expect(animate).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({ transform: 'translateX(-120px)' }),
-        { transform: 'translateX(0)', offset: 1 }
-      ]),
-      { duration: 12400, iterations: Infinity, easing: 'linear' }
-    )
-    unmount()
-    expect(cancel).toHaveBeenCalled()
+    const trigger = screen.getByRole('button', {
+      name: 'Abrir player de música'
+    })
+    const label = () =>
+      within(trigger).getByText(`${data.title} — ${data.artist}`)
+    const initial = label()
+    expect(initial).toHaveStyle({
+      animation: 'strata-track-title 15789ms linear infinite'
+    })
+    rerender(content(data.trackId))
+    expect(label()).toBe(initial)
+    fireEvent.pointerEnter(trigger)
+    fireEvent.focus(trigger)
+    expect(label()).toBe(initial)
+    rerender(content('next-track'))
+    expect(label()).not.toBe(initial)
   } finally {
-    HTMLElement.prototype.animate = original
     width.mockRestore()
     scroll.mockRestore()
   }

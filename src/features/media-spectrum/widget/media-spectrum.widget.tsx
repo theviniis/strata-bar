@@ -78,18 +78,12 @@ export function MediaSpectrum({
           transition={{ duration: reducedMotion ? 0 : 0.12 }}
         >
           {(data?.bands ?? idleBands).map((value, index) => (
-            <motion.span
+            <span
               key={index}
               aria-hidden="true"
               data-spectrum-band={index}
               className={bandClasses}
-              initial={false}
-              animate={{ scaleY: 0.05 + value * 0.95 }}
-              transition={
-                reducedMotion
-                  ? { duration: 0 }
-                  : { duration: 0.08, ease: 'easeOut' }
-              }
+              style={{ transform: `scaleY(${0.05 + value * 0.95})` }}
             />
           ))}
         </motion.div>

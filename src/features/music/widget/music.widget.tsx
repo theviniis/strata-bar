@@ -41,7 +41,7 @@ export function Music({
         {...anchorProps}
       >
         <div
-          className="relative isolate flex w-full min-w-0 self-stretch items-center overflow-hidden rounded-full bg-muted/30 mask-[linear-gradient(#000,#000)] px-2 text-foreground backdrop-blur-md shadow-sm shadow-foreground/5"
+          className="relative isolate flex w-full min-w-0 self-stretch items-center overflow-hidden rounded-full bg-muted/30 px-2 text-foreground shadow-sm shadow-foreground/5"
           {...tooltipTrigger}
         >
           {artwork && (
@@ -52,7 +52,7 @@ export function Music({
                 onError={onArtworkError}
                 className="absolute inset-0 h-full w-full object-cover"
               />
-              <span className="absolute inset-0 bg-background/65 backdrop-blur-md" />
+              <span className="absolute inset-0 bg-background/75" />
             </div>
           )}
           <span
