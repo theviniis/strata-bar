@@ -41,6 +41,7 @@ pub enum WidgetKind {
     MediaSpectrum,
     Volume,
     Microphone,
+    VoicemeeterMidiStatus,
     ActiveWindow,
     Workspaces,
 }

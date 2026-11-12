@@ -49,7 +49,9 @@ export const weatherDataSchema = z.object({
 export function parseWeatherEvent(
   event: SystemEvent
 ): SystemEvent<WeatherData> {
-  if (event.status !== 'ready') return event
+  if (event.status !== 'ready') {
+    return { ...event, data: null }
+  }
   const result = weatherDataSchema.safeParse(event.data)
   return result.success
     ? { ...event, data: result.data }

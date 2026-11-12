@@ -209,6 +209,7 @@
                   "mediaSpectrum",
                   "volume",
                   "microphone",
+                  "voicemeeterMidiStatus",
                   "activeWindow",
                   "workspaces"
                 ]
@@ -265,6 +266,7 @@
                   "mediaSpectrum",
                   "volume",
                   "microphone",
+                  "voicemeeterMidiStatus",
                   "activeWindow",
                   "workspaces"
                 ]
@@ -321,6 +323,7 @@
                   "mediaSpectrum",
                   "volume",
                   "microphone",
+                  "voicemeeterMidiStatus",
                   "activeWindow",
                   "workspaces"
                 ]
@@ -419,11 +422,29 @@
                 "marginX": { "type": "number", "minimum": 0, "maximum": 32 }
               },
               "additionalProperties": false
+            },
+            "properties": {
+              "voicemeeterMidiStatus": {
+                "$ref": "#/$defs/widgets/voicemeeterMidiStatus"
+              }
             }
           }
         }
       }
     }
   },
-  "required": ["version", "bar", "widgets"]
+  "required": ["version", "bar", "widgets"],
+  "$defs": {
+    "widgets": {
+      "voicemeeterMidiStatus": {
+        "type": "object",
+        "description": "Monitor de status do dispositivo MIDI (WORLDE easy control) no Voicemeeter",
+        "properties": {
+          "enabled": { "type": "boolean", "default": false },
+          "tooltip": { "type": "boolean", "default": true }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
 }

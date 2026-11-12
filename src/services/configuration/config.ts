@@ -45,6 +45,7 @@ export const types = [
   'mediaSpectrum',
   'volume',
   'microphone',
+  'voicemeeterMidiStatus',
   'activeWindow',
   'workspaces'
 ] as const

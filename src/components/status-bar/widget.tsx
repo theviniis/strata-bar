@@ -14,6 +14,7 @@ import { MicrophoneController } from '../../features/microphone/widget/microphon
 import { MusicController } from '../../features/music/widget/music.controller'
 import { RemindersController } from '../../features/reminders/widget/reminders.controller'
 import { VolumeController } from '../../features/volume/widget/volume.controller'
+import { VoicemeeterMidiStatusController } from '../../features/voicemeeter-midi-status/src/voicemeeter-midi-status.controller'
 import type { ReactElement } from 'react'
 import type { WidgetConfig } from '../../services/configuration/config'
 import { defaultView, viewOf, type WidgetView } from './presentation'
@@ -45,6 +46,7 @@ const widgets: Record<
   mediaSpectrum: () => <MediaSpectrumController />,
   volume: () => <VolumeController />,
   microphone: () => <MicrophoneController />,
+  voicemeeterMidiStatus: () => <VoicemeeterMidiStatusController />,
   workspaces: () => <WorkspacesController />,
   // No native collector is wired for these yet; the bar renders an honest
   // placeholder instead of inventing a reading.

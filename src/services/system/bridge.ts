@@ -40,6 +40,7 @@ export type Channel =
   | 'media'
   | 'mediaSpectrum'
   | 'voicemeeter'
+  | 'voicemeeterMidi'
 
 export type WorkspaceStatus = 'active' | 'populated' | 'empty'
 
@@ -83,6 +84,7 @@ export interface ChannelData {
   activeWindow: string
   workspaces: WorkspacesData
   voicemeeter: VoicemeeterData
+  voicemeeterMidi: MidiDeviceStatus
 }
 
 /**
@@ -107,6 +109,7 @@ export interface DemoChannelData {
   activeWindow: string
   workspaces: WorkspacesData
   voicemeeter: null
+  voicemeeterMidi: MidiDeviceStatus | null
 }
 
 export type SystemStatus = 'loading' | 'ready' | 'unavailable' | 'error'
@@ -114,7 +117,7 @@ export type SystemStatus = 'loading' | 'ready' | 'unavailable' | 'error'
 /** Native event envelope. The event name identifies the channel. */
 export type SystemEvent<D = unknown> =
   | { status: 'loading'; data?: null; timestamp?: number }
-  | { status: 'unavailable'; data?: null; timestamp?: number }
+  | { status: 'unavailable'; data?: D | null; timestamp?: number }
   | { status: 'ready'; data: D; timestamp?: number }
   | { status: 'error'; data?: null; error: string; timestamp?: number }
 
@@ -150,6 +153,25 @@ export interface VoicemeeterData {
   strips: VoicemeeterIo[]
   buses: VoicemeeterIo[]
 }
+
+/** Status of the Worlde MIDI device as reported by the native `midi_device_status` command. */
+export type MidiDeviceStatus =
+  | { status: 'connected'; deviceName: string; lastCheck: number }
+  | {
+      status: 'disconnected'
+      deviceName: string
+      lastCheck: number
+      error: string
+    }
+  | { status: 'checking'; lastCheck: number }
+  | {
+      status: 'unavailable'
+      reason:
+        | 'voicemeeter_not_installed'
+        | 'voicemeeter_not_running'
+        | 'midi_api_error'
+      message?: string
+    }
 
 export interface Subscribable<D extends Record<Channel, unknown>> {
   subscribe<C extends Channel>(
@@ -193,6 +215,8 @@ export interface AdapterBase {
   workspacesAction?(
     value: WorkspacesAction & { source?: 'komorebi' | 'windows' }
   ): Promise<void>
+  /** Native-only: restart the Voicemeeter audio engine via MIDI trigger. */
+  restartVoicemeeterAudioEngine?(): Promise<void>
 }
 
 export interface DemoBridge extends AdapterBase, Subscribable<DemoChannelData> {
@@ -254,6 +278,7 @@ export function demoChannelData(): DemoChannelData {
     audioOutputs: null,
     activeWindow: 'Visual Studio Code',
     voicemeeter: null,
+    voicemeeterMidi: null,
     workspaces: {
       monitor: 0,
       floatOverride: false,
@@ -293,6 +318,18 @@ export function createMockBridge(): DemoBridge {
         const data = values[channel]
         if (channel === 'audioOutputs' || channel === 'audioInputs') {
           listener({ status: 'unavailable', data: null, timestamp: Date.now() })
+        } else if (channel === 'voicemeeterMidi') {
+          const midiData: MidiDeviceStatus = {
+            status: 'unavailable',
+            reason: 'midi_api_error',
+            message: 'Disponível apenas no build nativo (pnpm desktop)'
+          }
+          const event: SystemEvent<MidiDeviceStatus> = {
+            status: 'unavailable',
+            data: midiData,
+            timestamp: Date.now()
+          }
+          listener(event as SystemEvent<DemoChannelData[C]>)
         } else {
           listener({ status: 'ready', data, timestamp: Date.now() })
         }
@@ -552,6 +589,10 @@ export function createNativeBridge(): NativeBridge {
         ...payload,
         source: value.source ?? 'windows'
       })
+    },
+    async restartVoicemeeterAudioEngine() {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke('midi_restart_voicemeeter')
     },
     async quit() {
       const { invoke } = await import('@tauri-apps/api/core')

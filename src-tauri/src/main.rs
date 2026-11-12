@@ -41,6 +41,7 @@ mod disk_contract;
 mod gpu_contract;
 mod memory_contract;
 mod metrics;
+mod midi_monitor;
 #[cfg(debug_assertions)]
 mod monitor_check;
 mod monitors;
@@ -680,7 +681,9 @@ fn main() {
             overlay_ready,
             overlay_exit_complete,
             diagnostics,
-            quit
+            quit,
+            midi_monitor::midi_device_status,
+            midi_monitor::midi_restart_voicemeeter
         ])
         .setup(move |app| {
             if !pinned_check && !agents_check {

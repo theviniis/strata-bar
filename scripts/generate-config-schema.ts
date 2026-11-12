@@ -22,10 +22,33 @@ export const schemaFile = 'config.schema.json'
  * authoring aid, never the gate.
  */
 export async function renderSchema(root = projectRoot) {
-  const schema = z.toJSONSchema(configSchema, { io: 'input' }) as Record<
-    string,
-    unknown
-  >
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const schema = z.toJSONSchema(configSchema, { io: 'input' }) as any
+
+  // Add $defs for widget types to provide editor completions for per-widget config
+  if (!schema.$defs) schema.$defs = {}
+  if (!schema.$defs.widgets) schema.$defs.widgets = {}
+  schema.$defs.widgets.voicemeeterMidiStatus = {
+    type: 'object',
+    description:
+      'Monitor de status do dispositivo MIDI (WORLDE easy control) no Voicemeeter',
+    properties: {
+      enabled: { type: 'boolean', default: false },
+      tooltip: { type: 'boolean', default: true }
+    },
+    additionalProperties: false
+  }
+
+  // Add reference in monitor widget overrides for per-widget-type validation
+  const widgetsProp =
+    schema.properties?.monitors?.additionalProperties?.properties?.widgets
+  if (widgetsProp) {
+    if (!widgetsProp.properties) widgetsProp.properties = {}
+    widgetsProp.properties.voicemeeterMidiStatus = {
+      $ref: '#/$defs/widgets/voicemeeterMidiStatus'
+    }
+  }
+
   // Format with the repo's Prettier config so the generated file and
   // `pnpm format:check` cannot disagree about the same bytes.
   const options = (await resolveConfig(resolve(root, schemaFile))) ?? {}

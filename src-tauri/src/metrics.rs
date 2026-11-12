@@ -1,3 +1,4 @@
+use crate::midi_monitor::{check_midi_device, MidiDeviceStatus};
 use serde_json::{json, Value};
 use std::{
     collections::HashMap,
@@ -193,6 +194,7 @@ impl Metrics {
             "microphone",
             "audioInputs",
             "voicemeeter",
+            "voicemeeterMidi",
         ]
         .contains(&channel.as_str())
         {
@@ -421,6 +423,10 @@ impl Metrics {
             let mut vm_published = false;
             let mut vm_due = Instant::now();
             let mut vm_pending: HashMap<&'static str, VmWrite> = HashMap::new();
+            // MIDI device monitoring for "WORLDE easy control"
+            let mut midi_due = Instant::now();
+            let mut midi_backoff = Duration::from_secs(10);
+            let mut midi_consecutive_errors = 0u32;
             let mut timer = Timer::default();
             let mut ticks = 0;
             let mut devices_active = [false; 2];
@@ -569,6 +575,55 @@ impl Metrics {
                 } else if !vm_wanted {
                     vm_published = false;
                 }
+                // MIDI device monitoring: poll for "WORLDE easy control" device
+                // when the voicemeeterMidi channel has active subscribers.
+                let midi_wanted = self.active("voicemeeterMidi");
+                if midi_wanted && Instant::now() >= midi_due {
+                    match check_midi_device() {
+                        status @ MidiDeviceStatus::Connected { .. } => {
+                            midi_consecutive_errors = 0;
+                            midi_backoff = Duration::from_secs(10);
+                            self.publish(
+                                &app,
+                                "voicemeeterMidi",
+                                envelope(
+                                    "ready",
+                                    serde_json::to_value(&status)
+                                        .expect("MidiDeviceStatus serializes"),
+                                ),
+                            );
+                        }
+                        status @ MidiDeviceStatus::Disconnected { .. } => {
+                            midi_consecutive_errors = 0;
+                            midi_backoff = Duration::from_secs(10);
+                            self.publish(
+                                &app,
+                                "voicemeeterMidi",
+                                envelope(
+                                    "unavailable",
+                                    serde_json::to_value(&status)
+                                        .expect("MidiDeviceStatus serializes"),
+                                ),
+                            );
+                        }
+                        status @ MidiDeviceStatus::Error { .. } => {
+                            midi_consecutive_errors = midi_consecutive_errors.saturating_add(1);
+                            // Exponential backoff: 10s -> 30s -> 60s -> max 5min
+                            midi_backoff = match midi_backoff {
+                                d if d < Duration::from_secs(30) => Duration::from_secs(30),
+                                d if d < Duration::from_secs(60) => Duration::from_secs(60),
+                                d if d < Duration::from_secs(300) => Duration::from_secs(300),
+                                d => d, // cap at 5 minutes
+                            };
+                            self.publish(&app, "voicemeeterMidi", error(status.to_string()));
+                        }
+                    }
+                    midi_due = Instant::now() + midi_backoff;
+                } else if !midi_wanted {
+                    // Reset backoff when no subscribers
+                    midi_consecutive_errors = 0;
+                    midi_backoff = Duration::from_secs(10);
+                }
                 for (index, flow, devices_channel, volume_channel) in [
                     (0, eRender, "audioOutputs", "volume"),
                     (1, eCapture, "audioInputs", "microphone"),
@@ -701,6 +756,9 @@ impl Metrics {
                 let mut wait = timer.next_wait(Instant::now());
                 if vm_wanted {
                     wait = wait.min(vm_due.saturating_duration_since(Instant::now()));
+                }
+                if midi_wanted {
+                    wait = wait.min(midi_due.saturating_duration_since(Instant::now()));
                 }
                 match rx.recv_timeout(wait) {
                     Ok(Request::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => break,

@@ -29,6 +29,7 @@ export const typeLabels: Record<WidgetType, string> = {
   mediaSpectrum: 'Espectro de mídia',
   volume: 'Volume',
   microphone: 'Microfone',
+  voicemeeterMidiStatus: 'Voicemeeter MIDI',
   activeWindow: 'Janela ativa',
   workspaces: 'Workspaces'
 }
