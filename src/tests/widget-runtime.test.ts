@@ -4,8 +4,12 @@ import {
   previewWidgetRuntime
 } from '@/services/system/widget-runtime'
 import { PREVIEW_TIME } from '@/services/system/widget-preview'
+import { bridge } from '@/services/system/bridge'
 
-afterEach(() => vi.useRealTimers())
+afterEach(() => {
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+})
 
 it.each([
   { cadence: 'minute', delay: 15_000 },
@@ -50,4 +54,77 @@ it('keeps preview time fixed and never starts a subscription, clock or effect', 
   expect(vi.getTimerCount()).toBe(0)
   stopChannel()
   stopTime()
+})
+
+it('shares a cadence across consumers and only stops after the last disposal', () => {
+  vi.useFakeTimers()
+  const first = vi.fn()
+  const second = vi.fn()
+  const stopFirst = liveWidgetRuntime.observeTime(first, 1000)
+  const stopSecond = liveWidgetRuntime.observeTime(second, 1000)
+  expect(vi.getTimerCount()).toBe(1)
+  stopFirst()
+  stopFirst()
+  vi.advanceTimersByTime(1000)
+  expect(first).toHaveBeenCalledTimes(1)
+  expect(second).toHaveBeenCalledTimes(2)
+  stopSecond()
+  expect(vi.getTimerCount()).toBe(0)
+})
+
+it('shares compatible subscriptions and cancels pending setup after the final consumer leaves', async () => {
+  const dispose = vi.fn()
+  let resolve: (dispose: () => void) => void = () => {}
+  const subscribe = vi.spyOn(bridge, 'subscribe').mockReturnValue(
+    new Promise((done) => {
+      resolve = done
+    })
+  )
+  const first = liveWidgetRuntime.subscribe(
+    'cpu',
+    { intervalMs: 2000 },
+    vi.fn(),
+    vi.fn()
+  )
+  const second = liveWidgetRuntime.subscribe(
+    'cpu',
+    { intervalMs: 2000 },
+    vi.fn(),
+    vi.fn()
+  )
+  await Promise.resolve()
+  expect(subscribe).toHaveBeenCalledTimes(1)
+  first()
+  first()
+  expect(dispose).not.toHaveBeenCalled()
+  second()
+  resolve(dispose)
+  await new Promise((done) => setTimeout(done, 0))
+  expect(dispose).toHaveBeenCalledTimes(1)
+})
+
+it('keeps different cadences and workspace sources independent', async () => {
+  const dispose = vi.fn()
+  const subscribe = vi.spyOn(bridge, 'subscribe').mockResolvedValue(dispose)
+  const stops = [
+    liveWidgetRuntime.subscribe('cpu', { intervalMs: 1000 }, vi.fn(), vi.fn()),
+    liveWidgetRuntime.subscribe('cpu', { intervalMs: 2000 }, vi.fn(), vi.fn()),
+    liveWidgetRuntime.subscribe(
+      'workspaces',
+      { workspaceSource: 'windows' },
+      vi.fn(),
+      vi.fn()
+    ),
+    liveWidgetRuntime.subscribe(
+      'workspaces',
+      { workspaceSource: 'komorebi' },
+      vi.fn(),
+      vi.fn()
+    )
+  ]
+  await new Promise((done) => setTimeout(done, 0))
+  expect(subscribe).toHaveBeenCalledTimes(4)
+  stops.forEach((stop) => stop())
+  await Promise.resolve()
+  expect(dispose).toHaveBeenCalledTimes(4)
 })

@@ -45,6 +45,93 @@ export function retainChannel<C extends Channel>(
   if (channel !== 'workspaces') retained.set(channel, { event, at: Date.now() })
 }
 
+type Consumer = {
+  value(event: SystemEvent<unknown>): void
+  error(error: unknown): void
+}
+type SharedChannel = {
+  consumers: Set<Consumer>
+  latest?: SystemEvent<unknown>
+  stop: Cleanup
+}
+// A document has its own monitor projection. Only identical subscription
+// options share a transport; changing cadence/source never borrows another's.
+const subscriptions = new Map<string, SharedChannel>()
+function subscribe<C extends Channel>(
+  channel: C,
+  options: SubscribeOptions,
+  listener: (event: SystemEvent<ChannelData[C]>) => void,
+  onError: (error: unknown) => void
+): Cleanup {
+  const normalized = { ...options, intervalMs: options.intervalMs ?? 2000 }
+  // Audio and other interaction channels can resubscribe to confirm changes
+  // in routing or ownership. Share only read-only observation streams here.
+  if (
+    channel !== 'cpu' &&
+    channel !== 'gpu' &&
+    channel !== 'memory' &&
+    channel !== 'disk' &&
+    channel !== 'network' &&
+    channel !== 'mediaSpectrum'
+  ) {
+    return connect<ChannelData, C>(
+      bridge as NativeBridge,
+      channel,
+      normalized,
+      (event) => {
+        retainChannel(channel, event)
+        listener(event)
+      },
+      onError
+    )
+  }
+  const key = JSON.stringify([channel, normalized.intervalMs])
+  const consumer: Consumer = {
+    // The key includes the channel; the bridge validates its payload before
+    // dispatch. Erasure is confined to this heterogeneous document-local map.
+    value: (event) => listener(event as SystemEvent<ChannelData[C]>),
+    error: onError
+  }
+  let entry = subscriptions.get(key)
+  if (entry) {
+    entry.consumers.add(consumer)
+    if (entry.latest) consumer.value(entry.latest)
+  } else {
+    const created: SharedChannel = {
+      consumers: new Set([consumer]),
+      stop: noop
+    }
+    entry = created
+    subscriptions.set(key, created)
+    created.stop = connect<ChannelData, C>(
+      bridge as NativeBridge,
+      channel,
+      normalized,
+      (event) => {
+        retainChannel(channel, event)
+        created.latest = event
+        for (const consumer of created.consumers) consumer.value(event)
+      },
+      (error) => {
+        // A retry must start a new connection, not join a failed setup.
+        if (subscriptions.get(key) === created) subscriptions.delete(key)
+        for (const consumer of created.consumers) consumer.error(error)
+      }
+    )
+  }
+  return () => {
+    if (!entry.consumers.delete(consumer) || entry.consumers.size) return
+    if (subscriptions.get(key) === entry) subscriptions.delete(key)
+    entry.stop()
+  }
+}
+
+type Clock = {
+  listeners: Set<(now: number) => void>
+  timer?: ReturnType<typeof setTimeout>
+}
+const clocks = new Map<number | 'minute', Clock>()
+
 export const liveWidgetRuntime: WidgetRuntime = {
   interactive: true,
   animated: true,
@@ -55,28 +142,33 @@ export const liveWidgetRuntime: WidgetRuntime = {
       ? (value.event as SystemEvent<ChannelData[C]>)
       : { status: 'loading', data: null }
   },
-  subscribe: (channel, options, listener, onError) =>
-    connect<ChannelData, typeof channel>(
-      bridge as NativeBridge,
-      channel,
-      options,
-      (event) => {
-        retainChannel(channel, event)
-        listener(event)
-      },
-      onError
-    ),
+  subscribe,
   observeTime(listener, cadence) {
-    let timer: ReturnType<typeof setTimeout>
-    const tick = () => {
-      listener(Date.now())
-      timer = setTimeout(
-        tick,
-        cadence === 'minute' ? 60000 - (Date.now() % 60000) : cadence
-      )
+    let clock = clocks.get(cadence)
+    if (!clock) {
+      const created: Clock = { listeners: new Set() }
+      clock = created
+      clocks.set(cadence, created)
+      const schedule = () => {
+        created.timer = setTimeout(
+          () => {
+            const now = Date.now()
+            for (const callback of created.listeners) callback(now)
+            if (clocks.get(cadence) === created) schedule()
+          },
+          cadence === 'minute' ? 60000 - (Date.now() % 60000) : cadence
+        )
+      }
+      schedule()
     }
-    tick()
-    return () => clearTimeout(timer)
+    const callback = (now: number) => listener(now)
+    clock.listeners.add(callback)
+    listener(Date.now())
+    return () => {
+      if (!clock.listeners.delete(callback) || clock.listeners.size) return
+      clearTimeout(clock.timer)
+      clocks.delete(cadence)
+    }
   },
   effect: (effect) => effect()
 }
