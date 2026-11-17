@@ -3,14 +3,16 @@ import { mapDataStatus } from '@/components/popup-status'
 import { Button } from '@/components/ui/button'
 import { CardFooter } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
+import { DataLoading, DataUnavaliable } from '@/components/popup-helpers'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Clock,
-  RefreshCw,
-  Cable
-} from 'lucide-react'
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle
+} from '@/components/ui/item'
+import { CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react'
 import {
   type ChannelData,
   type SystemEvent,
@@ -79,105 +81,70 @@ export function VoicemeeterMidiStatusPopup({
 
   return (
     <section aria-label="Status MIDI do Voicemeeter">
-      <div className="p-4 min-w-70">
-        <div className="flex items-center gap-3 mb-4">
-          <Cable size={24} className="text-primary" />
-          <div>
-            <h2 className="text-lg font-semibold">Voicemeeter MIDI Status</h2>
-            <p className="text-sm text-muted-foreground">WORLDE easy control</p>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-            <div
-              className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                isConnected
-                  ? 'bg-green-500/10 text-green-500'
-                  : isDisconnected || hasError
-                    ? 'bg-red-500/10 text-red-500'
-                    : isChecking
-                      ? 'bg-yellow-500/10 text-yellow-500'
-                      : 'bg-gray-500/10 text-gray-500'
-              }`}
-            >
-              {isConnected && <CheckCircle size={20} />}
-              {isDisconnected && <XCircle size={20} />}
-              {isChecking && (
-                <Spinner width={20} height={20} className="text-yellow-500" />
+      <div className="flex min-w-70 flex-col gap-3 p-4">
+        {mapDataStatus('dispositivo MIDI', midiStatus.status)}
+        {(isConnected || isDisconnected) && (
+          <Item variant="outline" size="sm" role="status">
+            <ItemMedia variant="icon">
+              {isConnected ? (
+                <CheckCircle aria-hidden="true" className="text-primary" />
+              ) : (
+                <XCircle aria-hidden="true" className="text-destructive" />
               )}
-              {isUnavailable && <AlertCircle size={20} />}
-            </div>
-            <div className="flex-1">
-              <p className="font-medium">
-                {isConnected && 'Conectado'}
-                {isDisconnected && 'Desconectado'}
-                {isChecking && 'Verificando...'}
-                {isUnavailable && 'Indisponível'}
-                {midiStatus.status === 'error' && 'Erro'}
-              </p>
-              {deviceName && (
-                <p className="text-sm text-muted-foreground">{deviceName}</p>
-              )}
-            </div>
-          </div>
-
-          {lastCheck && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock size={14} />
-              <span>Última verificação: {formatRelativeTime(lastCheck)}</span>
-            </div>
-          )}
-
-          {unavailableReason && (
-            <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-              <strong>Motivo: </strong>
-              {unavailableReason}
-            </div>
-          )}
-
-          {midiStatus.status === 'error' && (
-            <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-              <strong>Erro: </strong>
-              {midiStatus.error}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-2"
-                onClick={dismissError}
-              >
-                Dispensar
-              </Button>
-            </div>
-          )}
-
-          {mapDataStatus('dispositivo MIDI', midiStatus.status)}
-        </div>
-
-        <CardFooter className="gap-2 pt-4 border-t">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={restartAudioEngine}
-            disabled={
-              isRestarting || (!isDisconnected && !hasError && !isUnavailable)
-            }
-            aria-busy={isRestarting}
-          >
-            {isRestarting ? (
-              <>
-                <Spinner width={16} height={16} className="mr-2" />
-                Reiniciando...
-              </>
-            ) : (
-              <>
-                <RefreshCw size={16} className="mr-2" />
-                Reiniciar Audio Engine
-              </>
-            )}
-          </Button>
-        </CardFooter>
+            </ItemMedia>
+            <ItemContent>
+              <ItemTitle>{deviceName}</ItemTitle>
+              <ItemDescription>
+                {isConnected ? 'Conectado' : 'Desconectado'}
+              </ItemDescription>
+            </ItemContent>
+          </Item>
+        )}
+        {isChecking && (
+          <DataLoading
+            title="Verificando dispositivo MIDI"
+            description="Aguarde enquanto verificamos a conexão."
+          />
+        )}
+        {data?.status === 'unavailable' && (
+          <DataUnavaliable
+            title="Dispositivo MIDI indisponível"
+            description={unavailableReason}
+          />
+        )}
+        {lastCheck !== undefined && (
+          <p className="flex items-center gap-2 text-muted-foreground">
+            <Clock size={14} aria-hidden="true" />
+            Última verificação: {formatRelativeTime(lastCheck)}
+          </p>
+        )}
+        {lastError && (
+          <Alert variant="destructive">
+            <AlertDescription>{lastError}</AlertDescription>
+            <Button variant="ghost" size="sm" onClick={dismissError}>
+              Dispensar
+            </Button>
+          </Alert>
+        )}
       </div>
+      <CardFooter>
+        <Button
+          variant="outline"
+          className="flex-1"
+          onClick={restartAudioEngine}
+          disabled={
+            isRestarting || (!isDisconnected && !hasError && !isUnavailable)
+          }
+          aria-busy={isRestarting}
+        >
+          {isRestarting ? (
+            <Spinner data-icon="inline-start" aria-hidden="true" />
+          ) : (
+            <RefreshCw data-icon="inline-start" aria-hidden="true" />
+          )}
+          {isRestarting ? 'Reiniciando...' : 'Reiniciar Audio Engine'}
+        </Button>
+      </CardFooter>
     </section>
   )
 }
