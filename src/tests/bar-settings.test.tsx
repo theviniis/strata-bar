@@ -6,6 +6,28 @@ import { defaultConfig } from '../services/configuration/config'
 vi.mock('../settings/theme-preview', () => ({ ThemePreview: () => null }))
 afterEach(() => vi.unstubAllGlobals())
 
+it('enables the maximized-window background in the settings draft', () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  const onChange = vi.fn()
+  render(<BarSettings draft={defaultConfig} onChange={onChange} />)
+  const toggle = screen.getByRole('switch', {
+    name: 'Preencher fundo quando houver janela maximizada no monitor'
+  })
+  expect(toggle).not.toBeChecked()
+  fireEvent.click(toggle)
+  expect(onChange).toHaveBeenLastCalledWith({
+    ...defaultConfig,
+    bar: { ...defaultConfig.bar, fillOnMaximized: true }
+  })
+})
+
 it('edits shared widget spacing and allows zero spacing', () => {
   vi.stubGlobal(
     'ResizeObserver',

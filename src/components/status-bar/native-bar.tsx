@@ -1,6 +1,7 @@
 import desktopCorner from '@/assets/bar-desktop-corner.svg'
 import { useAudioRouting } from '@/hooks/use-audio-routing'
 import { useBarRegion } from '@/hooks/use-bar-region'
+import { useMaximizedBackground } from '@/hooks/use-maximized-background'
 import { useResolvedTheme } from '@/hooks/use-resolved-theme'
 import { barTextClasses } from '@/lib/typography'
 import { cn } from '@/lib/utils'
@@ -77,7 +78,8 @@ export function NativeBarSurface({
 }) {
   const theme = useResolvedTheme(bar.theme)
   const regionRef = useRef<HTMLElement>(null)
-  useBarRegion(regionRef, bar, preview)
+  const filled = useMaximizedBackground(!preview && !!bar.fillOnMaximized)
+  useBarRegion(regionRef, bar, preview, filled)
   const radius = cornerRadius(bar)
   const edgeMask = groupEdgeMask(bar.height, radius)
   const sections = useMemo(
@@ -110,7 +112,10 @@ export function NativeBarSurface({
               className={cn(
                 !preview && 'native-bar',
                 barTextClasses,
-                'relative grid h-full w-full grid-cols-[1fr_max-content_1fr] grid-rows-1 items-center bg-transparent text-foreground'
+                'relative grid h-full w-full grid-cols-[1fr_max-content_1fr] grid-rows-1 items-center text-foreground',
+                filled ? 'bg-background' : 'bg-transparent',
+                !bar.reduceMotion &&
+                  'transition-[background-color] duration-300 ease-in-out motion-reduce:transition-none'
               )}
               aria-label={ariaLabel}
               style={{ gap: bar.spacing, height: bar.height, flexShrink: 0 }}

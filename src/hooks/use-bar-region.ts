@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import type { Config } from '@/services/configuration/config'
 import { islandRegion } from '@/components/status-bar/bar-region'
 import { cornerRadius } from '@/components/status-bar/curves'
@@ -7,8 +7,10 @@ import { cornerRadius } from '@/components/status-bar/curves'
 export function useBarRegion(
   ref: RefObject<HTMLElement | null>,
   bar: Config['bar'],
-  preview: boolean
+  preview: boolean,
+  filled = false
 ) {
+  const wasFilled = useRef(false)
   useEffect(() => {
     if (preview || !('__TAURI_INTERNALS__' in window)) return
     const root = ref.current
@@ -16,6 +18,23 @@ export function useBarRegion(
     let stopped = false
     let frame = 0
     let last = ''
+    // Keep the HWND paint area through the fade-out. Removing it immediately
+    // would clip the CSS transition back to the island silhouettes.
+    let keepFilled = filled || wasFilled.current
+    wasFilled.current = filled
+    const fadeOut =
+      !filled && keepFilled
+        ? setTimeout(
+            () => {
+              keepFilled = false
+              update()
+            },
+            bar.reduceMotion ||
+              window.matchMedia('(prefers-reduced-motion: reduce)').matches
+              ? 0
+              : 300
+          )
+        : undefined
     const update = () => {
       cancelAnimationFrame(frame)
       frame = requestAnimationFrame(() => {
@@ -35,6 +54,15 @@ export function useBarRegion(
             bar.position === 'bottom'
           )
         })
+        if (keepFilled) {
+          const rect = root.getBoundingClientRect()
+          polygons.push([
+            { x: rect.left, y: rect.top },
+            { x: rect.right, y: rect.top },
+            { x: rect.right, y: rect.bottom },
+            { x: rect.left, y: rect.bottom }
+          ])
+        }
         // A widget can extend beyond a curved background edge; its actual
         // rectangle must remain interactive independently of the island mask.
         root
@@ -83,10 +111,11 @@ export function useBarRegion(
     observeSections()
     return () => {
       stopped = true
+      clearTimeout(fadeOut)
       cancelAnimationFrame(frame)
       resize.disconnect()
       mutation.disconnect()
       window.removeEventListener('resize', update)
     }
-  }, [ref, bar, preview])
+  }, [ref, bar, preview, filled])
 }

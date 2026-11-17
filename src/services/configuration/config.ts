@@ -98,6 +98,7 @@ const bar = z.object({
   separatorMarginX: z.number().min(0).max(32).optional(),
   theme: z.enum(['system', 'dark', 'light']).default('system'),
   reduceMotion: z.boolean().default(false),
+  fillOnMaximized: z.boolean().optional(),
   colorTheme: colorThemeSchema.default('current')
 })
 

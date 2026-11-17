@@ -17,7 +17,7 @@ use std::{
 };
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use windows::{
-    core::w,
+    core::{w, BOOL},
     Win32::{
         Foundation::*,
         Graphics::{
@@ -28,6 +28,47 @@ use windows::{
     },
 };
 const CALLBACK: u32 = WM_APP + 42;
+pub fn bar_has_maximized(window: &WebviewWindow) -> Result<bool, String> {
+    if !window.label().starts_with("bar-") {
+        return Err("Only bars can inspect maximized windows".into());
+    }
+    struct Scan {
+        monitor: HMONITOR,
+        found: bool,
+    }
+    unsafe extern "system" fn visit(hwnd: HWND, param: LPARAM) -> BOOL {
+        let scan = &mut *(param.0 as *mut Scan);
+        if IsWindowVisible(hwnd).as_bool()
+            && IsZoomed(hwnd).as_bool()
+            && !IsIconic(hwnd).as_bool()
+            && MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL) == scan.monitor
+        {
+            let mut cloaked: u32 = 0;
+            if windows::Win32::Graphics::Dwm::DwmGetWindowAttribute(
+                hwnd,
+                windows::Win32::Graphics::Dwm::DWMWA_CLOAKED,
+                &mut cloaked as *mut _ as _,
+                std::mem::size_of::<u32>() as u32,
+            )
+            .is_ok()
+                && cloaked == 0
+            {
+                scan.found = true;
+            }
+        }
+        BOOL(1)
+    }
+    let hwnd = window.hwnd().map_err(|e| e.to_string())?;
+    unsafe {
+        let mut scan = Scan {
+            monitor: MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL),
+            found: false,
+        };
+        EnumWindows(Some(visit), LPARAM(&mut scan as *mut _ as isize))
+            .map_err(|e| e.to_string())?;
+        Ok(scan.found)
+    }
+}
 const REFRESH_GEOMETRY: u32 = WM_APP + 43;
 const FULLSCREEN_TIMER: usize = 0x53544653;
 const SUBCLASS: usize = 0x53545241;

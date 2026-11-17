@@ -304,6 +304,10 @@ async fn overlay_show(
 }
 
 #[tauri::command]
+fn bar_has_maximized(window: tauri::WebviewWindow) -> Result<bool, String> {
+    desktop::bar_has_maximized(&window)
+}
+#[tauri::command]
 fn bar_set_region(
     window: tauri::WebviewWindow,
     polygons: Vec<Vec<bar_region::Point>>,
@@ -675,6 +679,7 @@ fn main() {
             overlay_drag,
             overlay_return,
             bar_set_region,
+            bar_has_maximized,
             overlay_hide,
             overlay_resize,
             overlay_open_complete,

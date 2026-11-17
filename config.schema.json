@@ -176,6 +176,7 @@
           "enum": ["system", "dark", "light"]
         },
         "reduceMotion": { "default": false, "type": "boolean" },
+        "fillOnMaximized": { "type": "boolean" },
         "colorTheme": {
           "default": "current",
           "type": "string",

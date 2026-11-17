@@ -31,6 +31,7 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
   const heightId = useId()
   const positionId = useId()
   const motionId = useId()
+  const maximizedId = useId()
   return (
     <FieldGroup className="@container">
       <SettingsSection title="Temas" wide>
@@ -175,6 +176,19 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
       </SettingsSection>
       <SettingsSection title="Posicionamento e comportamento">
         <FieldGroup>
+          <Field orientation="horizontal" data-disabled={disabled}>
+            <FieldLabel htmlFor={maximizedId}>
+              Preencher fundo quando houver janela maximizada no monitor
+            </FieldLabel>
+            <Switch
+              id={maximizedId}
+              disabled={disabled}
+              checked={draft.bar.fillOnMaximized ?? false}
+              onCheckedChange={(fillOnMaximized) =>
+                onChange({ ...draft, bar: { ...draft.bar, fillOnMaximized } })
+              }
+            />
+          </Field>
           <Field data-disabled={disabled}>
             <FieldTitle id={positionId}>Posição da barra</FieldTitle>
             <ToggleGroup

@@ -192,6 +192,8 @@ pub struct BarConfig {
     pub color_theme: ColorTheme,
     #[serde(default)]
     pub reduce_motion: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill_on_maximized: Option<bool>,
 }
 /// Partial widget behavior; identity is shared, membership and order are separate.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
