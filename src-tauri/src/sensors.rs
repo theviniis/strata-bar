@@ -487,8 +487,9 @@ fn session(active: &AtomicU8, stop: &AtomicBool, cache: &Mutex<Cache>) -> Result
             .enumerate()
             .filter_map(|(i, c)| (mask & (1 << i) != 0).then_some(c))
             .collect();
-        let body = serde_json::to_vec(&json!({"version":1,"type":"subscribe","channels":channels}))
-            .map_err(|e| e.to_string())?;
+        let mut body =
+            serde_json::to_vec(&json!({"version":1,"type":"subscribe","channels":channels}))
+                .map_err(|e| e.to_string())?;
         let deadline = Instant::now() + STALE;
         transfer(
             &mut pipe,
@@ -497,14 +498,15 @@ fn session(active: &AtomicU8, stop: &AtomicBool, cache: &Mutex<Cache>) -> Result
             deadline,
             stop,
         )?;
-        transfer(&mut pipe, &mut body.clone(), true, deadline, stop)?;
+        transfer(&mut pipe, &mut body, true, deadline, stop)?;
         let mut header = [0u8; 4];
         transfer(&mut pipe, &mut header, false, deadline, stop)?;
         let length = frame_length(header)?;
         let mut body = vec![0; length];
         transfer(&mut pipe, &mut body, false, deadline, stop)?;
         let value: Value = serde_json::from_slice(&body).map_err(|e| e.to_string())?;
-        if value == json!({"version":1,"type":"loading"}) { /* waiting for first tick */
+        let delay = if value == json!({"version":1,"type":"loading"}) {
+            Duration::from_millis(500)
         } else {
             let snapshot: Snapshot = serde_json::from_value(value).map_err(|e| e.to_string())?;
             let age = crate::metrics::timestamp() as f64 - snapshot.sampled_at;
@@ -515,15 +517,20 @@ fn session(active: &AtomicU8, stop: &AtomicBool, cache: &Mutex<Cache>) -> Result
                 .lock()
                 .unwrap_or_else(|e| e.into_inner())
                 .accept(snapshot, Instant::now())?;
-        }
+            // The collector ticks every two seconds. Request near the next
+            // sample and retry quickly if collection is still in progress.
+            Duration::from_millis((2050. - age).clamp(500., 2000.) as u64)
+        };
         if mask == 0 {
             return Ok(());
         }
-        for _ in 0..5 {
-            if stop.load(Ordering::Acquire) {
+        let next = Instant::now() + delay;
+        while !stop.load(Ordering::Acquire) && active.load(Ordering::Acquire) == mask {
+            let remaining = next.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
                 break;
             }
-            thread::sleep(Duration::from_millis(100));
+            thread::sleep(remaining.min(Duration::from_millis(100)));
         }
     }
     Ok(())
