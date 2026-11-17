@@ -390,7 +390,6 @@ pub fn start(app: AppHandle) {
             }
             panic!("Reserve document did not finish initialization");
         }
-        wait_ready(app);
         fn sample(phase: &str) -> serde_json::Value {
             let output = std::env::temp_dir().join(format!(
                 "strata-reserve-{}-{phase}-{}.json",
@@ -422,17 +421,28 @@ pub fn start(app: AppHandle) {
             );
             serde_json::from_slice(&std::fs::read(output).unwrap()).unwrap()
         }
-        ui(app, |app| {
-            let label = IDLE.lock().unwrap().pop_front().unwrap();
-            app.get_webview_window(&label).unwrap().destroy().unwrap();
-        });
-        std::thread::sleep(Duration::from_secs(2));
+        assert!(ui(app, |_| IDLE.lock().unwrap().is_empty()));
         let without = sample("without");
-        ui(app, |app| prepare(&app).unwrap());
+        let source = ui(app, |app| {
+            app.webview_windows()
+                .keys()
+                .find(|label| label.starts_with("bar-"))
+                .unwrap()
+                .clone()
+        });
+        open(app, source.clone(), "reserve-cold", "cpu");
+        painted(app, "reserve-cold");
+        let first_host = ui(app, |_| transient_window());
+        ui(app, |app| close(&app, "reserve-cold"));
         wait_ready(app);
         std::thread::sleep(Duration::from_secs(2));
         let with = sample("with");
-        serde_json::json!({"withoutReserve":without,"withReserve":with,
+        open(app, source, "reserve-warm", "cpu");
+        painted(app, "reserve-warm");
+        assert_eq!(ui(app, |_| transient_window()), first_host);
+        ui(app, |app| close(&app, "reserve-warm"));
+        wait_ready(app);
+        serde_json::json!({"withoutReserve":without,"withReserve":with,"reusesWarmHost":true,
             "privateMiBDelta":with["summary"]["meanPrivateMiB"].as_f64().unwrap()-without["summary"]["meanPrivateMiB"].as_f64().unwrap(),
             "cpuPercentMachineDelta":with["summary"]["meanCpuPercentMachine"].as_f64().unwrap()-without["summary"]["meanCpuPercentMachine"].as_f64().unwrap()})
     }
@@ -562,6 +572,9 @@ pub fn start(app: AppHandle) {
             std::thread::sleep(Duration::from_secs(2));
             if std::env::args().any(|arg|arg=="--check-reminder-expiry") { return reminder_expiry(&app); }
             let reserve_cost = reserve_cost(&app);
+            if std::env::args().any(|arg| arg == "--check-popup-reserve") {
+                return serde_json::json!({"passed":true,"reserveCost":reserve_cost});
+            }
             let source = ui(&app, |app| app.webview_windows().keys().find(|l| l.starts_with("bar-")).unwrap().clone());
             let opening_window=trace_opening(&app);
             open(&app, source.clone(), "pin-check-cpu", "cpu");
@@ -769,7 +782,7 @@ pub fn start(app: AppHandle) {
                 release_all(&app);
             });
             wait_pinned(&app,0);
-            serde_json::json!({"passed":true,"reopenings":reopenings,"reusesWarmHost":true,"idleHostLimit":2,"idleAuthorizationRejected":true,"maxMainThreadFrameGapMs":max_opening_gap,"compositorTransformVerified":true,"reserveDeferredUntilOpeningFinishes":true,"opening":opening,"closing":closing,"exitAcknowledgmentMs":close_ms,"pinReadyMs":{"cpu":cpu_pin_ms,"gpu":gpu_pin_ms},"sameWindowInBothDirections":true,"continuity":continuity,"reserveCost":reserve_cost,"returnFailure":return_failure,"initial":initial,"painted":painted_content,"paintSurvivesOtherPopupEvents":true,"geometry":geometry,"multiplePinned":true,"transientAlongsidePinned":true,"returnReplacesTransient":true,"failedTransferPreservesOriginal":true,"cleanup":true,"limits":["Actual pointer dragging, mixed-DPI movement, monitor unplug and external fullscreen application require a manual acceptance run."]})
+            serde_json::json!({"passed":true,"reopenings":reopenings,"reusesWarmHost":true,"idleHostLimit":MAX_IDLE_HOSTS,"idleAuthorizationRejected":true,"maxMainThreadFrameGapMs":max_opening_gap,"compositorTransformVerified":true,"reserveDeferredUntilOpeningFinishes":true,"opening":opening,"closing":closing,"exitAcknowledgmentMs":close_ms,"pinReadyMs":{"cpu":cpu_pin_ms,"gpu":gpu_pin_ms},"sameWindowInBothDirections":true,"continuity":continuity,"reserveCost":reserve_cost,"returnFailure":return_failure,"initial":initial,"painted":painted_content,"paintSurvivesOtherPopupEvents":true,"geometry":geometry,"multiplePinned":true,"transientAlongsidePinned":true,"returnReplacesTransient":true,"failedTransferPreservesOriginal":true,"cleanup":true,"limits":["Actual pointer dragging, mixed-DPI movement, monitor unplug and external fullscreen application require a manual acceptance run."]})
         })).unwrap_or_else(|error| serde_json::json!({"passed":false,"error":error.downcast_ref::<String>().cloned().or_else(||error.downcast_ref::<&str>().map(|s|s.to_string())).unwrap_or("Pinned check panicked".into())}));
         let _ = std::fs::write(
             std::env::temp_dir().join("strata-pinned-check.json"),

@@ -11,7 +11,7 @@ use std::{
 const SUBCLASS_ID: usize = 0x53545049;
 static NEXT: AtomicU64 = AtomicU64::new(0);
 static OWNER: AtomicIsize = AtomicIsize::new(0);
-const MAX_IDLE_HOSTS: usize = 2;
+const MAX_IDLE_HOSTS: usize = 1;
 static IDLE: Mutex<VecDeque<String>> = Mutex::new(VecDeque::new());
 static DOCUMENT_READY: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(Default::default);
 static REPLENISHING: AtomicBool = AtomicBool::new(false);
@@ -829,6 +829,9 @@ pub fn dismiss(
 }
 
 pub fn destroyed(app: &AppHandle, label: &str) {
+    if !label.starts_with("popup-") {
+        return;
+    }
     DOCUMENT_READY.lock().unwrap().remove(label);
     let ids: Vec<_> = WINDOWS
         .lock()

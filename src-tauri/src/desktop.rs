@@ -2,8 +2,7 @@ mod sessions;
 pub use sessions::{
     active_window as is_active_popup_window, destroyed as popup_destroyed,
     dismiss as popup_dismiss, drag as popup_drag, has_window as is_popup_window,
-    hide_request as popup_hide_request, pin as popup_pin, prepare as prepare_popups,
-    return_to_anchor as popup_return,
+    hide_request as popup_hide_request, pin as popup_pin, return_to_anchor as popup_return,
 };
 #[cfg(debug_assertions)]
 pub use sessions::{check as check_pinned, check_source as pinned_check_source};

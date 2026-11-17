@@ -758,9 +758,9 @@ fn main() {
                     monitor_check::start(app.handle().clone());
                 }
             }
-            // Tooltips/alerts share a surface; widget sessions consume a prepared window.
+            // Tooltips and alerts share a surface. Widget popup documents are
+            // created on first use and reused for subsequent openings.
             desktop::ensure_overlay(app.handle())?;
-            desktop::prepare_popups(app.handle())?;
             #[cfg(debug_assertions)]
             if agents_check {
                 agents_check::start(app.handle().clone());
