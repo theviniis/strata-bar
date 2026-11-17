@@ -16,6 +16,13 @@ use tauri::{AppHandle, Emitter};
 
 const INTERNAL: &str = "bar-spectrum-internal";
 const FRAME: Duration = Duration::from_millis(34);
+
+fn same_presentation(previous: &Value, next: &Value) -> bool {
+    previous["status"] == next["status"]
+        && ["sessionId", "generation", "bands"]
+            .iter()
+            .all(|key| previous["data"][*key] == next["data"][*key])
+}
 #[derive(Default)]
 struct Data {
     next: u64,
@@ -104,7 +111,7 @@ impl MediaSpectrum {
             if data
                 .latest
                 .as_ref()
-                .is_some_and(|v| v["status"] == event["status"] && v["data"] == event["data"])
+                .is_some_and(|previous| same_presentation(previous, &event))
             {
                 return;
             }
@@ -414,6 +421,22 @@ pub fn probe() -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn unchanged_bands_ignore_sequence_but_preserve_capture_transitions() {
+        let old = json!({"status":"ready","data":{
+            "sessionId":"player","generation":1,"sequence":1,"bands":[0,0,0,0,0,0]
+        }});
+        let mut next = old.clone();
+        next["data"]["sequence"] = json!(2);
+        assert!(same_presentation(&old, &next));
+        next["data"]["bands"][0] = json!(0.5);
+        assert!(!same_presentation(&old, &next));
+        next = old.clone();
+        next["data"]["generation"] = json!(2);
+        assert!(!same_presentation(&old, &next));
+        assert!(!same_presentation(&old, &json!({"status":"unavailable"})));
+    }
+
     #[test]
     fn tokens_are_owned_and_window_removal_preserves_other_consumers() {
         let (tx, _) = mpsc::channel();

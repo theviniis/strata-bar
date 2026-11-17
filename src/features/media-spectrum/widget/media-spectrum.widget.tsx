@@ -13,9 +13,11 @@ const bandClasses = 'w-px shrink-0 self-stretch rounded-full bg-current'
 
 export function MediaSpectrum({
   data,
+  bandRef,
   demo = false
 }: {
   data: MediaSpectrumData | null
+  bandRef?: (element: HTMLSpanElement | null, index: number) => void
   demo?: boolean
 }) {
   const runtime = useWidgetRuntime()
@@ -46,6 +48,7 @@ export function MediaSpectrum({
         {data.bands.map((value, index) => (
           <span
             key={index}
+            ref={(element) => bandRef?.(element, index)}
             aria-hidden="true"
             data-spectrum-band={index}
             className={bandClasses}
@@ -80,6 +83,7 @@ export function MediaSpectrum({
           {(data?.bands ?? idleBands).map((value, index) => (
             <span
               key={index}
+              ref={(element) => bandRef?.(element, index)}
               aria-hidden="true"
               data-spectrum-band={index}
               className={bandClasses}

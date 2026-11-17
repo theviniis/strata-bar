@@ -13,7 +13,7 @@ pub struct Analyzer {
     scratch: Vec<Complex<f32>>,
     work: Vec<Complex<f32>>,
     channels: usize,
-    rate: u32,
+    bins: Vec<(usize, usize)>,
     cursor: usize,
     filled: usize,
 }
@@ -21,6 +21,19 @@ impl Analyzer {
     pub fn new(rate: u32, channels: usize) -> Self {
         assert!(rate > 0 && (1..=8).contains(&channels));
         let fft = FftPlanner::new().plan_fft_forward(SIZE);
+        let ceiling = 16_000f32.min(rate as f32 / 2.);
+        let ratio_log = (ceiling / 60.).ln();
+        let bins = (1..=SIZE / 2)
+            .filter_map(|k| {
+                let hz = k as f32 * rate as f32 / SIZE as f32;
+                (ceiling > 60. && (60.0..=ceiling).contains(&hz)).then(|| {
+                    let band = ((hz / 60.).ln() / ratio_log * BANDS as f32)
+                        .floor()
+                        .min((BANDS - 1) as f32) as usize;
+                    (k, band)
+                })
+            })
+            .collect();
         Self {
             scratch: vec![Complex::default(); fft.get_inplace_scratch_len()],
             fft,
@@ -30,7 +43,7 @@ impl Analyzer {
             samples: vec![0.; SIZE * channels],
             work: vec![Complex::default(); SIZE],
             channels,
-            rate,
+            bins,
             cursor: 0,
             filled: 0,
         }
@@ -55,11 +68,6 @@ impl Analyzer {
             return [0.; BANDS];
         }
         let mut power = [0f32; BANDS];
-        let ceiling = 16_000f32.min(self.rate as f32 / 2.);
-        if ceiling <= 60. {
-            return power;
-        }
-        let ratio = ceiling / 60.;
         for channel in 0..self.channels {
             for i in 0..SIZE {
                 self.work[i] = Complex::new(
@@ -70,14 +78,7 @@ impl Analyzer {
             }
             self.fft
                 .process_with_scratch(&mut self.work, &mut self.scratch);
-            for k in 1..=SIZE / 2 {
-                let hz = k as f32 * self.rate as f32 / SIZE as f32;
-                if hz < 60. || hz > ceiling {
-                    continue;
-                }
-                let band = ((hz / 60.).ln() / ratio.ln() * BANDS as f32)
-                    .floor()
-                    .min((BANDS - 1) as f32) as usize;
+            for &(k, band) in &self.bins {
                 // Hann coherent gain = .5, noise bandwidth = 1.5 bins.
                 // Sum bin powers so a full-scale sinusoid approaches 0 dBFS.
                 power[band] += self.work[k].norm_sqr() * 16.
