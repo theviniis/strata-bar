@@ -259,6 +259,18 @@ unsafe fn apply_bar_region(hwnd: HWND, geometry: BarGeometry, width: i32) {
         let _ = DeleteObject(outside.into());
         let _ = DeleteObject(circle.into());
     }
+    // This placement path can replace the frontend's island region. Preserve
+    // the antialias fringe here too: GDI regions clip painting with binary alpha.
+    let fringe = CreateRectRgn(0, 0, 0, 0);
+    if !fringe.0.is_null() {
+        CombineRgn(Some(fringe), Some(region), None, RGN_COPY);
+        for (dx, dy) in (-2..=2).flat_map(|dx| (-2..=2).map(move |dy| (dx, dy))) {
+            OffsetRgn(fringe, dx, dy);
+            CombineRgn(Some(region), Some(region), Some(fringe), RGN_OR);
+            OffsetRgn(fringe, -dx, -dy);
+        }
+        let _ = DeleteObject(fringe.into());
+    }
     // Windows owns the region after a successful SetWindowRgn.
     if SetWindowRgn(hwnd, Some(region), true) == 0 {
         let _ = DeleteObject(region.into());
@@ -2307,6 +2319,10 @@ mod geometry_tests {
                 assert!(!PtInRegion(region, 400, outside_y).as_bool());
                 assert!(PtInRegion(region, 0, outside_y).as_bool());
                 assert!(PtInRegion(region, 799, outside_y).as_bool());
+                // The placement region must retain partially covered curve
+                // pixels, just like the region received from the frontend.
+                assert!(PtInRegion(region, 1, outside_y).as_bool());
+                assert!(PtInRegion(region, 798, outside_y).as_bool());
                 assert!(!PtInRegion(region, 16, outside_y).as_bool());
                 geometry.left_corner = false;
                 geometry.right_corner = false;

@@ -1,4 +1,4 @@
-//! Restrict the HWND itself so clear space passes input across process boundaries.
+//! Restrict the HWND while retaining a two-physical-pixel fringe for antialiasing.
 use serde::Deserialize;
 use windows::Win32::{
     Foundation::{HWND, POINT},
@@ -59,6 +59,31 @@ fn apply(hwnd: HWND, polygons: Vec<Vec<Point>>, scale: f64) -> Result<(), String
                 return Err("CombineRgn failed".into());
             }
         }
+        // SetWindowRgn clips painting as well as input, with binary coverage.
+        // Keep a two-physical-pixel fringe around the rounded polygon so the
+        // WebView2 alpha mask, rather than GDI, draws the visible edge. The
+        // fringe also accepts input; the remaining clear gaps stay click-through.
+        let fringe = CreateRectRgn(0, 0, 0, 0);
+        if fringe.0.is_null() {
+            let _ = DeleteObject(region.into());
+            return Err("CreateRectRgn failed".into());
+        }
+        if CombineRgn(Some(fringe), Some(region), None, RGN_COPY) == RGN_ERROR {
+            let _ = DeleteObject(fringe.into());
+            let _ = DeleteObject(region.into());
+            return Err("CombineRgn failed".into());
+        }
+        for (dx, dy) in (-2..=2).flat_map(|dx| (-2..=2).map(move |dy| (dx, dy))) {
+            let moved = OffsetRgn(fringe, dx, dy);
+            let combined = CombineRgn(Some(region), Some(region), Some(fringe), RGN_OR);
+            let restored = OffsetRgn(fringe, -dx, -dy);
+            if moved == RGN_ERROR || combined == RGN_ERROR || restored == RGN_ERROR {
+                let _ = DeleteObject(fringe.into());
+                let _ = DeleteObject(region.into());
+                return Err("Expanding bar region failed".into());
+            }
+        }
+        let _ = DeleteObject(fringe.into());
         // Windows owns the region after success. No HWND position or AppBar
         // reservation is changed, and WebView2 keeps its normal focus behavior.
         if SetWindowRgn(hwnd, Some(region), true) == 0 {
@@ -111,6 +136,27 @@ mod tests {
             assert!(PtInRegion(actual, 30, 20).as_bool());
             assert!(!PtInRegion(actual, 150, 20).as_bool());
             assert!(PtInRegion(actual, 320, 20).as_bool());
+            // A partially covered edge pixel must survive the HWND clip so
+            // WebView2 can composite its antialiased alpha coverage.
+            for scale in [1.0, 1.25, 1.5, 2.0] {
+                apply(
+                    hwnd,
+                    vec![vec![
+                        Point { x: 0.0, y: 0.0 },
+                        Point { x: 40.1, y: 0.0 },
+                        Point { x: 0.0, y: 40.1 },
+                    ]],
+                    scale,
+                )
+                .unwrap();
+                let _ = GetWindowRgn(hwnd, actual);
+                let edge = (20.0_f64 * scale).floor() as i32;
+                assert!(
+                    PtInRegion(actual, edge, edge).as_bool(),
+                    "antialiased edge pixel clipped at scale {scale}"
+                );
+                assert!(!PtInRegion(actual, edge + 4, edge + 4).as_bool());
+            }
             // Replacement removes old hit areas, including an empty layout.
             apply(hwnd, vec![], 1.5).unwrap();
             let _ = GetWindowRgn(hwnd, actual);
