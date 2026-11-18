@@ -70,11 +70,6 @@ export function VoicemeeterMidiStatusPopup({
   const isConnected = data?.status === 'connected'
   const isDisconnected = data?.status === 'disconnected'
   const isChecking = data?.status === 'checking'
-  const isUnavailable =
-    midiStatus.status === 'unavailable' || data?.status === 'unavailable'
-  const hasError =
-    midiStatus.status === 'error' || isDisconnected || !!lastError
-
   const deviceName = getDeviceName(data)
   const lastCheck = getLastCheck(data)
   const unavailableReason = getUnavailableReason(data)
@@ -132,9 +127,7 @@ export function VoicemeeterMidiStatusPopup({
           variant="outline"
           className="flex-1"
           onClick={restartAudioEngine}
-          disabled={
-            isRestarting || (!isDisconnected && !hasError && !isUnavailable)
-          }
+          disabled={isRestarting}
           aria-busy={isRestarting}
         >
           {isRestarting ? (
