@@ -51,7 +51,8 @@ export function useBarRegion(
             { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
             section.dataset.section!,
             cornerRadius(bar),
-            bar.position === 'bottom'
+            bar.position === 'bottom',
+            bar.desktopCorners !== false
           )
         })
         if (keepFilled) {

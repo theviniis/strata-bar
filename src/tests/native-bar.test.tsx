@@ -94,7 +94,29 @@ vi.mock('../services/system/bridge', () => ({
     return () => {}
   }
 }))
-import NativeBar from '../components/status-bar/native-bar'
+import NativeBar, {
+  NativeBarSurface
+} from '../components/status-bar/native-bar'
+import { defaultConfig } from '../services/configuration/config'
+
+it('renders filled and transparent layouts in the bar preview', () => {
+  const { rerender } = render(
+    <NativeBarSurface
+      widgets={{ left: [], center: [], right: [] }}
+      bar={{ ...defaultConfig.bar, background: 'filled' }}
+      preview
+    />
+  )
+  expect(screen.getByRole('navigation')).toHaveClass('bg-background')
+  rerender(
+    <NativeBarSurface
+      widgets={{ left: [], center: [], right: [] }}
+      bar={{ ...defaultConfig.bar, background: 'transparent' }}
+      preview
+    />
+  )
+  expect(screen.getByRole('navigation')).toHaveClass('bg-transparent')
+})
 
 it('preserves the widget pill shape through popup trigger composition', () => {
   render(<NativeBar />)

@@ -14,7 +14,8 @@ export function islandRegion(
   rect: IslandRect,
   section: string,
   radius: number,
-  bottom: boolean
+  bottom: boolean,
+  desktopCorners = true
 ): RegionPoint[][] {
   const { x, y, width, height } = rect
   const r = Math.min(radius, height / 2)
@@ -39,7 +40,7 @@ export function islandRegion(
     return point(width - (section === 'right' ? 0 : edge(v)), v)
   })
   const polygons = [[...left, ...right]]
-  if (section !== 'center' && r > 0) {
+  if (desktopCorners && section !== 'center' && r > 0) {
     const corner = [point(section === 'left' ? 0 : width, height)]
     for (let i = 0; i <= 32; i += 1) {
       const v = (r * i) / 32

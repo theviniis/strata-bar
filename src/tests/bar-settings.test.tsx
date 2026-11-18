@@ -6,6 +6,48 @@ import { defaultConfig } from '../services/configuration/config'
 vi.mock('../settings/theme-preview', () => ({ ThemePreview: () => null }))
 afterEach(() => vi.unstubAllGlobals())
 
+it('selects a filled background while preserving the maximized preference', () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+  const onChange = vi.fn()
+  const draft = {
+    ...defaultConfig,
+    bar: { ...defaultConfig.bar, fillOnMaximized: true }
+  }
+  const { rerender } = render(<BarSettings draft={draft} onChange={onChange} />)
+  fireEvent.click(screen.getByText('Preenchido'))
+  expect(onChange).toHaveBeenLastCalledWith({
+    ...draft,
+    bar: { ...draft.bar, background: 'filled' }
+  })
+  rerender(
+    <BarSettings
+      draft={{ ...draft, bar: { ...draft.bar, background: 'filled' } }}
+      onChange={onChange}
+    />
+  )
+  expect(
+    screen.queryByRole('switch', {
+      name: 'Preencher fundo quando houver janela maximizada no monitor'
+    })
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByText('Posicionamento e comportamento')
+  ).not.toBeInTheDocument()
+  rerender(<BarSettings draft={draft} onChange={onChange} />)
+  const toggle = screen.getByRole('switch', {
+    name: 'Preencher fundo quando houver janela maximizada no monitor'
+  })
+  expect(toggle).toBeEnabled()
+  expect(toggle).toBeChecked()
+})
+
 it('enables the maximized-window background in the settings draft', () => {
   vi.stubGlobal(
     'ResizeObserver',

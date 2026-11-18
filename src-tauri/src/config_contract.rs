@@ -194,6 +194,17 @@ pub struct BarConfig {
     pub reduce_motion: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fill_on_maximized: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub desktop_corners: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background: Option<BarBackground>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum BarBackground {
+    Transparent,
+    Filled,
 }
 /// Partial widget behavior; identity is shared, membership and order are separate.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]

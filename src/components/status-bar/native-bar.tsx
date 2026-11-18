@@ -78,7 +78,10 @@ export function NativeBarSurface({
 }) {
   const theme = useResolvedTheme(bar.theme)
   const regionRef = useRef<HTMLElement>(null)
-  const filled = useMaximizedBackground(!preview && !!bar.fillOnMaximized)
+  const maximized = useMaximizedBackground(
+    !preview && bar.background !== 'filled' && !!bar.fillOnMaximized
+  )
+  const filled = bar.background === 'filled' || maximized
   useBarRegion(regionRef, bar, preview, filled)
   const radius = cornerRadius(bar)
   const edgeMask = groupEdgeMask(bar.height, radius)
@@ -148,23 +151,26 @@ export function NativeBarSurface({
                         : 0
                   }}
                 >
-                  {name !== 'center' && widgets.length > 0 && radius > 0 && (
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        'pointer-events-none absolute bg-background',
-                        name === 'left' ? 'left-0' : 'right-0 -scale-x-100',
-                        bar.position === 'bottom'
-                          ? 'bottom-full -scale-y-100'
-                          : 'top-full'
-                      )}
-                      style={{
-                        width: radius,
-                        height: radius,
-                        mask: `url("${desktopCorner}") center / 100% 100% no-repeat`
-                      }}
-                    />
-                  )}
+                  {bar.desktopCorners !== false &&
+                    name !== 'center' &&
+                    widgets.length > 0 &&
+                    radius > 0 && (
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          'pointer-events-none absolute bg-background',
+                          name === 'left' ? 'left-0' : 'right-0 -scale-x-100',
+                          bar.position === 'bottom'
+                            ? 'bottom-full -scale-y-100'
+                            : 'top-full'
+                        )}
+                        style={{
+                          width: radius,
+                          height: radius,
+                          mask: `url("${desktopCorner}") center / 100% 100% no-repeat`
+                        }}
+                      />
+                    )}
                   {(widgets.length > 0 || (name === 'right' && error)) && (
                     <div
                       aria-hidden="true"

@@ -175,11 +175,14 @@ impl BarGeometry {
         let height = (bar.height as f64 * scale).round() as i32;
         Self {
             height,
-            radius: bar
-                .corner_radius
-                .map(|radius| (radius * scale).round() as i32)
-                .unwrap_or(height / 2)
-                .clamp(0, height / 2),
+            radius: if bar.desktop_corners == Some(false) {
+                0
+            } else {
+                bar.corner_radius
+                    .map(|radius| (radius * scale).round() as i32)
+                    .unwrap_or(height / 2)
+                    .clamp(0, height / 2)
+            },
             bottom: bar.position == crate::config_contract::BarPosition::Bottom,
             left_corner: config.widgets.left.iter().any(|widget| widget.enabled),
             right_corner: config.widgets.right.iter().any(|widget| widget.enabled),
@@ -2259,6 +2262,9 @@ mod geometry_tests {
         config.bar.height = 36;
         config.bar.corner_radius = None;
         assert_eq!(BarGeometry::from_config(&config, 1.5).radius, 27);
+        config.bar.desktop_corners = Some(false);
+        assert_eq!(BarGeometry::from_config(&config, 1.5).radius, 0);
+        config.bar.desktop_corners = None;
         for (radius, expected) in [(0.0, 0), (8.0, 12), (40.0, 27)] {
             config.bar.corner_radius = Some(radius);
             let geometry = BarGeometry::from_config(&config, 1.5);

@@ -20,7 +20,9 @@ export function StudioBar({ config }: { config: Config }) {
     return () => observer.disconnect()
   }, [])
   const scale = Math.min(1, width / BAR_WIDTH)
-  const height = config.bar.height + cornerRadius(config.bar)
+  const height =
+    config.bar.height +
+    (config.bar.desktopCorners === false ? 0 : cornerRadius(config.bar))
   return (
     <div
       ref={ref}

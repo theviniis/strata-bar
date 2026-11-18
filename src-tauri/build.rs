@@ -218,6 +218,7 @@ fn main() {
         config_contract::BarTheme::decl(),
         config_contract::ColorTheme::decl(),
         config_contract::BarConfig::decl(),
+        config_contract::BarBackground::decl(),
         config_contract::WidgetOverride::decl(),
         config_contract::BarOverride::decl(),
         config_contract::WidgetSections::decl(),

@@ -176,7 +176,9 @@
           "enum": ["system", "dark", "light"]
         },
         "reduceMotion": { "default": false, "type": "boolean" },
+        "desktopCorners": { "type": "boolean" },
         "fillOnMaximized": { "type": "boolean" },
+        "background": { "type": "string", "enum": ["transparent", "filled"] },
         "colorTheme": {
           "default": "current",
           "type": "string",

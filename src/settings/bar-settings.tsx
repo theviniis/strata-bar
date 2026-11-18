@@ -32,6 +32,8 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
   const positionId = useId()
   const motionId = useId()
   const maximizedId = useId()
+  const backgroundId = useId()
+  const desktopCornersId = useId()
   return (
     <FieldGroup className="@container">
       <SettingsSection title="Temas" wide>
@@ -80,6 +82,98 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
             </ToggleGroup>
           </Field>
           <Field data-disabled={disabled}>
+            <FieldTitle id={backgroundId}>Fundo da barra</FieldTitle>
+            <ToggleGroup
+              className="grid w-full grid-cols-1 items-stretch @min-[32rem]:grid-cols-2"
+              disabled={disabled}
+              aria-labelledby={backgroundId}
+              variant="outline"
+              value={[draft.bar.background ?? 'transparent']}
+              onValueChange={(values) => {
+                const background = values[0]
+                if (background === 'transparent' || background === 'filled') {
+                  onChange({ ...draft, bar: { ...draft.bar, background } })
+                }
+              }}
+            >
+              {(
+                [
+                  { background: 'transparent', label: 'Vazado' },
+                  { background: 'filled', label: 'Preenchido' }
+                ] as const
+              ).map(({ background, label }) => (
+                <ToggleGroupItem
+                  key={background}
+                  value={background}
+                  aria-label={label}
+                  render={<div />}
+                  nativeButton={false}
+                  className="h-auto min-w-0 flex-col gap-3 p-3 hover:text-foreground"
+                >
+                  <span className="flex w-full items-center justify-between gap-2">
+                    {label}
+                    <Check
+                      aria-hidden="true"
+                      className={cn(
+                        (draft.bar.background ?? 'transparent') !==
+                          background && 'invisible'
+                      )}
+                    />
+                  </span>
+                  <ThemePreview
+                    config={{ ...draft, bar: { ...draft.bar, background } }}
+                  />
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </Field>
+          <Field data-disabled={disabled}>
+            <FieldTitle id={positionId}>Posição da barra</FieldTitle>
+            <ToggleGroup
+              className="grid w-full grid-cols-1 items-stretch @min-[32rem]:grid-cols-2"
+              disabled={disabled}
+              aria-labelledby={positionId}
+              variant="outline"
+              value={[draft.bar.position]}
+              onValueChange={(values) => {
+                const position = values[0]
+                if (position === 'top' || position === 'bottom') {
+                  onChange({ ...draft, bar: { ...draft.bar, position } })
+                }
+              }}
+            >
+              {(
+                [
+                  { position: 'top', label: 'Superior' },
+                  { position: 'bottom', label: 'Inferior' }
+                ] as const
+              ).map(({ position, label }) => (
+                <ToggleGroupItem
+                  key={position}
+                  value={position}
+                  aria-label={label}
+                  render={<div />}
+                  nativeButton={false}
+                  className="h-auto min-w-0 flex-col gap-3 p-3 hover:text-foreground"
+                >
+                  <span className="flex w-full items-center justify-between gap-2">
+                    {label}
+                    <Check
+                      aria-hidden="true"
+                      className={cn(
+                        draft.bar.position !== position && 'invisible'
+                      )}
+                    />
+                  </span>
+                  <ThemePreview
+                    config={{ ...draft, bar: { ...draft.bar, position } }}
+                  />
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </Field>
+
+          <Field data-disabled={disabled}>
             <FieldTitle id={paletteId}>Paleta de cores</FieldTitle>
             <ToggleGroup
               className="grid w-full grid-cols-1 items-stretch @min-[32rem]:grid-cols-2"
@@ -122,6 +216,21 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
             </ToggleGroup>
           </Field>
         </FieldGroup>
+      </SettingsSection>
+      <SettingsSection title="Cantos da tela">
+        <Field orientation="horizontal" data-disabled={disabled}>
+          <FieldLabel htmlFor={desktopCornersId}>
+            Curvas nos cantos da tela
+          </FieldLabel>
+          <Switch
+            id={desktopCornersId}
+            disabled={disabled}
+            checked={draft.bar.desktopCorners ?? true}
+            onCheckedChange={(desktopCorners) =>
+              onChange({ ...draft, bar: { ...draft.bar, desktopCorners } })
+            }
+          />
+        </Field>
       </SettingsSection>
       <SettingsSection title="Dimensões e espaçamento">
         <FieldGroup>
@@ -174,41 +283,25 @@ export function BarSettings({ draft, onChange, disabled }: BarSettingsProps) {
           />
         </Field>
       </SettingsSection>
-      <SettingsSection title="Posicionamento e comportamento">
-        <FieldGroup>
-          <Field orientation="horizontal" data-disabled={disabled}>
-            <FieldLabel htmlFor={maximizedId}>
-              Preencher fundo quando houver janela maximizada no monitor
-            </FieldLabel>
-            <Switch
-              id={maximizedId}
-              disabled={disabled}
-              checked={draft.bar.fillOnMaximized ?? false}
-              onCheckedChange={(fillOnMaximized) =>
-                onChange({ ...draft, bar: { ...draft.bar, fillOnMaximized } })
-              }
-            />
-          </Field>
-          <Field data-disabled={disabled}>
-            <FieldTitle id={positionId}>Posição da barra</FieldTitle>
-            <ToggleGroup
-              disabled={disabled}
-              aria-labelledby={positionId}
-              variant="outline"
-              value={[draft.bar.position]}
-              onValueChange={(values) => {
-                const position = values[0]
-                if (position === 'top' || position === 'bottom') {
-                  onChange({ ...draft, bar: { ...draft.bar, position } })
+      {draft.bar.background !== 'filled' && (
+        <SettingsSection title="Posicionamento e comportamento">
+          <FieldGroup>
+            <Field orientation="horizontal" data-disabled={disabled}>
+              <FieldLabel htmlFor={maximizedId}>
+                Preencher fundo quando houver janela maximizada no monitor
+              </FieldLabel>
+              <Switch
+                id={maximizedId}
+                disabled={disabled}
+                checked={draft.bar.fillOnMaximized ?? false}
+                onCheckedChange={(fillOnMaximized) =>
+                  onChange({ ...draft, bar: { ...draft.bar, fillOnMaximized } })
                 }
-              }}
-            >
-              <ToggleGroupItem value="top">Superior</ToggleGroupItem>
-              <ToggleGroupItem value="bottom">Inferior</ToggleGroupItem>
-            </ToggleGroup>
-          </Field>
-        </FieldGroup>
-      </SettingsSection>
+              />
+            </Field>
+          </FieldGroup>
+        </SettingsSection>
+      )}
     </FieldGroup>
   )
 }

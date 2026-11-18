@@ -41,3 +41,16 @@ it('supports square corners and empty strips without non-finite coordinates', ()
   expect(Math.min(...polygons[0].map((p) => p.x))).toBe(0)
   expect(Math.max(...polygons[0].map((p) => p.x))).toBe(100)
 })
+
+it.each([false, true])(
+  'removes only desktop extensions (bottom=%s)',
+  (bottom) => {
+    const rect = { x: 0, y: 20, width: 200, height: 36 }
+    for (const section of ['left', 'right']) {
+      const original = islandRegion(rect, section, 18, bottom)
+      const flat = islandRegion(rect, section, 18, bottom, false)
+      expect(flat).toEqual([original[0]])
+      expect(flat.flat().every(({ y }) => y >= 20 && y <= 56)).toBe(true)
+    }
+  }
+)

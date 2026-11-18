@@ -53,14 +53,21 @@ function PreviewSurface({
     <div
       data-theme={theme}
       style={themeStyle(config.bar.colorTheme, theme)}
-      className={cn('h-full w-full bg-muted', theme, className)}
+      className={cn('relative h-full w-full bg-muted py-5', theme, className)}
     >
-      <StudioBar
-        config={{
-          ...defaultPreview(config),
-          bar: { ...config.bar, theme }
-        }}
-      />
+      <div
+        className={cn(
+          'absolute inset-x-0',
+          config.bar.position === 'bottom' ? 'bottom-0' : 'top-0'
+        )}
+      >
+        <StudioBar
+          config={{
+            ...defaultPreview(config),
+            bar: { ...config.bar, theme }
+          }}
+        />
+      </div>
       <div className="mx-auto mt-2 flex w-fit items-center gap-2 rounded-md border border-border bg-popover px-3 py-1 text-micro text-popover-foreground">
         <span className="size-2 rounded-full bg-primary" />
         CPU{' '}
